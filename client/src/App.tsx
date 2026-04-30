@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Box } from "@mui/material";
+import { Box, CssBaseline } from "@mui/material";
 
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import ScrollToTop from "./components/ScrollToTop";
 
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
@@ -17,18 +18,42 @@ import SaveLoad from "./pages/SaveLoad";
 export default function App() {
   return (
     <BrowserRouter>
+      <CssBaseline />
+      <ScrollToTop />
+
       <Box
         sx={{
           display: "flex",
           flexDirection: "column",
           minHeight: "100vh",
+          width: "100%",
+          m: 0,
+          p: 0,
+          bgcolor: "#F5F7F9",
         }}
       >
-        {/* Header */}
-        <Header />
+        <Box
+          component="header"
+          sx={{
+            width: "100%",
+            m: 0,
+            p: 0,
+            flexShrink: 0,
+          }}
+        >
+          <Header />
+        </Box>
 
-        {/* Page Content */}
-        <Box sx={{ flex: 1, px: 2, py: 2 }}>
+        <Box
+          component="main"
+          sx={{
+            flex: 1,
+            width: "100%",
+            m: 0,
+            p: 0,
+            overflowX: "hidden",
+          }}
+        >
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<Dashboard />} />
@@ -42,8 +67,17 @@ export default function App() {
           </Routes>
         </Box>
 
-        {/* Footer */}
-        <Footer />
+        <Box
+          component="footer"
+          sx={{
+            width: "100%",
+            m: 0,
+            p: 0,
+            flexShrink: 0,
+          }}
+        >
+          <Footer />
+        </Box>
       </Box>
     </BrowserRouter>
   );
