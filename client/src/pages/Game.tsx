@@ -10,6 +10,11 @@ import {
   LinearProgress,
   Divider,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
 } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
@@ -20,13 +25,17 @@ import ShowChartIcon from "@mui/icons-material/ShowChart";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import StorefrontIcon from "@mui/icons-material/Storefront";
+import CloseIcon from "@mui/icons-material/Close";
+import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import {
   getNewsForGameDay,
+  getOpeningStoryDays,
   getSeasonDay,
   getStocksForGameDay,
   SEASON_LENGTH,
+  STORY_DAYS,
   Stock,
 } from "../data/mockStocks";
 
@@ -40,9 +49,11 @@ const BRAND = {
 export default function Game() {
   const navigate = useNavigate();
   const [gameDay, setGameDay] = useState(1);
+  const [briefingOpen, setBriefingOpen] = useState(true);
 
   const stocks = useMemo(() => getStocksForGameDay(gameDay), [gameDay]);
   const todayNews = useMemo(() => getNewsForGameDay(gameDay), [gameDay]);
+  const openingStories = useMemo(() => getOpeningStoryDays(), []);
   const seasonDay = getSeasonDay(gameDay);
 
   const marketSummary = useMemo(() => {
@@ -66,10 +77,17 @@ export default function Game() {
 
   function handleResetDay() {
     setGameDay(1);
+    setBriefingOpen(true);
   }
 
   return (
     <Box sx={{ bgcolor: BRAND.background, minHeight: "100vh" }}>
+      <OpeningBriefingDialog
+        open={briefingOpen}
+        onClose={() => setBriefingOpen(false)}
+        stories={openingStories}
+      />
+
       <Box
         sx={{
           bgcolor: BRAND.navy,
@@ -83,8 +101,11 @@ export default function Game() {
             <Chip
               label={`Game Day ${gameDay}`}
               sx={{
-                bgcolor: "rgba(154,216,114,0.18)",
-                color: BRAND.green,
+                bgcolor:
+                  gameDay <= STORY_DAYS
+                    ? "rgba(255,55,55,0.2)"
+                    : "rgba(154,216,114,0.18)",
+                color: gameDay <= STORY_DAYS ? "#FFB3B3" : BRAND.green,
                 fontWeight: 900,
                 mb: 2,
               }}
@@ -109,8 +130,8 @@ export default function Game() {
                 fontSize: 18,
               }}
             >
-              Trade from 15 mock companies. Prices are generated forever using
-              volatility, trend bias, sector movement, and generated news events.
+              The first 3 days are story-driven and hardcoded. After that, the
+              market switches to the deterministic pricing engine and runs forever.
             </Typography>
 
             <Stack
@@ -149,6 +170,25 @@ export default function Game() {
                 }}
               >
                 Reset
+              </Button>
+
+              <Button
+                variant="outlined"
+                startIcon={<AutoStoriesIcon />}
+                onClick={() => setBriefingOpen(true)}
+                sx={{
+                  color: "#fff",
+                  borderColor: "rgba(255,255,255,0.35)",
+                  fontWeight: 950,
+                  borderRadius: 2.2,
+                  px: 3,
+                  "&:hover": {
+                    borderColor: "#fff",
+                    bgcolor: "rgba(255,255,255,0.08)",
+                  },
+                }}
+              >
+                Opening Briefing
               </Button>
             </Stack>
           </Grid>
@@ -261,6 +301,24 @@ export default function Game() {
           </Grid>
         </Grid>
 
+        {gameDay <= STORY_DAYS && (
+          <Card sx={{ ...panelStyle, mb: 3, borderColor: "rgba(255,55,55,0.22)" }}>
+            <CardContent sx={{ p: 3 }}>
+              <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 1 }}>
+                <AutoStoriesIcon sx={{ color: BRAND.red }} />
+                <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                  Story Mode Active
+                </Typography>
+              </Stack>
+
+              <Typography color="text.secondary">
+                Days 1–3 are intentionally scripted to teach market movement.
+                From Day 4 onward, the formula-based market engine takes over.
+              </Typography>
+            </CardContent>
+          </Card>
+        )}
+
         {todayNews.length > 0 && (
           <Card sx={{ ...panelStyle, mb: 3 }}>
             <CardContent sx={{ p: 3 }}>
@@ -273,7 +331,7 @@ export default function Game() {
               </Box>
 
               <Typography color="text.secondary" sx={{ mb: 2 }}>
-                These generated events are connected to today&apos;s mock price movement.
+                These events are connected to today&apos;s mock price movement.
               </Typography>
 
               <Divider sx={{ mb: 2 }} />
@@ -423,14 +481,14 @@ export default function Game() {
                 </Typography>
 
                 <Typography sx={{ color: "rgba(255,255,255,0.65)", mb: 2 }}>
-                  The market uses seeded randomness, sector drift, volatility,
-                  fundamentals, and generated news events.
+                  First 3 days are scripted. After that, the market uses seeded
+                  randomness, sector drift, volatility, and generated events.
                 </Typography>
 
-                <TradingTip text="Read the news for the current game day." />
+                <TradingTip text="Use the first 3 days to learn the market story." />
                 <TradingTip text="Open stock details before buying." />
                 <TradingTip text="Compare valuation, growth, debt, and margin." />
-                <TradingTip text="Press Next Day to generate the next market day." />
+                <TradingTip text="From Day 4 onward, pricing is formula-based." />
 
                 <Button
                   fullWidth
@@ -490,6 +548,185 @@ export default function Game() {
         </Grid>
       </Box>
     </Box>
+  );
+}
+
+function OpeningBriefingDialog({
+  open,
+  onClose,
+  stories,
+}: {
+  open: boolean;
+  onClose: () => void;
+  stories: ReturnType<typeof getOpeningStoryDays>;
+}) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 4,
+          overflow: "hidden",
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          bgcolor: BRAND.navy,
+          color: "#fff",
+          p: 3,
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Box>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <AutoStoriesIcon sx={{ color: BRAND.green }} />
+              <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                Opening Market Briefing
+              </Typography>
+            </Stack>
+
+            <Typography sx={{ color: "rgba(255,255,255,0.68)", mt: 0.8 }}>
+              The first 3 days are scripted to teach the player how news affects prices.
+            </Typography>
+          </Box>
+
+          <IconButton onClick={onClose} sx={{ color: "#fff" }}>
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
+
+      <DialogContent sx={{ bgcolor: BRAND.background, p: 3 }}>
+        <Stack spacing={2}>
+          {stories.map((story) => (
+            <Card
+              key={story.gameDay}
+              sx={{
+                borderRadius: 3,
+                border: "1px solid rgba(44,57,71,0.08)",
+                boxShadow: "0 12px 30px rgba(44,57,71,0.08)",
+              }}
+            >
+              <CardContent sx={{ p: 2.5 }}>
+                <Chip
+                  label={`Day ${story.gameDay}`}
+                  sx={{
+                    bgcolor: story.gameDay <= STORY_DAYS ? BRAND.red : BRAND.green,
+                    color: "#fff",
+                    fontWeight: 950,
+                    mb: 1.5,
+                  }}
+                />
+
+                <Typography variant="h6" sx={{ fontWeight: 950, color: BRAND.navy }}>
+                  {story.title}
+                </Typography>
+
+                <Typography color="text.secondary" sx={{ mt: 0.7, mb: 2 }}>
+                  {story.summary}
+                </Typography>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <Box
+                      sx={{
+                        p: 1.6,
+                        borderRadius: 3,
+                        bgcolor: "rgba(154,216,114,0.18)",
+                        border: "1px solid rgba(154,216,114,0.4)",
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 950, color: BRAND.navy, mb: 1 }}>
+                        Likely Rising
+                      </Typography>
+
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {story.rising.map((symbol) => (
+                          <Chip
+                            key={symbol}
+                            label={symbol}
+                            size="small"
+                            sx={{
+                              bgcolor: BRAND.green,
+                              color: BRAND.navy,
+                              fontWeight: 950,
+                            }}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <Box
+                      sx={{
+                        p: 1.6,
+                        borderRadius: 3,
+                        bgcolor: "rgba(255,55,55,0.1)",
+                        border: "1px solid rgba(255,55,55,0.25)",
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 950, color: BRAND.navy, mb: 1 }}>
+                        Likely Falling
+                      </Typography>
+
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {story.falling.map((symbol) => (
+                          <Chip
+                            key={symbol}
+                            label={symbol}
+                            size="small"
+                            sx={{
+                              bgcolor: BRAND.red,
+                              color: "#fff",
+                              fontWeight: 950,
+                            }}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                <Typography
+                  sx={{
+                    mt: 2,
+                    p: 1.6,
+                    borderRadius: 3,
+                    bgcolor: "#fff",
+                    border: "1px solid #E5E9EF",
+                    color: BRAND.navy,
+                    fontWeight: 800,
+                  }}
+                >
+                  Trader hint: {story.playerHint}
+                </Typography>
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
+      </DialogContent>
+
+      <DialogActions sx={{ p: 2.5, bgcolor: "#fff" }}>
+        <Button
+          onClick={onClose}
+          variant="contained"
+          sx={{
+            bgcolor: BRAND.red,
+            fontWeight: 950,
+            borderRadius: 2,
+            px: 3,
+            "&:hover": { bgcolor: "#E63131" },
+          }}
+        >
+          Start Trading
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
