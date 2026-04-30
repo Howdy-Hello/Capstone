@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -9,12 +9,19 @@ import {
   Chip,
   LinearProgress,
   Divider,
+  Stack,
 } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ShieldIcon from "@mui/icons-material/Shield";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
-import { Link as RouterLink } from "react-router-dom";
+import ShowChartIcon from "@mui/icons-material/ShowChart";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
+
+import { getStocksForGameDay, MAX_GAME_DAY, Stock } from "../data/mockStocks";
 
 const BRAND = {
   navy: "#2C3947",
@@ -23,56 +30,40 @@ const BRAND = {
   background: "#F5F7F9",
 };
 
-type Stock = {
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  sector: string;
-};
-
-const stocks: Stock[] = [
-  {
-    symbol: "NVT",
-    name: "NovaTech",
-    price: 124.82,
-    change: 3.21,
-    sector: "Technology",
-  },
-  {
-    symbol: "GVE",
-    name: "GreenVolt Energy",
-    price: 78.45,
-    change: 1.84,
-    sector: "Energy",
-  },
-  {
-    symbol: "MCH",
-    name: "MediCore Health",
-    price: 91.2,
-    change: -2.08,
-    sector: "Healthcare",
-  },
-  {
-    symbol: "URB",
-    name: "UrbanBank",
-    price: 56.91,
-    change: 0.64,
-    sector: "Finance",
-  },
-  {
-    symbol: "PAP",
-    name: "PineApple Inc.",
-    price: 210.34,
-    change: -4.12,
-    sector: "Technology",
-  },
-];
-
 export default function Game() {
+  const navigate = useNavigate();
+  const [gameDay, setGameDay] = useState(1);
+
+  const stocks = useMemo(() => getStocksForGameDay(gameDay), [gameDay]);
+
+  const marketSummary = useMemo(() => {
+    const gainers = stocks.filter((stock) => stock.dayChangePercent >= 0).length;
+    const losers = stocks.length - gainers;
+
+    const averageMove =
+      stocks.reduce((sum, stock) => sum + stock.dayChangePercent, 0) /
+      stocks.length;
+
+    return {
+      gainers,
+      losers,
+      averageMove,
+    };
+  }, [stocks]);
+
+  function handleNextDay() {
+    setGameDay((currentDay) => {
+      if (currentDay >= MAX_GAME_DAY) return 1;
+      return currentDay + 1;
+    });
+  }
+
+  function handleResetDay() {
+    setGameDay(1);
+  }
+
   return (
     <Box sx={{ bgcolor: BRAND.background, minHeight: "100vh" }}>
-      {/* Hero Section */}
       <Box
         sx={{
           bgcolor: BRAND.navy,
@@ -84,7 +75,7 @@ export default function Game() {
         <Grid container spacing={4} alignItems="center">
           <Grid item xs={12} md={7}>
             <Chip
-              label="Live Simulation Mode"
+              label={`Game Day ${gameDay}`}
               sx={{
                 bgcolor: "rgba(154,216,114,0.18)",
                 color: BRAND.green,
@@ -112,9 +103,48 @@ export default function Game() {
                 fontSize: 18,
               }}
             >
-              Buy, sell, react to news events, and build your virtual portfolio
-              before the market turns against you.
+              Buy, sell, react to mock market movements, and build your virtual
+              portfolio before the market turns against you.
             </Typography>
+
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              sx={{ mt: 3 }}
+            >
+              <Button
+                variant="contained"
+                onClick={handleNextDay}
+                sx={{
+                  bgcolor: BRAND.red,
+                  fontWeight: 950,
+                  borderRadius: 2.2,
+                  px: 3,
+                  "&:hover": { bgcolor: "#E63131" },
+                }}
+              >
+                Next Day
+              </Button>
+
+              <Button
+                variant="outlined"
+                startIcon={<RestartAltIcon />}
+                onClick={handleResetDay}
+                sx={{
+                  color: "#fff",
+                  borderColor: "rgba(255,255,255,0.35)",
+                  fontWeight: 950,
+                  borderRadius: 2.2,
+                  px: 3,
+                  "&:hover": {
+                    borderColor: "#fff",
+                    bgcolor: "rgba(255,255,255,0.08)",
+                  },
+                }}
+              >
+                Reset
+              </Button>
+            </Stack>
           </Grid>
 
           <Grid item xs={12} md={5}>
@@ -128,27 +158,47 @@ export default function Game() {
             >
               <CardContent sx={{ p: 4 }}>
                 <Typography sx={{ opacity: 0.65, fontWeight: 800 }}>
-                  PORTFOLIO VALUE
+                  MARKET STATUS
                 </Typography>
 
                 <Typography variant="h3" sx={{ fontWeight: 950, my: 1 }}>
-                  $10,000.00
+                  {marketSummary.averageMove >= 0 ? "+" : ""}
+                  {marketSummary.averageMove.toFixed(2)}%
                 </Typography>
 
                 <Chip
-                  icon={<TrendingUpIcon />}
-                  label="+2.8% Today"
+                  icon={
+                    marketSummary.averageMove >= 0 ? (
+                      <TrendingUpIcon />
+                    ) : (
+                      <TrendingDownIcon />
+                    )
+                  }
+                  label={
+                    marketSummary.averageMove >= 0
+                      ? "Positive Market Day"
+                      : "Negative Market Day"
+                  }
                   sx={{
-                    bgcolor: BRAND.green,
-                    color: BRAND.navy,
+                    bgcolor:
+                      marketSummary.averageMove >= 0 ? BRAND.green : BRAND.red,
+                    color:
+                      marketSummary.averageMove >= 0 ? BRAND.navy : "#fff",
                     fontWeight: 950,
                   }}
                 />
 
                 <Box sx={{ mt: 4 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "rgba(255,255,255,0.7)", mb: 1 }}
+                  >
+                    Day Progress
+                  </Typography>
+
                   <LinearProgress
                     variant="determinate"
-                    value={68}
+                    value={(gameDay / MAX_GAME_DAY) * 100}
                     sx={{
                       height: 12,
                       borderRadius: 99,
@@ -166,9 +216,7 @@ export default function Game() {
         </Grid>
       </Box>
 
-      {/* Main Content */}
       <Box sx={{ px: { xs: 2, md: 8 }, py: 4 }}>
-        {/* Stats */}
         <Grid container spacing={3} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
@@ -181,8 +229,8 @@ export default function Game() {
 
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="Total P/L"
-              value="+$0"
+              title="Market Gainers"
+              value={`${marketSummary.gainers}/${stocks.length}`}
               icon={<TrendingUpIcon />}
               color={BRAND.green}
             />
@@ -190,25 +238,24 @@ export default function Game() {
 
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="Risk Score"
-              value="42/100"
-              icon={<ShieldIcon />}
+              title="Market Losers"
+              value={`${marketSummary.losers}/${stocks.length}`}
+              icon={<TrendingDownIcon />}
               color={BRAND.red}
             />
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="News Events"
-              value="3 Active"
-              icon={<NewspaperIcon />}
+              title="Game Day"
+              value={`${gameDay}/${MAX_GAME_DAY}`}
+              icon={<CalendarTodayIcon />}
               color={BRAND.green}
             />
           </Grid>
         </Grid>
 
         <Grid container spacing={3}>
-          {/* Market List */}
           <Grid item xs={12} md={8}>
             <Card sx={panelStyle}>
               <CardContent sx={{ p: 3 }}>
@@ -216,7 +263,9 @@ export default function Game() {
                   sx={{
                     display: "flex",
                     justifyContent: "space-between",
-                    alignItems: "center",
+                    alignItems: { xs: "flex-start", sm: "center" },
+                    flexDirection: { xs: "column", sm: "row" },
+                    gap: 2,
                     mb: 2,
                   }}
                 >
@@ -224,13 +273,16 @@ export default function Game() {
                     <Typography variant="h5" sx={{ fontWeight: 950 }}>
                       Market
                     </Typography>
+
                     <Typography color="text.secondary">
-                      Watch prices and make trading decisions.
+                      Click any stock to view its detail page. Mock prices
+                      change when you press Next Day.
                     </Typography>
                   </Box>
 
                   <Button
                     variant="contained"
+                    onClick={handleNextDay}
                     sx={{
                       bgcolor: BRAND.red,
                       fontWeight: 950,
@@ -245,78 +297,21 @@ export default function Game() {
                 <Divider sx={{ mb: 2 }} />
 
                 {stocks.map((stock) => (
-                  <Box
-                    key={stock.symbol}
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      p: 2,
-                      mb: 1.5,
-                      borderRadius: 3,
-                      bgcolor: "#F7F9FB",
-                      border: "1px solid #E5E9EF",
-                    }}
-                  >
-                    <Box>
-                      <Typography sx={{ fontWeight: 950 }}>
-                        {stock.symbol}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {stock.name} • {stock.sector}
-                      </Typography>
-                    </Box>
-
-                    <Box sx={{ textAlign: "right" }}>
-                      <Typography sx={{ fontWeight: 950 }}>
-                        ${stock.price.toFixed(2)}
-                      </Typography>
-
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: stock.change >= 0 ? BRAND.green : BRAND.red,
-                          fontWeight: 900,
-                        }}
-                      >
-                        {stock.change >= 0 ? "+" : ""}
-                        {stock.change}%
-                      </Typography>
-                    </Box>
-
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        sx={{
-                          bgcolor: BRAND.green,
-                          color: BRAND.navy,
-                          fontWeight: 950,
-                          "&:hover": { bgcolor: "#85C85F" },
-                        }}
-                      >
-                        Buy
-                      </Button>
-
-                      <Button
-                        size="small"
-                        variant="contained"
-                        sx={{
-                          bgcolor: BRAND.red,
-                          fontWeight: 950,
-                          "&:hover": { bgcolor: "#E63131" },
-                        }}
-                      >
-                        Sell
-                      </Button>
-                    </Box>
-                  </Box>
+                  <StockRow
+                    key={stock.stockId}
+                    stock={stock}
+                    gameDay={gameDay}
+                    onOpen={() =>
+                      navigate(`/stocks/${stock.symbol}`, {
+                        state: { gameDay },
+                      })
+                    }
+                  />
                 ))}
               </CardContent>
             </Card>
           </Grid>
 
-          {/* Side Panel */}
           <Grid item xs={12} md={4}>
             <Card
               sx={{
@@ -324,53 +319,235 @@ export default function Game() {
                 color: "#fff",
                 borderRadius: 4,
                 boxShadow: "0 18px 45px rgba(44,57,71,0.22)",
+                mb: 3,
               }}
             >
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  Game Tools
+                  Trading Panel
                 </Typography>
 
-                <Typography sx={{ color: "rgba(255,255,255,0.65)", mb: 3 }}>
-                  Use these tools to improve your trading strategy.
+                <Typography sx={{ color: "rgba(255,255,255,0.65)", mb: 2 }}>
+                  This page uses client-side mock stock data from constants. No
+                  real stock API is needed.
                 </Typography>
 
-                <SideButton to="/leaderboard" label="View Leaderboard" />
-                <SideButton to="/achievements" label="View Achievements" />
-                <SideButton to="/save-load" label="Save / Load Game" />
-                <SideButton to="/guide" label="Trading Guide" />
+                <TradingTip text="Click a stock row to open the detail page." />
+                <TradingTip text="Press Next Day to simulate changing stock prices." />
+                <TradingTip text="Positive news can push mock prices higher." />
+                <TradingTip text="Negative events can push mock prices lower." />
+
+                <Button
+                  fullWidth
+                  variant="contained"
+                  component={RouterLink}
+                  to="/news"
+                  startIcon={<NewspaperIcon />}
+                  sx={{
+                    mt: 2,
+                    bgcolor: BRAND.red,
+                    fontWeight: 950,
+                    borderRadius: 2.2,
+                    "&:hover": { bgcolor: "#E63131" },
+                  }}
+                >
+                  Read News
+                </Button>
               </CardContent>
             </Card>
 
-            <Card sx={{ ...panelStyle, mt: 3 }}>
+            <Card sx={panelStyle}>
               <CardContent sx={{ p: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  Breaking News
-                </Typography>
-
-                <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  News events may change stock prices.
-                </Typography>
-
                 <Box
                   sx={{
-                    p: 2,
-                    borderRadius: 3,
-                    bgcolor: "#FFF2F2",
-                    border: `1px solid ${BRAND.red}`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mb: 1,
                   }}
                 >
-                  <Typography sx={{ fontWeight: 950 }}>
-                    Energy Prices Fall
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    GreenVolt Energy may become more volatile today.
+                  <ShieldIcon sx={{ color: BRAND.red }} />
+
+                  <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                    Risk Guide
                   </Typography>
                 </Box>
+
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  Higher-risk stocks move more aggressively across game days.
+                </Typography>
+
+                <RiskItem
+                  level="Low"
+                  text="Stable movement, smaller upside and downside."
+                />
+                <RiskItem
+                  level="Medium"
+                  text="Balanced movement with moderate volatility."
+                />
+                <RiskItem
+                  level="High"
+                  text="Bigger moves, higher profit and loss potential."
+                />
               </CardContent>
             </Card>
           </Grid>
         </Grid>
+      </Box>
+    </Box>
+  );
+}
+
+function StockRow({
+  stock,
+  gameDay,
+  onOpen,
+}: {
+  stock: Stock;
+  gameDay: number;
+  onOpen: () => void;
+}) {
+  const isUp = stock.dayChangePercent >= 0;
+
+  return (
+    <Box
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "1fr",
+          sm: "1fr auto",
+          md: "1.4fr 0.9fr auto",
+        },
+        gap: 2,
+        alignItems: "center",
+        p: 2,
+        mb: 1.5,
+        borderRadius: 3,
+        bgcolor: "#F7F9FB",
+        border: "1px solid #E5E9EF",
+        cursor: "pointer",
+        outline: "none",
+        transition:
+          "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease",
+        "&:hover": {
+          transform: "translateY(-2px)",
+          boxShadow: "0 14px 34px rgba(44,57,71,0.12)",
+          borderColor: "rgba(44,57,71,0.22)",
+          bgcolor: "#fff",
+        },
+        "&:focus-visible": {
+          boxShadow: `0 0 0 3px rgba(154,216,114,0.45)`,
+          borderColor: BRAND.green,
+        },
+      }}
+    >
+      <Box>
+        <Stack direction="row" spacing={1.2} alignItems="center">
+          <Box
+            sx={{
+              width: 42,
+              height: 42,
+              borderRadius: 2,
+              bgcolor: isUp
+                ? "rgba(154,216,114,0.25)"
+                : "rgba(255,55,55,0.12)",
+              color: isUp ? BRAND.green : BRAND.red,
+              display: "grid",
+              placeItems: "center",
+              flexShrink: 0,
+            }}
+          >
+            <ShowChartIcon />
+          </Box>
+
+          <Box>
+            <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
+              {stock.symbol}
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary">
+              {stock.name} • {stock.sector} • {stock.riskLevel} Risk
+            </Typography>
+
+            <Typography variant="caption" color="text.secondary">
+              Click to view details • Day {gameDay}
+            </Typography>
+          </Box>
+        </Stack>
+      </Box>
+
+      <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
+        <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
+          ${stock.currentPrice.toFixed(2)}
+        </Typography>
+
+        <Typography
+          variant="body2"
+          sx={{
+            color: isUp ? BRAND.green : BRAND.red,
+            fontWeight: 900,
+          }}
+        >
+          {isUp ? "+" : ""}
+          {stock.dayChangePercent.toFixed(2)}%
+        </Typography>
+
+        <Typography variant="caption" color="text.secondary">
+          {stock.dayChange >= 0 ? "+" : ""}
+          ${stock.dayChange.toFixed(2)} today
+        </Typography>
+      </Box>
+
+      <Box
+        sx={{
+          display: "flex",
+          gap: 1,
+          justifyContent: { xs: "flex-start", md: "flex-end" },
+        }}
+      >
+        <Button
+          size="small"
+          variant="contained"
+          onClick={(event) => {
+            event.stopPropagation();
+            alert(`Buy ${stock.symbol}`);
+          }}
+          sx={{
+            bgcolor: BRAND.green,
+            color: BRAND.navy,
+            fontWeight: 950,
+            borderRadius: 2,
+            "&:hover": { bgcolor: "#85C85F" },
+          }}
+        >
+          Buy
+        </Button>
+
+        <Button
+          size="small"
+          variant="contained"
+          onClick={(event) => {
+            event.stopPropagation();
+            alert(`Sell ${stock.symbol}`);
+          }}
+          sx={{
+            bgcolor: BRAND.red,
+            fontWeight: 950,
+            borderRadius: 2,
+            "&:hover": { bgcolor: "#E63131" },
+          }}
+        >
+          Sell
+        </Button>
       </Box>
     </Box>
   );
@@ -389,77 +566,77 @@ function StatCard({
 }) {
   return (
     <Card sx={panelStyle}>
-      <CardContent
-        sx={{
-          p: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Box>
-          <Typography
-            variant="caption"
+      <CardContent sx={{ p: 3 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+          <Box>
+            <Typography color="text.secondary" sx={{ fontWeight: 800 }}>
+              {title}
+            </Typography>
+
+            <Typography variant="h5" sx={{ fontWeight: 950, color: BRAND.navy }}>
+              {value}
+            </Typography>
+          </Box>
+
+          <Box
             sx={{
-              fontWeight: 950,
-              color: "text.secondary",
-              letterSpacing: 1,
+              width: 46,
+              height: 46,
+              borderRadius: 2,
+              bgcolor: `${color}33`,
+              color,
+              display: "grid",
+              placeItems: "center",
             }}
           >
-            {title.toUpperCase()}
-          </Typography>
-
-          <Typography variant="h5" sx={{ fontWeight: 950, mt: 1 }}>
-            {value}
-          </Typography>
-        </Box>
-
-        <Box
-          sx={{
-            width: 42,
-            height: 42,
-            borderRadius: 2,
-            bgcolor: `${color}33`,
-            color,
-            display: "grid",
-            placeItems: "center",
-          }}
-        >
-          {icon}
+            {icon}
+          </Box>
         </Box>
       </CardContent>
     </Card>
   );
 }
 
-function SideButton({ to, label }: { to: string; label: string }) {
+function TradingTip({ text }: { text: string }) {
   return (
-    <Button
-      fullWidth
-      component={RouterLink}
-      to={to}
+    <Box
       sx={{
-        justifyContent: "space-between",
-        color: "#fff",
+        p: 1.6,
+        mb: 1.2,
+        borderRadius: 3,
         bgcolor: "rgba(255,255,255,0.08)",
         border: "1px solid rgba(255,255,255,0.12)",
-        borderRadius: 3,
-        py: 1.4,
-        px: 2,
-        mb: 1.3,
-        fontWeight: 900,
-        "&:hover": {
-          bgcolor: "rgba(255,255,255,0.14)",
-        },
       }}
     >
-      {label}
-    </Button>
+      <Typography sx={{ fontWeight: 800 }}>{text}</Typography>
+    </Box>
+  );
+}
+
+function RiskItem({ level, text }: { level: string; text: string }) {
+  return (
+    <Box
+      sx={{
+        p: 1.5,
+        mb: 1.2,
+        borderRadius: 3,
+        bgcolor: "#F7F9FB",
+        border: "1px solid #E5E9EF",
+      }}
+    >
+      <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
+        {level} Risk
+      </Typography>
+
+      <Typography variant="body2" color="text.secondary">
+        {text}
+      </Typography>
+    </Box>
   );
 }
 
 const panelStyle = {
   borderRadius: 4,
-  boxShadow: "0 14px 35px rgba(44,57,71,0.08)",
-  border: "1px solid #E5E9EF",
+  boxShadow: "0 18px 45px rgba(44,57,71,0.08)",
+  border: "1px solid rgba(44,57,71,0.08)",
 };
