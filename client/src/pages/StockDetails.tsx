@@ -27,14 +27,15 @@ import ShowChartIcon from "@mui/icons-material/ShowChart";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import BusinessIcon from "@mui/icons-material/Business";
-import ShieldIcon from "@mui/icons-material/Shield";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import NewspaperIcon from "@mui/icons-material/Newspaper";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 
 import {
+  getRelatedNewsBySymbol,
   getStockBySymbolForGameDay,
   getStockHistoryBySymbol,
-  MAX_GAME_DAY,
   Stock,
   StockPriceHistory,
 } from "../data/mockStocks";
@@ -56,7 +57,7 @@ export default function StockDetails() {
   const location = useLocation();
 
   const state = location.state as LocationState | null;
-  const gameDay = state?.gameDay ?? MAX_GAME_DAY;
+  const gameDay = state?.gameDay ?? 1;
 
   const stock = useMemo(() => {
     if (!symbol) return undefined;
@@ -65,12 +66,13 @@ export default function StockDetails() {
 
   const history = useMemo(() => {
     if (!symbol) return [];
-    return getStockHistoryBySymbol(symbol);
-  }, [symbol]);
+    return getStockHistoryBySymbol(symbol, gameDay);
+  }, [symbol, gameDay]);
 
-  const visibleHistory = useMemo(() => {
-    return history.filter((item) => item.gameDay <= gameDay);
-  }, [history, gameDay]);
+  const relatedNews = useMemo(() => {
+    if (!symbol) return [];
+    return getRelatedNewsBySymbol(symbol, gameDay);
+  }, [symbol, gameDay]);
 
   if (!stock) {
     return (
@@ -113,7 +115,7 @@ export default function StockDetails() {
 
   const isUp = stock.dayChangePercent >= 0;
   const riskScore = getRiskScore(stock.riskLevel);
-  const latestHistory = visibleHistory[visibleHistory.length - 1];
+  const latestHistory = history[history.length - 1];
 
   return (
     <Box sx={{ bgcolor: BRAND.background, minHeight: "100vh" }}>
@@ -174,6 +176,15 @@ export default function StockDetails() {
                   fontWeight: 900,
                 }}
               />
+
+              <Chip
+                label={stock.fundamentals.analystRating}
+                sx={{
+                  bgcolor: "rgba(255,255,255,0.1)",
+                  color: "#fff",
+                  fontWeight: 900,
+                }}
+              />
             </Stack>
 
             <Typography
@@ -219,7 +230,9 @@ export default function StockDetails() {
 
                 <Chip
                   icon={isUp ? <TrendingUpIcon /> : <TrendingDownIcon />}
-                  label={`${isUp ? "+" : ""}${stock.dayChangePercent.toFixed(2)}% Today`}
+                  label={`${isUp ? "+" : ""}${stock.dayChangePercent.toFixed(
+                    2
+                  )}% Today`}
                   sx={{
                     bgcolor: isUp ? BRAND.green : BRAND.red,
                     color: isUp ? BRAND.navy : "#fff",
@@ -243,7 +256,8 @@ export default function StockDetails() {
                       borderRadius: 99,
                       bgcolor: "rgba(255,255,255,0.12)",
                       "& .MuiLinearProgress-bar": {
-                        bgcolor: stock.riskLevel === "High" ? BRAND.red : BRAND.green,
+                        bgcolor:
+                          stock.riskLevel === "High" ? BRAND.red : BRAND.green,
                         borderRadius: 99,
                       },
                     }}
@@ -268,19 +282,19 @@ export default function StockDetails() {
 
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="Previous Price"
-              value={`$${stock.previousPrice.toFixed(2)}`}
-              icon={<ShowChartIcon />}
+              title="P/E Ratio"
+              value={stock.fundamentals.peRatio.toFixed(1)}
+              icon={<AssessmentIcon />}
               color={BRAND.green}
             />
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="Day Change"
-              value={`${stock.dayChange >= 0 ? "+" : ""}$${stock.dayChange.toFixed(2)}`}
-              icon={isUp ? <TrendingUpIcon /> : <TrendingDownIcon />}
-              color={isUp ? BRAND.green : BRAND.red}
+              title="Revenue Growth"
+              value={`+${stock.fundamentals.revenueGrowth.toFixed(1)}%`}
+              icon={<TrendingUpIcon />}
+              color={BRAND.green}
             />
           </Grid>
 
@@ -313,12 +327,12 @@ export default function StockDetails() {
                       Price History
                     </Typography>
                     <Typography color="text.secondary">
-                      Mock close price movement up to Game Day {gameDay}.
+                      Generated mock close price movement up to Game Day {gameDay}.
                     </Typography>
                   </Box>
 
                   <Chip
-                    label={`${visibleHistory.length} data points`}
+                    label={`${history.length} data points`}
                     sx={{
                       bgcolor: "rgba(154,216,114,0.25)",
                       color: BRAND.navy,
@@ -331,19 +345,37 @@ export default function StockDetails() {
 
                 <Box sx={{ width: "100%", height: 360 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={visibleHistory}>
+                    <AreaChart data={history}>
                       <defs>
-                        <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={BRAND.green} stopOpacity={0.45} />
-                          <stop offset="95%" stopColor={BRAND.green} stopOpacity={0.03} />
+                        <linearGradient
+                          id="priceFill"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor={BRAND.green}
+                            stopOpacity={0.45}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor={BRAND.green}
+                            stopOpacity={0.03}
+                          />
                         </linearGradient>
                       </defs>
 
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(44,57,71,0.12)" />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(44,57,71,0.12)"
+                      />
 
                       <XAxis
                         dataKey="gameDay"
                         tickFormatter={(value) => `Day ${value}`}
+                        minTickGap={18}
                       />
 
                       <YAxis
@@ -352,7 +384,10 @@ export default function StockDetails() {
                       />
 
                       <RTooltip
-                        formatter={(value: number) => [`$${value.toFixed(2)}`, "Close Price"]}
+                        formatter={(value: any) => [
+                          `$${Number(value).toFixed(2)}`,
+                          "Close Price",
+                        ]}
                         labelFormatter={(label) => `Game Day ${label}`}
                       />
 
@@ -362,10 +397,7 @@ export default function StockDetails() {
                         stroke={BRAND.green}
                         strokeWidth={3}
                         fill="url(#priceFill)"
-                        dot={{
-                          r: 4,
-                          strokeWidth: 2,
-                        }}
+                        dot={history.length <= 40}
                         activeDot={{
                           r: 6,
                         }}
@@ -379,17 +411,57 @@ export default function StockDetails() {
             <Card sx={{ ...panelStyle, mt: 3 }}>
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  Historical Prices
+                  Mock Fundamentals
                 </Typography>
 
                 <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  Open, high, low, close, and volume for each mock game day.
+                  These are fake but structured metrics to help players make better decisions.
+                </Typography>
+
+                <Divider sx={{ mb: 2 }} />
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6} md={4}>
+                    <MetricBox label="P/E Ratio" value={stock.fundamentals.peRatio.toFixed(1)} note="Lower can mean cheaper valuation." />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={4}>
+                    <MetricBox label="EPS" value={`$${stock.fundamentals.eps.toFixed(2)}`} note="Profit earned per share." />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={4}>
+                    <MetricBox label="Revenue Growth" value={`+${stock.fundamentals.revenueGrowth.toFixed(1)}%`} note="Higher means faster growth." />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={4}>
+                    <MetricBox label="Profit Margin" value={`${stock.fundamentals.profitMargin.toFixed(1)}%`} note="Higher means better efficiency." />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={4}>
+                    <MetricBox label="Debt/Equity" value={stock.fundamentals.debtToEquity.toFixed(2)} note="Higher means more balance-sheet risk." />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6} md={4}>
+                    <MetricBox label="Dividend Yield" value={`${stock.fundamentals.dividendYield.toFixed(1)}%`} note="Cash return to shareholders." />
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+
+            <Card sx={{ ...panelStyle, mt: 3 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                  Recent Prices
+                </Typography>
+
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  Showing the latest 10 generated price points.
                 </Typography>
 
                 <Divider sx={{ mb: 2 }} />
 
                 <Stack spacing={1.3}>
-                  {visibleHistory.map((item) => (
+                  {history.slice(-10).map((item) => (
                     <HistoryRow key={item.priceId} item={item} />
                   ))}
                 </Stack>
@@ -413,15 +485,22 @@ export default function StockDetails() {
                 </Typography>
 
                 <Typography sx={{ color: "rgba(255,255,255,0.65)", mb: 3 }}>
-                  Basic company information from your mock stock constant.
+                  Basic company information from your mock stock engine.
                 </Typography>
 
                 <InfoRow label="Symbol" value={stock.symbol} />
                 <InfoRow label="Sector" value={stock.sector} />
                 <InfoRow label="Industry" value={stock.industry} />
-                <InfoRow label="Starting Price" value={`$${stock.startingPrice.toFixed(2)}`} />
-                <InfoRow label="Volatility" value={`${(stock.volatility * 100).toFixed(1)}%`} />
+                <InfoRow
+                  label="Starting Price"
+                  value={`$${stock.startingPrice.toFixed(2)}`}
+                />
+                <InfoRow
+                  label="Volatility"
+                  value={`${(stock.volatility * 100).toFixed(1)}%`}
+                />
                 <InfoRow label="Risk Level" value={stock.riskLevel} />
+                <InfoRow label="Rating" value={stock.fundamentals.analystRating} />
               </CardContent>
             </Card>
 
@@ -435,7 +514,7 @@ export default function StockDetails() {
                 </Box>
 
                 <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  These buttons are UI-ready. Connect them to your portfolio logic later.
+                  These buttons are UI-ready. Connect them to portfolio logic next.
                 </Typography>
 
                 <Stack spacing={1.2}>
@@ -483,6 +562,71 @@ export default function StockDetails() {
                   >
                     Back to Market
                   </Button>
+                </Stack>
+              </CardContent>
+            </Card>
+
+            <Card sx={{ ...panelStyle, mt: 3 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                  <NewspaperIcon sx={{ color: BRAND.red }} />
+                  <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                    Related News
+                  </Typography>
+                </Box>
+
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  Generated news connected to {stock.symbol} up to Game Day{" "}
+                  {gameDay}.
+                </Typography>
+
+                <Stack spacing={1.2}>
+                  {relatedNews.length === 0 ? (
+                    <Typography color="text.secondary">
+                      No related news yet.
+                    </Typography>
+                  ) : (
+                    relatedNews.slice(-8).map((news) => (
+                      <Box
+                        key={news.newsId}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 3,
+                          bgcolor: "#F7F9FB",
+                          border: "1px solid #E5E9EF",
+                        }}
+                      >
+                        <Chip
+                          size="small"
+                          label={news.marketTone}
+                          sx={{
+                            mb: 1,
+                            bgcolor:
+                              news.marketTone === "Bullish"
+                                ? "rgba(154,216,114,0.25)"
+                                : "rgba(255,55,55,0.12)",
+                            color:
+                              news.marketTone === "Bullish"
+                                ? BRAND.navy
+                                : BRAND.red,
+                            fontWeight: 900,
+                          }}
+                        />
+
+                        <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
+                          Day {news.gameDay}: {news.headline}
+                        </Typography>
+
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mt: 0.5 }}
+                        >
+                          {news.body}
+                        </Typography>
+                      </Box>
+                    ))
+                  )}
                 </Stack>
               </CardContent>
             </Card>
@@ -536,6 +680,40 @@ function StatCard({
   );
 }
 
+function MetricBox({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note: string;
+}) {
+  return (
+    <Box
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        bgcolor: "#F7F9FB",
+        border: "1px solid #E5E9EF",
+        height: "100%",
+      }}
+    >
+      <Typography color="text.secondary" sx={{ fontWeight: 800 }}>
+        {label}
+      </Typography>
+
+      <Typography variant="h5" sx={{ fontWeight: 950, color: BRAND.navy, my: 0.5 }}>
+        {value}
+      </Typography>
+
+      <Typography variant="body2" color="text.secondary">
+        {note}
+      </Typography>
+    </Box>
+  );
+}
+
 function HistoryRow({ item }: { item: StockPriceHistory }) {
   const isUp = item.changePercent >= 0;
 
@@ -559,28 +737,36 @@ function HistoryRow({ item }: { item: StockPriceHistory }) {
           <Typography variant="body2" color="text.secondary">
             Open
           </Typography>
-          <Typography sx={{ fontWeight: 900 }}>${item.openPrice.toFixed(2)}</Typography>
+          <Typography sx={{ fontWeight: 900 }}>
+            ${item.openPrice.toFixed(2)}
+          </Typography>
         </Grid>
 
         <Grid item xs={6} sm={2}>
           <Typography variant="body2" color="text.secondary">
             High
           </Typography>
-          <Typography sx={{ fontWeight: 900 }}>${item.highPrice.toFixed(2)}</Typography>
+          <Typography sx={{ fontWeight: 900 }}>
+            ${item.highPrice.toFixed(2)}
+          </Typography>
         </Grid>
 
         <Grid item xs={6} sm={2}>
           <Typography variant="body2" color="text.secondary">
             Low
           </Typography>
-          <Typography sx={{ fontWeight: 900 }}>${item.lowPrice.toFixed(2)}</Typography>
+          <Typography sx={{ fontWeight: 900 }}>
+            ${item.lowPrice.toFixed(2)}
+          </Typography>
         </Grid>
 
         <Grid item xs={6} sm={2}>
           <Typography variant="body2" color="text.secondary">
             Close
           </Typography>
-          <Typography sx={{ fontWeight: 900 }}>${item.closePrice.toFixed(2)}</Typography>
+          <Typography sx={{ fontWeight: 900 }}>
+            ${item.closePrice.toFixed(2)}
+          </Typography>
         </Grid>
 
         <Grid item xs={12} sm={2}>

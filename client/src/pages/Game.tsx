@@ -17,11 +17,18 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ShieldIcon from "@mui/icons-material/Shield";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import ReportProblemIcon from "@mui/icons-material/ReportProblem";
+import StorefrontIcon from "@mui/icons-material/Storefront";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
-import { getStocksForGameDay, MAX_GAME_DAY, Stock } from "../data/mockStocks";
+import {
+  getNewsForGameDay,
+  getSeasonDay,
+  getStocksForGameDay,
+  SEASON_LENGTH,
+  Stock,
+} from "../data/mockStocks";
 
 const BRAND = {
   navy: "#2C3947",
@@ -35,6 +42,8 @@ export default function Game() {
   const [gameDay, setGameDay] = useState(1);
 
   const stocks = useMemo(() => getStocksForGameDay(gameDay), [gameDay]);
+  const todayNews = useMemo(() => getNewsForGameDay(gameDay), [gameDay]);
+  const seasonDay = getSeasonDay(gameDay);
 
   const marketSummary = useMemo(() => {
     const gainers = stocks.filter((stock) => stock.dayChangePercent >= 0).length;
@@ -52,10 +61,7 @@ export default function Game() {
   }, [stocks]);
 
   function handleNextDay() {
-    setGameDay((currentDay) => {
-      if (currentDay >= MAX_GAME_DAY) return 1;
-      return currentDay + 1;
-    });
+    setGameDay((currentDay) => currentDay + 1);
   }
 
   function handleResetDay() {
@@ -93,18 +99,18 @@ export default function Game() {
                 mb: 2,
               }}
             >
-              Stock Market Simulator
+              Infinite Stock Market Simulator
             </Typography>
 
             <Typography
               sx={{
                 color: "rgba(255,255,255,0.72)",
-                maxWidth: 680,
+                maxWidth: 720,
                 fontSize: 18,
               }}
             >
-              Buy, sell, react to mock market movements, and build your virtual
-              portfolio before the market turns against you.
+              Trade from 15 mock companies. Prices are generated forever using
+              volatility, trend bias, sector movement, and generated news events.
             </Typography>
 
             <Stack
@@ -193,12 +199,12 @@ export default function Game() {
                     variant="body2"
                     sx={{ color: "rgba(255,255,255,0.7)", mb: 1 }}
                   >
-                    Day Progress
+                    Season Progress: Day {seasonDay}/{SEASON_LENGTH}
                   </Typography>
 
                   <LinearProgress
                     variant="determinate"
-                    value={(gameDay / MAX_GAME_DAY) * 100}
+                    value={(seasonDay / SEASON_LENGTH) * 100}
                     sx={{
                       height: 12,
                       borderRadius: 99,
@@ -229,6 +235,15 @@ export default function Game() {
 
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
+              title="Companies"
+              value={stocks.length.toString()}
+              icon={<StorefrontIcon />}
+              color={BRAND.green}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
               title="Market Gainers"
               value={`${marketSummary.gainers}/${stocks.length}`}
               icon={<TrendingUpIcon />}
@@ -238,22 +253,102 @@ export default function Game() {
 
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="Market Losers"
-              value={`${marketSummary.losers}/${stocks.length}`}
-              icon={<TrendingDownIcon />}
-              color={BRAND.red}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Game Day"
-              value={`${gameDay}/${MAX_GAME_DAY}`}
-              icon={<CalendarTodayIcon />}
-              color={BRAND.green}
+              title="News Events"
+              value={todayNews.length.toString()}
+              icon={<NewspaperIcon />}
+              color={todayNews.length > 0 ? BRAND.red : BRAND.green}
             />
           </Grid>
         </Grid>
+
+        {todayNews.length > 0 && (
+          <Card sx={{ ...panelStyle, mb: 3 }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                <ReportProblemIcon sx={{ color: BRAND.red }} />
+
+                <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                  Today&apos;s Market News
+                </Typography>
+              </Box>
+
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                These generated events are connected to today&apos;s mock price movement.
+              </Typography>
+
+              <Divider sx={{ mb: 2 }} />
+
+              <Grid container spacing={2}>
+                {todayNews.map((news) => (
+                  <Grid item xs={12} md={6} key={news.newsId}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        bgcolor: "#F7F9FB",
+                        border: "1px solid #E5E9EF",
+                      }}
+                    >
+                      <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                        <Chip
+                          size="small"
+                          label={news.importance}
+                          sx={{
+                            bgcolor:
+                              news.importance === "High"
+                                ? "rgba(255,55,55,0.12)"
+                                : "rgba(154,216,114,0.2)",
+                            color:
+                              news.importance === "High"
+                                ? BRAND.red
+                                : BRAND.navy,
+                            fontWeight: 900,
+                          }}
+                        />
+
+                        <Chip
+                          size="small"
+                          label={news.marketTone}
+                          sx={{
+                            bgcolor:
+                              news.marketTone === "Bullish"
+                                ? "rgba(154,216,114,0.25)"
+                                : "rgba(255,55,55,0.12)",
+                            color:
+                              news.marketTone === "Bullish"
+                                ? BRAND.navy
+                                : BRAND.red,
+                            fontWeight: 900,
+                          }}
+                        />
+                      </Stack>
+
+                      <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
+                        {news.headline}
+                      </Typography>
+
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 0.7 }}
+                      >
+                        {news.body}
+                      </Typography>
+
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block", mt: 1 }}
+                      >
+                        Related: {news.relatedTickers.join(", ")}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </CardContent>
+          </Card>
+        )}
 
         <Grid container spacing={3}>
           <Grid item xs={12} md={8}>
@@ -275,8 +370,8 @@ export default function Game() {
                     </Typography>
 
                     <Typography color="text.secondary">
-                      Click any stock to view its detail page. Mock prices
-                      change when you press Next Day.
+                      Click any stock to view details, chart, mock fundamentals,
+                      and related news.
                     </Typography>
                   </Box>
 
@@ -324,18 +419,18 @@ export default function Game() {
             >
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  Trading Panel
+                  Game Loop
                 </Typography>
 
                 <Typography sx={{ color: "rgba(255,255,255,0.65)", mb: 2 }}>
-                  This page uses client-side mock stock data from constants. No
-                  real stock API is needed.
+                  The market uses seeded randomness, sector drift, volatility,
+                  fundamentals, and generated news events.
                 </Typography>
 
-                <TradingTip text="Click a stock row to open the detail page." />
-                <TradingTip text="Press Next Day to simulate changing stock prices." />
-                <TradingTip text="Positive news can push mock prices higher." />
-                <TradingTip text="Negative events can push mock prices lower." />
+                <TradingTip text="Read the news for the current game day." />
+                <TradingTip text="Open stock details before buying." />
+                <TradingTip text="Compare valuation, growth, debt, and margin." />
+                <TradingTip text="Press Next Day to generate the next market day." />
 
                 <Button
                   fullWidth
@@ -351,7 +446,7 @@ export default function Game() {
                     "&:hover": { bgcolor: "#E63131" },
                   }}
                 >
-                  Read News
+                  Open News Page
                 </Button>
               </CardContent>
             </Card>
@@ -445,7 +540,7 @@ function StockRow({
           bgcolor: "#fff",
         },
         "&:focus-visible": {
-          boxShadow: `0 0 0 3px rgba(154,216,114,0.45)`,
+          boxShadow: "0 0 0 3px rgba(154,216,114,0.45)",
           borderColor: BRAND.green,
         },
       }}
@@ -479,7 +574,8 @@ function StockRow({
             </Typography>
 
             <Typography variant="caption" color="text.secondary">
-              Click to view details • Day {gameDay}
+              P/E {stock.fundamentals.peRatio} • Growth{" "}
+              {stock.fundamentals.revenueGrowth}% • Day {gameDay}
             </Typography>
           </Box>
         </Stack>

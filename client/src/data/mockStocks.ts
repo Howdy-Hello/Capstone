@@ -1,4 +1,30 @@
-export type Stock = {
+export type RiskLevel = "Low" | "Medium" | "High";
+export type MarketTone = "Bullish" | "Bearish" | "Unclear";
+export type Importance = "Low" | "Medium" | "High";
+export type AnalystRating = "Strong Buy" | "Buy" | "Hold" | "Sell";
+
+export type EventCategory =
+  | "earnings"
+  | "product"
+  | "contract"
+  | "lawsuit"
+  | "supply"
+  | "macro"
+  | "rumor"
+  | "partnership"
+  | "operations";
+
+export type Fundamentals = {
+  peRatio: number;
+  eps: number;
+  revenueGrowth: number;
+  profitMargin: number;
+  debtToEquity: number;
+  dividendYield: number;
+  analystRating: AnalystRating;
+};
+
+export type StockCompany = {
   stockId: string;
   symbol: string;
   name: string;
@@ -6,13 +32,20 @@ export type Stock = {
   industry: string;
   description: string;
   startingPrice: number;
+  volatility: number;
+  trendBias: number;
+  riskLevel: RiskLevel;
+  isActive: boolean;
+  fundamentals: Fundamentals;
+};
+
+export type Stock = StockCompany & {
   currentPrice: number;
   previousPrice: number;
   dayChange: number;
   dayChangePercent: number;
-  volatility: number;
-  riskLevel: "Low" | "Medium" | "High";
-  isActive: boolean;
+  volume: number;
+  eventImpact: number;
 };
 
 export type StockPriceHistory = {
@@ -27,27 +60,51 @@ export type StockPriceHistory = {
   volume: number;
   change: number;
   changePercent: number;
+  eventImpact: number;
   eventId?: string;
 };
 
-export const MAX_GAME_DAY = 10;
+export type MarketNews = {
+  newsId: string;
+  gameDay: number;
+  source: string;
+  headline: string;
+  body: string;
+  importance: Importance;
+  marketTone: MarketTone;
+  relatedTickers: string[];
+  expectedImpact: number;
+  actualImpact: number;
+  isAccurate: boolean;
+  isRumor: boolean;
+  category: EventCategory;
+};
 
-export const mockStocks: Stock[] = [
+export const SEASON_LENGTH = 30;
+
+export const mockStockCompanies: StockCompany[] = [
   {
     stockId: "stock_nvt",
     symbol: "NVT",
     name: "NovaTech",
     sector: "Technology",
     industry: "AI Software",
-    description: "Fast-growing AI software company with strong enterprise demand.",
+    description:
+      "Fast-growing artificial intelligence software company with strong enterprise demand.",
     startingPrice: 100,
-    currentPrice: 124.82,
-    previousPrice: 120.94,
-    dayChange: 3.88,
-    dayChangePercent: 3.21,
-    volatility: 0.08,
+    volatility: 0.035,
+    trendBias: 0.0014,
     riskLevel: "High",
     isActive: true,
+    fundamentals: {
+      peRatio: 38.5,
+      eps: 3.12,
+      revenueGrowth: 24.8,
+      profitMargin: 18.4,
+      debtToEquity: 0.42,
+      dividendYield: 0,
+      analystRating: "Buy",
+    },
   },
   {
     stockId: "stock_gve",
@@ -58,13 +115,19 @@ export const mockStocks: Stock[] = [
     description:
       "Renewable energy company focused on battery storage and solar infrastructure.",
     startingPrice: 75,
-    currentPrice: 78.45,
-    previousPrice: 77.03,
-    dayChange: 1.42,
-    dayChangePercent: 1.84,
-    volatility: 0.07,
+    volatility: 0.03,
+    trendBias: 0.0006,
     riskLevel: "Medium",
     isActive: true,
+    fundamentals: {
+      peRatio: 27.2,
+      eps: 2.41,
+      revenueGrowth: 16.3,
+      profitMargin: 11.7,
+      debtToEquity: 0.86,
+      dividendYield: 1.1,
+      analystRating: "Hold",
+    },
   },
   {
     stockId: "stock_mch",
@@ -72,15 +135,22 @@ export const mockStocks: Stock[] = [
     name: "MediCore Health",
     sector: "Healthcare",
     industry: "Medical Devices",
-    description: "Healthcare company developing medical devices and diagnostic products.",
+    description:
+      "Healthcare company developing medical devices and diagnostic products.",
     startingPrice: 95,
-    currentPrice: 91.2,
-    previousPrice: 93.14,
-    dayChange: -1.94,
-    dayChangePercent: -2.08,
-    volatility: 0.06,
+    volatility: 0.026,
+    trendBias: 0.0008,
     riskLevel: "Medium",
     isActive: true,
+    fundamentals: {
+      peRatio: 24.9,
+      eps: 3.82,
+      revenueGrowth: 11.4,
+      profitMargin: 16.2,
+      debtToEquity: 0.51,
+      dividendYield: 0.8,
+      analystRating: "Buy",
+    },
   },
   {
     stockId: "stock_urb",
@@ -88,15 +158,22 @@ export const mockStocks: Stock[] = [
     name: "UrbanBank",
     sector: "Finance",
     industry: "Banking",
-    description: "Regional bank affected by interest rates and lending demand.",
+    description:
+      "Regional bank affected by interest rates, loan demand, and economic confidence.",
     startingPrice: 55,
-    currentPrice: 56.91,
-    previousPrice: 56.55,
-    dayChange: 0.36,
-    dayChangePercent: 0.64,
-    volatility: 0.04,
+    volatility: 0.018,
+    trendBias: 0.0004,
     riskLevel: "Low",
     isActive: true,
+    fundamentals: {
+      peRatio: 12.8,
+      eps: 4.31,
+      revenueGrowth: 5.7,
+      profitMargin: 22.1,
+      debtToEquity: 1.35,
+      dividendYield: 3.2,
+      analystRating: "Hold",
+    },
   },
   {
     stockId: "stock_pap",
@@ -104,15 +181,22 @@ export const mockStocks: Stock[] = [
     name: "PineApple Inc.",
     sector: "Technology",
     industry: "Consumer Electronics",
-    description: "Premium consumer electronics company with strong brand loyalty.",
+    description:
+      "Premium consumer electronics company with strong brand loyalty and product cycles.",
     startingPrice: 200,
-    currentPrice: 210.34,
-    previousPrice: 219.37,
-    dayChange: -9.03,
-    dayChangePercent: -4.12,
-    volatility: 0.09,
+    volatility: 0.038,
+    trendBias: 0.001,
     riskLevel: "High",
     isActive: true,
+    fundamentals: {
+      peRatio: 31.4,
+      eps: 6.28,
+      revenueGrowth: 13.9,
+      profitMargin: 21.8,
+      debtToEquity: 0.31,
+      dividendYield: 0.6,
+      analystRating: "Buy",
+    },
   },
   {
     stockId: "stock_aql",
@@ -121,15 +205,21 @@ export const mockStocks: Stock[] = [
     sector: "Utilities",
     industry: "Water Infrastructure",
     description:
-      "Water purification and infrastructure company serving cities and factories.",
+      "Water purification and infrastructure company serving cities, factories, and public utilities.",
     startingPrice: 42,
-    currentPrice: 46.75,
-    previousPrice: 45.95,
-    dayChange: 0.8,
-    dayChangePercent: 1.74,
-    volatility: 0.05,
+    volatility: 0.017,
+    trendBias: 0.0005,
     riskLevel: "Low",
     isActive: true,
+    fundamentals: {
+      peRatio: 18.6,
+      eps: 2.26,
+      revenueGrowth: 6.4,
+      profitMargin: 12.6,
+      debtToEquity: 0.72,
+      dividendYield: 2.7,
+      analystRating: "Hold",
+    },
   },
   {
     stockId: "stock_fdm",
@@ -137,15 +227,22 @@ export const mockStocks: Stock[] = [
     name: "FoodMart Global",
     sector: "Consumer",
     industry: "Retail Grocery",
-    description: "Large grocery and consumer staples chain with stable revenue.",
+    description:
+      "Large grocery and consumer staples chain with stable revenue and defensive demand.",
     startingPrice: 68,
-    currentPrice: 70.22,
-    previousPrice: 70.1,
-    dayChange: 0.12,
-    dayChangePercent: 0.17,
-    volatility: 0.03,
+    volatility: 0.015,
+    trendBias: 0.0004,
     riskLevel: "Low",
     isActive: true,
+    fundamentals: {
+      peRatio: 19.3,
+      eps: 3.52,
+      revenueGrowth: 4.9,
+      profitMargin: 7.4,
+      debtToEquity: 0.64,
+      dividendYield: 2.4,
+      analystRating: "Hold",
+    },
   },
   {
     stockId: "stock_sky",
@@ -154,1137 +251,559 @@ export const mockStocks: Stock[] = [
     sector: "Travel",
     industry: "Airlines",
     description:
-      "Airline company affected by fuel costs, tourism demand, and economic cycles.",
+      "Airline company affected by fuel costs, tourism demand, weather disruption, and economic cycles.",
     startingPrice: 88,
-    currentPrice: 82.4,
-    previousPrice: 84.9,
-    dayChange: -2.5,
-    dayChangePercent: -2.94,
-    volatility: 0.1,
+    volatility: 0.041,
+    trendBias: -0.0001,
     riskLevel: "High",
     isActive: true,
+    fundamentals: {
+      peRatio: 17.8,
+      eps: 2.14,
+      revenueGrowth: 8.8,
+      profitMargin: 4.6,
+      debtToEquity: 1.92,
+      dividendYield: 0,
+      analystRating: "Hold",
+    },
+  },
+  {
+    stockId: "stock_cyb",
+    symbol: "CYB",
+    name: "CyberFort Systems",
+    sector: "Technology",
+    industry: "Cybersecurity",
+    description:
+      "Cybersecurity platform protecting enterprise networks, payments, and cloud systems.",
+    startingPrice: 132,
+    volatility: 0.034,
+    trendBias: 0.0012,
+    riskLevel: "High",
+    isActive: true,
+    fundamentals: {
+      peRatio: 42.6,
+      eps: 2.84,
+      revenueGrowth: 28.1,
+      profitMargin: 15.9,
+      debtToEquity: 0.28,
+      dividendYield: 0,
+      analystRating: "Strong Buy",
+    },
+  },
+  {
+    stockId: "stock_rbt",
+    symbol: "RBT",
+    name: "RoboWorks Automation",
+    sector: "Industrials",
+    industry: "Robotics",
+    description:
+      "Automation and robotics company serving factories, warehouses, and logistics operators.",
+    startingPrice: 118,
+    volatility: 0.032,
+    trendBias: 0.001,
+    riskLevel: "Medium",
+    isActive: true,
+    fundamentals: {
+      peRatio: 29.7,
+      eps: 3.44,
+      revenueGrowth: 18.6,
+      profitMargin: 13.8,
+      debtToEquity: 0.58,
+      dividendYield: 0.4,
+      analystRating: "Buy",
+    },
+  },
+  {
+    stockId: "stock_omg",
+    symbol: "OMG",
+    name: "OmniMedia Group",
+    sector: "Communication",
+    industry: "Streaming Media",
+    description:
+      "Streaming and digital media company competing for subscribers, content rights, and advertising revenue.",
+    startingPrice: 64,
+    volatility: 0.036,
+    trendBias: 0.0002,
+    riskLevel: "High",
+    isActive: true,
+    fundamentals: {
+      peRatio: 34.1,
+      eps: 1.76,
+      revenueGrowth: 10.9,
+      profitMargin: 8.2,
+      debtToEquity: 1.18,
+      dividendYield: 0,
+      analystRating: "Hold",
+    },
+  },
+  {
+    stockId: "stock_lux",
+    symbol: "LUX",
+    name: "LuxeWear Holdings",
+    sector: "Consumer",
+    industry: "Luxury Apparel",
+    description:
+      "Luxury fashion and accessories company driven by brand power and premium consumer spending.",
+    startingPrice: 146,
+    volatility: 0.027,
+    trendBias: 0.0007,
+    riskLevel: "Medium",
+    isActive: true,
+    fundamentals: {
+      peRatio: 25.4,
+      eps: 5.22,
+      revenueGrowth: 9.6,
+      profitMargin: 19.5,
+      debtToEquity: 0.46,
+      dividendYield: 1.3,
+      analystRating: "Buy",
+    },
+  },
+  {
+    stockId: "stock_min",
+    symbol: "MIN",
+    name: "TerraMine Resources",
+    sector: "Materials",
+    industry: "Mining",
+    description:
+      "Mining company exposed to commodity cycles, infrastructure demand, and global supply conditions.",
+    startingPrice: 73,
+    volatility: 0.039,
+    trendBias: 0.0001,
+    riskLevel: "High",
+    isActive: true,
+    fundamentals: {
+      peRatio: 10.9,
+      eps: 6.18,
+      revenueGrowth: 3.7,
+      profitMargin: 14.2,
+      debtToEquity: 0.97,
+      dividendYield: 3.6,
+      analystRating: "Hold",
+    },
+  },
+  {
+    stockId: "stock_hom",
+    symbol: "HOM",
+    name: "HomeBase Realty",
+    sector: "Real Estate",
+    industry: "Residential REIT",
+    description:
+      "Residential real estate trust focused on rental housing, property income, and interest-rate sensitivity.",
+    startingPrice: 51,
+    volatility: 0.021,
+    trendBias: 0.0003,
+    riskLevel: "Low",
+    isActive: true,
+    fundamentals: {
+      peRatio: 15.7,
+      eps: 2.94,
+      revenueGrowth: 4.3,
+      profitMargin: 24.8,
+      debtToEquity: 1.54,
+      dividendYield: 4.1,
+      analystRating: "Hold",
+    },
+  },
+  {
+    stockId: "stock_edu",
+    symbol: "EDU",
+    name: "EduSpark Learning",
+    sector: "Education",
+    industry: "Online Learning",
+    description:
+      "Digital education platform offering online courses, tutoring tools, and career certification programs.",
+    startingPrice: 37,
+    volatility: 0.028,
+    trendBias: 0.0009,
+    riskLevel: "Medium",
+    isActive: true,
+    fundamentals: {
+      peRatio: 22.5,
+      eps: 1.38,
+      revenueGrowth: 17.2,
+      profitMargin: 10.3,
+      debtToEquity: 0.39,
+      dividendYield: 0,
+      analystRating: "Buy",
+    },
   },
 ];
 
-export const mockStockPriceHistory: StockPriceHistory[] = [
-  // NVT
-  {
-    priceId: "price_nvt_1",
-    stockId: "stock_nvt",
-    symbol: "NVT",
-    gameDay: 1,
-    openPrice: 100,
-    highPrice: 103.5,
-    lowPrice: 98.8,
-    closePrice: 102.4,
-    volume: 1200000,
-    change: 2.4,
-    changePercent: 2.4,
-  },
-  {
-    priceId: "price_nvt_2",
-    stockId: "stock_nvt",
-    symbol: "NVT",
-    gameDay: 2,
-    openPrice: 102.4,
-    highPrice: 106.2,
-    lowPrice: 101.1,
-    closePrice: 105.8,
-    volume: 1380000,
-    change: 3.4,
-    changePercent: 3.32,
-    eventId: "news_nvt_earnings",
-  },
-  {
-    priceId: "price_nvt_3",
-    stockId: "stock_nvt",
-    symbol: "NVT",
-    gameDay: 3,
-    openPrice: 105.8,
-    highPrice: 108.4,
-    lowPrice: 104.9,
-    closePrice: 107.2,
-    volume: 1420000,
-    change: 1.4,
-    changePercent: 1.32,
-  },
-  {
-    priceId: "price_nvt_4",
-    stockId: "stock_nvt",
-    symbol: "NVT",
-    gameDay: 4,
-    openPrice: 107.2,
-    highPrice: 112.6,
-    lowPrice: 106.4,
-    closePrice: 111.75,
-    volume: 1680000,
-    change: 4.55,
-    changePercent: 4.24,
-    eventId: "news_nvt_ai_contract",
-  },
-  {
-    priceId: "price_nvt_5",
-    stockId: "stock_nvt",
-    symbol: "NVT",
-    gameDay: 5,
-    openPrice: 111.75,
-    highPrice: 113,
-    lowPrice: 108.8,
-    closePrice: 110.1,
-    volume: 1550000,
-    change: -1.65,
-    changePercent: -1.48,
-  },
-  {
-    priceId: "price_nvt_6",
-    stockId: "stock_nvt",
-    symbol: "NVT",
-    gameDay: 6,
-    openPrice: 110.1,
-    highPrice: 116.8,
-    lowPrice: 109.7,
-    closePrice: 115.9,
-    volume: 1840000,
-    change: 5.8,
-    changePercent: 5.27,
-    eventId: "news_nvt_product_demand",
-  },
-  {
-    priceId: "price_nvt_7",
-    stockId: "stock_nvt",
-    symbol: "NVT",
-    gameDay: 7,
-    openPrice: 115.9,
-    highPrice: 118.2,
-    lowPrice: 114.3,
-    closePrice: 117.45,
-    volume: 1720000,
-    change: 1.55,
-    changePercent: 1.34,
-  },
-  {
-    priceId: "price_nvt_8",
-    stockId: "stock_nvt",
-    symbol: "NVT",
-    gameDay: 8,
-    openPrice: 117.45,
-    highPrice: 119,
-    lowPrice: 113.2,
-    closePrice: 114.8,
-    volume: 1900000,
-    change: -2.65,
-    changePercent: -2.26,
-    eventId: "news_nvt_rumor",
-  },
-  {
-    priceId: "price_nvt_9",
-    stockId: "stock_nvt",
-    symbol: "NVT",
-    gameDay: 9,
-    openPrice: 114.8,
-    highPrice: 121.6,
-    lowPrice: 114.2,
-    closePrice: 120.94,
-    volume: 2100000,
-    change: 6.14,
-    changePercent: 5.35,
-    eventId: "news_nvt_rumor_false",
-  },
-  {
-    priceId: "price_nvt_10",
-    stockId: "stock_nvt",
-    symbol: "NVT",
-    gameDay: 10,
-    openPrice: 120.94,
-    highPrice: 127.2,
-    lowPrice: 119.8,
-    closePrice: 124.82,
-    volume: 1840000,
-    change: 3.88,
-    changePercent: 3.21,
-  },
+const newsSources = [
+  "MarketWatch Daily",
+  "Investor Pulse",
+  "Sector Brief",
+  "Finance Wire",
+  "Street Rumors",
+  "Global Market Desk",
+  "Trading Terminal",
+];
 
-  // GVE
-  {
-    priceId: "price_gve_1",
-    stockId: "stock_gve",
-    symbol: "GVE",
-    gameDay: 1,
-    openPrice: 75,
-    highPrice: 76.8,
-    lowPrice: 73.9,
-    closePrice: 76.1,
-    volume: 820000,
-    change: 1.1,
-    changePercent: 1.47,
-  },
-  {
-    priceId: "price_gve_2",
-    stockId: "stock_gve",
-    symbol: "GVE",
-    gameDay: 2,
-    openPrice: 76.1,
-    highPrice: 77.25,
-    lowPrice: 74.8,
-    closePrice: 75.4,
-    volume: 790000,
-    change: -0.7,
-    changePercent: -0.92,
-  },
-  {
-    priceId: "price_gve_3",
-    stockId: "stock_gve",
-    symbol: "GVE",
-    gameDay: 3,
-    openPrice: 75.4,
-    highPrice: 79.6,
-    lowPrice: 75,
-    closePrice: 78.9,
-    volume: 1010000,
-    change: 3.5,
-    changePercent: 4.64,
-    eventId: "news_gve_partnership_rumor",
-  },
-  {
-    priceId: "price_gve_4",
-    stockId: "stock_gve",
-    symbol: "GVE",
-    gameDay: 4,
-    openPrice: 78.9,
-    highPrice: 80.1,
-    lowPrice: 77.2,
-    closePrice: 77.85,
-    volume: 900000,
-    change: -1.05,
-    changePercent: -1.33,
-  },
-  {
-    priceId: "price_gve_5",
-    stockId: "stock_gve",
-    symbol: "GVE",
-    gameDay: 5,
-    openPrice: 77.85,
-    highPrice: 79.4,
-    lowPrice: 76.9,
-    closePrice: 78.6,
-    volume: 860000,
-    change: 0.75,
-    changePercent: 0.96,
-  },
-  {
-    priceId: "price_gve_6",
-    stockId: "stock_gve",
-    symbol: "GVE",
-    gameDay: 6,
-    openPrice: 78.6,
-    highPrice: 79.2,
-    lowPrice: 74.5,
-    closePrice: 75.2,
-    volume: 1150000,
-    change: -3.4,
-    changePercent: -4.33,
-    eventId: "news_gve_demand_forecast",
-  },
-  {
-    priceId: "price_gve_7",
-    stockId: "stock_gve",
-    symbol: "GVE",
-    gameDay: 7,
-    openPrice: 75.2,
-    highPrice: 77.1,
-    lowPrice: 74.8,
-    closePrice: 76.75,
-    volume: 870000,
-    change: 1.55,
-    changePercent: 2.06,
-  },
-  {
-    priceId: "price_gve_8",
-    stockId: "stock_gve",
-    symbol: "GVE",
-    gameDay: 8,
-    openPrice: 76.75,
-    highPrice: 78.3,
-    lowPrice: 75.9,
-    closePrice: 77.65,
-    volume: 920000,
-    change: 0.9,
-    changePercent: 1.17,
-  },
-  {
-    priceId: "price_gve_9",
-    stockId: "stock_gve",
-    symbol: "GVE",
-    gameDay: 9,
-    openPrice: 77.65,
-    highPrice: 79.5,
-    lowPrice: 76.7,
-    closePrice: 77.03,
-    volume: 970000,
-    change: -0.62,
-    changePercent: -0.8,
-  },
-  {
-    priceId: "price_gve_10",
-    stockId: "stock_gve",
-    symbol: "GVE",
-    gameDay: 10,
-    openPrice: 77.03,
-    highPrice: 79.1,
-    lowPrice: 76.6,
-    closePrice: 78.45,
-    volume: 990000,
-    change: 1.42,
-    changePercent: 1.84,
-  },
-
-  // MCH
-  {
-    priceId: "price_mch_1",
-    stockId: "stock_mch",
-    symbol: "MCH",
-    gameDay: 1,
-    openPrice: 95,
-    highPrice: 96.8,
-    lowPrice: 93.9,
-    closePrice: 95.6,
-    volume: 740000,
-    change: 0.6,
-    changePercent: 0.63,
-  },
-  {
-    priceId: "price_mch_2",
-    stockId: "stock_mch",
-    symbol: "MCH",
-    gameDay: 2,
-    openPrice: 95.6,
-    highPrice: 99.4,
-    lowPrice: 95.1,
-    closePrice: 98.75,
-    volume: 920000,
-    change: 3.15,
-    changePercent: 3.29,
-    eventId: "news_mch_product_approval",
-  },
-  {
-    priceId: "price_mch_3",
-    stockId: "stock_mch",
-    symbol: "MCH",
-    gameDay: 3,
-    openPrice: 98.75,
-    highPrice: 100.2,
-    lowPrice: 97.3,
-    closePrice: 99.1,
-    volume: 850000,
-    change: 0.35,
-    changePercent: 0.35,
-  },
-  {
-    priceId: "price_mch_4",
-    stockId: "stock_mch",
-    symbol: "MCH",
-    gameDay: 4,
-    openPrice: 99.1,
-    highPrice: 100,
-    lowPrice: 96.4,
-    closePrice: 97.25,
-    volume: 880000,
-    change: -1.85,
-    changePercent: -1.87,
-  },
-  {
-    priceId: "price_mch_5",
-    stockId: "stock_mch",
-    symbol: "MCH",
-    gameDay: 5,
-    openPrice: 97.25,
-    highPrice: 98.2,
-    lowPrice: 95.9,
-    closePrice: 96.8,
-    volume: 790000,
-    change: -0.45,
-    changePercent: -0.46,
-  },
-  {
-    priceId: "price_mch_6",
-    stockId: "stock_mch",
-    symbol: "MCH",
-    gameDay: 6,
-    openPrice: 96.8,
-    highPrice: 97.6,
-    lowPrice: 92.1,
-    closePrice: 93.4,
-    volume: 1250000,
-    change: -3.4,
-    changePercent: -3.51,
-    eventId: "news_mch_lawsuit",
-  },
-  {
-    priceId: "price_mch_7",
-    stockId: "stock_mch",
-    symbol: "MCH",
-    gameDay: 7,
-    openPrice: 93.4,
-    highPrice: 95,
-    lowPrice: 91.8,
-    closePrice: 92.75,
-    volume: 980000,
-    change: -0.65,
-    changePercent: -0.7,
-  },
-  {
-    priceId: "price_mch_8",
-    stockId: "stock_mch",
-    symbol: "MCH",
-    gameDay: 8,
-    openPrice: 92.75,
-    highPrice: 94.4,
-    lowPrice: 91.5,
-    closePrice: 93.9,
-    volume: 870000,
-    change: 1.15,
-    changePercent: 1.24,
-  },
-  {
-    priceId: "price_mch_9",
-    stockId: "stock_mch",
-    symbol: "MCH",
-    gameDay: 9,
-    openPrice: 93.9,
-    highPrice: 94.1,
-    lowPrice: 92.4,
-    closePrice: 93.14,
-    volume: 760000,
-    change: -0.76,
-    changePercent: -0.81,
-  },
-  {
-    priceId: "price_mch_10",
-    stockId: "stock_mch",
-    symbol: "MCH",
-    gameDay: 10,
-    openPrice: 93.14,
-    highPrice: 94.2,
-    lowPrice: 90.8,
-    closePrice: 91.2,
-    volume: 940000,
-    change: -1.94,
-    changePercent: -2.08,
-  },
-
-  // URB
-  {
-    priceId: "price_urb_1",
-    stockId: "stock_urb",
-    symbol: "URB",
-    gameDay: 1,
-    openPrice: 55,
-    highPrice: 55.9,
-    lowPrice: 54.6,
-    closePrice: 55.4,
-    volume: 650000,
-    change: 0.4,
-    changePercent: 0.73,
-  },
-  {
-    priceId: "price_urb_2",
-    stockId: "stock_urb",
-    symbol: "URB",
-    gameDay: 2,
-    openPrice: 55.4,
-    highPrice: 56.2,
-    lowPrice: 55.1,
-    closePrice: 55.95,
-    volume: 690000,
-    change: 0.55,
-    changePercent: 0.99,
-  },
-  {
-    priceId: "price_urb_3",
-    stockId: "stock_urb",
-    symbol: "URB",
-    gameDay: 3,
-    openPrice: 55.95,
-    highPrice: 57,
-    lowPrice: 55.5,
-    closePrice: 56.7,
-    volume: 720000,
-    change: 0.75,
-    changePercent: 1.34,
-  },
-  {
-    priceId: "price_urb_4",
-    stockId: "stock_urb",
-    symbol: "URB",
-    gameDay: 4,
-    openPrice: 56.7,
-    highPrice: 57.1,
-    lowPrice: 55.8,
-    closePrice: 56.1,
-    volume: 710000,
-    change: -0.6,
-    changePercent: -1.06,
-  },
-  {
-    priceId: "price_urb_5",
-    stockId: "stock_urb",
-    symbol: "URB",
-    gameDay: 5,
-    openPrice: 56.1,
-    highPrice: 56.8,
-    lowPrice: 55.6,
-    closePrice: 56.35,
-    volume: 680000,
-    change: 0.25,
-    changePercent: 0.45,
-  },
-  {
-    priceId: "price_urb_6",
-    stockId: "stock_urb",
-    symbol: "URB",
-    gameDay: 6,
-    openPrice: 56.35,
-    highPrice: 56.9,
-    lowPrice: 55.2,
-    closePrice: 55.6,
-    volume: 770000,
-    change: -0.75,
-    changePercent: -1.33,
-    eventId: "news_urb_rate_pressure",
-  },
-  {
-    priceId: "price_urb_7",
-    stockId: "stock_urb",
-    symbol: "URB",
-    gameDay: 7,
-    openPrice: 55.6,
-    highPrice: 56.1,
-    lowPrice: 55,
-    closePrice: 55.85,
-    volume: 640000,
-    change: 0.25,
-    changePercent: 0.45,
-  },
-  {
-    priceId: "price_urb_8",
-    stockId: "stock_urb",
-    symbol: "URB",
-    gameDay: 8,
-    openPrice: 55.85,
-    highPrice: 56.5,
-    lowPrice: 55.4,
-    closePrice: 56.2,
-    volume: 660000,
-    change: 0.35,
-    changePercent: 0.63,
-  },
-  {
-    priceId: "price_urb_9",
-    stockId: "stock_urb",
-    symbol: "URB",
-    gameDay: 9,
-    openPrice: 56.2,
-    highPrice: 56.9,
-    lowPrice: 55.9,
-    closePrice: 56.55,
-    volume: 670000,
-    change: 0.35,
-    changePercent: 0.62,
-  },
-  {
-    priceId: "price_urb_10",
-    stockId: "stock_urb",
-    symbol: "URB",
-    gameDay: 10,
-    openPrice: 56.55,
-    highPrice: 57.3,
-    lowPrice: 56.1,
-    closePrice: 56.91,
-    volume: 700000,
-    change: 0.36,
-    changePercent: 0.64,
-  },
-
-  // PAP
-  {
-    priceId: "price_pap_1",
-    stockId: "stock_pap",
-    symbol: "PAP",
-    gameDay: 1,
-    openPrice: 200,
-    highPrice: 205.4,
-    lowPrice: 198.2,
-    closePrice: 204.9,
-    volume: 1180000,
-    change: 4.9,
-    changePercent: 2.45,
-  },
-  {
-    priceId: "price_pap_2",
-    stockId: "stock_pap",
-    symbol: "PAP",
-    gameDay: 2,
-    openPrice: 204.9,
-    highPrice: 208.8,
-    lowPrice: 203.4,
-    closePrice: 207.2,
-    volume: 1240000,
-    change: 2.3,
-    changePercent: 1.12,
-  },
-  {
-    priceId: "price_pap_3",
-    stockId: "stock_pap",
-    symbol: "PAP",
-    gameDay: 3,
-    openPrice: 207.2,
-    highPrice: 214,
-    lowPrice: 206.1,
-    closePrice: 212.75,
-    volume: 1410000,
-    change: 5.55,
-    changePercent: 2.68,
-    eventId: "news_pap_earnings",
-  },
-  {
-    priceId: "price_pap_4",
-    stockId: "stock_pap",
-    symbol: "PAP",
-    gameDay: 4,
-    openPrice: 212.75,
-    highPrice: 216.6,
-    lowPrice: 211.2,
-    closePrice: 215.3,
-    volume: 1320000,
-    change: 2.55,
-    changePercent: 1.2,
-  },
-  {
-    priceId: "price_pap_5",
-    stockId: "stock_pap",
-    symbol: "PAP",
-    gameDay: 5,
-    openPrice: 215.3,
-    highPrice: 221.8,
-    lowPrice: 214.5,
-    closePrice: 220.6,
-    volume: 1550000,
-    change: 5.3,
-    changePercent: 2.46,
-  },
-  {
-    priceId: "price_pap_6",
-    stockId: "stock_pap",
-    symbol: "PAP",
-    gameDay: 6,
-    openPrice: 220.6,
-    highPrice: 224.1,
-    lowPrice: 218.4,
-    closePrice: 219.8,
-    volume: 1470000,
-    change: -0.8,
-    changePercent: -0.36,
-  },
-  {
-    priceId: "price_pap_7",
-    stockId: "stock_pap",
-    symbol: "PAP",
-    gameDay: 7,
-    openPrice: 219.8,
-    highPrice: 222.4,
-    lowPrice: 216.7,
-    closePrice: 218.3,
-    volume: 1390000,
-    change: -1.5,
-    changePercent: -0.68,
-  },
-  {
-    priceId: "price_pap_8",
-    stockId: "stock_pap",
-    symbol: "PAP",
-    gameDay: 8,
-    openPrice: 218.3,
-    highPrice: 220.2,
-    lowPrice: 214.8,
-    closePrice: 216.45,
-    volume: 1440000,
-    change: -1.85,
-    changePercent: -0.85,
-  },
-  {
-    priceId: "price_pap_9",
-    stockId: "stock_pap",
-    symbol: "PAP",
-    gameDay: 9,
-    openPrice: 216.45,
-    highPrice: 219.9,
-    lowPrice: 215.2,
-    closePrice: 219.37,
-    volume: 1500000,
-    change: 2.92,
-    changePercent: 1.35,
-  },
-  {
-    priceId: "price_pap_10",
-    stockId: "stock_pap",
-    symbol: "PAP",
-    gameDay: 10,
-    openPrice: 219.37,
-    highPrice: 220.5,
-    lowPrice: 209.4,
-    closePrice: 210.34,
-    volume: 1810000,
-    change: -9.03,
-    changePercent: -4.12,
-    eventId: "news_pap_supply_warning",
-  },
-
-  // AQL
-  {
-    priceId: "price_aql_1",
-    stockId: "stock_aql",
-    symbol: "AQL",
-    gameDay: 1,
-    openPrice: 42,
-    highPrice: 42.8,
-    lowPrice: 41.7,
-    closePrice: 42.35,
-    volume: 510000,
-    change: 0.35,
-    changePercent: 0.83,
-  },
-  {
-    priceId: "price_aql_2",
-    stockId: "stock_aql",
-    symbol: "AQL",
-    gameDay: 2,
-    openPrice: 42.35,
-    highPrice: 43.4,
-    lowPrice: 42.1,
-    closePrice: 43.05,
-    volume: 540000,
-    change: 0.7,
-    changePercent: 1.65,
-  },
-  {
-    priceId: "price_aql_3",
-    stockId: "stock_aql",
-    symbol: "AQL",
-    gameDay: 3,
-    openPrice: 43.05,
-    highPrice: 43.8,
-    lowPrice: 42.7,
-    closePrice: 43.3,
-    volume: 560000,
-    change: 0.25,
-    changePercent: 0.58,
-  },
-  {
-    priceId: "price_aql_4",
-    stockId: "stock_aql",
-    symbol: "AQL",
-    gameDay: 4,
-    openPrice: 43.3,
-    highPrice: 44.2,
-    lowPrice: 43,
-    closePrice: 44.05,
-    volume: 590000,
-    change: 0.75,
-    changePercent: 1.73,
-    eventId: "news_aql_city_contract",
-  },
-  {
-    priceId: "price_aql_5",
-    stockId: "stock_aql",
-    symbol: "AQL",
-    gameDay: 5,
-    openPrice: 44.05,
-    highPrice: 44.6,
-    lowPrice: 43.8,
-    closePrice: 44.3,
-    volume: 520000,
-    change: 0.25,
-    changePercent: 0.57,
-  },
-  {
-    priceId: "price_aql_6",
-    stockId: "stock_aql",
-    symbol: "AQL",
-    gameDay: 6,
-    openPrice: 44.3,
-    highPrice: 45.1,
-    lowPrice: 44,
-    closePrice: 44.85,
-    volume: 570000,
-    change: 0.55,
-    changePercent: 1.24,
-  },
-  {
-    priceId: "price_aql_7",
-    stockId: "stock_aql",
-    symbol: "AQL",
-    gameDay: 7,
-    openPrice: 44.85,
-    highPrice: 45.7,
-    lowPrice: 44.5,
-    closePrice: 45.3,
-    volume: 610000,
-    change: 0.45,
-    changePercent: 1,
-  },
-  {
-    priceId: "price_aql_8",
-    stockId: "stock_aql",
-    symbol: "AQL",
-    gameDay: 8,
-    openPrice: 45.3,
-    highPrice: 46,
-    lowPrice: 45,
-    closePrice: 45.62,
-    volume: 580000,
-    change: 0.32,
-    changePercent: 0.71,
-  },
-  {
-    priceId: "price_aql_9",
-    stockId: "stock_aql",
-    symbol: "AQL",
-    gameDay: 9,
-    openPrice: 45.62,
-    highPrice: 46.3,
-    lowPrice: 45.2,
-    closePrice: 45.95,
-    volume: 600000,
-    change: 0.33,
-    changePercent: 0.72,
-  },
-  {
-    priceId: "price_aql_10",
-    stockId: "stock_aql",
-    symbol: "AQL",
-    gameDay: 10,
-    openPrice: 45.95,
-    highPrice: 47.1,
-    lowPrice: 45.8,
-    closePrice: 46.75,
-    volume: 660000,
-    change: 0.8,
-    changePercent: 1.74,
-  },
-
-  // FDM
-  {
-    priceId: "price_fdm_1",
-    stockId: "stock_fdm",
-    symbol: "FDM",
-    gameDay: 1,
-    openPrice: 68,
-    highPrice: 68.9,
-    lowPrice: 67.6,
-    closePrice: 68.4,
-    volume: 720000,
-    change: 0.4,
-    changePercent: 0.59,
-  },
-  {
-    priceId: "price_fdm_2",
-    stockId: "stock_fdm",
-    symbol: "FDM",
-    gameDay: 2,
-    openPrice: 68.4,
-    highPrice: 69.2,
-    lowPrice: 68.1,
-    closePrice: 68.95,
-    volume: 740000,
-    change: 0.55,
-    changePercent: 0.8,
-  },
-  {
-    priceId: "price_fdm_3",
-    stockId: "stock_fdm",
-    symbol: "FDM",
-    gameDay: 3,
-    openPrice: 68.95,
-    highPrice: 69.8,
-    lowPrice: 68.4,
-    closePrice: 69.5,
-    volume: 760000,
-    change: 0.55,
-    changePercent: 0.8,
-  },
-  {
-    priceId: "price_fdm_4",
-    stockId: "stock_fdm",
-    symbol: "FDM",
-    gameDay: 4,
-    openPrice: 69.5,
-    highPrice: 70.3,
-    lowPrice: 69,
-    closePrice: 70.1,
-    volume: 780000,
-    change: 0.6,
-    changePercent: 0.86,
-  },
-  {
-    priceId: "price_fdm_5",
-    stockId: "stock_fdm",
-    symbol: "FDM",
-    gameDay: 5,
-    openPrice: 70.1,
-    highPrice: 71.2,
-    lowPrice: 69.8,
-    closePrice: 70.85,
-    volume: 810000,
-    change: 0.75,
-    changePercent: 1.07,
-    eventId: "news_fdm_sales_growth",
-  },
-  {
-    priceId: "price_fdm_6",
-    stockId: "stock_fdm",
-    symbol: "FDM",
-    gameDay: 6,
-    openPrice: 70.85,
-    highPrice: 71.4,
-    lowPrice: 70.2,
-    closePrice: 70.6,
-    volume: 730000,
-    change: -0.25,
-    changePercent: -0.35,
-  },
-  {
-    priceId: "price_fdm_7",
-    stockId: "stock_fdm",
-    symbol: "FDM",
-    gameDay: 7,
-    openPrice: 70.6,
-    highPrice: 71.1,
-    lowPrice: 70,
-    closePrice: 70.4,
-    volume: 710000,
-    change: -0.2,
-    changePercent: -0.28,
-  },
-  {
-    priceId: "price_fdm_8",
-    stockId: "stock_fdm",
-    symbol: "FDM",
-    gameDay: 8,
-    openPrice: 70.4,
-    highPrice: 71.3,
-    lowPrice: 70.1,
-    closePrice: 70.91,
-    volume: 740000,
-    change: 0.51,
-    changePercent: 0.72,
-  },
-  {
-    priceId: "price_fdm_9",
-    stockId: "stock_fdm",
-    symbol: "FDM",
-    gameDay: 9,
-    openPrice: 70.91,
-    highPrice: 71,
-    lowPrice: 69.8,
-    closePrice: 70.1,
-    volume: 760000,
-    change: -0.81,
-    changePercent: -1.14,
-  },
-  {
-    priceId: "price_fdm_10",
-    stockId: "stock_fdm",
-    symbol: "FDM",
-    gameDay: 10,
-    openPrice: 70.1,
-    highPrice: 70.8,
-    lowPrice: 69.7,
-    closePrice: 70.22,
-    volume: 720000,
-    change: 0.12,
-    changePercent: 0.17,
-  },
-
-  // SKY
-  {
-    priceId: "price_sky_1",
-    stockId: "stock_sky",
-    symbol: "SKY",
-    gameDay: 1,
-    openPrice: 88,
-    highPrice: 89.4,
-    lowPrice: 86.7,
-    closePrice: 87.5,
-    volume: 910000,
-    change: -0.5,
-    changePercent: -0.57,
-  },
-  {
-    priceId: "price_sky_2",
-    stockId: "stock_sky",
-    symbol: "SKY",
-    gameDay: 2,
-    openPrice: 87.5,
-    highPrice: 88.1,
-    lowPrice: 84.8,
-    closePrice: 85.4,
-    volume: 1040000,
-    change: -2.1,
-    changePercent: -2.4,
-    eventId: "news_sky_fuel_costs",
-  },
-  {
-    priceId: "price_sky_3",
-    stockId: "stock_sky",
-    symbol: "SKY",
-    gameDay: 3,
-    openPrice: 85.4,
-    highPrice: 86.2,
-    lowPrice: 83.5,
-    closePrice: 84.2,
-    volume: 1120000,
-    change: -1.2,
-    changePercent: -1.41,
-  },
-  {
-    priceId: "price_sky_4",
-    stockId: "stock_sky",
-    symbol: "SKY",
-    gameDay: 4,
-    openPrice: 84.2,
-    highPrice: 86.8,
-    lowPrice: 83.9,
-    closePrice: 86.1,
-    volume: 980000,
-    change: 1.9,
-    changePercent: 2.26,
-    eventId: "news_sky_travel_demand",
-  },
-  {
-    priceId: "price_sky_5",
-    stockId: "stock_sky",
-    symbol: "SKY",
-    gameDay: 5,
-    openPrice: 86.1,
-    highPrice: 87.2,
-    lowPrice: 85.4,
-    closePrice: 86.7,
-    volume: 930000,
-    change: 0.6,
-    changePercent: 0.7,
-  },
-  {
-    priceId: "price_sky_6",
-    stockId: "stock_sky",
-    symbol: "SKY",
-    gameDay: 6,
-    openPrice: 86.7,
-    highPrice: 87,
-    lowPrice: 84.9,
-    closePrice: 85.2,
-    volume: 1010000,
-    change: -1.5,
-    changePercent: -1.73,
-  },
-  {
-    priceId: "price_sky_7",
-    stockId: "stock_sky",
-    symbol: "SKY",
-    gameDay: 7,
-    openPrice: 85.2,
-    highPrice: 86,
-    lowPrice: 83.8,
-    closePrice: 84.9,
-    volume: 970000,
-    change: -0.3,
-    changePercent: -0.35,
-  },
-  {
-    priceId: "price_sky_8",
-    stockId: "stock_sky",
-    symbol: "SKY",
-    gameDay: 8,
-    openPrice: 84.9,
-    highPrice: 85.6,
-    lowPrice: 82.7,
-    closePrice: 83.1,
-    volume: 1080000,
-    change: -1.8,
-    changePercent: -2.12,
-    eventId: "news_sky_weather_disruption",
-  },
-  {
-    priceId: "price_sky_9",
-    stockId: "stock_sky",
-    symbol: "SKY",
-    gameDay: 9,
-    openPrice: 83.1,
-    highPrice: 85.2,
-    lowPrice: 82.9,
-    closePrice: 84.9,
-    volume: 990000,
-    change: 1.8,
-    changePercent: 2.17,
-  },
-  {
-    priceId: "price_sky_10",
-    stockId: "stock_sky",
-    symbol: "SKY",
-    gameDay: 10,
-    openPrice: 84.9,
-    highPrice: 85.1,
-    lowPrice: 81.6,
-    closePrice: 82.4,
-    volume: 1160000,
-    change: -2.5,
-    changePercent: -2.94,
+const bullishTemplates = [
+  {
+    category: "earnings" as EventCategory,
+    importance: "High" as Importance,
+    headline: "reports stronger-than-expected earnings",
+    body: "The company beat expectations after stronger demand and improved operating performance.",
+    impactMin: 0.035,
+    impactMax: 0.09,
+    isRumor: false,
+  },
+  {
+    category: "contract" as EventCategory,
+    importance: "High" as Importance,
+    headline: "wins a major new contract",
+    body: "Investors reacted positively after the company announced a contract that may increase future revenue.",
+    impactMin: 0.025,
+    impactMax: 0.075,
+    isRumor: false,
+  },
+  {
+    category: "product" as EventCategory,
+    importance: "Medium" as Importance,
+    headline: "sees strong demand after product update",
+    body: "The latest product update improved investor confidence and raised expectations for future growth.",
+    impactMin: 0.015,
+    impactMax: 0.055,
+    isRumor: false,
+  },
+  {
+    category: "partnership" as EventCategory,
+    importance: "Medium" as Importance,
+    headline: "is reportedly close to a strategic partnership",
+    body: "Sources suggest the company may announce a partnership soon, though confirmation is still pending.",
+    impactMin: 0.01,
+    impactMax: 0.045,
+    isRumor: true,
   },
 ];
 
-export function getStocksForGameDay(gameDay: number): Stock[] {
-  return mockStocks.map((stock) => {
-    const today = mockStockPriceHistory.find(
-      (item) => item.stockId === stock.stockId && item.gameDay === gameDay
-    );
+const bearishTemplates = [
+  {
+    category: "lawsuit" as EventCategory,
+    importance: "High" as Importance,
+    headline: "faces pressure after legal concerns emerge",
+    body: "Investors became cautious after reports of a legal issue that may affect near-term confidence.",
+    impactMin: -0.095,
+    impactMax: -0.035,
+    isRumor: false,
+  },
+  {
+    category: "supply" as EventCategory,
+    importance: "High" as Importance,
+    headline: "warns of short-term supply delays",
+    body: "The company may face shipment delays that could reduce short-term revenue expectations.",
+    impactMin: -0.075,
+    impactMax: -0.025,
+    isRumor: false,
+  },
+  {
+    category: "macro" as EventCategory,
+    importance: "Medium" as Importance,
+    headline: "falls as sector outlook weakens",
+    body: "Analysts lowered expectations for the sector, creating selling pressure across related stocks.",
+    impactMin: -0.055,
+    impactMax: -0.015,
+    isRumor: false,
+  },
+  {
+    category: "rumor" as EventCategory,
+    importance: "Medium" as Importance,
+    headline: "drops after an unconfirmed negative report",
+    body: "A rumor created uncertainty, but the company has not released an official statement.",
+    impactMin: -0.045,
+    impactMax: -0.01,
+    isRumor: true,
+  },
+];
 
-    const yesterday = mockStockPriceHistory.find(
-      (item) => item.stockId === stock.stockId && item.gameDay === gameDay - 1
-    );
+function hashString(input: string) {
+  let hash = 2166136261;
 
-    if (!today) return stock;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
 
-    const previousPrice = yesterday?.closePrice ?? stock.startingPrice;
-    const currentPrice = today.closePrice;
-    const dayChange = currentPrice - previousPrice;
-    const dayChangePercent = (dayChange / previousPrice) * 100;
-
-    return {
-      ...stock,
-      currentPrice,
-      previousPrice,
-      dayChange,
-      dayChangePercent,
-    };
-  });
+  return hash >>> 0;
 }
 
-export function getStockHistoryBySymbol(symbol: string): StockPriceHistory[] {
-  return mockStockPriceHistory
-    .filter((item) => item.symbol.toLowerCase() === symbol.toLowerCase())
-    .sort((a, b) => a.gameDay - b.gameDay);
+function seededRandom(seed: string) {
+  const hash = hashString(seed);
+  return (hash % 1_000_000) / 1_000_000;
+}
+
+function seededRange(seed: string, min: number, max: number) {
+  return min + seededRandom(seed) * (max - min);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function round2(value: number) {
+  return Number(value.toFixed(2));
+}
+
+function getSectorDrift(sector: string, gameDay: number) {
+  const sectorWave = Math.sin((gameDay + hashString(sector) % 11) / 8) * 0.004;
+  const sectorShock = seededRange(`sector-${sector}-${gameDay}`, -0.004, 0.004);
+
+  return sectorWave + sectorShock;
+}
+
+function getMarketDrift(gameDay: number) {
+  const longTermBias = 0.0007;
+  const cycle = Math.sin(gameDay / 14) * 0.003;
+  const randomMarketShock = seededRange(`market-${gameDay}`, -0.006, 0.006);
+
+  return longTermBias + cycle + randomMarketShock;
+}
+
+function getEventTemplate(company: StockCompany, gameDay: number) {
+  const eventRoll = seededRandom(`event-roll-${company.symbol}-${gameDay}`);
+
+  const riskBoost =
+    company.riskLevel === "High" ? 0.1 : company.riskLevel === "Medium" ? 0.05 : 0;
+
+  const eventChance = 0.14 + riskBoost;
+
+  if (eventRoll > eventChance) return null;
+
+  const toneRoll = seededRandom(`event-tone-${company.symbol}-${gameDay}`);
+  const isBullish = toneRoll >= 0.48;
+
+  const templates = isBullish ? bullishTemplates : bearishTemplates;
+
+  const index = Math.floor(
+    seededRandom(`event-template-${company.symbol}-${gameDay}`) * templates.length
+  );
+
+  return templates[index];
+}
+
+function generateEventForCompany(
+  company: StockCompany,
+  gameDay: number
+): MarketNews | null {
+  const template = getEventTemplate(company, gameDay);
+
+  if (!template) return null;
+
+  const sourceIndex = Math.floor(
+    seededRandom(`source-${company.symbol}-${gameDay}`) * newsSources.length
+  );
+
+  const actualImpact = seededRange(
+    `impact-${company.symbol}-${gameDay}`,
+    template.impactMin,
+    template.impactMax
+  );
+
+  const expectedImpact = actualImpact * seededRange(
+    `expected-${company.symbol}-${gameDay}`,
+    0.8,
+    1.25
+  );
+
+  const marketTone: MarketTone = actualImpact >= 0 ? "Bullish" : "Bearish";
+
+  return {
+    newsId: `news_${company.symbol.toLowerCase()}_${gameDay}`,
+    gameDay,
+    source: newsSources[sourceIndex],
+    headline: `${company.name} ${template.headline}`,
+    body: template.body,
+    importance: template.importance,
+    marketTone,
+    relatedTickers: [company.symbol],
+    expectedImpact: round2(expectedImpact),
+    actualImpact: round2(actualImpact),
+    isAccurate: !template.isRumor || seededRandom(`accuracy-${company.symbol}-${gameDay}`) > 0.35,
+    isRumor: template.isRumor,
+    category: template.category,
+  };
+}
+
+function getEventImpact(company: StockCompany, gameDay: number) {
+  const event = generateEventForCompany(company, gameDay);
+  return event?.actualImpact ?? 0;
+}
+
+function generateVolume(
+  company: StockCompany,
+  dailyReturn: number,
+  eventImpact: number,
+  gameDay: number
+) {
+  const baseVolume =
+    company.riskLevel === "High"
+      ? 1_200_000
+      : company.riskLevel === "Medium"
+      ? 850_000
+      : 600_000;
+
+  const activityBoost = Math.abs(dailyReturn) * 12;
+  const eventBoost = Math.abs(eventImpact) > 0 ? 0.35 : 0;
+  const randomBoost = seededRange(`volume-${company.symbol}-${gameDay}`, -0.12, 0.22);
+
+  return Math.round(baseVolume * (1 + activityBoost + eventBoost + randomBoost));
+}
+
+function generateNextPricePoint(
+  company: StockCompany,
+  previousClose: number,
+  gameDay: number
+): StockPriceHistory {
+  const marketDrift = getMarketDrift(gameDay);
+  const sectorDrift = getSectorDrift(company.sector, gameDay);
+  const randomShock =
+    seededRange(`shock-${company.symbol}-${gameDay}`, -1, 1) * company.volatility;
+  const eventImpact = getEventImpact(company, gameDay);
+
+  let dailyReturn =
+    marketDrift +
+    sectorDrift +
+    company.trendBias +
+    randomShock +
+    eventImpact;
+
+  dailyReturn = clamp(dailyReturn, -0.15, 0.15);
+
+  const openPrice = previousClose;
+  const closePrice = Math.max(1, openPrice * (1 + dailyReturn));
+
+  const intradayRange =
+    Math.abs(dailyReturn) * 0.45 +
+    company.volatility * seededRange(`range-${company.symbol}-${gameDay}`, 0.18, 0.5);
+
+  const highPrice = Math.max(openPrice, closePrice) * (1 + intradayRange);
+  const lowPrice = Math.min(openPrice, closePrice) * (1 - intradayRange * 0.8);
+
+  const event = generateEventForCompany(company, gameDay);
+
+  return {
+    priceId: `price_${company.symbol.toLowerCase()}_${gameDay}`,
+    stockId: company.stockId,
+    symbol: company.symbol,
+    gameDay,
+    openPrice: round2(openPrice),
+    highPrice: round2(highPrice),
+    lowPrice: round2(Math.max(1, lowPrice)),
+    closePrice: round2(closePrice),
+    volume: generateVolume(company, dailyReturn, eventImpact, gameDay),
+    change: round2(closePrice - openPrice),
+    changePercent: round2(dailyReturn * 100),
+    eventImpact: round2(eventImpact),
+    eventId: event?.newsId,
+  };
+}
+
+export function normalizeGameDay(gameDay: number) {
+  if (Number.isNaN(gameDay)) return 1;
+  if (gameDay < 1) return 1;
+  return Math.floor(gameDay);
+}
+
+export function getCompanyBySymbol(symbol: string) {
+  return mockStockCompanies.find(
+    (company) => company.symbol.toLowerCase() === symbol.toLowerCase()
+  );
+}
+
+export function getStockHistoryBySymbol(
+  symbol: string,
+  gameDay: number
+): StockPriceHistory[] {
+  const company = getCompanyBySymbol(symbol);
+  const safeGameDay = normalizeGameDay(gameDay);
+
+  if (!company) return [];
+
+  const history: StockPriceHistory[] = [];
+  let previousClose = company.startingPrice;
+
+  for (let day = 1; day <= safeGameDay; day += 1) {
+    const point = generateNextPricePoint(company, previousClose, day);
+    history.push(point);
+    previousClose = point.closePrice;
+  }
+
+  return history;
 }
 
 export function getStockBySymbolForGameDay(
   symbol: string,
-  gameDay: number = MAX_GAME_DAY
+  gameDay: number
 ): Stock | undefined {
-  const stocks = getStocksForGameDay(gameDay);
+  const company = getCompanyBySymbol(symbol);
 
-  return stocks.find(
-    (stock) => stock.symbol.toLowerCase() === symbol.toLowerCase()
+  if (!company) return undefined;
+
+  const safeGameDay = normalizeGameDay(gameDay);
+  const history = getStockHistoryBySymbol(symbol, safeGameDay);
+  const today = history[history.length - 1];
+  const yesterday = history[history.length - 2];
+
+  const previousPrice = yesterday?.closePrice ?? company.startingPrice;
+  const currentPrice = today?.closePrice ?? company.startingPrice;
+  const dayChange = currentPrice - previousPrice;
+  const dayChangePercent = (dayChange / previousPrice) * 100;
+
+  return {
+    ...company,
+    currentPrice: round2(currentPrice),
+    previousPrice: round2(previousPrice),
+    dayChange: round2(dayChange),
+    dayChangePercent: round2(dayChangePercent),
+    volume: today?.volume ?? 0,
+    eventImpact: today?.eventImpact ?? 0,
+  };
+}
+
+export function getStocksForGameDay(gameDay: number): Stock[] {
+  const safeGameDay = normalizeGameDay(gameDay);
+
+  return mockStockCompanies
+    .filter((company) => company.isActive)
+    .map((company) => getStockBySymbolForGameDay(company.symbol, safeGameDay))
+    .filter(Boolean) as Stock[];
+}
+
+export function getNewsForGameDay(gameDay: number): MarketNews[] {
+  const safeGameDay = normalizeGameDay(gameDay);
+
+  return mockStockCompanies
+    .map((company) => generateEventForCompany(company, safeGameDay))
+    .filter(Boolean) as MarketNews[];
+}
+
+export function getNewsUpToGameDay(gameDay: number): MarketNews[] {
+  const safeGameDay = normalizeGameDay(gameDay);
+  const news: MarketNews[] = [];
+
+  for (let day = 1; day <= safeGameDay; day += 1) {
+    news.push(...getNewsForGameDay(day));
+  }
+
+  return news;
+}
+
+export function getRelatedNewsBySymbol(
+  symbol: string,
+  gameDay: number
+): MarketNews[] {
+  const safeGameDay = normalizeGameDay(gameDay);
+
+  return getNewsUpToGameDay(safeGameDay).filter((news) =>
+    news.relatedTickers.some(
+      (ticker) => ticker.toLowerCase() === symbol.toLowerCase()
+    )
   );
 }
 
-export function getLatestStockBySymbol(symbol: string): Stock | undefined {
-  return getStockBySymbolForGameDay(symbol, MAX_GAME_DAY);
+export function getSeasonDay(gameDay: number) {
+  const safeGameDay = normalizeGameDay(gameDay);
+  return ((safeGameDay - 1) % SEASON_LENGTH) + 1;
 }
