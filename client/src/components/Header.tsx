@@ -23,7 +23,25 @@ const BRAND = {
   green: "#9AD872",
 };
 
-const NavButton = ({ to, label, active }: { to: string; label: string; active?: boolean }) => (
+/* ✅ ONLY MAIN NAV PAGES */
+const navItems = [
+  { to: "/", label: "Home" },
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/game", label: "Game" },
+  { to: "/tutorial", label: "Tutorial" },
+  { to: "/guide", label: "Guide" },
+  { to: "/news", label: "News" },
+];
+
+const NavButton = ({
+  to,
+  label,
+  active,
+}: {
+  to: string;
+  label: string;
+  active?: boolean;
+}) => (
   <Button
     component={RouterLink}
     to={to}
@@ -32,7 +50,11 @@ const NavButton = ({ to, label, active }: { to: string; label: string; active?: 
       opacity: active ? 1 : 0.72,
       fontWeight: active ? 950 : 800,
       borderRadius: 2,
-      "&:hover": { opacity: 1, bgcolor: "rgba(255,255,255,0.08)" },
+      whiteSpace: "nowrap",
+      "&:hover": {
+        opacity: 1,
+        bgcolor: "rgba(255,255,255,0.08)",
+      },
     }}
   >
     {label}
@@ -41,8 +63,9 @@ const NavButton = ({ to, label, active }: { to: string; label: string; active?: 
 
 const Header: React.FC = () => {
   const [open, setOpen] = React.useState(false);
-  const { pathname, hash } = useLocation();
-  const isActive = (target: string) => pathname + hash === target || pathname === target;
+  const { pathname } = useLocation();
+
+  const isActive = (target: string) => pathname === target;
 
   return (
     <>
@@ -55,62 +78,192 @@ const Header: React.FC = () => {
           borderBottom: "1px solid rgba(255,255,255,0.1)",
         }}
       >
-        <Toolbar sx={{ display: "flex", justifyContent: "space-between", gap: 2, minHeight: 72 }}>
-          <Box component={RouterLink} to="/" sx={{ display: "flex", alignItems: "center", gap: 1.25, textDecoration: "none", color: "#fff" }}>
-            <Box sx={{ width: 38, height: 38, borderRadius: 2.4, bgcolor: BRAND.red, display: "grid", placeItems: "center", boxShadow: "0 10px 26px rgba(255,55,55,0.32)" }}>
+        <Toolbar
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 2,
+            minHeight: 72,
+          }}
+        >
+          {/* LOGO */}
+          <Box
+            component={RouterLink}
+            to="/"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.25,
+              textDecoration: "none",
+              color: "#fff",
+            }}
+          >
+            <Box
+              sx={{
+                width: 38,
+                height: 38,
+                borderRadius: 2.4,
+                bgcolor: BRAND.red,
+                display: "grid",
+                placeItems: "center",
+                boxShadow: "0 10px 26px rgba(255,55,55,0.32)",
+              }}
+            >
               <CandlestickChartIcon />
             </Box>
+
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 950, letterSpacing: -0.2, lineHeight: 1 }}>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 950, letterSpacing: -0.2, lineHeight: 1 }}
+              >
                 StockPilot
               </Typography>
-              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.55)", fontWeight: 700 }}>
+
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "rgba(255,255,255,0.55)",
+                  fontWeight: 700,
+                }}
+              >
                 Simulation Desk
               </Typography>
             </Box>
           </Box>
 
-          <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 0.5 }}>
-            <NavButton to="/" label="Home" active={isActive("/")} />
-            <NavButton to="/dashboard" label="Simulator" active={isActive("/dashboard")} />
-            <NavButton to="/auth?mode=login" label="Login" active={pathname === "/auth"} />
-            <Divider orientation="vertical" flexItem sx={{ mx: 1.5, borderColor: "rgba(255,255,255,0.14)" }} />
-            <Chip label="Market Mode" sx={{ bgcolor: BRAND.green, color: BRAND.navy, fontWeight: 950, mr: 0.5 }} />
+          {/* DESKTOP NAV */}
+          <Box
+            sx={{
+              display: { xs: "none", lg: "flex" },
+              alignItems: "center",
+              gap: 0.5,
+            }}
+          >
+            {navItems.map((item) => (
+              <NavButton
+                key={item.to}
+                to={item.to}
+                label={item.label}
+                active={isActive(item.to)}
+              />
+            ))}
+
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{
+                mx: 1.5,
+                borderColor: "rgba(255,255,255,0.14)",
+              }}
+            />
+
+            <Chip
+              label="Market Mode"
+              sx={{
+                bgcolor: BRAND.green,
+                color: BRAND.navy,
+                fontWeight: 950,
+                mr: 0.5,
+              }}
+            />
+
             <Button
               variant="contained"
               component={RouterLink}
               to="/auth?mode=signup"
-              sx={{ bgcolor: BRAND.red, fontWeight: 950, borderRadius: 2.2, "&:hover": { bgcolor: "#E63131" } }}
+              sx={{
+                bgcolor: BRAND.red,
+                fontWeight: 950,
+                borderRadius: 2.2,
+                "&:hover": { bgcolor: "#E63131" },
+              }}
             >
               Get Started
             </Button>
           </Box>
 
-          <IconButton onClick={() => setOpen(true)} color="inherit" sx={{ display: { xs: "inline-flex", md: "none" } }} aria-label="Open menu">
+          {/* MOBILE MENU BUTTON */}
+          <IconButton
+            onClick={() => setOpen(true)}
+            color="inherit"
+            sx={{ display: { xs: "inline-flex", lg: "none" } }}
+          >
             <MenuIcon />
           </IconButton>
         </Toolbar>
       </AppBar>
 
+      {/* MOBILE DRAWER */}
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)}>
-        <Box sx={{ width: 300, p: 2.5 }}>
+        <Box sx={{ width: 310, p: 2.5 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 1.5 }}>
-            <Box sx={{ width: 36, height: 36, borderRadius: 2.2, bgcolor: BRAND.red, color: "#fff", display: "grid", placeItems: "center" }}>
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: 2.2,
+                bgcolor: BRAND.red,
+                color: "#fff",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
               <CandlestickChartIcon />
             </Box>
+
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 950, color: BRAND.navy }}>StockPilot</Typography>
-              <Typography variant="caption" color="text.secondary">Simulation Desk</Typography>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 950, color: BRAND.navy }}
+              >
+                StockPilot
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Simulation Desk
+              </Typography>
             </Box>
           </Box>
+
           <Divider sx={{ mb: 1 }} />
+
+          {/* ONLY MAIN NAV IN DRAWER */}
           <List>
-            <ListItemButton component={RouterLink} to="/" onClick={() => setOpen(false)}><ListItemText primary="Home" /></ListItemButton>
-            <ListItemButton component={RouterLink} to="/dashboard" onClick={() => setOpen(false)}><ListItemText primary="Simulator" /></ListItemButton>
-            <ListItemButton component={RouterLink} to="/auth?mode=login" onClick={() => setOpen(false)}><ListItemText primary="Login" /></ListItemButton>
+            {navItems.map((item) => (
+              <ListItemButton
+                key={item.to}
+                component={RouterLink}
+                to={item.to}
+                selected={isActive(item.to)}
+                onClick={() => setOpen(false)}
+              >
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            ))}
+
+            <ListItemButton
+              component={RouterLink}
+              to="/auth?mode=login"
+              onClick={() => setOpen(false)}
+            >
+              <ListItemText primary="Login" />
+            </ListItemButton>
           </List>
+
           <Divider sx={{ my: 1 }} />
-          <Button fullWidth variant="contained" component={RouterLink} to="/auth?mode=signup" onClick={() => setOpen(false)} sx={{ bgcolor: BRAND.red, fontWeight: 950, "&:hover": { bgcolor: "#E63131" } }}>
+
+          <Button
+            fullWidth
+            variant="contained"
+            component={RouterLink}
+            to="/auth?mode=signup"
+            onClick={() => setOpen(false)}
+            sx={{
+              bgcolor: BRAND.red,
+              fontWeight: 950,
+              "&:hover": { bgcolor: "#E63131" },
+            }}
+          >
             Get Started
           </Button>
         </Box>

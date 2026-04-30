@@ -1,37 +1,50 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { CssBaseline, GlobalStyles, Box } from '@mui/material';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Box } from "@mui/material";
 
-import Home from './pages/Home';
-import AuthPage from './pages/AuthPage';
-import Dashboard from './pages/Dashboard';
-import Header from './components/Header';
-import Footer from './components/Footer';
+import Header from "./components/Header";
+import Footer from "./components/Footer";
 
-const App: React.FC = () => {
+import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
+import Game from "./pages/Game";
+import Tutorial from "./pages/Tutorial";
+import Guide from "./pages/Guide";
+import News from "./pages/News";
+import Leaderboard from "./pages/Leaderboard";
+import Achievements from "./pages/Achievements";
+import SaveLoad from "./pages/SaveLoad";
+
+export default function App() {
   return (
-    <>
-      <CssBaseline />
-      <GlobalStyles
-        styles={{
-          html: { height: '100%', overflowX: 'hidden' }, // allow vertical scroll
-          body: { minHeight: '100%', overflowX: 'hidden', margin: 0, padding: 0 },
-          '#root': { minHeight: '100%', display: 'flex', flexDirection: 'column' },
+    <BrowserRouter>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
         }}
-      />
-      <BrowserRouter>
+      >
+        {/* Header */}
         <Header />
-        <Box component="main" sx={{ flex: 1 }}>
+
+        {/* Page Content */}
+        <Box sx={{ flex: 1, px: 2, py: 2 }}>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/auth" element={<AuthPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/game" element={<Game />} />
+            <Route path="/tutorial" element={<Tutorial />} />
+            <Route path="/guide" element={<Guide />} />
+            <Route path="/news" element={<News />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/achievements" element={<Achievements />} />
+            <Route path="/save-load" element={<SaveLoad />} />
           </Routes>
         </Box>
-        <Footer /> {/* Will only show at the end after content */}
-      </BrowserRouter>
-    </>
-  );
-};
 
-export default App;
+        {/* Footer */}
+        <Footer />
+      </Box>
+    </BrowserRouter>
+  );
+}
