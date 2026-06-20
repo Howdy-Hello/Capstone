@@ -1,152 +1,191 @@
-# MERNBase
+# StockPilot — Full-Stack Template
 
-This project is a MERN Stack Template designed to provide a ready-to-use boilerplate for building full-stack web applications using MongoDB, Express, React, and Node.js. It serves as a foundation for developers to kickstart their projects without the hassle of setting up folder structures, installing dependencies, or configuring essential tools.
-
----
-
-# Who is this for?
-- Developers looking for a pre-configured MERN stack setup to save time and streamline the initial development process.
-- Students or learners who want a simple and structured starting point for practicing full-stack development.
-- Teams or freelancers building scalable web applications with React for the frontend and Node.js for the backend.
-
-## **Prerequisites**
-
-Before you begin, ensure you have the following installed on your machine:
-
-- [Node.js](https://nodejs.org/) (version 14.x or above)
-- [npm](https://www.npmjs.com/) (Node Package Manager)
-- [MongoDB Atlas](https://www.mongodb.com/atlas/database) or a local MongoDB instance
-- [Git](https://git-scm.com/)
+A full-stack web application boilerplate built with **React + TypeScript** (frontend) and **Express + TypeScript** (backend), using **Supabase** for auth, database, and storage.
 
 ---
 
-## **Setup Instructions**
+## Tech Stack
 
-### 1. Clone the repository:
+| Layer     | Technology                              |
+|-----------|------------------------------------------|
+| Frontend  | React 19, TypeScript, MUI v6, Recharts  |
+| Backend   | Node.js, Express, TypeScript             |
+| Database  | Supabase (PostgreSQL)                   |
+| Auth      | Supabase Auth (email/password)          |
+| Storage   | Supabase Storage (avatars bucket)       |
+| Design    | APEX TERMINAL dark design system        |
+
+---
+
+## Prerequisites
+
+- Node.js 18+
+- npm
+- Supabase project (free tier works)
+
+---
+
+## Setup
+
+### 1. Clone the repo
 ```bash
 git clone <repository-url>
 cd <repository-name>
 ```
 
-### 2. Navigate to folder directory and Install Dependencies (for both Client and Server)
+### 2. Install dependencies
 ```bash
-cd <repository-name>
-npm install
+# Client
+cd client && npm install
+
+# Server
+cd ../server && npm install
 ```
 
-### 3. Create .env file in root folder
-```bash
-MONGO_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/mydatabase?retryWrites=true&w=majority
+### 3. Environment variables
+
+**client/.env**
+```
+REACT_APP_SUPABASE_URL=https://your-project-ref.supabase.co
+REACT_APP_SUPABASE_PUBLISHABLE_KEY=your-anon-or-publishable-key
+```
+
+**server/.env**
+```
+PORT=5000
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+### 4. Supabase setup
+
+Run in the Supabase SQL editor:
+```sql
+-- Profiles table (linked to auth.users)
+create table public.profiles (
+  id uuid references auth.users on delete cascade primary key,
+  display_name text,
+  username text unique,
+  bio text,
+  avatar_url text,
+  updated_at timestamptz default now()
+);
+
+-- RLS
+alter table public.profiles enable row level security;
+create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
+create policy "Users can upsert own profile" on public.profiles for insert with check (auth.uid() = id);
+create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
+create policy "Users can delete own profile" on public.profiles for delete using (auth.uid() = id);
+
+-- Storage bucket for avatars
+insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
 ```
 
 ---
 
-## **Run the Application**
+## Run the Application
 
-### 1. Start the Server
+### Start the server
 ```bash
-npm start
+cd server
+npm run dev
 ```
+API available at `http://localhost:5000`
 
-### 2. Access the API
-```
-http://localhost:5000
-```
-
-### 3. Start the Client
-```bash
-npm start
-```
-
-### 4. Access the Client
-```
-http://localhost:3000
-```
-
----
-
-# Client Customization Guide — Make It Yours
-
-The `client/` app is a production-ready React + MUI frontend with:
-- Polished **Home** (full-screen sections + smooth scroll)
-- **Auth** page wired for `http://localhost:5000` (CRA-safe envs)
-- **Dashboard** with interactive **Recharts**
-- A clean **Header** / **Footer** and brandable assets
-
-Follow the steps below to turn this into **your** website.
-
-## 0) Prerequisites
-
-- Node 18+ recommended
-- npm / yarn
-- A backend (default: `http://localhost:5000`)
-
-## 1) Install & Run
+### Start the client
 ```bash
 cd client
-npm install
 npm start
 ```
-
-## 2) Project Structure
-```
-client/
-  public/
-    index.html
-    logo.png
-  src/
-    components/
-      Header.tsx
-      Footer.tsx
-    pages/
-      Home.tsx
-      AuthPage.tsx
-      Dashboard.tsx
-    App.tsx
-    index.css
-```
-
-## 3) Brand the App
-- Replace `public/logo.png`
-- Edit `public/index.html` title/meta
-- Change `Header.tsx` brand name
-- Edit `Footer.tsx` content
-
-## 4) Backend API URL
-Create `client/.env`:
-```
-REACT_APP_API_URL=http://localhost:5000
-```
-
-## 5) Home Page Edits
-- Update hero text in `Home.tsx`
-- Modify features & testimonials arrays
-
-## 6) Dashboard Data
-- Replace mock data with API calls
-
-## 7) Theme
-- Create `src/theme.ts` for brand colors
-- Wrap app in `ThemeProvider`
-
-## 8) Routes
-Edit `App.tsx` to add/remove pages.
-
-## 9) Build
-```bash
-npm run build
-```
-
-Deploy to Netlify, Vercel, or static host.
+App available at `http://localhost:3000`
 
 ---
 
-## Quick Checklist
+## Project Structure
 
-- [ ] Replace logo
-- [ ] Update HTML meta
-- [ ] Update brand text
-- [ ] Set `REACT_APP_API_URL`
-- [ ] Wire real API
-- [ ] Swap mock → API in Dashboard
-- [ ] Customize theme
+```
+.
+├── client/
+│   └── src/
+│       ├── components/        # Header, Footer, StockCard, etc.
+│       ├── context/           # AuthContext (Supabase session)
+│       ├── data/              # Mock stocks, trading state
+│       ├── lib/               # supabase.ts client
+│       ├── pages/             # All route pages
+│       ├── theme/             # design.ts (APEX TERMINAL tokens)
+│       ├── types/             # Shared TypeScript types
+│       └── utils/             # stockEngine, helpers
+└── server/
+    └── src/
+        ├── controllers/       # Route handlers
+        ├── db/                # Supabase client (server-side)
+        ├── models/            # Type definitions (no ORM)
+        ├── routes/            # Express routers
+        └── server.ts          # App entry point
+```
+
+---
+
+## Progress Checklist
+
+### ✅ Done
+- [x] React + TypeScript client scaffolded
+- [x] MUI v6 integrated
+- [x] Express + TypeScript server scaffolded
+- [x] Supabase client set up (client-side)
+- [x] Supabase Auth — email/password sign up, login, password reset
+- [x] Supabase `profiles` table with RLS
+- [x] Avatar upload/change/delete via Supabase Storage
+- [x] Profile CRUD page (display name, username, bio, danger zone)
+- [x] AuthContext with session persistence
+- [x] Protected routes (auth-gated pages)
+- [x] Header with user dropdown + mobile drawer
+- [x] Footer with nav links
+- [x] APEX TERMINAL dark design system (`design.ts`)
+- [x] Home page (hero, features, how it works, CTA)
+- [x] Dashboard (stats, holdings, pie chart, bar chart, news)
+- [x] Game page (buy/sell, story mode, day progression)
+- [x] Stock Details page (area chart, fundamentals, related news)
+- [x] News page (news cards, tone chips, sidebar tips)
+- [x] Learn page (Tutorial tab + Market Guide tab)
+- [x] Leaderboard page (ranked table, top 3, your rank)
+- [x] Achievements page (6 achievements, progress bars)
+- [x] Save/Load page (localStorage slots, save/load/clear)
+- [x] Server → replaced MongoDB/Mongoose with Supabase
+
+### 🔲 TODO
+- [ ] Google OAuth (Supabase social login)
+- [ ] Real leaderboard — persist net worth to Supabase `leaderboard` table
+- [ ] Real achievements — track and persist unlock state to Supabase
+- [ ] Real save/load — persist save slots to Supabase instead of localStorage only
+- [ ] Server-side API routes wired to Supabase (game state, leaderboard writes)
+- [ ] Input validation middleware on Express routes
+- [ ] Rate limiting on auth endpoints
+- [ ] Email confirmation flow (currently disabled)
+- [ ] Deploy client (Vercel / Netlify)
+- [ ] Deploy server (Railway / Render)
+- [ ] CI/CD pipeline
+
+---
+
+## Design System
+
+All UI tokens live in `client/src/theme/design.ts` (APEX TERMINAL):
+
+```ts
+D.bg          // #09090F  — page background
+D.surface     // #0E101A  — card / header background
+D.brand       // #7C3AED  — violet primary
+D.green       // #22C55E  — gains
+D.red         // #EF4444  — losses
+D.t1          // #F1F5F9  — primary text
+```
+
+---
+
+## Notes
+
+- The game (stocks, news, trading) uses **mock data only** — no real market data.
+- Auth is handled entirely client-side via Supabase. The Express server is available for future server-side features (game persistence, leaderboard, etc.).
+- Starting cash: **$2,000** · Season length: **30 days** · Story intro: **3 days**

@@ -158,7 +158,7 @@ export default function StockDetails() {
                     <XAxis dataKey="gameDay" tickFormatter={(v) => `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 11 }} />
                     <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 11 }} />
                     <RTooltip
-                      contentStyle={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }}
+                      contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }}
                       formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "Close"]}
                       labelFormatter={(l) => `Day ${l}`}
                     />

@@ -208,7 +208,7 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <RTooltip
-                        contentStyle={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }}
+                        contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }}
                         formatter={(val: any) => [money(Number(val)), ""]}
                       />
                       <Pie data={sectorExposure} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="80%" paddingAngle={2}>
@@ -246,7 +246,7 @@ export default function Dashboard() {
                     <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
                     <XAxis type="number" tickFormatter={(v) => `${Number(v).toFixed(0)}%`} tick={{ fill: D.t3, fontSize: 11 }} />
                     <YAxis type="category" dataKey="symbol" width={52} tick={{ fill: D.t2, fontSize: 12, fontFamily: MONO }} />
-                    <RTooltip contentStyle={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(v: any) => [`${Number(v).toFixed(2)}%`, "Move"]} />
+                    <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(v: any) => [`${Number(v).toFixed(2)}%`, "Move"]} />
                     <Bar dataKey="dayChangePercent" radius={[0, 4, 4, 0]}>
                       {movers.map((s) => <Cell key={s.symbol} fill={s.dayChangePercent >= 0 ? D.green : D.red} />)}
                     </Bar>
