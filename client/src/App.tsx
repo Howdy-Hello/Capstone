@@ -1,11 +1,14 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Box, CssBaseline } from "@mui/material";
+
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 
 import Home from "./pages/Home";
+import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import Game from "./pages/Game";
 import Tutorial from "./pages/Tutorial";
@@ -16,71 +19,62 @@ import Achievements from "./pages/Achievements";
 import SaveLoad from "./pages/SaveLoad";
 import StockDetails from "./pages/StockDetails";
 
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/auth?mode=login" replace />;
+  return <>{children}</>;
+};
+
+function AppLayout() {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        width: "100%",
+        m: 0,
+        p: 0,
+        bgcolor: "#F5F7F9",
+      }}
+    >
+      <Box component="header" sx={{ width: "100%", m: 0, p: 0, flexShrink: 0 }}>
+        <Header />
+      </Box>
+
+      <Box component="main" sx={{ flex: 1, width: "100%", m: 0, p: 0, overflowX: "hidden" }}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/tutorial" element={<Tutorial />} />
+          <Route path="/guide" element={<Guide />} />
+          <Route path="/news" element={<News />} />
+
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/game" element={<ProtectedRoute><Game /></ProtectedRoute>} />
+          <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+          <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
+          <Route path="/save-load" element={<ProtectedRoute><SaveLoad /></ProtectedRoute>} />
+          <Route path="/stocks/:symbol" element={<ProtectedRoute><StockDetails /></ProtectedRoute>} />
+        </Routes>
+      </Box>
+
+      <Box component="footer" sx={{ width: "100%", m: 0, p: 0, flexShrink: 0 }}>
+        <Footer />
+      </Box>
+    </Box>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <CssBaseline />
       <ScrollToTop />
-
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          minHeight: "100vh",
-          width: "100%",
-          m: 0,
-          p: 0,
-          bgcolor: "#F5F7F9",
-        }}
-      >
-        <Box
-          component="header"
-          sx={{
-            width: "100%",
-            m: 0,
-            p: 0,
-            flexShrink: 0,
-          }}
-        >
-          <Header />
-        </Box>
-
-        <Box
-          component="main"
-          sx={{
-            flex: 1,
-            width: "100%",
-            m: 0,
-            p: 0,
-            overflowX: "hidden",
-          }}
-        >
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/game" element={<Game />} />
-            <Route path="/tutorial" element={<Tutorial />} />
-            <Route path="/guide" element={<Guide />} />
-            <Route path="/news" element={<News />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/achievements" element={<Achievements />} />
-            <Route path="/save-load" element={<SaveLoad />} />
-            <Route path="/stocks/:symbol" element={<StockDetails />} />
-          </Routes>
-        </Box>
-
-        <Box
-          component="footer"
-          sx={{
-            width: "100%",
-            m: 0,
-            p: 0,
-            flexShrink: 0,
-          }}
-        >
-          <Footer />
-        </Box>
-      </Box>
+      <AuthProvider>
+        <AppLayout />
+      </AuthProvider>
     </BrowserRouter>
   );
 }

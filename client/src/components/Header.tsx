@@ -15,7 +15,8 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
-import { Link as RouterLink, useLocation } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const BRAND = {
   navy: "#2C3947",
@@ -64,8 +65,19 @@ const NavButton = ({
 const Header: React.FC = () => {
   const [open, setOpen] = React.useState(false);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   const isActive = (target: string) => pathname === target;
+
+  const handleAuthAction = async () => {
+    if (user) {
+      await signOut();
+      navigate("/", { replace: true });
+    } else {
+      navigate("/auth?mode=login");
+    }
+  };
 
   return (
     <>
@@ -168,19 +180,35 @@ const Header: React.FC = () => {
               }}
             />
 
-            <Button
-              variant="contained"
-              component={RouterLink}
-              to="/auth?mode=signup"
-              sx={{
-                bgcolor: BRAND.red,
-                fontWeight: 950,
-                borderRadius: 2.2,
-                "&:hover": { bgcolor: "#E63131" },
-              }}
-            >
-              Get Started
-            </Button>
+            {user ? (
+              <Button
+                variant="outlined"
+                onClick={handleAuthAction}
+                sx={{
+                  color: "#fff",
+                  borderColor: "rgba(255,255,255,0.4)",
+                  fontWeight: 950,
+                  borderRadius: 2.2,
+                  "&:hover": { borderColor: "#fff", bgcolor: "rgba(255,255,255,0.08)" },
+                }}
+              >
+                Log out
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                component={RouterLink}
+                to="/auth?mode=signup"
+                sx={{
+                  bgcolor: BRAND.red,
+                  fontWeight: 950,
+                  borderRadius: 2.2,
+                  "&:hover": { bgcolor: "#E63131" },
+                }}
+              >
+                Get Started
+              </Button>
+            )}
           </Box>
 
           {/* MOBILE MENU BUTTON */}
@@ -241,31 +269,44 @@ const Header: React.FC = () => {
               </ListItemButton>
             ))}
 
-            <ListItemButton
-              component={RouterLink}
-              to="/auth?mode=login"
-              onClick={() => setOpen(false)}
-            >
-              <ListItemText primary="Login" />
-            </ListItemButton>
+            {!user && (
+              <ListItemButton
+                component={RouterLink}
+                to="/auth?mode=login"
+                onClick={() => setOpen(false)}
+              >
+                <ListItemText primary="Login" />
+              </ListItemButton>
+            )}
           </List>
 
           <Divider sx={{ my: 1 }} />
 
-          <Button
-            fullWidth
-            variant="contained"
-            component={RouterLink}
-            to="/auth?mode=signup"
-            onClick={() => setOpen(false)}
-            sx={{
-              bgcolor: BRAND.red,
-              fontWeight: 950,
-              "&:hover": { bgcolor: "#E63131" },
-            }}
-          >
-            Get Started
-          </Button>
+          {user ? (
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={() => { setOpen(false); handleAuthAction(); }}
+              sx={{ fontWeight: 950, color: BRAND.navy, borderColor: BRAND.navy }}
+            >
+              Log out
+            </Button>
+          ) : (
+            <Button
+              fullWidth
+              variant="contained"
+              component={RouterLink}
+              to="/auth?mode=signup"
+              onClick={() => setOpen(false)}
+              sx={{
+                bgcolor: BRAND.red,
+                fontWeight: 950,
+                "&:hover": { bgcolor: "#E63131" },
+              }}
+            >
+              Get Started
+            </Button>
+          )}
         </Box>
       </Drawer>
     </>

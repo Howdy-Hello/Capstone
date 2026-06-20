@@ -23,6 +23,8 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 
 const BRAND = {
   navy: "#2C3947",
@@ -31,9 +33,7 @@ const BRAND = {
   paper: "#F6F8FA",
 };
 
-type Mode = "login" | "signup";
-
-const API_BASE = (process.env as any).REACT_APP_API_URL?.trim() || "http://localhost:5000";
+type Mode = "login" | "signup" | "reset";
 
 function useQuery() {
   const { search } = useLocation();
@@ -43,6 +43,7 @@ function useQuery() {
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   const qs = useQuery();
+  const { user } = useAuth();
 
   const initialMode = (qs.get("mode") === "signup" ? "signup" : "login") as Mode;
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -55,20 +56,34 @@ const AuthPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) navigate("/dashboard", { replace: true });
+  }, [user, navigate]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     params.set("mode", mode);
     window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
   }, [mode]);
 
-  const title = mode === "login" ? "Welcome back, trader" : "Create your trading desk";
+  const title =
+    mode === "login"
+      ? "Welcome back, trader"
+      : mode === "signup"
+      ? "Create your trading desk"
+      : "Reset your password";
+
   const subtitle =
     mode === "login"
       ? "Log in to continue your portfolio simulation."
-      : "Start tracking simulated trades, watchlists, and risk metrics.";
+      : mode === "signup"
+      ? "Start tracking simulated trades, watchlists, and risk metrics."
+      : "Enter your email and we'll send you a reset link.";
 
   const validate = () => {
     if (!email || !email.includes("@")) return "Please enter a valid email.";
+    if (mode === "reset") return null;
     if (mode === "signup" && name.trim().length < 2) return "Please enter your full name.";
     if (password.length < 6) return "Password must be at least 6 characters.";
     return null;
@@ -87,34 +102,26 @@ const AuthPage: React.FC = () => {
 
     setSubmitting(true);
     try {
-      const url = mode === "login" ? `${API_BASE}/api/auth/login` : `${API_BASE}/api/auth/signup`;
-      const payload = mode === "login" ? { email, password, remember } : { name, email, password };
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        let msg = "Request failed.";
-        try {
-          const data = await res.json();
-          msg = data?.message || data?.error || msg;
-        } catch {}
-        throw new Error(msg);
+      if (mode === "login") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        navigate("/dashboard", { replace: true });
+      } else if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: name } },
+        });
+        if (error) throw error;
+        setSuccessMsg("Account created! Check your email to confirm your account, then log in.");
+        setMode("login");
+      } else {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth?mode=login`,
+        });
+        if (error) throw error;
+        setSuccessMsg("Password reset email sent. Check your inbox.");
       }
-
-      const data = await res.json();
-      if (data?.token) {
-        if (remember) localStorage.setItem("token", data.token);
-        else sessionStorage.setItem("token", data.token);
-      }
-      if (data?.user) localStorage.setItem("user", JSON.stringify(data.user));
-
-      setSuccessMsg(mode === "login" ? "Logged in successfully." : "Account created successfully.");
-      setTimeout(() => navigate("/dashboard"), 550);
     } catch (err: any) {
       setError(err?.message ?? "Something went wrong. Try again.");
     } finally {
@@ -133,6 +140,7 @@ const AuthPage: React.FC = () => {
     >
       <Container sx={{ py: { xs: 4, md: 8 } }}>
         <Grid container spacing={3} alignItems="stretch" sx={{ maxWidth: 1180, mx: "auto" }}>
+          {/* LEFT PANEL */}
           <Grid item xs={12} md={6} sx={{ display: { xs: "none", md: "block" } }}>
             <Paper
               elevation={0}
@@ -173,13 +181,14 @@ const AuthPage: React.FC = () => {
                 <Stack direction="row" spacing={1.2} alignItems="center">
                   <LockOutlinedIcon sx={{ color: BRAND.green }} />
                   <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.74)" }}>
-                    Auth ready for JWT or cookie-based sessions.
+                    Powered by Supabase Auth.
                   </Typography>
                 </Stack>
               </Stack>
             </Paper>
           </Grid>
 
+          {/* RIGHT FORM */}
           <Grid item xs={12} md={6} display="flex">
             <Paper
               component="form"
@@ -220,23 +229,25 @@ const AuthPage: React.FC = () => {
 
                 <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
 
-                <TextField
-                  label="Password"
-                  type={showPw ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  required
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton aria-label={showPw ? "Hide password" : "Show password"} onClick={() => setShowPw((s) => !s)} edge="end">
-                          {showPw ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
+                {mode !== "reset" && (
+                  <TextField
+                    label="Password"
+                    type={showPw ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    required
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton aria-label={showPw ? "Hide password" : "Show password"} onClick={() => setShowPw((s) => !s)} edge="end">
+                            {showPw ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                )}
 
                 {mode === "login" && (
                   <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -244,7 +255,13 @@ const AuthPage: React.FC = () => {
                       control={<Checkbox checked={remember} onChange={(e) => setRemember(e.target.checked)} sx={{ color: BRAND.navy, "&.Mui-checked": { color: BRAND.red } }} />}
                       label="Remember me"
                     />
-                    <Link component="button" underline="hover" onClick={() => alert("Hook up your reset flow.")} sx={{ color: BRAND.red, fontWeight: 800 }}>
+                    <Link
+                      component="button"
+                      type="button"
+                      underline="hover"
+                      onClick={() => setMode("reset")}
+                      sx={{ color: BRAND.red, fontWeight: 800 }}
+                    >
                       Forgot password?
                     </Link>
                   </Stack>
@@ -257,16 +274,37 @@ const AuthPage: React.FC = () => {
                   disabled={submitting}
                   sx={{ bgcolor: BRAND.red, py: 1.25, borderRadius: 2.5, fontWeight: 950, "&:hover": { bgcolor: "#E63131" } }}
                 >
-                  {submitting ? (mode === "login" ? "Logging in..." : "Creating account...") : mode === "login" ? "Enter simulator" : "Create account"}
+                  {submitting
+                    ? "Please wait..."
+                    : mode === "login"
+                    ? "Enter simulator"
+                    : mode === "signup"
+                    ? "Create account"
+                    : "Send reset link"}
                 </Button>
 
-                <Typography textAlign="center" color="text.secondary">
-                  {mode === "login" ? (
-                    <>Don&apos;t have an account? <Link component="button" onClick={() => setMode("signup")} sx={{ color: BRAND.red, fontWeight: 900 }}>Sign up</Link></>
-                  ) : (
-                    <>Already have an account? <Link component="button" onClick={() => setMode("login")} sx={{ color: BRAND.red, fontWeight: 900 }}>Log in</Link></>
-                  )}
-                </Typography>
+                {mode === "reset" ? (
+                  <Typography textAlign="center" color="text.secondary">
+                    Remember it?{" "}
+                    <Link component="button" type="button" onClick={() => setMode("login")} sx={{ color: BRAND.red, fontWeight: 900 }}>
+                      Back to login
+                    </Link>
+                  </Typography>
+                ) : mode === "login" ? (
+                  <Typography textAlign="center" color="text.secondary">
+                    Don&apos;t have an account?{" "}
+                    <Link component="button" type="button" onClick={() => setMode("signup")} sx={{ color: BRAND.red, fontWeight: 900 }}>
+                      Sign up
+                    </Link>
+                  </Typography>
+                ) : (
+                  <Typography textAlign="center" color="text.secondary">
+                    Already have an account?{" "}
+                    <Link component="button" type="button" onClick={() => setMode("login")} sx={{ color: BRAND.red, fontWeight: 900 }}>
+                      Log in
+                    </Link>
+                  </Typography>
+                )}
               </Stack>
             </Paper>
           </Grid>
