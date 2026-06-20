@@ -11,8 +11,7 @@ import Home from "./pages/Home";
 import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import Game from "./pages/Game";
-import Tutorial from "./pages/Tutorial";
-import Guide from "./pages/Guide";
+import Learn from "./pages/Learn";
 import News from "./pages/News";
 import Leaderboard from "./pages/Leaderboard";
 import Achievements from "./pages/Achievements";
@@ -28,29 +27,24 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 function AppLayout() {
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "100vh",
-        width: "100%",
-        m: 0,
-        p: 0,
-        bgcolor: "#F5F7F9",
-      }}
-    >
-      <Box component="header" sx={{ width: "100%", m: 0, p: 0, flexShrink: 0 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", width: "100%", m: 0, p: 0, bgcolor: "#F4F6F9" }}>
+      <Box component="header" sx={{ width: "100%", flexShrink: 0 }}>
         <Header />
       </Box>
 
-      <Box component="main" sx={{ flex: 1, width: "100%", m: 0, p: 0, overflowX: "hidden" }}>
+      <Box component="main" sx={{ flex: 1, width: "100%", overflowX: "hidden" }}>
         <Routes>
+          {/* Public */}
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<AuthPage />} />
-          <Route path="/tutorial" element={<Tutorial />} />
-          <Route path="/guide" element={<Guide />} />
+          <Route path="/learn" element={<Learn />} />
           <Route path="/news" element={<News />} />
 
+          {/* Legacy redirects */}
+          <Route path="/tutorial" element={<Navigate to="/learn" replace />} />
+          <Route path="/guide" element={<Navigate to="/learn?tab=guide" replace />} />
+
+          {/* Protected */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/game" element={<ProtectedRoute><Game /></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
@@ -60,7 +54,7 @@ function AppLayout() {
         </Routes>
       </Box>
 
-      <Box component="footer" sx={{ width: "100%", m: 0, p: 0, flexShrink: 0 }}>
+      <Box component="footer" sx={{ width: "100%", flexShrink: 0 }}>
         <Footer />
       </Box>
     </Box>
