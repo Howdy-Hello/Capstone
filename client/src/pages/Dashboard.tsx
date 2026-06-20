@@ -1,335 +1,801 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
   Container,
   Divider,
-  FormControl,
   Grid,
-  IconButton,
-  InputLabel,
-  MenuItem,
-  Select,
-  SelectChangeEvent,
-  Stack,
-  Tooltip,
-  Typography,
   LinearProgress,
+  Stack,
+  Typography,
 } from "@mui/material";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
-import SpeedIcon from "@mui/icons-material/Speed";
+import AssessmentIcon from "@mui/icons-material/Assessment";
+import PieChartIcon from "@mui/icons-material/PieChart";
+import ShowChartIcon from "@mui/icons-material/ShowChart";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import { Link as RouterLink } from "react-router-dom";
 import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip as RTooltip,
   XAxis,
   YAxis,
-  Tooltip as RTooltip,
-  Legend,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  ReferenceLine,
-  ScatterChart,
-  Scatter,
-  ZAxis,
 } from "recharts";
+
+import {
+  getNewsForGameDay,
+  getSeasonDay,
+  getStocksForGameDay,
+  normalizeGameDay,
+  SEASON_LENGTH,
+  Stock,
+} from "../data/mockStocks";
+import {
+  getNetWorth,
+  getPortfolioValue,
+  useTradingAccount,
+} from "../data/tradingState";
 
 const BRAND = {
   navy: "#2C3947",
   red: "#FF3737",
   green: "#9AD872",
-  paper: "#F6F8FA",
+  background: "#F5F7F9",
 };
 
-type StrategyKey = "Growth" | "Value" | "Momentum" | "Defensive";
-const STRATEGIES: StrategyKey[] = ["Growth", "Value", "Momentum", "Defensive"];
-const COLORS = [BRAND.green, BRAND.red, "#78A9FF", "#F4C95D", "#A78BFA", "#35D0BA"];
+const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
+const CHART_COLORS = [BRAND.green, BRAND.red, "#78A9FF", "#F4C95D", "#35D0BA", "#A78BFA"];
 
-function createSeries(days: number, seed = 1) {
-  const data: Array<any> = [];
-  let portfolio = 210000 + seed * 3100;
-  let benchmark = 205000 + seed * 2400;
-
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const shock = Math.sin((days - i) / 7) * 1150 + (Math.random() - 0.48) * 2400;
-    const benchShock = Math.sin((days - i) / 8) * 850 + (Math.random() - 0.5) * 1600;
-    portfolio = Math.max(100000, portfolio + shock);
-    benchmark = Math.max(100000, benchmark + benchShock);
-
-    data.push({
-      date: d.toISOString().slice(5, 10),
-      portfolio: Math.round(portfolio),
-      benchmark: Math.round(benchmark),
-      pnl: Math.round(shock),
-      volatility: Number((12 + Math.random() * 9 + Math.abs(shock) / 1300).toFixed(2)),
-      exposure: Number((58 + Math.random() * 30).toFixed(1)),
-      cash: Math.round(25000 + Math.random() * 28000),
-    });
-  }
-
-  return data;
+function loadSavedGameDay() {
+  const savedDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
+  return normalizeGameDay(savedDay || 1);
 }
 
-const DATA = {
-  "30d": createSeries(30, 1),
-  "90d": createSeries(90, 2),
-  "180d": createSeries(180, 3),
-  "365d": createSeries(365, 4),
-};
+function formatMoney(value: number) {
+  return `$${value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
 
-const holdings = [
-  { symbol: "NVDA", name: "NVIDIA", allocation: 22, pnl: 18420, up: true },
-  { symbol: "MSFT", name: "Microsoft", allocation: 17, pnl: 7320, up: true },
-  { symbol: "AAPL", name: "Apple", allocation: 15, pnl: 4410, up: true },
-  { symbol: "TSLA", name: "Tesla", allocation: 11, pnl: -3920, up: false },
-  { symbol: "JPM", name: "JPMorgan", allocation: 9, pnl: 1260, up: true },
-];
+export default function Dashboard() {
+  const gameDay = loadSavedGameDay();
+  const seasonDay = getSeasonDay(gameDay);
+  const stocks = useMemo(() => getStocksForGameDay(gameDay), [gameDay]);
+  const news = useMemo(() => getNewsForGameDay(gameDay), [gameDay]);
+  const trading = useTradingAccount();
 
-const sectorMix = [
-  { name: "Technology", value: 42 },
-  { name: "Financials", value: 18 },
-  { name: "Consumer", value: 16 },
-  { name: "Healthcare", value: 13 },
-  { name: "Cash", value: 11 },
-];
+  const portfolioValue = useMemo(
+    () => getPortfolioValue(trading.account, stocks),
+    [trading.account, stocks]
+  );
+  const netWorth = useMemo(
+    () => getNetWorth(trading.account, stocks),
+    [trading.account, stocks]
+  );
 
-const riskScatter = Array.from({ length: 28 }, (_, i) => ({
-  name: `Trade ${i + 1}`,
-  risk: Math.round(20 + Math.random() * 72),
-  reward: Math.round(-15 + Math.random() * 52),
-  size: Math.round(35 + Math.random() * 120),
-}));
+  const holdings = useMemo(() => {
+    return trading.account.holdings.map((holding) => {
+      const stock = stocks.find((item) => item.symbol === holding.symbol);
+      const currentPrice = stock?.currentPrice ?? holding.averageCost;
+      const marketValue = currentPrice * holding.shares;
+      const costBasis = holding.averageCost * holding.shares;
+      const profitLoss = marketValue - costBasis;
+      const profitLossPercent = costBasis > 0 ? (profitLoss / costBasis) * 100 : 0;
 
-const Dashboard: React.FC = () => {
-  const [range, setRange] = React.useState<"30d" | "90d" | "180d" | "365d">("90d");
-  const [strategy, setStrategy] = React.useState<StrategyKey>("Growth");
-  const data = DATA[range];
+      return {
+        ...holding,
+        stock,
+        currentPrice,
+        marketValue,
+        costBasis,
+        profitLoss,
+        profitLossPercent,
+      };
+    });
+  }, [trading.account.holdings, stocks]);
 
-  const totals = React.useMemo(() => {
-    const first = data[0];
-    const last = data[data.length - 1];
-    const pnl = last.portfolio - first.portfolio;
-    const returnPct = (pnl / first.portfolio) * 100;
-    const winRate = 54 + Math.min(18, Math.max(-8, returnPct * 1.3));
-    const riskScore = Math.round(data.reduce((a, b) => a + b.volatility, 0) / data.length * 3.2);
+  const marketSummary = useMemo(() => {
+    const gainers = stocks.filter((stock) => stock.dayChangePercent >= 0).length;
+    const averageMove =
+      stocks.reduce((sum, stock) => sum + stock.dayChangePercent, 0) / stocks.length;
+    const strongest = [...stocks].sort(
+      (a, b) => b.dayChangePercent - a.dayChangePercent
+    )[0];
+    const weakest = [...stocks].sort(
+      (a, b) => a.dayChangePercent - b.dayChangePercent
+    )[0];
 
     return {
-      portfolio: last.portfolio,
-      pnl,
-      returnPct,
-      winRate,
-      riskScore: Math.min(100, riskScore),
-      cash: last.cash,
-      exposure: last.exposure,
+      gainers,
+      losers: stocks.length - gainers,
+      averageMove,
+      strongest,
+      weakest,
     };
-  }, [data]);
+  }, [stocks]);
 
-  const handleRange = (e: SelectChangeEvent) => setRange(e.target.value as any);
-  const handleStrategy = (e: SelectChangeEvent) => setStrategy(e.target.value as StrategyKey);
+  const sectorExposure = useMemo(() => {
+    const exposure = new Map<string, number>();
+
+    holdings.forEach((holding) => {
+      const sector = holding.stock?.sector ?? "Unknown";
+      exposure.set(sector, (exposure.get(sector) ?? 0) + holding.marketValue);
+    });
+
+    if (trading.account.cash > 0) {
+      exposure.set("Cash", trading.account.cash);
+    }
+
+    return Array.from(exposure, ([name, value]) => ({
+      name,
+      value: Number(value.toFixed(2)),
+    }));
+  }, [holdings, trading.account.cash]);
+
+  const movers = useMemo(
+    () =>
+      [...stocks]
+        .sort((a, b) => Math.abs(b.dayChangePercent) - Math.abs(a.dayChangePercent))
+        .slice(0, 8),
+    [stocks]
+  );
 
   return (
-    <Box sx={{ minHeight: "100dvh", bgcolor: BRAND.paper }}>
-      <Box sx={{ bgcolor: BRAND.navy, color: "#fff", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-        <Container sx={{ py: { xs: 3, md: 4 } }}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
-            <Box>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="h3" fontWeight={950} sx={{ letterSpacing: -1.2 }}>
-                  Stock Simulator
-                </Typography>
-                <Tooltip title="Mock simulator data. Replace with API data when backend is ready.">
-                  <IconButton size="small" sx={{ color: "rgba(255,255,255,0.72)" }}><InfoOutlinedIcon fontSize="small" /></IconButton>
-                </Tooltip>
-              </Stack>
-              <Typography sx={{ color: "rgba(255,255,255,0.68)", mt: 0.8 }}>
-                Portfolio cockpit for simulated trading, risk control, and performance decisions.
+    <Box sx={{ minHeight: "100vh", bgcolor: BRAND.background }}>
+      <Box sx={{ bgcolor: BRAND.navy, color: "#fff" }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 4, md: 5 } }}>
+          <Grid container spacing={3} alignItems="center">
+            <Grid item xs={12} md={8}>
+              <Chip
+                icon={<AssessmentIcon />}
+                label={`Game Day ${gameDay}`}
+                sx={{
+                  bgcolor: "rgba(154,216,114,0.18)",
+                  color: BRAND.green,
+                  fontWeight: 950,
+                  mb: 2,
+                }}
+              />
+
+              <Typography
+                variant="h2"
+                sx={{
+                  fontWeight: 950,
+                  letterSpacing: -1,
+                  lineHeight: 1.05,
+                  mb: 1.5,
+                }}
+              >
+                Trading Dashboard
               </Typography>
-            </Box>
 
-            <Stack direction="row" flexWrap="wrap" gap={1.5} alignItems="center">
-              <FormControl size="small" sx={{ minWidth: 145, bgcolor: "rgba(255,255,255,0.08)", borderRadius: 2 }}>
-                <InputLabel id="range" sx={{ color: "rgba(255,255,255,0.7)" }}>Range</InputLabel>
-                <Select labelId="range" label="Range" value={range} onChange={handleRange} sx={{ color: "#fff", ".MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.2)" }, ".MuiSvgIcon-root": { color: "#fff" } }}>
-                  <MenuItem value="30d">Last 30 days</MenuItem>
-                  <MenuItem value="90d">Last 90 days</MenuItem>
-                  <MenuItem value="180d">Last 180 days</MenuItem>
-                  <MenuItem value="365d">Last 365 days</MenuItem>
-                </Select>
-              </FormControl>
+              <Typography sx={{ color: "rgba(255,255,255,0.7)", maxWidth: 760 }}>
+                Track your cash, holdings, market movement, and today&apos;s news
+                from the same simulator state used by the trading screen.
+              </Typography>
+            </Grid>
 
-              <FormControl size="small" sx={{ minWidth: 155, bgcolor: "rgba(255,255,255,0.08)", borderRadius: 2 }}>
-                <InputLabel id="strategy" sx={{ color: "rgba(255,255,255,0.7)" }}>Strategy</InputLabel>
-                <Select labelId="strategy" label="Strategy" value={strategy} onChange={handleStrategy} sx={{ color: "#fff", ".MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.2)" }, ".MuiSvgIcon-root": { color: "#fff" } }}>
-                  {STRATEGIES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Stack>
-          </Stack>
-        </Container>
-      </Box>
-
-      <Container sx={{ py: { xs: 3, md: 4 } }}>
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          {[
-            { label: "Portfolio Value", value: `$${totals.portfolio.toLocaleString()}`, icon: <AccountBalanceWalletIcon />, color: BRAND.green },
-            { label: "Total P/L", value: `${totals.pnl >= 0 ? "+" : ""}$${totals.pnl.toLocaleString()}`, icon: totals.pnl >= 0 ? <TrendingUpIcon /> : <TrendingDownIcon />, color: totals.pnl >= 0 ? BRAND.green : BRAND.red },
-            { label: "Return", value: `${totals.returnPct >= 0 ? "+" : ""}${totals.returnPct.toFixed(2)}%`, icon: <SpeedIcon />, color: totals.returnPct >= 0 ? BRAND.green : BRAND.red },
-            { label: "Risk Score", value: `${totals.riskScore}/100`, icon: <ShieldOutlinedIcon />, color: BRAND.red },
-          ].map((kpi) => (
-            <Grid item xs={12} sm={6} md={3} key={kpi.label}>
-              <Card sx={{ borderRadius: 4, border: "1px solid rgba(44,57,71,0.1)", boxShadow: "0 14px 34px rgba(44,57,71,0.08)" }}>
-                <CardContent>
-                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                    <Box>
-                      <Typography variant="overline" color="text.secondary" fontWeight={900}>{kpi.label}</Typography>
-                      <Typography variant="h5" fontWeight={950} color={BRAND.navy}>{kpi.value}</Typography>
-                    </Box>
-                    <Box sx={{ width: 42, height: 42, borderRadius: 2.5, display: "grid", placeItems: "center", bgcolor: `${kpi.color}26`, color: kpi.color }}>
-                      {kpi.icon}
-                    </Box>
-                  </Stack>
+            <Grid item xs={12} md={4}>
+              <Card
+                sx={{
+                  bgcolor: "rgba(255,255,255,0.08)",
+                  color: "#fff",
+                  borderRadius: 4,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Typography sx={{ opacity: 0.65, fontWeight: 800 }}>
+                    SEASON PROGRESS
+                  </Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 950, my: 1 }}>
+                    Day {seasonDay}/{SEASON_LENGTH}
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={(seasonDay / SEASON_LENGTH) * 100}
+                    sx={{
+                      height: 12,
+                      borderRadius: 99,
+                      bgcolor: "rgba(255,255,255,0.12)",
+                      "& .MuiLinearProgress-bar": {
+                        bgcolor: BRAND.green,
+                        borderRadius: 99,
+                      },
+                    }}
+                  />
                 </CardContent>
               </Card>
             </Grid>
-          ))}
+          </Grid>
+        </Container>
+      </Box>
+
+      <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
+        <Grid container spacing={3} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              title="Cash"
+              value={formatMoney(trading.account.cash)}
+              icon={<AccountBalanceWalletIcon />}
+              color={BRAND.green}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              title="Portfolio"
+              value={formatMoney(portfolioValue)}
+              icon={<PieChartIcon />}
+              color={BRAND.green}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              title="Net Worth"
+              value={formatMoney(netWorth)}
+              icon={<AssessmentIcon />}
+              color={BRAND.green}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              title="Market Avg"
+              value={`${marketSummary.averageMove >= 0 ? "+" : ""}${marketSummary.averageMove.toFixed(2)}%`}
+              icon={
+                marketSummary.averageMove >= 0 ? (
+                  <TrendingUpIcon />
+                ) : (
+                  <TrendingDownIcon />
+                )
+              }
+              color={marketSummary.averageMove >= 0 ? BRAND.green : BRAND.red}
+            />
+          </Grid>
         </Grid>
 
-        <Grid container spacing={2}>
+        <Grid container spacing={3}>
           <Grid item xs={12} lg={8}>
-            <Card sx={{ height: 430, borderRadius: 4, border: "1px solid rgba(44,57,71,0.1)", boxShadow: "0 14px 34px rgba(44,57,71,0.08)" }}>
-              <CardContent sx={{ height: "100%" }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+            <Card sx={panelStyle}>
+              <CardContent sx={{ p: 3 }}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  justifyContent="space-between"
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  spacing={2}
+                  sx={{ mb: 2 }}
+                >
                   <Box>
-                    <Typography variant="h6" fontWeight={950} color={BRAND.navy}>Portfolio vs Benchmark</Typography>
-                    <Typography variant="body2" color="text.secondary">Simulated mark-to-market movement</Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                      Holdings
+                    </Typography>
+                    <Typography color="text.secondary">
+                      Your owned shares marked to current game-day prices.
+                    </Typography>
                   </Box>
-                  <Chip label={strategy} sx={{ bgcolor: BRAND.navy, color: "#fff", fontWeight: 900 }} />
+
+                  <Button
+                    variant="contained"
+                    component={RouterLink}
+                    to="/game"
+                    sx={{
+                      bgcolor: BRAND.red,
+                      fontWeight: 950,
+                      borderRadius: 2,
+                      "&:hover": { bgcolor: "#E63131" },
+                    }}
+                  >
+                    Trade
+                  </Button>
                 </Stack>
-                <ResponsiveContainer width="100%" height="84%">
-                  <AreaChart data={data}>
-                    <defs>
-                      <linearGradient id="portfolioFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={BRAND.green} stopOpacity={0.5} />
-                        <stop offset="95%" stopColor={BRAND.green} stopOpacity={0.04} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(44,57,71,0.12)" />
-                    <XAxis dataKey="date" minTickGap={22} />
-                    <YAxis tickFormatter={(v) => `$${Math.round(Number(v) / 1000)}k`} />
-                    <RTooltip formatter={(v: any) => `$${Number(v).toLocaleString()}`} />
-                    <Legend />
-                    <Area type="monotone" dataKey="portfolio" name="Portfolio" stroke={BRAND.green} fill="url(#portfolioFill)" strokeWidth={3} />
-                    <Line type="monotone" dataKey="benchmark" name="Benchmark" stroke={BRAND.red} strokeWidth={2.5} dot={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
+
+                <Divider sx={{ mb: 2 }} />
+
+                {holdings.length === 0 ? (
+                  <EmptyState
+                    title="No positions yet"
+                    text="Buy shares from the Game page and they will appear here."
+                    actionLabel="Open Market"
+                    actionTo="/game"
+                  />
+                ) : (
+                  <Stack spacing={1.4}>
+                    {holdings.map((holding) => (
+                      <HoldingRow key={holding.symbol} holding={holding} netWorth={netWorth} />
+                    ))}
+                  </Stack>
+                )}
               </CardContent>
             </Card>
           </Grid>
 
           <Grid item xs={12} lg={4}>
-            <Card sx={{ height: 430, borderRadius: 4, bgcolor: BRAND.navy, color: "#fff", boxShadow: "0 14px 34px rgba(44,57,71,0.18)" }}>
-              <CardContent sx={{ height: "100%" }}>
-                <Typography variant="h6" fontWeight={950}>Top Holdings</Typography>
-                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.62)", mb: 2 }}>Allocation and unrealized P/L</Typography>
-                <Stack spacing={1.4}>
-                  {holdings.map((h) => (
-                    <Box key={h.symbol} sx={{ p: 1.45, borderRadius: 3, bgcolor: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                        <Box>
-                          <Typography fontWeight={950}>{h.symbol}</Typography>
-                          <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.55)" }}>{h.name}</Typography>
-                        </Box>
-                        <Typography fontWeight={950} sx={{ color: h.up ? BRAND.green : BRAND.red }}>
-                          {h.pnl >= 0 ? "+" : ""}${h.pnl.toLocaleString()}
-                        </Typography>
+            <Card sx={{ ...panelStyle, height: "100%" }}>
+              <CardContent sx={{ p: 3, height: "100%" }}>
+                <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                  Allocation
+                </Typography>
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  Cash and sector exposure based on current holdings.
+                </Typography>
+
+                <Box sx={{ height: 320 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <RTooltip formatter={(value: any) => formatMoney(Number(value))} />
+                      <Pie
+                        data={sectorExposure}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius="55%"
+                        outerRadius="82%"
+                        paddingAngle={2}
+                      >
+                        {sectorExposure.map((entry, index) => (
+                          <Cell
+                            key={entry.name}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Box>
+
+                <Stack spacing={1}>
+                  {sectorExposure.map((entry, index) => (
+                    <Stack
+                      key={entry.name}
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Box
+                          sx={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: "50%",
+                            bgcolor: CHART_COLORS[index % CHART_COLORS.length],
+                          }}
+                        />
+                        <Typography sx={{ fontWeight: 900 }}>{entry.name}</Typography>
                       </Stack>
-                      <LinearProgress variant="determinate" value={h.allocation} sx={{ height: 8, borderRadius: 99, bgcolor: "rgba(255,255,255,0.1)", "& .MuiLinearProgress-bar": { bgcolor: h.up ? BRAND.green : BRAND.red, borderRadius: 99 } }} />
-                    </Box>
+                      <Typography color="text.secondary">
+                        {formatMoney(entry.value)}
+                      </Typography>
+                    </Stack>
                   ))}
                 </Stack>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={4}>
-            <Card sx={{ height: 330, borderRadius: 4, border: "1px solid rgba(44,57,71,0.1)" }}>
-              <CardContent sx={{ height: "100%" }}>
-                <Typography variant="h6" fontWeight={950} color={BRAND.navy}>Sector Allocation</Typography>
-                <ResponsiveContainer width="100%" height="86%">
-                  <PieChart>
-                    <RTooltip />
-                    <Pie data={sectorMix} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="82%" paddingAngle={2}>
-                      {sectorMix.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
-                    </Pie>
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+          <Grid item xs={12} lg={7}>
+            <Card sx={panelStyle}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                  Market Movers
+                </Typography>
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  Largest absolute moves across the current stock universe.
+                </Typography>
+
+                <Box sx={{ height: 320 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={movers} layout="vertical" margin={{ left: 16 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(44,57,71,0.12)" />
+                      <XAxis
+                        type="number"
+                        tickFormatter={(value) => `${Number(value).toFixed(0)}%`}
+                      />
+                      <YAxis type="category" dataKey="symbol" width={48} />
+                      <RTooltip
+                        formatter={(value: any) => [
+                          `${Number(value).toFixed(2)}%`,
+                          "Day Move",
+                        ]}
+                      />
+                      <Bar dataKey="dayChangePercent" radius={[0, 6, 6, 0]}>
+                        {movers.map((stock) => (
+                          <Cell
+                            key={stock.symbol}
+                            fill={stock.dayChangePercent >= 0 ? BRAND.green : BRAND.red}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={4}>
-            <Card sx={{ height: 330, borderRadius: 4, border: "1px solid rgba(44,57,71,0.1)" }}>
-              <CardContent sx={{ height: "100%" }}>
-                <Typography variant="h6" fontWeight={950} color={BRAND.navy}>Daily P/L</Typography>
-                <ResponsiveContainer width="100%" height="86%">
-                  <BarChart data={data.slice(-30)}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(44,57,71,0.12)" />
-                    <XAxis dataKey="date" minTickGap={14} />
-                    <YAxis />
-                    <RTooltip formatter={(v: any) => `$${Number(v).toLocaleString()}`} />
-                    <Bar dataKey="pnl" name="Daily P/L" radius={[6, 6, 0, 0]}>
-                      {data.slice(-30).map((entry, index) => <Cell key={index} fill={entry.pnl >= 0 ? BRAND.green : BRAND.red} />)}
-                    </Bar>
-                    <ReferenceLine y={0} stroke={BRAND.navy} />
-                  </BarChart>
-                </ResponsiveContainer>
+          <Grid item xs={12} lg={5}>
+            <Card sx={panelStyle}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                  Today&apos;s News
+                </Typography>
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  Current events for Game Day {gameDay}.
+                </Typography>
+
+                <Divider sx={{ mb: 2 }} />
+
+                {news.length === 0 ? (
+                  <Typography color="text.secondary">
+                    No major news today. Market movement is still affected by drift,
+                    volatility, and trend bias.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1.2}>
+                    {news.slice(0, 5).map((item) => (
+                      <Box
+                        key={item.newsId}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          bgcolor: "#F7F9FB",
+                          border: "1px solid #E5E9EF",
+                        }}
+                      >
+                        <Stack direction="row" spacing={1} sx={{ mb: 0.8 }}>
+                          <Chip
+                            size="small"
+                            label={item.marketTone}
+                            sx={{
+                              bgcolor:
+                                item.marketTone === "Bullish"
+                                  ? "rgba(154,216,114,0.25)"
+                                  : "rgba(255,55,55,0.12)",
+                              color:
+                                item.marketTone === "Bullish" ? BRAND.navy : BRAND.red,
+                              fontWeight: 900,
+                            }}
+                          />
+                          <Chip
+                            size="small"
+                            label={item.relatedTickers.join(", ")}
+                            sx={{
+                              bgcolor: BRAND.navy,
+                              color: "#fff",
+                              fontWeight: 900,
+                            }}
+                          />
+                        </Stack>
+                        <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
+                          {item.headline}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.4 }}>
+                          {item.body}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  component={RouterLink}
+                  to="/news"
+                  sx={{
+                    mt: 2,
+                    borderColor: BRAND.navy,
+                    color: BRAND.navy,
+                    fontWeight: 950,
+                    borderRadius: 2,
+                  }}
+                >
+                  Open News
+                </Button>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={4}>
-            <Card sx={{ height: 330, borderRadius: 4, border: "1px solid rgba(44,57,71,0.1)" }}>
-              <CardContent sx={{ height: "100%" }}>
-                <Typography variant="h6" fontWeight={950} color={BRAND.navy}>Risk / Reward Map</Typography>
-                <ResponsiveContainer width="100%" height="86%">
-                  <ScatterChart>
-                    <CartesianGrid stroke="rgba(44,57,71,0.12)" />
-                    <XAxis type="number" dataKey="risk" name="Risk" />
-                    <YAxis type="number" dataKey="reward" name="Reward" />
-                    <ZAxis type="number" dataKey="size" range={[60, 420]} />
-                    <RTooltip cursor={{ strokeDasharray: "3 3" }} />
-                    <ReferenceLine x={70} stroke={BRAND.red} label="High Risk" />
-                    <ReferenceLine y={0} stroke={BRAND.navy} />
-                    <Scatter name="Trades" data={riskScatter} fill={BRAND.red} />
-                  </ScatterChart>
-                </ResponsiveContainer>
+          <Grid item xs={12}>
+            <Card sx={{ ...panelStyle, bgcolor: BRAND.navy, color: "#fff" }}>
+              <CardContent sx={{ p: 3 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={4}>
+                    <MarketCallout
+                      title="Strongest"
+                      stock={marketSummary.strongest}
+                      icon={<TrendingUpIcon />}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <MarketCallout
+                      title="Weakest"
+                      stock={marketSummary.weakest}
+                      icon={<TrendingDownIcon />}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Box>
+                      <Typography sx={{ color: "rgba(255,255,255,0.62)", fontWeight: 800 }}>
+                        MARKET BREADTH
+                      </Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                        {marketSummary.gainers} up / {marketSummary.losers} down
+                      </Typography>
+                      <Typography sx={{ color: "rgba(255,255,255,0.65)", mt: 0.5 }}>
+                        Breadth helps show whether today&apos;s market is broad or
+                        concentrated in a few stocks.
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
-
-        <Divider sx={{ my: 3 }} />
-        <Typography variant="body2" color="text.secondary">
-          Simulator data is currently generated in the frontend. Replace the mock arrays with API-backed portfolio, order, and market-data endpoints when ready.
-        </Typography>
       </Container>
     </Box>
   );
-};
+}
 
-export default Dashboard;
+function StatCard({
+  title,
+  value,
+  icon,
+  color,
+}: {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  color: string;
+}) {
+  return (
+    <Card sx={panelStyle}>
+      <CardContent sx={{ p: 3 }}>
+        <Stack direction="row" justifyContent="space-between" spacing={2}>
+          <Box>
+            <Typography color="text.secondary" sx={{ fontWeight: 800 }}>
+              {title}
+            </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 950, color: BRAND.navy }}>
+              {value}
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              width: 46,
+              height: 46,
+              borderRadius: 2,
+              bgcolor: `${color}33`,
+              color,
+              display: "grid",
+              placeItems: "center",
+              flexShrink: 0,
+            }}
+          >
+            {icon}
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
+function HoldingRow({
+  holding,
+  netWorth,
+}: {
+  holding: ReturnType<typeof useTradingAccount>["account"]["holdings"][number] & {
+    stock?: Stock;
+    currentPrice: number;
+    marketValue: number;
+    costBasis: number;
+    profitLoss: number;
+    profitLossPercent: number;
+  };
+  netWorth: number;
+}) {
+  const isUp = holding.profitLoss >= 0;
+  const allocation = netWorth > 0 ? (holding.marketValue / netWorth) * 100 : 0;
+
+  return (
+    <Box
+      sx={{
+        p: 2,
+        borderRadius: 2,
+        bgcolor: "#F7F9FB",
+        border: "1px solid #E5E9EF",
+      }}
+    >
+      <Grid container spacing={2} alignItems="center">
+        <Grid item xs={12} md={4}>
+          <Stack direction="row" spacing={1.2} alignItems="center">
+            <Box
+              sx={{
+                width: 42,
+                height: 42,
+                borderRadius: 2,
+                bgcolor: isUp ? "rgba(154,216,114,0.25)" : "rgba(255,55,55,0.12)",
+                color: isUp ? BRAND.green : BRAND.red,
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <ShowChartIcon />
+            </Box>
+            <Box>
+              <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
+                {holding.symbol}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {holding.name}
+              </Typography>
+            </Box>
+          </Stack>
+        </Grid>
+
+        <Grid item xs={6} md={2}>
+          <MetricLabel label="Shares" value={holding.shares.toString()} />
+        </Grid>
+
+        <Grid item xs={6} md={2}>
+          <MetricLabel label="Price" value={formatMoney(holding.currentPrice)} />
+        </Grid>
+
+        <Grid item xs={6} md={2}>
+          <MetricLabel label="Value" value={formatMoney(holding.marketValue)} />
+        </Grid>
+
+        <Grid item xs={6} md={2}>
+          <Typography color="text.secondary" sx={{ fontWeight: 800 }}>
+            P/L
+          </Typography>
+          <Typography sx={{ fontWeight: 950, color: isUp ? BRAND.green : BRAND.red }}>
+            {holding.profitLoss >= 0 ? "+" : ""}
+            {formatMoney(holding.profitLoss)} ({holding.profitLossPercent.toFixed(2)}%)
+          </Typography>
+        </Grid>
+      </Grid>
+
+      <Box sx={{ mt: 1.5 }}>
+        <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.6 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>
+            Allocation
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>
+            {allocation.toFixed(1)}%
+          </Typography>
+        </Stack>
+        <LinearProgress
+          variant="determinate"
+          value={Math.min(100, allocation)}
+          sx={{
+            height: 8,
+            borderRadius: 99,
+            bgcolor: "#E5E9EF",
+            "& .MuiLinearProgress-bar": {
+              bgcolor: isUp ? BRAND.green : BRAND.red,
+              borderRadius: 99,
+            },
+          }}
+        />
+      </Box>
+    </Box>
+  );
+}
+
+function MetricLabel({ label, value }: { label: string; value: string }) {
+  return (
+    <Box>
+      <Typography color="text.secondary" sx={{ fontWeight: 800 }}>
+        {label}
+      </Typography>
+      <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>{value}</Typography>
+    </Box>
+  );
+}
+
+function EmptyState({
+  title,
+  text,
+  actionLabel,
+  actionTo,
+}: {
+  title: string;
+  text: string;
+  actionLabel: string;
+  actionTo: string;
+}) {
+  return (
+    <Box
+      sx={{
+        p: 3,
+        borderRadius: 2,
+        bgcolor: "#F7F9FB",
+        border: "1px solid #E5E9EF",
+      }}
+    >
+      <Typography variant="h6" sx={{ fontWeight: 950, color: BRAND.navy }}>
+        {title}
+      </Typography>
+      <Typography color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
+        {text}
+      </Typography>
+      <Button
+        variant="contained"
+        component={RouterLink}
+        to={actionTo}
+        sx={{
+          bgcolor: BRAND.red,
+          fontWeight: 950,
+          borderRadius: 2,
+          "&:hover": { bgcolor: "#E63131" },
+        }}
+      >
+        {actionLabel}
+      </Button>
+    </Box>
+  );
+}
+
+function MarketCallout({
+  title,
+  stock,
+  icon,
+}: {
+  title: string;
+  stock?: Stock;
+  icon: React.ReactNode;
+}) {
+  if (!stock) return null;
+
+  const isUp = stock.dayChangePercent >= 0;
+
+  return (
+    <Stack direction="row" spacing={1.4} alignItems="center">
+      <Box
+        sx={{
+          width: 46,
+          height: 46,
+          borderRadius: 2,
+          bgcolor: isUp ? "rgba(154,216,114,0.2)" : "rgba(255,55,55,0.18)",
+          color: isUp ? BRAND.green : BRAND.red,
+          display: "grid",
+          placeItems: "center",
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </Box>
+      <Box>
+        <Typography sx={{ color: "rgba(255,255,255,0.62)", fontWeight: 800 }}>
+          {title.toUpperCase()}
+        </Typography>
+        <Typography variant="h5" sx={{ fontWeight: 950 }}>
+          {stock.symbol} {isUp ? "+" : ""}
+          {stock.dayChangePercent.toFixed(2)}%
+        </Typography>
+        <Typography sx={{ color: "rgba(255,255,255,0.65)" }}>
+          {stock.name}
+        </Typography>
+      </Box>
+    </Stack>
+  );
+}
+
+const panelStyle = {
+  borderRadius: 4,
+  boxShadow: "0 18px 45px rgba(44,57,71,0.08)",
+  border: "1px solid rgba(44,57,71,0.08)",
+};

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -23,7 +23,6 @@ import {
 } from "recharts";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import ShowChartIcon from "@mui/icons-material/ShowChart";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import BusinessIcon from "@mui/icons-material/Business";
@@ -39,6 +38,7 @@ import {
   Stock,
   StockPriceHistory,
 } from "../data/mockStocks";
+import { getSharesOwned, useTradingAccount } from "../data/tradingState";
 
 const BRAND = {
   navy: "#2C3947",
@@ -55,6 +55,8 @@ export default function StockDetails() {
   const { symbol } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const trading = useTradingAccount();
+  const [tradeMessage, setTradeMessage] = useState("");
 
   const state = location.state as LocationState | null;
   const gameDay = state?.gameDay ?? 1;
@@ -113,9 +115,29 @@ export default function StockDetails() {
     );
   }
 
+  const activeStock = stock;
   const isUp = stock.dayChangePercent >= 0;
   const riskScore = getRiskScore(stock.riskLevel);
   const latestHistory = history[history.length - 1];
+  const sharesOwned = getSharesOwned(trading.account, stock.symbol);
+
+  function handleBuyStock() {
+    const didBuy = trading.buyStock(activeStock);
+    setTradeMessage(
+      didBuy
+        ? `Bought 1 share of ${activeStock.symbol} for $${activeStock.currentPrice.toFixed(2)}.`
+        : `Not enough cash to buy ${activeStock.symbol}.`
+    );
+  }
+
+  function handleSellStock() {
+    const didSell = trading.sellStock(activeStock);
+    setTradeMessage(
+      didSell
+        ? `Sold 1 share of ${activeStock.symbol} for $${activeStock.currentPrice.toFixed(2)}.`
+        : `You do not own any ${activeStock.symbol} shares.`
+    );
+  }
 
   return (
     <Box sx={{ bgcolor: BRAND.background, minHeight: "100vh" }}>
@@ -514,13 +536,32 @@ export default function StockDetails() {
                 </Box>
 
                 <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  These buttons are UI-ready. Connect them to portfolio logic next.
+                  Cash: ${trading.account.cash.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })} • Owned: {sharesOwned} share{sharesOwned === 1 ? "" : "s"}
                 </Typography>
 
                 <Stack spacing={1.2}>
+                  {tradeMessage && (
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        bgcolor: "#F7F9FB",
+                        border: "1px solid #E5E9EF",
+                      }}
+                    >
+                      <Typography sx={{ fontWeight: 900, color: BRAND.navy }}>
+                        {tradeMessage}
+                      </Typography>
+                    </Box>
+                  )}
+
                   <Button
                     fullWidth
                     variant="contained"
+                    onClick={handleBuyStock}
                     sx={{
                       bgcolor: BRAND.green,
                       color: BRAND.navy,
@@ -535,11 +576,17 @@ export default function StockDetails() {
                   <Button
                     fullWidth
                     variant="contained"
+                    disabled={sharesOwned === 0}
+                    onClick={handleSellStock}
                     sx={{
                       bgcolor: BRAND.red,
                       fontWeight: 950,
                       borderRadius: 2,
                       "&:hover": { bgcolor: "#E63131" },
+                      "&.Mui-disabled": {
+                        bgcolor: "#DCE3EA",
+                        color: "#7A8694",
+                      },
                     }}
                   >
                     Sell {stock.symbol}

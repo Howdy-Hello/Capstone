@@ -33,7 +33,7 @@ const BRAND = {
 
 type Mode = "login" | "signup";
 
-const API_BASE = process.env.REACT_APP_API_URL?.trim() || "http://localhost:5000";
+const API_BASE = (process.env as any).REACT_APP_API_URL?.trim() || "http://localhost:5000";
 
 function useQuery() {
   const { search } = useLocation();

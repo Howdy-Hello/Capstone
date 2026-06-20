@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Box,
   Typography,
@@ -14,7 +14,15 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useLocation } from "react-router-dom";
+
+import {
+  getNewsForGameDay,
+  getSeasonDay,
+  MarketNews,
+  normalizeGameDay,
+  SEASON_LENGTH,
+} from "../data/mockStocks";
 
 const BRAND = {
   navy: "#2C3947",
@@ -23,138 +31,23 @@ const BRAND = {
   background: "#F5F7F9",
 };
 
-type MarketNews = {
-  id: string;
-  source: string;
-  time: string;
-  headline: string;
-  body: string;
-  importance: "Low" | "Medium" | "High";
-  marketTone: "Bullish" | "Bearish" | "Unclear";
-  relatedTickers: string[];
-  expectedImpact: number;
-  isAccurate: boolean;
+const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
+
+type LocationState = {
+  gameDay?: number;
 };
 
-const marketNews: MarketNews[] = [
-  {
-    id: "1",
-    source: "MarketWatch Daily",
-    time: "8:45 AM",
-    headline: "NovaTech reports stronger-than-expected quarterly earnings",
-    body:
-      "NovaTech beat analyst expectations after reporting higher software revenue and stronger demand for its AI products. Investors are now watching whether the company can keep growing next quarter.",
-    importance: "High",
-    marketTone: "Bullish",
-    relatedTickers: ["NVT"],
-    expectedImpact: 0.12,
-    isAccurate: true,
-  },
-  {
-    id: "2",
-    source: "Global Energy Brief",
-    time: "9:10 AM",
-    headline: "GreenVolt faces pressure after energy demand forecast is lowered",
-    body:
-      "Analysts lowered their short-term energy demand outlook after weaker industrial activity. Renewable energy stocks may face selling pressure if investors expect slower revenue growth.",
-    importance: "Medium",
-    marketTone: "Bearish",
-    relatedTickers: ["GVE"],
-    expectedImpact: -0.08,
-    isAccurate: true,
-  },
-  {
-    id: "3",
-    source: "Health Finance Wire",
-    time: "10:20 AM",
-    headline: "MediCore product approval could increase future revenue",
-    body:
-      "MediCore received approval for a new medical product. Some investors believe this may improve long-term sales, though production costs may reduce early profits.",
-    importance: "High",
-    marketTone: "Bullish",
-    relatedTickers: ["MCH"],
-    expectedImpact: 0.1,
-    isAccurate: true,
-  },
-  {
-    id: "4",
-    source: "Street Rumors",
-    time: "11:05 AM",
-    headline: "NovaTech may lose its biggest government contract",
-    body:
-      "A market report claims NovaTech could lose a major contract, but the company has not released an official statement. Traders are reacting quickly as uncertainty spreads.",
-    importance: "High",
-    marketTone: "Bearish",
-    relatedTickers: ["NVT"],
-    expectedImpact: -0.09,
-    isAccurate: false,
-  },
-  {
-    id: "5",
-    source: "Banking Outlook",
-    time: "12:30 PM",
-    headline: "UrbanBank shares slip as interest rate concerns continue",
-    body:
-      "Finance stocks are under pressure as investors worry that higher borrowing costs could reduce loan demand. UrbanBank may remain volatile until the next economic report.",
-    importance: "Medium",
-    marketTone: "Bearish",
-    relatedTickers: ["URB"],
-    expectedImpact: -0.06,
-    isAccurate: true,
-  },
-  {
-    id: "6",
-    source: "Investor Pulse",
-    time: "1:15 PM",
-    headline: "GreenVolt reportedly close to major battery partnership",
-    body:
-      "Sources claim GreenVolt may announce a major partnership connected to battery storage technology. Traders are watching for confirmation before the market closes.",
-    importance: "Medium",
-    marketTone: "Bullish",
-    relatedTickers: ["GVE"],
-    expectedImpact: 0.07,
-    isAccurate: false,
-  },
-  {
-    id: "7",
-    source: "Tech Insider",
-    time: "2:40 PM",
-    headline: "MediCore faces lawsuit over product safety concerns",
-    body:
-      "MediCore is being sued by a group of patients claiming that a medical product caused adverse effects. The case is in early stages, but it may create volatility for the stock.",
-    importance: "High",
-    marketTone: "Bearish",
-    relatedTickers: ["MCH"],
-    expectedImpact: -0.11,
-    isAccurate: true,
-  },
-  {
-    id: "8",
-    source: "+1(206) 342-8631",
-    time: "1:32 AM",
-    headline: "Yo,",
-    body: "I have some news from the inside on NovaTech. They just got massive orders from a buyer, and I think it's going to increase their revenue a lot.",
-    importance: "Low",
-    marketTone: "Unclear",
-    relatedTickers: ["NVT"],
-    expectedImpact: 0.00,
-    isAccurate: false,
-  },
-  {
-    id: "9",
-    source: "Phone Viewer",
-    time: "3:50 PM",
-    headline: "PineApple Inc. reports strong quarterly earnings",
-    body: "PineApple Inc. announced better-than-expected quarterly earnings, driving investor confidence and increasing the stock price.",
-    importance: "High",
-    marketTone: "Bullish",
-    relatedTickers: ["PAP"],
-    expectedImpact: 0.18,
-    isAccurate: true,
-  },
-];
+function loadSavedGameDay() {
+  const savedDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
+  return Number.isFinite(savedDay) && savedDay > 0 ? Math.floor(savedDay) : 1;
+}
 
 export default function News() {
+  const location = useLocation();
+  const state = location.state as LocationState | null;
+  const gameDay = normalizeGameDay(state?.gameDay ?? loadSavedGameDay());
+  const seasonDay = getSeasonDay(gameDay);
+  const marketNews = useMemo(() => getNewsForGameDay(gameDay), [gameDay]);
   const bullishNews = marketNews.filter((news) => news.marketTone === "Bullish");
   const bearishNews = marketNews.filter((news) => news.marketTone === "Bearish");
   const highImportance = marketNews.filter((news) => news.importance === "High");
@@ -173,7 +66,7 @@ export default function News() {
           <Grid item xs={12} md={7}>
             <Chip
               icon={<NewspaperIcon />}
-              label="Market News Terminal"
+              label={`Game Day ${gameDay} News`}
               sx={{
                 bgcolor: "rgba(154,216,114,0.18)",
                 color: BRAND.green,
@@ -191,7 +84,7 @@ export default function News() {
                 mb: 2,
               }}
             >
-              Read the news. Predict the move.
+              Today&apos;s market headlines.
             </Typography>
 
             <Typography
@@ -201,8 +94,9 @@ export default function News() {
                 fontSize: 18,
               }}
             >
-              News do not directly tell you what to buy. You need to judge whether
-              each headline is important, reliable, and likely to move prices.
+              These are the same events driving the simulator for the current
+              game day. Judge the source, tone, affected tickers, and story
+              strength before trading.
             </Typography>
           </Grid>
 
@@ -217,16 +111,16 @@ export default function News() {
             >
               <CardContent sx={{ p: 4 }}>
                 <Typography sx={{ opacity: 0.65, fontWeight: 800 }}>
-                  TRADER OBJECTIVE
+                  MARKET CLOCK
                 </Typography>
 
                 <Typography variant="h4" sx={{ fontWeight: 950, my: 1 }}>
-                  Separate signal from noise.
+                  Day {seasonDay}/{SEASON_LENGTH}
                 </Typography>
 
                 <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 3 }}>
-                  Some news may be useful, some may be exaggerated, and some may
-                  mislead traders. Your job is to decide what the market will believe.
+                  The News page now follows the active simulator day instead of
+                  showing a dated static list.
                 </Typography>
 
                 <Button
@@ -252,8 +146,8 @@ export default function News() {
         <Grid container spacing={3} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6} md={3}>
             <SummaryCard
-              title="News Items"
-              value={marketNews.length.toString()}
+              title="Game Day"
+              value={gameDay.toString()}
               icon={<NewspaperIcon />}
               color={BRAND.green}
             />
@@ -292,19 +186,38 @@ export default function News() {
             <Card sx={panelStyle}>
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  Latest Market Headlines
+                  Game Day {gameDay} Headlines
                 </Typography>
 
                 <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  Use the headline, source, tone, and details to predict whether
-                  stocks may rise or fall.
+                  Showing news generated by the same mock market engine used on
+                  the trading screen.
                 </Typography>
 
                 <Divider sx={{ mb: 2 }} />
 
-                {marketNews.map((news) => (
-                  <NewsCard key={news.id} news={news} />
-                ))}
+                {marketNews.length === 0 ? (
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderRadius: 3,
+                      bgcolor: "#F7F9FB",
+                      border: "1px solid #E5E9EF",
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
+                      No major news today.
+                    </Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                      Prices can still move because of market drift, sector drift,
+                      trend bias, and normal volatility.
+                    </Typography>
+                  </Box>
+                ) : (
+                  marketNews.map((news) => (
+                    <NewsCard key={news.newsId} news={news} />
+                  ))
+                )}
               </CardContent>
             </Card>
           </Grid>
@@ -496,7 +409,7 @@ function NewsCard({ news }: { news: MarketNews }) {
             variant="caption"
             sx={{ color: "text.secondary", fontWeight: 900 }}
           >
-            {news.source} • {news.time}
+            {news.source} • Game Day {news.gameDay} • {news.category}
           </Typography>
 
           <Typography sx={{ fontWeight: 950, fontSize: 18 }}>
@@ -534,6 +447,18 @@ function NewsCard({ news }: { news: MarketNews }) {
             fontWeight: 950,
           }}
         />
+
+        {news.isRumor && (
+          <Chip
+            size="small"
+            label={news.isAccurate ? "Rumor" : "Unconfirmed"}
+            sx={{
+              bgcolor: "#DCE3EA",
+              color: BRAND.navy,
+              fontWeight: 900,
+            }}
+          />
+        )}
 
         {news.relatedTickers.map((ticker) => (
           <Chip

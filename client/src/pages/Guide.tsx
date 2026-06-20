@@ -1,22 +1,28 @@
 import React from "react";
 import {
   Box,
-  Typography,
+  Button,
   Card,
   CardContent,
-  Grid,
   Chip,
-  Button,
   Divider,
+  Grid,
   LinearProgress,
+  Stack,
+  Typography,
 } from "@mui/material";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import BalanceIcon from "@mui/icons-material/Balance";
+import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
-import ShieldIcon from "@mui/icons-material/Shield";
 import PieChartIcon from "@mui/icons-material/PieChart";
 import PsychologyIcon from "@mui/icons-material/Psychology";
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
+import SavingsIcon from "@mui/icons-material/Savings";
+import ShieldIcon from "@mui/icons-material/Shield";
+import ShowChartIcon from "@mui/icons-material/ShowChart";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { Link as RouterLink } from "react-router-dom";
 
 const BRAND = {
@@ -26,60 +32,176 @@ const BRAND = {
   background: "#F5F7F9",
 };
 
-const fundamentals = [
+const quickLessons = [
   {
-    title: "Stock Price",
-    text: "A stock price shows how much one share of a company costs. In the game, prices rise or fall based on news, risk, and market movement.",
-    icon: <TrendingUpIcon />,
+    title: "A stock is ownership",
+    text: "Buying a share means buying a tiny ownership stake in a public company. The share price moves as investors update what they think that business is worth.",
+    icon: <AccountBalanceIcon />,
   },
   {
-    title: "Profit and Loss",
-    text: "Profit happens when you sell a stock for more than you paid. Loss happens when you sell it for less than you paid.",
-    icon: <TrendingDownIcon />,
+    title: "Price is not value",
+    text: "A $20 stock is not automatically cheaper than a $200 stock. Investors compare price with earnings, growth, debt, margins, and future expectations.",
+    icon: <BalanceIcon />,
   },
   {
-    title: "News Events",
-    text: "News can affect investor confidence. Positive news may raise prices, while negative news may lower prices.",
-    icon: <NewspaperIcon />,
-  },
-  {
-    title: "Risk Control",
-    text: "Risk means the chance of losing money. A smart trader thinks about possible losses before chasing possible profits.",
+    title: "Risk is always present",
+    text: "Even strong companies can fall. Earnings misses, lawsuits, interest rates, bad guidance, or market panic can move prices quickly.",
     icon: <ShieldIcon />,
   },
+  {
+    title: "News needs interpretation",
+    text: "A headline can sound good but still be priced in. A headline can sound bad but be temporary. Markets react to surprise, scale, and credibility.",
+    icon: <NewspaperIcon />,
+  },
 ];
 
-const tradingRules = [
-  "Do not buy only because a stock is rising quickly.",
-  "Look for a reason behind the price movement.",
-  "Keep some cash available instead of spending everything.",
-  "Avoid putting your whole portfolio into one company.",
-  "Sell when your reason for buying is no longer true.",
+const coreConcepts = [
+  {
+    title: "Market Capitalization",
+    text: "Market cap is the total market value of a company: share price multiplied by shares outstanding. It helps compare company size. Large-cap companies are often more stable, while small-cap companies can move faster but carry more risk.",
+  },
+  {
+    title: "Earnings and EPS",
+    text: "Earnings are company profits. EPS means earnings per share. If a company earns more profit per share over time, investors may be willing to pay more for the stock.",
+  },
+  {
+    title: "P/E Ratio",
+    text: "The price-to-earnings ratio compares stock price to annual earnings per share. A high P/E can mean investors expect fast growth, but it can also mean the stock is expensive if growth disappoints.",
+  },
+  {
+    title: "Revenue Growth",
+    text: "Revenue is money brought in from selling products or services. Growth shows whether demand is expanding. Strong revenue growth matters most when the company can eventually turn sales into profit.",
+  },
+  {
+    title: "Profit Margin",
+    text: "Profit margin shows how much of each dollar of revenue becomes profit. High margins can signal pricing power, efficiency, or strong products. Falling margins can warn that costs are rising.",
+  },
+  {
+    title: "Debt and Interest Rates",
+    text: "Debt can help a company expand, but too much debt makes it vulnerable when interest rates rise or cash flow weakens. Higher rates can also make investors less willing to pay high valuations.",
+  },
+  {
+    title: "Dividends",
+    text: "Dividends are cash payments to shareholders. Mature companies may pay dividends, while fast-growing companies often reinvest cash instead. A very high dividend yield can sometimes be a warning sign.",
+  },
+  {
+    title: "Volatility",
+    text: "Volatility measures how much prices move. High volatility can create opportunity, but it can also cause large losses if position size is too big or decisions are emotional.",
+  },
 ];
 
-const sectors = [
-  { name: "Technology", risk: 82, note: "Fast growth, but often more volatile." },
-  { name: "Energy", risk: 68, note: "Affected by demand, prices, and climate policies." },
-  { name: "Healthcare", risk: 52, note: "Often more stable, but news can still matter." },
-  { name: "Finance", risk: 60, note: "Affected by interest rates and economic confidence." },
+const orderTypes = [
+  {
+    title: "Market Order",
+    text: "Buys or sells immediately at the best available price. It is fast, but the final price can differ from what you expected, especially in volatile stocks.",
+  },
+  {
+    title: "Limit Order",
+    text: "Sets the maximum price you will pay when buying, or the minimum price you will accept when selling. It gives price control, but the trade may not execute.",
+  },
+  {
+    title: "Stop Order",
+    text: "Triggers a sale or purchase after a stock crosses a chosen price. Traders often use stops to limit losses, but fast moves can still execute at worse prices.",
+  },
+  {
+    title: "Position Size",
+    text: "The amount of your portfolio placed in one trade. Position sizing is one of the biggest risk controls because even a good idea can be wrong.",
+  },
+];
+
+const marketForces = [
+  "Company earnings, guidance, product launches, lawsuits, recalls, leadership changes, and contract wins.",
+  "Interest rates, inflation, employment data, consumer confidence, commodity prices, and credit conditions.",
+  "Sector rotation, where investors move money from one industry to another as the economy changes.",
+  "Supply and demand for shares, including institutional buying, panic selling, short covering, and momentum trading.",
+  "Expectations. Stocks often move most when reality is different from what investors already expected.",
+];
+
+const newsChecklist = [
+  "Is the source credible or is it only a rumor?",
+  "Does the news affect revenue, profit, debt, reputation, or future growth?",
+  "Is the event temporary, or does it change the long-term business?",
+  "Was the news already expected by investors?",
+  "Which competitors, suppliers, or customers could also be affected?",
+  "Could the market be overreacting in the short term?",
+];
+
+const sectorGuide = [
+  {
+    name: "Technology",
+    risk: 84,
+    text: "Often driven by growth expectations, innovation, margins, and interest rates. Can rise quickly but fall hard when expectations reset.",
+  },
+  {
+    name: "Healthcare",
+    risk: 64,
+    text: "Affected by approvals, trials, lawsuits, patents, insurance reimbursement, and regulation. Biotech can be especially volatile.",
+  },
+  {
+    name: "Finance",
+    risk: 58,
+    text: "Banks and financial firms react to interest rates, credit losses, loan demand, deposits, and economic confidence.",
+  },
+  {
+    name: "Energy",
+    risk: 72,
+    text: "Moves with oil, gas, power demand, project financing, climate policy, and geopolitical events.",
+  },
+  {
+    name: "Consumer",
+    risk: 50,
+    text: "Depends on household spending, brand strength, input costs, pricing power, and whether products are essential or discretionary.",
+  },
+  {
+    name: "Industrials",
+    risk: 62,
+    text: "Sensitive to shipping, construction, automation demand, supply chains, labor costs, and business investment cycles.",
+  },
+];
+
+const investorMistakes = [
+  "Buying only because the price went up.",
+  "Selling in panic without checking whether the original thesis changed.",
+  "Putting too much money into one company or sector.",
+  "Confusing a good company with a good stock price.",
+  "Ignoring debt, profit margins, or cash flow.",
+  "Trusting rumors without thinking about credibility.",
+  "Trading too often without a plan.",
+  "Refusing to admit when a trade thesis is wrong.",
+];
+
+const decisionFramework = [
+  {
+    title: "1. Business",
+    text: "What does the company sell, who buys it, and why might demand grow or shrink?",
+  },
+  {
+    title: "2. Financials",
+    text: "Are revenue, earnings, margins, debt, and cash flow improving or weakening?",
+  },
+  {
+    title: "3. Valuation",
+    text: "Does the current price already assume great results, or is the market underestimating the company?",
+  },
+  {
+    title: "4. Catalyst",
+    text: "What could make investors change their opinion? Earnings, product news, contracts, policy changes, or macro data?",
+  },
+  {
+    title: "5. Risk",
+    text: "What could go wrong, how much could you lose, and what would make you sell?",
+  },
 ];
 
 export default function Guide() {
   return (
     <Box sx={{ bgcolor: BRAND.background, minHeight: "100vh" }}>
-      <Box
-        sx={{
-          bgcolor: BRAND.navy,
-          color: "#fff",
-          px: { xs: 3, md: 8 },
-          py: { xs: 5, md: 7 },
-        }}
-      >
+      <Box sx={{ bgcolor: BRAND.navy, color: "#fff", px: { xs: 3, md: 8 }, py: { xs: 5, md: 7 } }}>
         <Grid container spacing={4} alignItems="center">
           <Grid item xs={12} md={7}>
             <Chip
               icon={<AutoStoriesIcon />}
-              label="In-Depth Trading Guide"
+              label="Real-World Market Guide"
               sx={{
                 bgcolor: "rgba(154,216,114,0.18)",
                 color: BRAND.green,
@@ -92,23 +214,18 @@ export default function Guide() {
               variant="h2"
               sx={{
                 fontWeight: 950,
-                letterSpacing: -1.5,
+                letterSpacing: -1,
                 lineHeight: 1.05,
                 mb: 2,
               }}
             >
-              Understand the market before you trade.
+              Learn how the stock market actually works.
             </Typography>
 
-            <Typography
-              sx={{
-                color: "rgba(255,255,255,0.72)",
-                maxWidth: 720,
-                fontSize: 18,
-              }}
-            >
-              This guide explains the main ideas behind trading, including
-              price movement, profit, loss, risk, diversification, and decision-making.
+            <Typography sx={{ color: "rgba(255,255,255,0.72)", maxWidth: 760, fontSize: 18 }}>
+              This guide turns the simulator into real market intuition: how
+              stocks are valued, why prices move, how news changes expectations,
+              and how investors manage risk before putting money to work.
             </Typography>
           </Grid>
 
@@ -123,31 +240,48 @@ export default function Guide() {
             >
               <CardContent sx={{ p: 4 }}>
                 <Typography sx={{ opacity: 0.65, fontWeight: 800 }}>
-                  MAIN LESSON
+                  CORE IDEA
                 </Typography>
 
                 <Typography variant="h4" sx={{ fontWeight: 950, my: 1 }}>
-                  Good trading is not guessing.
+                  Stocks move when expectations change.
                 </Typography>
 
                 <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 3 }}>
-                  A good trader watches trends, understands risk, reads news,
-                  and makes decisions based on evidence instead of emotion.
+                  The market is constantly comparing new information against
+                  what investors already believed. Your job is to decide whether
+                  the new information truly changes the business.
                 </Typography>
 
-                <Button
-                  variant="contained"
-                  component={RouterLink}
-                  to="/game"
-                  sx={{
-                    bgcolor: BRAND.red,
-                    fontWeight: 950,
-                    borderRadius: 2.2,
-                    "&:hover": { bgcolor: "#E63131" },
-                  }}
-                >
-                  Practice in Game
-                </Button>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
+                  <Button
+                    variant="contained"
+                    component={RouterLink}
+                    to="/game"
+                    sx={{
+                      bgcolor: BRAND.red,
+                      fontWeight: 950,
+                      borderRadius: 2.2,
+                      "&:hover": { bgcolor: "#E63131" },
+                    }}
+                  >
+                    Practice
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    component={RouterLink}
+                    to="/dashboard"
+                    sx={{
+                      color: "#fff",
+                      borderColor: "rgba(255,255,255,0.35)",
+                      fontWeight: 950,
+                      borderRadius: 2.2,
+                    }}
+                  >
+                    Dashboard
+                  </Button>
+                </Stack>
               </CardContent>
             </Card>
           </Grid>
@@ -156,29 +290,14 @@ export default function Guide() {
 
       <Box sx={{ px: { xs: 2, md: 8 }, py: 4 }}>
         <Grid container spacing={3} sx={{ mb: 3 }}>
-          {fundamentals.map((item) => (
+          {quickLessons.map((item) => (
             <Grid item xs={12} sm={6} md={3} key={item.title}>
               <Card sx={panelStyle}>
                 <CardContent sx={{ p: 3 }}>
-                  <Box
-                    sx={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 2,
-                      bgcolor: "rgba(154,216,114,0.25)",
-                      color: BRAND.green,
-                      display: "grid",
-                      placeItems: "center",
-                      mb: 2,
-                    }}
-                  >
-                    {item.icon}
-                  </Box>
-
+                  <IconBox color={BRAND.green}>{item.icon}</IconBox>
                   <Typography variant="h6" sx={{ fontWeight: 950, mb: 1 }}>
                     {item.title}
                   </Typography>
-
                   <Typography color="text.secondary">{item.text}</Typography>
                 </CardContent>
               </Card>
@@ -187,68 +306,81 @@ export default function Guide() {
         </Grid>
 
         <Grid container spacing={3}>
-          <Grid item xs={12} md={8}>
-            <Card sx={panelStyle}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  Core Trading Concepts
-                </Typography>
+          <Grid item xs={12} lg={8}>
+            <GuideSection
+              icon={<CandlestickChartIcon />}
+              title="Stock Market Basics"
+              subtitle="The foundation every investor needs before reading charts or headlines."
+            >
+              <Grid container spacing={2}>
+                {coreConcepts.map((concept) => (
+                  <Grid item xs={12} md={6} key={concept.title}>
+                    <InfoBlock title={concept.title} text={concept.text} />
+                  </Grid>
+                ))}
+              </Grid>
+            </GuideSection>
 
-                <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  These ideas help you understand why stocks move and how to make better decisions.
-                </Typography>
+            <GuideSection
+              icon={<SavingsIcon />}
+              title="Trading Mechanics"
+              subtitle="How orders, execution, and position sizing work in real markets."
+              sx={{ mt: 3 }}
+            >
+              <Grid container spacing={2}>
+                {orderTypes.map((item) => (
+                  <Grid item xs={12} md={6} key={item.title}>
+                    <InfoBlock title={item.title} text={item.text} />
+                  </Grid>
+                ))}
+              </Grid>
+            </GuideSection>
 
-                <Divider sx={{ mb: 2 }} />
+            <GuideSection
+              icon={<QueryStatsIcon />}
+              title="Why Prices Move"
+              subtitle="Stocks react to business results, the economy, investor behavior, and surprise."
+              sx={{ mt: 3 }}
+            >
+              <Stack spacing={1.2}>
+                {marketForces.map((force, index) => (
+                  <NumberedPoint key={force} number={index + 1} text={force} />
+                ))}
+              </Stack>
+            </GuideSection>
 
-                <ConceptBlock
-                  title="1. Buy Low, Sell High"
-                  text="The basic goal is to buy a stock at a lower price and sell it at a higher price. However, this is harder than it sounds because prices can change quickly and unpredictably."
-                />
+            <GuideSection
+              icon={<NewspaperIcon />}
+              title="How to Read Market News"
+              subtitle="Do not ask whether a headline sounds good. Ask whether it changes expected future cash flow."
+              sx={{ mt: 3 }}
+            >
+              <Grid container spacing={2}>
+                {newsChecklist.map((item) => (
+                  <Grid item xs={12} sm={6} key={item}>
+                    <ChecklistItem text={item} />
+                  </Grid>
+                ))}
+              </Grid>
+            </GuideSection>
 
-                <ConceptBlock
-                  title="2. Trend"
-                  text="A trend is the general direction a stock is moving. If it keeps rising, it is in an upward trend. If it keeps falling, it is in a downward trend."
-                />
-
-                <ConceptBlock
-                  title="3. Volatility"
-                  text="Volatility means how much a stock price moves. A highly volatile stock may bring bigger profits, but it can also cause bigger losses."
-                />
-
-                <ConceptBlock
-                  title="4. Diversification"
-                  text="Diversification means spreading your money across different companies or sectors. This helps reduce risk because one bad stock will not destroy your whole portfolio."
-                />
-
-                <ConceptBlock
-                  title="5. Risk vs. Reward"
-                  text="Risk and reward are connected. A stock with a chance for large profit often also has a larger chance of loss. A smart trader compares both before buying."
-                />
-              </CardContent>
-            </Card>
-
-            <Card sx={{ ...panelStyle, mt: 3 }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  How to Think Before Buying
-                </Typography>
-
-                <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  Ask yourself these questions before making a trade.
-                </Typography>
-
-                <Divider sx={{ mb: 2 }} />
-
-                <DecisionQuestion question="Why do I think this stock will rise?" />
-                <DecisionQuestion question="Is the company affected by recent good or bad news?" />
-                <DecisionQuestion question="Am I risking too much money on one stock?" />
-                <DecisionQuestion question="What will I do if the stock falls instead?" />
-                <DecisionQuestion question="When should I sell and take profit?" />
-              </CardContent>
-            </Card>
+            <GuideSection
+              icon={<ShowChartIcon />}
+              title="A Practical Research Framework"
+              subtitle="Use this before buying a stock in the simulator or analyzing a real company."
+              sx={{ mt: 3 }}
+            >
+              <Grid container spacing={2}>
+                {decisionFramework.map((item) => (
+                  <Grid item xs={12} key={item.title}>
+                    <InfoBlock title={item.title} text={item.text} />
+                  </Grid>
+                ))}
+              </Grid>
+            </GuideSection>
           </Grid>
 
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} lg={4}>
             <Card
               sx={{
                 bgcolor: BRAND.navy,
@@ -258,24 +390,31 @@ export default function Guide() {
               }}
             >
               <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                   <PsychologyIcon sx={{ color: BRAND.green }} />
                   <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                    Trader Mindset
+                    Investor Mindset
                   </Typography>
-                </Box>
+                </Stack>
 
                 <Typography sx={{ color: "rgba(255,255,255,0.65)", mb: 2 }}>
-                  Many traders lose because they panic, get greedy, or follow the crowd.
+                  Great investing is less about predicting every move and more
+                  about making decisions that survive uncertainty.
                 </Typography>
 
-                {tradingRules.map((rule, index) => (
+                {[
+                  "Write down why you bought before you buy.",
+                  "Expect to be wrong sometimes.",
+                  "Protect cash so one mistake does not end the game.",
+                  "Judge decisions by process, not only outcome.",
+                  "Let new evidence change your mind.",
+                ].map((rule, index) => (
                   <Box
                     key={rule}
                     sx={{
-                      p: 1.6,
-                      mb: 1.2,
-                      borderRadius: 3,
+                      p: 1.5,
+                      mb: 1.1,
+                      borderRadius: 2,
                       bgcolor: "rgba(255,255,255,0.08)",
                       border: "1px solid rgba(255,255,255,0.12)",
                     }}
@@ -290,34 +429,23 @@ export default function Guide() {
 
             <Card sx={{ ...panelStyle, mt: 3 }}>
               <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                   <PieChartIcon sx={{ color: BRAND.green }} />
                   <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                    Sector Risk
+                    Sector Behavior
                   </Typography>
-                </Box>
+                </Stack>
 
                 <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  Different industries react to different events.
+                  Industries react differently to the same economy.
                 </Typography>
 
-                {sectors.map((sector) => (
-                  <Box key={sector.name} sx={{ mb: 2 }}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        mb: 0.5,
-                      }}
-                    >
-                      <Typography sx={{ fontWeight: 950 }}>
-                        {sector.name}
-                      </Typography>
-                      <Typography sx={{ fontWeight: 900 }}>
-                        {sector.risk}/100
-                      </Typography>
-                    </Box>
-
+                {sectorGuide.map((sector) => (
+                  <Box key={sector.name} sx={{ mb: 2.2 }}>
+                    <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.6 }}>
+                      <Typography sx={{ fontWeight: 950 }}>{sector.name}</Typography>
+                      <Typography sx={{ fontWeight: 900 }}>{sector.risk}/100</Typography>
+                    </Stack>
                     <LinearProgress
                       variant="determinate"
                       value={sector.risk}
@@ -331,52 +459,124 @@ export default function Guide() {
                         },
                       }}
                     />
-
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      {sector.note}
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.6 }}>
+                      {sector.text}
                     </Typography>
                   </Box>
                 ))}
+              </CardContent>
+            </Card>
+
+            <Card sx={{ ...panelStyle, mt: 3 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                  <ShieldIcon sx={{ color: BRAND.red }} />
+                  <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                    Common Mistakes
+                  </Typography>
+                </Stack>
+
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  Most avoidable losses come from behavior, not math.
+                </Typography>
+
+                <Stack spacing={1}>
+                  {investorMistakes.map((mistake) => (
+                    <ChecklistItem key={mistake} text={mistake} warning />
+                  ))}
+                </Stack>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
         <Card sx={{ ...panelStyle, mt: 3 }}>
-          <CardContent
-            sx={{
-              p: 3,
-              display: "flex",
-              flexDirection: { xs: "column", md: "row" },
-              alignItems: { xs: "flex-start", md: "center" },
-              justifyContent: "space-between",
-              gap: 2,
-            }}
-          >
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                Ready to apply these fundamentals?
-              </Typography>
+          <CardContent sx={{ p: 3 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={4}>
+                <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                  Simulator to Real Market
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 1 }}>
+                  The simulator simplifies real investing, but the habits carry
+                  over: read news carefully, size positions, compare fundamentals,
+                  and keep a record of your thinking.
+                </Typography>
+              </Grid>
 
-              <Typography color="text.secondary">
-                Use this guide as your strategy base, then test your decisions in the simulator.
-              </Typography>
-            </Box>
+              <Grid item xs={12} md={8}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <InfoBlock
+                      title="In the simulator"
+                      text="Prices move through mock news, volatility, sector drift, and fundamentals. You can practice without risking real money."
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <InfoBlock
+                      title="In real markets"
+                      text="Prices also reflect liquidity, institutions, global events, regulations, taxes, fees, and unpredictable human behavior."
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <InfoBlock
+                      title="Best habit"
+                      text="Before every trade, write the reason, risk, time horizon, and what would prove the idea wrong."
+                    />
+                  </Grid>
+                </Grid>
+              </Grid>
+            </Grid>
 
-            <Button
-              variant="contained"
-              component={RouterLink}
-              to="/game"
-              sx={{
-                bgcolor: BRAND.red,
-                fontWeight: 950,
-                borderRadius: 2.2,
-                px: 3,
-                "&:hover": { bgcolor: "#E63131" },
-              }}
+            <Divider sx={{ my: 3 }} />
+
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              spacing={2}
             >
-              Open Simulator
-            </Button>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 950 }}>
+                  Ready to test the framework?
+                </Typography>
+                <Typography color="text.secondary">
+                  Use the Game page to practice, then review the Dashboard to see
+                  how your positions behave.
+                </Typography>
+              </Box>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
+                <Button
+                  variant="contained"
+                  component={RouterLink}
+                  to="/game"
+                  sx={{
+                    bgcolor: BRAND.red,
+                    fontWeight: 950,
+                    borderRadius: 2.2,
+                    px: 3,
+                    "&:hover": { bgcolor: "#E63131" },
+                  }}
+                >
+                  Open Simulator
+                </Button>
+                <Button
+                  variant="outlined"
+                  component={RouterLink}
+                  to="/news"
+                  sx={{
+                    borderColor: BRAND.navy,
+                    color: BRAND.navy,
+                    fontWeight: 950,
+                    borderRadius: 2.2,
+                    px: 3,
+                  }}
+                >
+                  Read News
+                </Button>
+              </Stack>
+            </Stack>
           </CardContent>
         </Card>
       </Box>
@@ -384,35 +584,125 @@ export default function Guide() {
   );
 }
 
-function ConceptBlock({ title, text }: { title: string; text: string }) {
+function GuideSection({
+  icon,
+  title,
+  subtitle,
+  children,
+  sx,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+  sx?: object;
+}) {
+  return (
+    <Card sx={{ ...panelStyle, ...sx }}>
+      <CardContent sx={{ p: 3 }}>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <Box sx={{ color: BRAND.green, display: "grid", placeItems: "center" }}>
+            {icon}
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 950 }}>
+            {title}
+          </Typography>
+        </Stack>
+        <Typography color="text.secondary" sx={{ mb: 2 }}>
+          {subtitle}
+        </Typography>
+        <Divider sx={{ mb: 2 }} />
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+function InfoBlock({ title, text }: { title: string; text: string }) {
   return (
     <Box
       sx={{
         p: 2,
-        mb: 2,
-        borderRadius: 3,
+        height: "100%",
+        borderRadius: 2,
         bgcolor: "#F7F9FB",
         border: "1px solid #E5E9EF",
       }}
     >
-      <Typography sx={{ fontWeight: 950, mb: 0.5 }}>{title}</Typography>
+      <Typography sx={{ fontWeight: 950, mb: 0.7, color: BRAND.navy }}>
+        {title}
+      </Typography>
       <Typography color="text.secondary">{text}</Typography>
     </Box>
   );
 }
 
-function DecisionQuestion({ question }: { question: string }) {
+function NumberedPoint({ number, text }: { number: number; text: string }) {
+  return (
+    <Stack
+      direction="row"
+      spacing={1.4}
+      sx={{
+        p: 1.7,
+        borderRadius: 2,
+        bgcolor: "#F7F9FB",
+        border: "1px solid #E5E9EF",
+      }}
+    >
+      <Box
+        sx={{
+          width: 30,
+          height: 30,
+          borderRadius: 1.5,
+          bgcolor: BRAND.green,
+          color: BRAND.navy,
+          display: "grid",
+          placeItems: "center",
+          fontWeight: 950,
+          flexShrink: 0,
+        }}
+      >
+        {number}
+      </Box>
+      <Typography color="text.secondary" sx={{ pt: 0.25 }}>
+        {text}
+      </Typography>
+    </Stack>
+  );
+}
+
+function ChecklistItem({ text, warning = false }: { text: string; warning?: boolean }) {
   return (
     <Box
       sx={{
-        p: 2,
-        mb: 1.3,
-        borderRadius: 3,
-        bgcolor: "#FFF2F2",
-        border: `1px solid rgba(255,55,55,0.25)`,
+        p: 1.5,
+        borderRadius: 2,
+        bgcolor: warning ? "#FFF2F2" : "#F7F9FB",
+        border: warning ? "1px solid rgba(255,55,55,0.25)" : "1px solid #E5E9EF",
       }}
     >
-      <Typography sx={{ fontWeight: 900 }}>{question}</Typography>
+      <Typography sx={{ fontWeight: 850, color: warning ? BRAND.red : BRAND.navy }}>
+        {text}
+      </Typography>
+    </Box>
+  );
+}
+
+function IconBox({ children, color }: { children: React.ReactNode; color: string }) {
+  return (
+    <Box
+      sx={{
+        width: 44,
+        height: 44,
+        borderRadius: 2,
+        bgcolor: `${color}33`,
+        color,
+        display: "grid",
+        placeItems: "center",
+        mb: 2,
+      }}
+    >
+      {children}
     </Box>
   );
 }

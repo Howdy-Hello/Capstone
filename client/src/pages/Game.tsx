@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -38,6 +38,12 @@ import {
   STORY_DAYS,
   Stock,
 } from "../data/mockStocks";
+import {
+  getNetWorth,
+  getPortfolioValue,
+  getSharesOwned,
+  useTradingAccount,
+} from "../data/tradingState";
 
 const BRAND = {
   navy: "#2C3947",
@@ -46,15 +52,32 @@ const BRAND = {
   background: "#F5F7F9",
 };
 
+const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
+
+function loadSavedGameDay() {
+  const savedDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
+  return Number.isFinite(savedDay) && savedDay > 0 ? Math.floor(savedDay) : 1;
+}
+
 export default function Game() {
   const navigate = useNavigate();
-  const [gameDay, setGameDay] = useState(1);
+  const [gameDay, setGameDay] = useState(loadSavedGameDay);
   const [briefingOpen, setBriefingOpen] = useState(true);
+  const [tradeMessage, setTradeMessage] = useState("");
+  const trading = useTradingAccount();
 
   const stocks = useMemo(() => getStocksForGameDay(gameDay), [gameDay]);
   const todayNews = useMemo(() => getNewsForGameDay(gameDay), [gameDay]);
   const openingStories = useMemo(() => getOpeningStoryDays(), []);
   const seasonDay = getSeasonDay(gameDay);
+  const portfolioValue = useMemo(
+    () => getPortfolioValue(trading.account, stocks),
+    [trading.account, stocks]
+  );
+  const netWorth = useMemo(
+    () => getNetWorth(trading.account, stocks),
+    [trading.account, stocks]
+  );
 
   const marketSummary = useMemo(() => {
     const gainers = stocks.filter((stock) => stock.dayChangePercent >= 0).length;
@@ -71,6 +94,10 @@ export default function Game() {
     };
   }, [stocks]);
 
+  useEffect(() => {
+    localStorage.setItem(GAME_DAY_STORAGE_KEY, gameDay.toString());
+  }, [gameDay]);
+
   function handleNextDay() {
     setGameDay((currentDay) => currentDay + 1);
   }
@@ -78,6 +105,29 @@ export default function Game() {
   function handleResetDay() {
     setGameDay(1);
     setBriefingOpen(true);
+  }
+
+  function handleResetAccount() {
+    trading.resetAccount();
+    setTradeMessage("Trading account reset to $2,000 cash.");
+  }
+
+  function handleBuyStock(stock: Stock) {
+    const didBuy = trading.buyStock(stock);
+    setTradeMessage(
+      didBuy
+        ? `Bought 1 share of ${stock.symbol} for $${stock.currentPrice.toFixed(2)}.`
+        : `Not enough cash to buy ${stock.symbol}.`
+    );
+  }
+
+  function handleSellStock(stock: Stock) {
+    const didSell = trading.sellStock(stock);
+    setTradeMessage(
+      didSell
+        ? `Sold 1 share of ${stock.symbol} for $${stock.currentPrice.toFixed(2)}.`
+        : `You do not own any ${stock.symbol} shares.`
+    );
   }
 
   return (
@@ -267,7 +317,10 @@ export default function Game() {
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
               title="Cash Balance"
-              value="$10,000"
+              value={`$${trading.account.cash.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`}
               icon={<AccountBalanceWalletIcon />}
               color={BRAND.green}
             />
@@ -275,8 +328,11 @@ export default function Game() {
 
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="Companies"
-              value={stocks.length.toString()}
+              title="Portfolio Value"
+              value={`$${portfolioValue.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`}
               icon={<StorefrontIcon />}
               color={BRAND.green}
             />
@@ -293,13 +349,26 @@ export default function Game() {
 
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="News Events"
-              value={todayNews.length.toString()}
+              title="Net Worth"
+              value={`$${netWorth.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`}
               icon={<NewspaperIcon />}
               color={todayNews.length > 0 ? BRAND.red : BRAND.green}
             />
           </Grid>
         </Grid>
+
+        {tradeMessage && (
+          <Card sx={{ ...panelStyle, mb: 3 }}>
+            <CardContent sx={{ p: 2 }}>
+              <Typography sx={{ fontWeight: 900, color: BRAND.navy }}>
+                {tradeMessage}
+              </Typography>
+            </CardContent>
+          </Card>
+        )}
 
         {gameDay <= STORY_DAYS && (
           <Card sx={{ ...panelStyle, mb: 3, borderColor: "rgba(255,55,55,0.22)" }}>
@@ -454,6 +523,9 @@ export default function Game() {
                     key={stock.stockId}
                     stock={stock}
                     gameDay={gameDay}
+                    sharesOwned={getSharesOwned(trading.account, stock.symbol)}
+                    onBuy={() => handleBuyStock(stock)}
+                    onSell={() => handleSellStock(stock)}
                     onOpen={() =>
                       navigate(`/stocks/${stock.symbol}`, {
                         state: { gameDay },
@@ -466,6 +538,82 @@ export default function Game() {
           </Grid>
 
           <Grid item xs={12} md={4}>
+            <Card sx={{ ...panelStyle, mb: 3 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 2,
+                    mb: 1,
+                  }}
+                >
+                  <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                    Portfolio
+                  </Typography>
+
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={handleResetAccount}
+                    sx={{
+                      borderColor: BRAND.navy,
+                      color: BRAND.navy,
+                      fontWeight: 900,
+                      borderRadius: 2,
+                    }}
+                  >
+                    Reset
+                  </Button>
+                </Box>
+
+                <Typography color="text.secondary" sx={{ mb: 2 }}>
+                  Holdings update when you buy or sell shares.
+                </Typography>
+
+                <Divider sx={{ mb: 2 }} />
+
+                {trading.account.holdings.length === 0 ? (
+                  <Typography color="text.secondary">
+                    No shares owned yet.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1.2}>
+                    {trading.account.holdings.map((holding) => {
+                      const liveStock = stocks.find(
+                        (stock) => stock.symbol === holding.symbol
+                      );
+                      const marketValue =
+                        (liveStock?.currentPrice ?? holding.averageCost) *
+                        holding.shares;
+
+                      return (
+                        <Box
+                          key={holding.symbol}
+                          sx={{
+                            p: 1.5,
+                            borderRadius: 2,
+                            bgcolor: "#F7F9FB",
+                            border: "1px solid #E5E9EF",
+                          }}
+                        >
+                          <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
+                            {holding.symbol} • {holding.shares} share
+                            {holding.shares === 1 ? "" : "s"}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Avg ${holding.averageCost.toFixed(2)} • Value $
+                            {marketValue.toFixed(2)}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                )}
+              </CardContent>
+            </Card>
+
             <Card
               sx={{
                 bgcolor: BRAND.navy,
@@ -495,6 +643,7 @@ export default function Game() {
                   variant="contained"
                   component={RouterLink}
                   to="/news"
+                  state={{ gameDay }}
                   startIcon={<NewspaperIcon />}
                   sx={{
                     mt: 2,
@@ -733,10 +882,16 @@ function OpeningBriefingDialog({
 function StockRow({
   stock,
   gameDay,
+  sharesOwned,
+  onBuy,
+  onSell,
   onOpen,
 }: {
   stock: Stock;
   gameDay: number;
+  sharesOwned: number;
+  onBuy: () => void;
+  onSell: () => void;
   onOpen: () => void;
 }) {
   const isUp = stock.dayChangePercent >= 0;
@@ -814,6 +969,12 @@ function StockRow({
               P/E {stock.fundamentals.peRatio} • Growth{" "}
               {stock.fundamentals.revenueGrowth}% • Day {gameDay}
             </Typography>
+
+            {sharesOwned > 0 && (
+              <Typography variant="caption" sx={{ display: "block", color: BRAND.navy, fontWeight: 900 }}>
+                You own {sharesOwned} share{sharesOwned === 1 ? "" : "s"}
+              </Typography>
+            )}
           </Box>
         </Stack>
       </Box>
@@ -852,7 +1013,7 @@ function StockRow({
           variant="contained"
           onClick={(event) => {
             event.stopPropagation();
-            alert(`Buy ${stock.symbol}`);
+            onBuy();
           }}
           sx={{
             bgcolor: BRAND.green,
@@ -868,15 +1029,20 @@ function StockRow({
         <Button
           size="small"
           variant="contained"
+          disabled={sharesOwned === 0}
           onClick={(event) => {
             event.stopPropagation();
-            alert(`Sell ${stock.symbol}`);
+            onSell();
           }}
           sx={{
             bgcolor: BRAND.red,
             fontWeight: 950,
             borderRadius: 2,
             "&:hover": { bgcolor: "#E63131" },
+            "&.Mui-disabled": {
+              bgcolor: "#DCE3EA",
+              color: "#7A8694",
+            },
           }}
         >
           Sell
