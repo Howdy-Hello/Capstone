@@ -81,8 +81,10 @@ const AuthPage: React.FC = () => {
       ? "Start tracking simulated trades, watchlists, and risk metrics."
       : "Enter your email and we'll send you a reset link.";
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
   const validate = () => {
-    if (!email || !email.includes("@")) return "Please enter a valid email.";
+    if (!email || !emailRegex.test(email.trim())) return "Please enter a valid email address (e.g. name@example.com).";
     if (mode === "reset") return null;
     if (mode === "signup" && name.trim().length < 2) return "Please enter your full name.";
     if (password.length < 6) return "Password must be at least 6 characters.";
@@ -107,14 +109,20 @@ const AuthPage: React.FC = () => {
         if (error) throw error;
         navigate("/dashboard", { replace: true });
       } else if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { full_name: name } },
         });
         if (error) throw error;
-        setSuccessMsg("Account created! Check your email to confirm your account, then log in.");
-        setMode("login");
+        // If email confirmation is disabled in Supabase, session is returned immediately
+        if (data.session) {
+          navigate("/dashboard", { replace: true });
+        } else {
+          // Confirmation still enabled — inform user
+          setSuccessMsg("Account created! Check your email to confirm, then log in.");
+          setMode("login");
+        }
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth?mode=login`,

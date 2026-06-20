@@ -17,6 +17,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Achievements from "./pages/Achievements";
 import SaveLoad from "./pages/SaveLoad";
 import StockDetails from "./pages/StockDetails";
+import Profile from "./pages/Profile";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -51,6 +52,7 @@ function AppLayout() {
           <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
           <Route path="/save-load" element={<ProtectedRoute><SaveLoad /></ProtectedRoute>} />
           <Route path="/stocks/:symbol" element={<ProtectedRoute><StockDetails /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         </Routes>
       </Box>
 

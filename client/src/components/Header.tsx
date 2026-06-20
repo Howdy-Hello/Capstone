@@ -1,6 +1,7 @@
 import React from "react";
 import {
   AppBar,
+  Avatar,
   Box,
   Button,
   Chip,
@@ -11,6 +12,8 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Stack,
   Toolbar,
   Typography,
@@ -23,8 +26,11 @@ import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
 import CircleIcon from "@mui/icons-material/Circle";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 
 const BRAND = { navy: "#0F1923", navyMid: "#1A2A3A", red: "#E84040", green: "#5CC87A", muted: "rgba(255,255,255,0.52)" };
 
@@ -37,11 +43,24 @@ const navItems = [
 
 const Header: React.FC = () => {
   const [open, setOpen] = React.useState(false);
+  const [menuAnchor, setMenuAnchor] = React.useState<null | HTMLElement>(null);
+  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
 
   const isActive = (to: string) => pathname === to || (to !== "/" && pathname.startsWith(to));
+
+  // Load avatar from profiles table whenever user changes
+  React.useEffect(() => {
+    if (!user) { setAvatarUrl(null); return; }
+    supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => setAvatarUrl(data?.avatar_url ?? null));
+  }, [user]);
 
   const handleAuthAction = async () => {
     if (user) {
@@ -51,6 +70,11 @@ const Header: React.FC = () => {
       navigate("/auth?mode=login");
     }
   };
+
+  const initials = (user?.email ?? "?")
+    .split("@")[0]
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <>
@@ -152,22 +176,39 @@ const Header: React.FC = () => {
 
             {user ? (
               <>
-                <Button
-                  component={RouterLink}
-                  to="/dashboard"
-                  size="small"
-                  sx={{ color: "rgba(255,255,255,0.75)", fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 2, px: 1.5, "&:hover": { color: "#fff", bgcolor: "rgba(255,255,255,0.06)" } }}
+                <IconButton onClick={(e) => setMenuAnchor(e.currentTarget)} sx={{ p: 0.5 }}>
+                  <Avatar
+                    src={avatarUrl ?? undefined}
+                    sx={{ width: 34, height: 34, bgcolor: "rgba(255,255,255,0.12)", border: "2px solid rgba(255,255,255,0.2)", fontSize: 13, fontWeight: 950, color: "#5CC87A" }}
+                  >
+                    {!avatarUrl && initials}
+                  </Avatar>
+                </IconButton>
+
+                <Menu
+                  anchorEl={menuAnchor}
+                  open={Boolean(menuAnchor)}
+                  onClose={() => setMenuAnchor(null)}
+                  PaperProps={{ sx: { mt: 1, minWidth: 200, borderRadius: 2.5, border: "1px solid #DDE3EB", boxShadow: "0 12px 40px rgba(15,25,35,0.14)" } }}
+                  transformOrigin={{ horizontal: "right", vertical: "top" }}
+                  anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
                 >
-                  {user.email?.split("@")[0]}
-                </Button>
-                <Button
-                  onClick={handleAuthAction}
-                  size="small"
-                  variant="outlined"
-                  sx={{ color: "rgba(255,255,255,0.7)", borderColor: "rgba(255,255,255,0.22)", fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 2, px: 2, "&:hover": { borderColor: "rgba(255,255,255,0.5)", bgcolor: "rgba(255,255,255,0.06)" } }}
-                >
-                  Log out
-                </Button>
+                  <Box sx={{ px: 2, py: 1.5 }}>
+                    <Typography sx={{ fontWeight: 900, fontSize: 13, color: "#0F1923" }}>{user.email?.split("@")[0]}</Typography>
+                    <Typography sx={{ fontSize: 11, color: "#7A8FA6" }}>{user.email}</Typography>
+                  </Box>
+                  <Divider />
+                  <MenuItem onClick={() => { setMenuAnchor(null); navigate("/profile"); }} sx={{ gap: 1.2, fontSize: 13.5, fontWeight: 800, color: "#0F1923", py: 1.2 }}>
+                    <AccountCircleIcon sx={{ fontSize: 18, color: "#5CC87A" }} /> My Profile
+                  </MenuItem>
+                  <MenuItem onClick={() => { setMenuAnchor(null); navigate("/dashboard"); }} sx={{ gap: 1.2, fontSize: 13.5, fontWeight: 800, color: "#0F1923", py: 1.2 }}>
+                    <DashboardIcon sx={{ fontSize: 18, color: "#5CC87A" }} /> Dashboard
+                  </MenuItem>
+                  <Divider />
+                  <MenuItem onClick={() => { setMenuAnchor(null); handleAuthAction(); }} sx={{ gap: 1.2, fontSize: 13.5, fontWeight: 800, color: "#E84040", py: 1.2 }}>
+                    <LogoutIcon sx={{ fontSize: 18 }} /> Log out
+                  </MenuItem>
+                </Menu>
               </>
             ) : (
               <>
@@ -246,8 +287,17 @@ const Header: React.FC = () => {
           <Stack spacing={1.2}>
             {user ? (
               <>
-                <Typography sx={{ fontSize: 12, color: "rgba(255,255,255,0.45)", px: 1 }}>Signed in as {user.email}</Typography>
-                <Button fullWidth variant="outlined" onClick={() => { setOpen(false); handleAuthAction(); }} sx={{ color: "rgba(255,255,255,0.75)", borderColor: "rgba(255,255,255,0.22)", fontWeight: 800, textTransform: "none", borderRadius: 2 }}>
+                <Stack direction="row" spacing={1.2} alignItems="center" sx={{ px: 1, py: 0.5 }}>
+                  <Avatar src={avatarUrl ?? undefined} sx={{ width: 32, height: 32, bgcolor: "rgba(255,255,255,0.1)", fontSize: 12, fontWeight: 950, color: "#5CC87A" }}>{!avatarUrl && initials}</Avatar>
+                  <Box>
+                    <Typography sx={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>{user.email?.split("@")[0]}</Typography>
+                    <Typography sx={{ fontSize: 10, color: "rgba(255,255,255,0.42)" }}>{user.email}</Typography>
+                  </Box>
+                </Stack>
+                <Button fullWidth component={RouterLink} to="/profile" onClick={() => setOpen(false)} startIcon={<AccountCircleIcon />} sx={{ color: "rgba(255,255,255,0.75)", fontWeight: 800, textTransform: "none", borderRadius: 2, border: "1px solid rgba(255,255,255,0.15)", justifyContent: "flex-start", px: 2 }}>
+                  My Profile
+                </Button>
+                <Button fullWidth variant="outlined" startIcon={<LogoutIcon />} onClick={() => { setOpen(false); handleAuthAction(); }} sx={{ color: "rgba(255,255,255,0.75)", borderColor: "rgba(255,255,255,0.22)", fontWeight: 800, textTransform: "none", borderRadius: 2, justifyContent: "flex-start", px: 2 }}>
                   Log out
                 </Button>
               </>
