@@ -28,7 +28,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 function AppLayout() {
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", width: "100%", m: 0, p: 0, bgcolor: "#F4F6F9" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", width: "100%", m: 0, p: 0, bgcolor: "#09090F" }}>
       <Box component="header" sx={{ width: "100%", flexShrink: 0 }}>
         <Header />
       </Box>

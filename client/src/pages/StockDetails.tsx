@@ -1,866 +1,320 @@
 import React, { useMemo, useState } from "react";
 import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Divider,
-  Grid,
-  LinearProgress,
-  Stack,
-  Typography,
+  Box, Button, Chip, Container, Divider, Grid, LinearProgress, Stack, Typography,
 } from "@mui/material";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip as RTooltip,
-  XAxis,
-  YAxis,
+  Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
 } from "recharts";
-
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
-import BusinessIcon from "@mui/icons-material/Business";
-import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import NewspaperIcon from "@mui/icons-material/Newspaper";
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import AssessmentIcon from "@mui/icons-material/Assessment";
+import NewspaperIcon from "@mui/icons-material/Newspaper";
 
 import {
-  getRelatedNewsBySymbol,
-  getStockBySymbolForGameDay,
-  getStockHistoryBySymbol,
-  Stock,
-  StockPriceHistory,
+  getRelatedNewsBySymbol, getStockBySymbolForGameDay, getStockHistoryBySymbol, Stock, StockPriceHistory,
 } from "../data/mockStocks";
 import { getSharesOwned, useTradingAccount } from "../data/tradingState";
+import { D, CARD, MONO, money, pct } from "../theme/design";
 
-const BRAND = {
-  navy: "#2C3947",
-  red: "#FF3737",
-  green: "#9AD872",
-  background: "#F5F7F9",
-};
+type LocationState = { gameDay?: number };
 
-type LocationState = {
-  gameDay?: number;
-};
+function getRiskScore(r: Stock["riskLevel"]) {
+  if (r === "High") return 82;
+  if (r === "Medium") return 58;
+  return 34;
+}
 
 export default function StockDetails() {
   const { symbol } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const trading = useTradingAccount();
-  const [tradeMessage, setTradeMessage] = useState("");
+  const [tradeMsg, setTradeMsg] = useState("");
 
   const state = location.state as LocationState | null;
   const gameDay = state?.gameDay ?? 1;
 
-  const stock = useMemo(() => {
-    if (!symbol) return undefined;
-    return getStockBySymbolForGameDay(symbol, gameDay);
-  }, [symbol, gameDay]);
-
-  const history = useMemo(() => {
-    if (!symbol) return [];
-    return getStockHistoryBySymbol(symbol, gameDay);
-  }, [symbol, gameDay]);
-
-  const relatedNews = useMemo(() => {
-    if (!symbol) return [];
-    return getRelatedNewsBySymbol(symbol, gameDay);
-  }, [symbol, gameDay]);
+  const stock = useMemo(() => symbol ? getStockBySymbolForGameDay(symbol, gameDay) : undefined, [symbol, gameDay]);
+  const history = useMemo(() => symbol ? getStockHistoryBySymbol(symbol, gameDay) : [], [symbol, gameDay]);
+  const relatedNews = useMemo(() => symbol ? getRelatedNewsBySymbol(symbol, gameDay) : [], [symbol, gameDay]);
 
   if (!stock) {
     return (
-      <Box
-        sx={{
-          bgcolor: BRAND.background,
-          minHeight: "100vh",
-          px: { xs: 2, md: 8 },
-          py: 5,
-        }}
-      >
-        <Card sx={panelStyle}>
-          <CardContent sx={{ p: 4 }}>
-            <Typography variant="h4" sx={{ fontWeight: 950, color: BRAND.navy }}>
-              Stock not found
-            </Typography>
-
-            <Typography color="text.secondary" sx={{ mt: 1, mb: 3 }}>
-              The selected stock symbol does not exist in your mock data.
-            </Typography>
-
-            <Button
-              variant="contained"
-              startIcon={<ArrowBackIcon />}
-              onClick={() => navigate("/game")}
-              sx={{
-                bgcolor: BRAND.red,
-                fontWeight: 950,
-                borderRadius: 2,
-                "&:hover": { bgcolor: "#E63131" },
-              }}
-            >
-              Back to Game
-            </Button>
-          </CardContent>
-        </Card>
+      <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Box sx={{ ...CARD, p: 4, maxWidth: 480, textAlign: "center" }}>
+          <Typography sx={{ fontWeight: 900, fontSize: 22, color: D.t1, mb: 1 }}>Stock not found</Typography>
+          <Typography sx={{ fontSize: 14, color: D.t3, mb: 3 }}>The symbol does not exist in the mock data.</Typography>
+          <Button onClick={() => navigate("/game")} startIcon={<ArrowBackIcon />} variant="contained"
+            sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
+            Back to Market
+          </Button>
+        </Box>
       </Box>
     );
   }
 
-  const activeStock = stock;
   const isUp = stock.dayChangePercent >= 0;
   const riskScore = getRiskScore(stock.riskLevel);
   const latestHistory = history[history.length - 1];
   const sharesOwned = getSharesOwned(trading.account, stock.symbol);
 
-  function handleBuyStock() {
-    const didBuy = trading.buyStock(activeStock);
-    setTradeMessage(
-      didBuy
-        ? `Bought 1 share of ${activeStock.symbol} for $${activeStock.currentPrice.toFixed(2)}.`
-        : `Not enough cash to buy ${activeStock.symbol}.`
-    );
-  }
-
-  function handleSellStock() {
-    const didSell = trading.sellStock(activeStock);
-    setTradeMessage(
-      didSell
-        ? `Sold 1 share of ${activeStock.symbol} for $${activeStock.currentPrice.toFixed(2)}.`
-        : `You do not own any ${activeStock.symbol} shares.`
-    );
-  }
+  const handleBuy = () => {
+    const ok = trading.buyStock(stock);
+    setTradeMsg(ok ? `Bought 1 share of ${stock.symbol} for ${money(stock.currentPrice)}.` : `Not enough cash to buy ${stock.symbol}.`);
+  };
+  const handleSell = () => {
+    const ok = trading.sellStock(stock);
+    setTradeMsg(ok ? `Sold 1 share of ${stock.symbol} for ${money(stock.currentPrice)}.` : `You don't own any ${stock.symbol} shares.`);
+  };
 
   return (
-    <Box sx={{ bgcolor: BRAND.background, minHeight: "100vh" }}>
-      <Box
-        sx={{
-          bgcolor: BRAND.navy,
-          color: "#fff",
-          px: { xs: 3, md: 8 },
-          py: { xs: 5, md: 7 },
-        }}
-      >
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate("/game")}
-          sx={{
-            color: "#fff",
-            fontWeight: 900,
-            mb: 3,
-            px: 0,
-            "&:hover": {
-              bgcolor: "transparent",
-              color: BRAND.green,
-            },
-          }}
-        >
-          Back to Market
-        </Button>
-
-        <Grid container spacing={4} alignItems="center">
-          <Grid item xs={12} md={7}>
-            <Stack direction="row" spacing={1.2} flexWrap="wrap" sx={{ mb: 2 }}>
-              <Chip
-                label={stock.symbol}
-                sx={{
-                  bgcolor: "rgba(154,216,114,0.18)",
-                  color: BRAND.green,
-                  fontWeight: 950,
-                }}
-              />
-
-              <Chip
-                label={`Game Day ${gameDay}`}
-                sx={{
-                  bgcolor: "rgba(255,255,255,0.1)",
-                  color: "#fff",
-                  fontWeight: 900,
-                }}
-              />
-
-              <Chip
-                label={`${stock.riskLevel} Risk`}
-                sx={{
-                  bgcolor:
-                    stock.riskLevel === "High"
-                      ? "rgba(255,55,55,0.2)"
-                      : "rgba(154,216,114,0.18)",
-                  color: stock.riskLevel === "High" ? "#FFB3B3" : BRAND.green,
-                  fontWeight: 900,
-                }}
-              />
-
-              <Chip
-                label={stock.fundamentals.analystRating}
-                sx={{
-                  bgcolor: "rgba(255,255,255,0.1)",
-                  color: "#fff",
-                  fontWeight: 900,
-                }}
-              />
-            </Stack>
-
-            <Typography
-              variant="h2"
-              sx={{
-                fontWeight: 950,
-                letterSpacing: -1.5,
-                lineHeight: 1.05,
-                mb: 2,
-              }}
-            >
-              {stock.name}
-            </Typography>
-
-            <Typography
-              sx={{
-                color: "rgba(255,255,255,0.72)",
-                maxWidth: 720,
-                fontSize: 18,
-              }}
-            >
-              {stock.description}
-            </Typography>
+    <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
+      {/* Hero */}
+      <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
+          <Button onClick={() => navigate("/game")} startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
+            sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 1.5, mb: 2, fontSize: 13, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
+            Back to Market
+          </Button>
+          <Grid container spacing={3} alignItems="center">
+            <Grid item xs={12} md={7}>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
+                {[stock.symbol, `Day ${gameDay}`, `${stock.riskLevel} Risk`, stock.fundamentals.analystRating].map((label, i) => (
+                  <Chip key={i} label={label} size="small"
+                    sx={{ bgcolor: D.overlay, color: D.brandText, border: `1px solid ${D.border}`, fontWeight: 800, fontSize: 10.5, fontFamily: MONO }} />
+                ))}
+              </Stack>
+              <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>{stock.name}</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.7, maxWidth: 600 }}>{stock.description}</Typography>
+            </Grid>
+            <Grid item xs={12} md={5}>
+              <Box sx={{ ...CARD, p: 3 }}>
+                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>CURRENT PRICE</Typography>
+                <Typography sx={{ fontSize: 36, fontWeight: 950, color: D.t1, fontFamily: MONO, lineHeight: 1, mb: 1 }}>{money(stock.currentPrice)}</Typography>
+                <Chip size="small" icon={isUp ? <TrendingUpIcon sx={{ fontSize: 14 }} /> : <TrendingDownIcon sx={{ fontSize: 14 }} />}
+                  label={`${pct(stock.dayChangePercent)} Today`}
+                  sx={{ bgcolor: isUp ? D.greenBg : D.redBg, color: isUp ? D.greenText : D.redText, border: `1px solid ${isUp ? D.greenBd : D.redBd}`, fontWeight: 800, mb: 2 }} />
+                <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 0.8 }}>Risk Level: {stock.riskLevel}</Typography>
+                <LinearProgress variant="determinate" value={riskScore}
+                  sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: stock.riskLevel === "High" ? D.red : D.green, borderRadius: 99 } }} />
+              </Box>
+            </Grid>
           </Grid>
-
-          <Grid item xs={12} md={5}>
-            <Card
-              sx={{
-                bgcolor: "rgba(255,255,255,0.08)",
-                color: "#fff",
-                borderRadius: 4,
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}
-            >
-              <CardContent sx={{ p: 4 }}>
-                <Typography sx={{ opacity: 0.65, fontWeight: 800 }}>
-                  CURRENT PRICE
-                </Typography>
-
-                <Typography variant="h3" sx={{ fontWeight: 950, my: 1 }}>
-                  ${stock.currentPrice.toFixed(2)}
-                </Typography>
-
-                <Chip
-                  icon={isUp ? <TrendingUpIcon /> : <TrendingDownIcon />}
-                  label={`${isUp ? "+" : ""}${stock.dayChangePercent.toFixed(
-                    2
-                  )}% Today`}
-                  sx={{
-                    bgcolor: isUp ? BRAND.green : BRAND.red,
-                    color: isUp ? BRAND.navy : "#fff",
-                    fontWeight: 950,
-                  }}
-                />
-
-                <Box sx={{ mt: 3 }}>
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "rgba(255,255,255,0.7)", mb: 1 }}
-                  >
-                    Risk Level
-                  </Typography>
-
-                  <LinearProgress
-                    variant="determinate"
-                    value={riskScore}
-                    sx={{
-                      height: 12,
-                      borderRadius: 99,
-                      bgcolor: "rgba(255,255,255,0.12)",
-                      "& .MuiLinearProgress-bar": {
-                        bgcolor:
-                          stock.riskLevel === "High" ? BRAND.red : BRAND.green,
-                        borderRadius: 99,
-                      },
-                    }}
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+        </Container>
       </Box>
 
-      <Box sx={{ px: { xs: 2, md: 8 }, py: 4 }}>
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Current Price"
-              value={`$${stock.currentPrice.toFixed(2)}`}
-              icon={<AccountBalanceWalletIcon />}
-              color={BRAND.green}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="P/E Ratio"
-              value={stock.fundamentals.peRatio.toFixed(1)}
-              icon={<AssessmentIcon />}
-              color={BRAND.green}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Revenue Growth"
-              value={`+${stock.fundamentals.revenueGrowth.toFixed(1)}%`}
-              icon={<TrendingUpIcon />}
-              color={BRAND.green}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Volume"
-              value={latestHistory ? latestHistory.volume.toLocaleString() : "-"}
-              icon={<QueryStatsIcon />}
-              color={BRAND.red}
-            />
-          </Grid>
+      <Container maxWidth="xl" sx={{ py: 3 }}>
+        {/* Stat tiles */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {[
+            { label: "Current Price",   val: money(stock.currentPrice),                             icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: true },
+            { label: "P/E Ratio",       val: stock.fundamentals.peRatio.toFixed(1),                 icon: <AssessmentIcon sx={{ fontSize: 20 }} />,           up: true },
+            { label: "Revenue Growth",  val: `+${stock.fundamentals.revenueGrowth.toFixed(1)}%`,    icon: <TrendingUpIcon sx={{ fontSize: 20 }} />,            up: true },
+            { label: "Volume",          val: latestHistory ? latestHistory.volume.toLocaleString() : "-", icon: <QueryStatsIcon sx={{ fontSize: 20 }} />,      up: undefined },
+          ].map((s) => {
+            const color = s.up === undefined ? D.brandText : D.greenText;
+            const bg    = s.up === undefined ? D.brandBg   : D.greenBg;
+            return (
+              <Grid item xs={12} sm={6} md={3} key={s.label}>
+                <Box sx={{ ...CARD, p: 2.5 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Box>
+                      <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
+                      <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                    </Box>
+                    <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
+                  </Stack>
+                </Box>
+              </Grid>
+            );
+          })}
         </Grid>
 
         <Grid container spacing={3}>
           <Grid item xs={12} lg={8}>
-            <Card sx={panelStyle}>
-              <CardContent sx={{ p: 3 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: { xs: "flex-start", sm: "center" },
-                    flexDirection: { xs: "column", sm: "row" },
-                    gap: 2,
-                    mb: 2,
-                  }}
-                >
-                  <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                      Price History
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Generated mock close price movement up to Game Day {gameDay}.
-                    </Typography>
-                  </Box>
-
-                  <Chip
-                    label={`${history.length} data points`}
-                    sx={{
-                      bgcolor: "rgba(154,216,114,0.25)",
-                      color: BRAND.navy,
-                      fontWeight: 900,
-                    }}
-                  />
+            {/* Price chart */}
+            <Box sx={{ ...CARD, p: 0, overflow: "hidden", mb: 3 }}>
+              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                <Box>
+                  <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Price History</Typography>
+                  <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Mock close prices up to Day {gameDay}.</Typography>
                 </Box>
+                <Chip label={`${history.length} data points`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontSize: 11 }} />
+              </Stack>
+              <Box sx={{ p: 2.5, height: 360 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={history}>
+                    <defs>
+                      <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor={D.brand} stopOpacity={0.35} />
+                        <stop offset="95%" stopColor={D.brand} stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
+                    <XAxis dataKey="gameDay" tickFormatter={(v) => `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 11 }} />
+                    <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 11 }} />
+                    <RTooltip
+                      contentStyle={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }}
+                      formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "Close"]}
+                      labelFormatter={(l) => `Day ${l}`}
+                    />
+                    <Area type="monotone" dataKey="closePrice" stroke={D.brand} strokeWidth={2.5} fill="url(#priceFill)" dot={history.length <= 40} activeDot={{ r: 5, fill: D.brand }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Box>
+            </Box>
 
-                <Divider sx={{ mb: 2 }} />
-
-                <Box sx={{ width: "100%", height: 360 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={history}>
-                      <defs>
-                        <linearGradient
-                          id="priceFill"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor={BRAND.green}
-                            stopOpacity={0.45}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor={BRAND.green}
-                            stopOpacity={0.03}
-                          />
-                        </linearGradient>
-                      </defs>
-
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="rgba(44,57,71,0.12)"
-                      />
-
-                      <XAxis
-                        dataKey="gameDay"
-                        tickFormatter={(value) => `Day ${value}`}
-                        minTickGap={18}
-                      />
-
-                      <YAxis
-                        tickFormatter={(value) => `$${Number(value).toFixed(0)}`}
-                        domain={["dataMin - 5", "dataMax + 5"]}
-                      />
-
-                      <RTooltip
-                        formatter={(value: any) => [
-                          `$${Number(value).toFixed(2)}`,
-                          "Close Price",
-                        ]}
-                        labelFormatter={(label) => `Game Day ${label}`}
-                      />
-
-                      <Area
-                        type="monotone"
-                        dataKey="closePrice"
-                        stroke={BRAND.green}
-                        strokeWidth={3}
-                        fill="url(#priceFill)"
-                        dot={history.length <= 40}
-                        activeDot={{
-                          r: 6,
-                        }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </Box>
-              </CardContent>
-            </Card>
-
-            <Card sx={{ ...panelStyle, mt: 3 }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  Mock Fundamentals
-                </Typography>
-
-                <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  These are fake but structured metrics to help players make better decisions.
-                </Typography>
-
-                <Divider sx={{ mb: 2 }} />
-
+            {/* Fundamentals */}
+            <Box sx={{ ...CARD, p: 0, overflow: "hidden", mb: 3 }}>
+              <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Mock Fundamentals</Typography>
+                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Structured mock metrics to inform trading decisions.</Typography>
+              </Box>
+              <Box sx={{ p: 2.5 }}>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6} md={4}>
-                    <MetricBox label="P/E Ratio" value={stock.fundamentals.peRatio.toFixed(1)} note="Lower can mean cheaper valuation." />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6} md={4}>
-                    <MetricBox label="EPS" value={`$${stock.fundamentals.eps.toFixed(2)}`} note="Profit earned per share." />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6} md={4}>
-                    <MetricBox label="Revenue Growth" value={`+${stock.fundamentals.revenueGrowth.toFixed(1)}%`} note="Higher means faster growth." />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6} md={4}>
-                    <MetricBox label="Profit Margin" value={`${stock.fundamentals.profitMargin.toFixed(1)}%`} note="Higher means better efficiency." />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6} md={4}>
-                    <MetricBox label="Debt/Equity" value={stock.fundamentals.debtToEquity.toFixed(2)} note="Higher means more balance-sheet risk." />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6} md={4}>
-                    <MetricBox label="Dividend Yield" value={`${stock.fundamentals.dividendYield.toFixed(1)}%`} note="Cash return to shareholders." />
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-
-            <Card sx={{ ...panelStyle, mt: 3 }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  Recent Prices
-                </Typography>
-
-                <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  Showing the latest 10 generated price points.
-                </Typography>
-
-                <Divider sx={{ mb: 2 }} />
-
-                <Stack spacing={1.3}>
-                  {history.slice(-10).map((item) => (
-                    <HistoryRow key={item.priceId} item={item} />
+                  {[
+                    { label: "P/E Ratio",        val: stock.fundamentals.peRatio.toFixed(1),            note: "Lower can mean cheaper valuation." },
+                    { label: "EPS",              val: `$${stock.fundamentals.eps.toFixed(2)}`,           note: "Profit earned per share." },
+                    { label: "Revenue Growth",   val: `+${stock.fundamentals.revenueGrowth.toFixed(1)}%`, note: "Higher means faster growth." },
+                    { label: "Profit Margin",    val: `${stock.fundamentals.profitMargin.toFixed(1)}%`, note: "Higher means better efficiency." },
+                    { label: "Debt/Equity",      val: stock.fundamentals.debtToEquity.toFixed(2),        note: "Higher means more balance-sheet risk." },
+                    { label: "Dividend Yield",   val: `${stock.fundamentals.dividendYield.toFixed(1)}%`, note: "Cash return to shareholders." },
+                  ].map((m) => (
+                    <Grid item xs={12} sm={6} md={4} key={m.label}>
+                      <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, height: "100%" }}>
+                        <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>{m.label.toUpperCase()}</Typography>
+                        <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO, mb: 0.3 }}>{m.val}</Typography>
+                        <Typography sx={{ fontSize: 12, color: D.t3 }}>{m.note}</Typography>
+                      </Box>
+                    </Grid>
                   ))}
+                </Grid>
+              </Box>
+            </Box>
+
+            {/* Recent prices */}
+            <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+              <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Recent Prices</Typography>
+                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Latest 10 generated price points.</Typography>
+              </Box>
+              <Box sx={{ p: 2.5 }}>
+                <Stack spacing={1}>
+                  {history.slice(-10).map((item: StockPriceHistory) => {
+                    const up = item.changePercent >= 0;
+                    return (
+                      <Box key={item.priceId} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                        <Grid container spacing={1} alignItems="center">
+                          <Grid item xs={6} sm={2}><Typography sx={{ fontSize: 13, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>Day {item.gameDay}</Typography></Grid>
+                          {[
+                            { l: "Open",  v: money(item.openPrice) },
+                            { l: "High",  v: money(item.highPrice) },
+                            { l: "Low",   v: money(item.lowPrice) },
+                            { l: "Close", v: money(item.closePrice) },
+                          ].map((c) => (
+                            <Grid item xs={6} sm={2} key={c.l}>
+                              <Typography sx={{ fontSize: 10.5, color: D.t3 }}>{c.l}</Typography>
+                              <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{c.v}</Typography>
+                            </Grid>
+                          ))}
+                          <Grid item xs={6} sm={2}>
+                            <Typography sx={{ fontSize: 13, fontWeight: 900, color: up ? D.greenText : D.redText, textAlign: { xs: "left", sm: "right" }, fontFamily: MONO }}>
+                              {pct(item.changePercent)}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                      </Box>
+                    );
+                  })}
                 </Stack>
-              </CardContent>
-            </Card>
+              </Box>
+            </Box>
           </Grid>
 
+          {/* Sidebar */}
           <Grid item xs={12} lg={4}>
-            <Card
-              sx={{
-                bgcolor: BRAND.navy,
-                color: "#fff",
-                borderRadius: 4,
-                boxShadow: "0 18px 45px rgba(44,57,71,0.22)",
-                mb: 3,
-              }}
-            >
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  Company Profile
+            <Stack spacing={2.5}>
+              {/* Company profile */}
+              <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
+                <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 2 }}>Company Profile</Typography>
+                <Stack spacing={0}>
+                  {[
+                    { l: "Symbol",        v: stock.symbol },
+                    { l: "Sector",        v: stock.sector },
+                    { l: "Industry",      v: stock.industry },
+                    { l: "Starting Price", v: money(stock.startingPrice) },
+                    { l: "Volatility",    v: `${(stock.volatility * 100).toFixed(1)}%` },
+                    { l: "Risk Level",    v: stock.riskLevel },
+                    { l: "Rating",        v: stock.fundamentals.analystRating },
+                  ].map((r) => (
+                    <Stack key={r.l} direction="row" justifyContent="space-between" gap={2} sx={{ py: 1.2, borderBottom: `1px solid ${D.border}`, "&:last-child": { border: "none" } }}>
+                      <Typography sx={{ fontSize: 13, color: D.t3 }}>{r.l}</Typography>
+                      <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO, textAlign: "right" }}>{r.v}</Typography>
+                    </Stack>
+                  ))}
+                </Stack>
+              </Box>
+
+              {/* Trading actions */}
+              <Box sx={{ ...CARD, p: 3 }}>
+                <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.5 }}>Trading Actions</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>
+                  Cash: {money(trading.account.cash)} · Owned: {sharesOwned} share{sharesOwned === 1 ? "" : "s"}
                 </Typography>
-
-                <Typography sx={{ color: "rgba(255,255,255,0.65)", mb: 3 }}>
-                  Basic company information from your mock stock engine.
-                </Typography>
-
-                <InfoRow label="Symbol" value={stock.symbol} />
-                <InfoRow label="Sector" value={stock.sector} />
-                <InfoRow label="Industry" value={stock.industry} />
-                <InfoRow
-                  label="Starting Price"
-                  value={`$${stock.startingPrice.toFixed(2)}`}
-                />
-                <InfoRow
-                  label="Volatility"
-                  value={`${(stock.volatility * 100).toFixed(1)}%`}
-                />
-                <InfoRow label="Risk Level" value={stock.riskLevel} />
-                <InfoRow label="Rating" value={stock.fundamentals.analystRating} />
-              </CardContent>
-            </Card>
-
-            <Card sx={panelStyle}>
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                  <BusinessIcon sx={{ color: BRAND.green }} />
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                    Trading Actions
-                  </Typography>
-                </Box>
-
-                <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  Cash: ${trading.account.cash.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })} • Owned: {sharesOwned} share{sharesOwned === 1 ? "" : "s"}
-                </Typography>
-
-                <Stack spacing={1.2}>
-                  {tradeMessage && (
-                    <Box
-                      sx={{
-                        p: 1.5,
-                        borderRadius: 2,
-                        bgcolor: "#F7F9FB",
-                        border: "1px solid #E5E9EF",
-                      }}
-                    >
-                      <Typography sx={{ fontWeight: 900, color: BRAND.navy }}>
-                        {tradeMessage}
-                      </Typography>
-                    </Box>
-                  )}
-
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    onClick={handleBuyStock}
-                    sx={{
-                      bgcolor: BRAND.green,
-                      color: BRAND.navy,
-                      fontWeight: 950,
-                      borderRadius: 2,
-                      "&:hover": { bgcolor: "#85C85F" },
-                    }}
-                  >
+                {tradeMsg && (
+                  <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 1.5 }}>
+                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: D.t1 }}>{tradeMsg}</Typography>
+                  </Box>
+                )}
+                <Stack spacing={1}>
+                  <Button fullWidth variant="contained" onClick={handleBuy}
+                    sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" } }}>
                     Buy {stock.symbol}
                   </Button>
-
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    disabled={sharesOwned === 0}
-                    onClick={handleSellStock}
-                    sx={{
-                      bgcolor: BRAND.red,
-                      fontWeight: 950,
-                      borderRadius: 2,
-                      "&:hover": { bgcolor: "#E63131" },
-                      "&.Mui-disabled": {
-                        bgcolor: "#DCE3EA",
-                        color: "#7A8694",
-                      },
-                    }}
-                  >
+                  <Button fullWidth variant="contained" disabled={sharesOwned === 0} onClick={handleSell}
+                    sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                     Sell {stock.symbol}
                   </Button>
-
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={() => navigate("/game")}
-                    sx={{
-                      borderColor: BRAND.navy,
-                      color: BRAND.navy,
-                      fontWeight: 950,
-                      borderRadius: 2,
-                      "&:hover": {
-                        borderColor: BRAND.navy,
-                        bgcolor: "rgba(44,57,71,0.06)",
-                      },
-                    }}
-                  >
+                  <Button fullWidth onClick={() => navigate("/game")}
+                    sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
                     Back to Market
                   </Button>
                 </Stack>
-              </CardContent>
-            </Card>
+              </Box>
 
-            <Card sx={{ ...panelStyle, mt: 3 }}>
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                  <NewspaperIcon sx={{ color: BRAND.red }} />
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                    Related News
-                  </Typography>
-                </Box>
-
-                <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  Generated news connected to {stock.symbol} up to Game Day{" "}
-                  {gameDay}.
-                </Typography>
-
-                <Stack spacing={1.2}>
-                  {relatedNews.length === 0 ? (
-                    <Typography color="text.secondary">
-                      No related news yet.
-                    </Typography>
-                  ) : (
-                    relatedNews.slice(-8).map((news) => (
-                      <Box
-                        key={news.newsId}
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 3,
-                          bgcolor: "#F7F9FB",
-                          border: "1px solid #E5E9EF",
-                        }}
-                      >
-                        <Chip
-                          size="small"
-                          label={news.marketTone}
-                          sx={{
-                            mb: 1,
-                            bgcolor:
-                              news.marketTone === "Bullish"
-                                ? "rgba(154,216,114,0.25)"
-                                : "rgba(255,55,55,0.12)",
-                            color:
-                              news.marketTone === "Bullish"
-                                ? BRAND.navy
-                                : BRAND.red,
-                            fontWeight: 900,
-                          }}
-                        />
-
-                        <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
-                          Day {news.gameDay}: {news.headline}
-                        </Typography>
-
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mt: 0.5 }}
-                        >
-                          {news.body}
-                        </Typography>
-                      </Box>
-                    ))
-                  )}
+              {/* Related news */}
+              <Box sx={{ ...CARD, p: 3 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                  <NewspaperIcon sx={{ fontSize: 18, color: D.brandText }} />
+                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Related News</Typography>
                 </Stack>
-              </CardContent>
-            </Card>
+                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2 }}>News connected to {stock.symbol} up to Day {gameDay}.</Typography>
+                <Divider sx={{ borderColor: D.border, mb: 2 }} />
+                {relatedNews.length === 0 ? (
+                  <Typography sx={{ fontSize: 13, color: D.t3 }}>No related news yet.</Typography>
+                ) : (
+                  <Stack spacing={1.2}>
+                    {relatedNews.slice(-8).map((n) => {
+                      const bull = n.marketTone === "Bullish";
+                      return (
+                        <Box key={n.newsId} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                          <Chip size="small" label={n.marketTone} sx={{ bgcolor: bull ? D.greenBg : D.redBg, color: bull ? D.greenText : D.redText, fontWeight: 800, fontSize: 10, mb: 0.8 }} />
+                          <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1, mb: 0.3 }}>Day {n.gameDay}: {n.headline}</Typography>
+                          <Typography sx={{ fontSize: 12, color: D.t3, lineHeight: 1.6 }}>{n.body}</Typography>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                )}
+              </Box>
+            </Stack>
           </Grid>
         </Grid>
-      </Box>
+      </Container>
     </Box>
   );
 }
-
-function StatCard({
-  title,
-  value,
-  icon,
-  color,
-}: {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  color: string;
-}) {
-  return (
-    <Card sx={panelStyle}>
-      <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-          <Box>
-            <Typography color="text.secondary" sx={{ fontWeight: 800 }}>
-              {title}
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 950, color: BRAND.navy }}>
-              {value}
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              width: 46,
-              height: 46,
-              borderRadius: 2,
-              bgcolor: `${color}33`,
-              color,
-              display: "grid",
-              placeItems: "center",
-            }}
-          >
-            {icon}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-}
-
-function MetricBox({
-  label,
-  value,
-  note,
-}: {
-  label: string;
-  value: string;
-  note: string;
-}) {
-  return (
-    <Box
-      sx={{
-        p: 2,
-        borderRadius: 3,
-        bgcolor: "#F7F9FB",
-        border: "1px solid #E5E9EF",
-        height: "100%",
-      }}
-    >
-      <Typography color="text.secondary" sx={{ fontWeight: 800 }}>
-        {label}
-      </Typography>
-
-      <Typography variant="h5" sx={{ fontWeight: 950, color: BRAND.navy, my: 0.5 }}>
-        {value}
-      </Typography>
-
-      <Typography variant="body2" color="text.secondary">
-        {note}
-      </Typography>
-    </Box>
-  );
-}
-
-function HistoryRow({ item }: { item: StockPriceHistory }) {
-  const isUp = item.changePercent >= 0;
-
-  return (
-    <Box
-      sx={{
-        p: 2,
-        borderRadius: 3,
-        bgcolor: "#F7F9FB",
-        border: "1px solid #E5E9EF",
-      }}
-    >
-      <Grid container spacing={2} alignItems="center">
-        <Grid item xs={12} sm={2}>
-          <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
-            Day {item.gameDay}
-          </Typography>
-        </Grid>
-
-        <Grid item xs={6} sm={2}>
-          <Typography variant="body2" color="text.secondary">
-            Open
-          </Typography>
-          <Typography sx={{ fontWeight: 900 }}>
-            ${item.openPrice.toFixed(2)}
-          </Typography>
-        </Grid>
-
-        <Grid item xs={6} sm={2}>
-          <Typography variant="body2" color="text.secondary">
-            High
-          </Typography>
-          <Typography sx={{ fontWeight: 900 }}>
-            ${item.highPrice.toFixed(2)}
-          </Typography>
-        </Grid>
-
-        <Grid item xs={6} sm={2}>
-          <Typography variant="body2" color="text.secondary">
-            Low
-          </Typography>
-          <Typography sx={{ fontWeight: 900 }}>
-            ${item.lowPrice.toFixed(2)}
-          </Typography>
-        </Grid>
-
-        <Grid item xs={6} sm={2}>
-          <Typography variant="body2" color="text.secondary">
-            Close
-          </Typography>
-          <Typography sx={{ fontWeight: 900 }}>
-            ${item.closePrice.toFixed(2)}
-          </Typography>
-        </Grid>
-
-        <Grid item xs={12} sm={2}>
-          <Typography
-            sx={{
-              fontWeight: 950,
-              color: isUp ? BRAND.green : BRAND.red,
-              textAlign: { xs: "left", sm: "right" },
-            }}
-          >
-            {isUp ? "+" : ""}
-            {item.changePercent.toFixed(2)}%
-          </Typography>
-        </Grid>
-      </Grid>
-    </Box>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 2,
-        py: 1.4,
-        borderBottom: "1px solid rgba(255,255,255,0.1)",
-      }}
-    >
-      <Typography sx={{ color: "rgba(255,255,255,0.62)", fontWeight: 800 }}>
-        {label}
-      </Typography>
-
-      <Typography sx={{ fontWeight: 950, textAlign: "right" }}>{value}</Typography>
-    </Box>
-  );
-}
-
-function getRiskScore(riskLevel: Stock["riskLevel"]) {
-  if (riskLevel === "High") return 82;
-  if (riskLevel === "Medium") return 58;
-  return 34;
-}
-
-const panelStyle = {
-  borderRadius: 4,
-  boxShadow: "0 18px 45px rgba(44,57,71,0.08)",
-  border: "1px solid rgba(44,57,71,0.08)",
-};

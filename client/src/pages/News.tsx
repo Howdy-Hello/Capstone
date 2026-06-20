@@ -1,45 +1,55 @@
 import React, { useMemo } from "react";
 import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Grid,
-  Chip,
-  Button,
-  Divider,
+  Box, Button, Chip, Container, Divider, Grid, Stack, Typography,
 } from "@mui/material";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
-import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
 import {
-  getNewsForGameDay,
-  getSeasonDay,
-  MarketNews,
-  normalizeGameDay,
-  SEASON_LENGTH,
+  getNewsForGameDay, getSeasonDay, MarketNews, normalizeGameDay, SEASON_LENGTH,
 } from "../data/mockStocks";
-
-const BRAND = {
-  navy: "#2C3947",
-  red: "#FF3737",
-  green: "#9AD872",
-  background: "#F5F7F9",
-};
+import { D, CARD, MONO } from "../theme/design";
 
 const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
 
-type LocationState = {
-  gameDay?: number;
-};
+type LocationState = { gameDay?: number };
 
 function loadSavedGameDay() {
   const savedDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
   return Number.isFinite(savedDay) && savedDay > 0 ? Math.floor(savedDay) : 1;
+}
+
+function NewsCard({ news }: { news: MarketNews }) {
+  const bull = news.marketTone === "Bullish";
+  const imp = news.importance === "High";
+  return (
+    <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 2 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2} sx={{ mb: 1.2 }}>
+        <Box sx={{ flex: 1 }}>
+          <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO, mb: 0.4 }}>
+            {news.source} · Day {news.gameDay} · {news.category}
+          </Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: 15, color: D.t1, lineHeight: 1.5 }}>{news.headline}</Typography>
+        </Box>
+        <Chip size="small" label={news.importance}
+          sx={{ bgcolor: imp ? D.redBg : D.amberBg, color: imp ? D.redText : D.amber, border: `1px solid ${imp ? D.redBd : "rgba(245,158,11,0.3)"}`, fontWeight: 800, fontSize: 10, flexShrink: 0 }} />
+      </Stack>
+      <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.7, mb: 1.5 }}>{news.body}</Typography>
+      <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
+        <Chip size="small" label={news.marketTone}
+          sx={{ bgcolor: bull ? D.greenBg : D.redBg, color: bull ? D.greenText : D.redText, border: `1px solid ${bull ? D.greenBd : D.redBd}`, fontWeight: 800, fontSize: 10 }} />
+        {news.isRumor && (
+          <Chip size="small" label={news.isAccurate ? "Rumor" : "Unconfirmed"} sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 700, fontSize: 10 }} />
+        )}
+        {news.relatedTickers.map((t) => (
+          <Chip key={t} size="small" label={t} sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, fontSize: 10, fontFamily: MONO }} />
+        ))}
+      </Stack>
+    </Box>
+  );
 }
 
 export default function News() {
@@ -48,488 +58,133 @@ export default function News() {
   const gameDay = normalizeGameDay(state?.gameDay ?? loadSavedGameDay());
   const seasonDay = getSeasonDay(gameDay);
   const marketNews = useMemo(() => getNewsForGameDay(gameDay), [gameDay]);
-  const bullishNews = marketNews.filter((news) => news.marketTone === "Bullish");
-  const bearishNews = marketNews.filter((news) => news.marketTone === "Bearish");
-  const highImportance = marketNews.filter((news) => news.importance === "High");
+  const bullishNews = marketNews.filter((n) => n.marketTone === "Bullish");
+  const bearishNews = marketNews.filter((n) => n.marketTone === "Bearish");
+  const highImportance = marketNews.filter((n) => n.importance === "High");
 
   return (
-    <Box sx={{ bgcolor: BRAND.background, minHeight: "100vh" }}>
-      <Box
-        sx={{
-          bgcolor: BRAND.navy,
-          color: "#fff",
-          px: { xs: 3, md: 8 },
-          py: { xs: 5, md: 7 },
-        }}
-      >
-        <Grid container spacing={4} alignItems="center">
-          <Grid item xs={12} md={7}>
-            <Chip
-              icon={<NewspaperIcon />}
-              label={`Game Day ${gameDay} News`}
-              sx={{
-                bgcolor: "rgba(154,216,114,0.18)",
-                color: BRAND.green,
-                fontWeight: 900,
-                mb: 2,
-              }}
-            />
-
-            <Typography
-              variant="h2"
-              sx={{
-                fontWeight: 950,
-                letterSpacing: -1.5,
-                lineHeight: 1.05,
-                mb: 2,
-              }}
-            >
-              Today&apos;s market headlines.
-            </Typography>
-
-            <Typography
-              sx={{
-                color: "rgba(255,255,255,0.72)",
-                maxWidth: 720,
-                fontSize: 18,
-              }}
-            >
-              These are the same events driving the simulator for the current
-              game day. Judge the source, tone, affected tickers, and story
-              strength before trading.
-            </Typography>
-          </Grid>
-
-          <Grid item xs={12} md={5}>
-            <Card
-              sx={{
-                bgcolor: "rgba(255,255,255,0.08)",
-                color: "#fff",
-                borderRadius: 4,
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}
-            >
-              <CardContent sx={{ p: 4 }}>
-                <Typography sx={{ opacity: 0.65, fontWeight: 800 }}>
-                  MARKET CLOCK
-                </Typography>
-
-                <Typography variant="h4" sx={{ fontWeight: 950, my: 1 }}>
-                  Day {seasonDay}/{SEASON_LENGTH}
-                </Typography>
-
-                <Typography sx={{ color: "rgba(255,255,255,0.7)", mb: 3 }}>
-                  The News page now follows the active simulator day instead of
-                  showing a dated static list.
-                </Typography>
-
-                <Button
-                  variant="contained"
-                  component={RouterLink}
-                  to="/game"
-                  sx={{
-                    bgcolor: BRAND.red,
-                    fontWeight: 950,
-                    borderRadius: 2.2,
-                    "&:hover": { bgcolor: "#E63131" },
-                  }}
-                >
-                  Trade the Market
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+    <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
+      {/* Hero */}
+      <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
+            <Box>
+              <Chip label={`DAY ${gameDay} NEWS`} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+              <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Market Headlines</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Events driving simulator prices on Day {gameDay} · Season {seasonDay}/{SEASON_LENGTH}</Typography>
+            </Box>
+            <Button component={RouterLink} to="/game" variant="contained"
+              sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, alignSelf: { xs: "flex-start", md: "center" } }}>
+              Trade the Market →
+            </Button>
+          </Stack>
+        </Container>
       </Box>
 
-      <Box sx={{ px: { xs: 2, md: 8 }, py: 4 }}>
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <SummaryCard
-              title="Game Day"
-              value={gameDay.toString()}
-              icon={<NewspaperIcon />}
-              color={BRAND.green}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <SummaryCard
-              title="Bullish Tone"
-              value={bullishNews.length.toString()}
-              icon={<TrendingUpIcon />}
-              color={BRAND.green}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <SummaryCard
-              title="Bearish Tone"
-              value={bearishNews.length.toString()}
-              icon={<TrendingDownIcon />}
-              color={BRAND.red}
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <SummaryCard
-              title="High Importance"
-              value={highImportance.length.toString()}
-              icon={<ReportProblemIcon />}
-              color={BRAND.red}
-            />
-          </Grid>
+      <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
+        {/* Summary tiles */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {[
+            { label: "Game Day",       val: gameDay.toString(),           icon: <NewspaperIcon sx={{ fontSize: 20 }} />,      up: undefined },
+            { label: "Bullish",        val: bullishNews.length.toString(), icon: <TrendingUpIcon sx={{ fontSize: 20 }} />,    up: true },
+            { label: "Bearish",        val: bearishNews.length.toString(), icon: <TrendingDownIcon sx={{ fontSize: 20 }} />,  up: false },
+            { label: "High Priority",  val: highImportance.length.toString(), icon: <ReportProblemIcon sx={{ fontSize: 20 }} />, up: false },
+          ].map((s) => {
+            const color = s.up === undefined ? D.brandText : s.up ? D.greenText : D.redText;
+            const bg    = s.up === undefined ? D.brandBg   : s.up ? D.greenBg   : D.redBg;
+            return (
+              <Grid item xs={6} sm={3} key={s.label}>
+                <Box sx={{ ...CARD, p: 2.5 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Box>
+                      <Typography sx={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 0.8, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
+                      <Typography sx={{ fontSize: 24, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                    </Box>
+                    <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
+                  </Stack>
+                </Box>
+              </Grid>
+            );
+          })}
         </Grid>
 
         <Grid container spacing={3}>
+          {/* Main news feed */}
           <Grid item xs={12} md={8}>
-            <Card sx={panelStyle}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  Game Day {gameDay} Headlines
-                </Typography>
-
-                <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  Showing news generated by the same mock market engine used on
-                  the trading screen.
-                </Typography>
-
-                <Divider sx={{ mb: 2 }} />
-
+            <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+              <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Day {gameDay} Headlines</Typography>
+                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Same events as the trading screen.</Typography>
+              </Box>
+              <Box sx={{ p: 2.5 }}>
                 {marketNews.length === 0 ? (
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: 3,
-                      bgcolor: "#F7F9FB",
-                      border: "1px solid #E5E9EF",
-                    }}
-                  >
-                    <Typography sx={{ fontWeight: 950, color: BRAND.navy }}>
-                      No major news today.
-                    </Typography>
-                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                      Prices can still move because of market drift, sector drift,
-                      trend bias, and normal volatility.
-                    </Typography>
+                  <Box sx={{ p: 3, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                    <Typography sx={{ fontWeight: 800, color: D.t2, mb: 0.5 }}>No major news today.</Typography>
+                    <Typography sx={{ fontSize: 13, color: D.t3 }}>Prices still move from drift, sector trends, and volatility.</Typography>
                   </Box>
                 ) : (
-                  marketNews.map((news) => (
-                    <NewsCard key={news.newsId} news={news} />
-                  ))
+                  marketNews.map((n) => <NewsCard key={n.newsId} news={n} />)
                 )}
-              </CardContent>
-            </Card>
+              </Box>
+            </Box>
           </Grid>
 
+          {/* Sidebar */}
           <Grid item xs={12} md={4}>
-            <Card
-              sx={{
-                bgcolor: BRAND.navy,
-                color: "#fff",
-                borderRadius: 4,
-                boxShadow: "0 18px 45px rgba(44,57,71,0.22)",
-              }}
-            >
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                  How to Predict Movement
-                </Typography>
+            <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3, mb: 2.5 }}>
+              <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.5 }}>How to Predict Movement</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Traders think about how others will react, not just what happened.</Typography>
+              <Stack spacing={1}>
+                {[
+                  "Check if the news affects future profits.",
+                  "Notice whether the headline is confirmed or uncertain.",
+                  "Compare the news to the company's current trend.",
+                  "Think about whether traders may overreact.",
+                  "Watch for rumors that may move prices quickly.",
+                ].map((tip, i) => (
+                  <Stack key={i} direction="row" spacing={1.2} alignItems="flex-start">
+                    <Box sx={{ width: 20, height: 20, borderRadius: 1, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}`, display: "grid", placeItems: "center", flexShrink: 0, mt: 0.15 }}>
+                      <Typography sx={{ fontSize: 10, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>{i + 1}</Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.6 }}>{tip}</Typography>
+                  </Stack>
+                ))}
+              </Stack>
+            </Box>
 
-                <Typography sx={{ color: "rgba(255,255,255,0.65)", mb: 2 }}>
-                  Real traders do not just read headlines. They think about how
-                  other investors might react.
-                </Typography>
-
-                <Tip number="1" text="Check if the news affects future profits." />
-                <Tip number="2" text="Notice whether the headline is confirmed or uncertain." />
-                <Tip number="3" text="Compare the news to the company’s current trend." />
-                <Tip number="4" text="Think about whether traders may overreact." />
-                <Tip number="5" text="Watch for rumors that may move prices quickly." />
-              </CardContent>
-            </Card>
-
-            <Card sx={{ ...panelStyle, mt: 3 }}>
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                  <QueryStatsIcon sx={{ color: BRAND.green }} />
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                    News Reading Rules
-                  </Typography>
-                </Box>
-
-                <Typography color="text.secondary" sx={{ mb: 2 }}>
-                  These rules help players decide whether news is strong or weak.
-                </Typography>
-
-                <RuleBox
-                  title="Strong news"
-                  text="Earnings, product approvals, contracts, lawsuits, and major economic reports often move prices."
-                />
-
-                <RuleBox
-                  title="Weak news"
-                  text="Opinions, vague rumors, and repeated information may create short-term movement but can fade quickly."
-                />
-
-                <RuleBox
-                  title="Mixed news"
-                  text="Some news has both good and bad parts. These events may create volatility instead of a clear direction."
-                />
-              </CardContent>
-            </Card>
+            <Box sx={{ ...CARD, p: 3 }}>
+              <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.5 }}>News Reading Rules</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Not all headlines are equal.</Typography>
+              <Stack spacing={1.2}>
+                {[
+                  { title: "Strong news", text: "Earnings, product approvals, contracts, lawsuits, and major economic reports." },
+                  { title: "Weak news",   text: "Opinions, vague rumors, and repeated information may fade quickly." },
+                  { title: "Mixed news",  text: "Both good and bad parts — creates volatility instead of clear direction." },
+                ].map((r) => (
+                  <Box key={r.title} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                    <Typography sx={{ fontSize: 13.5, fontWeight: 800, color: D.t1, mb: 0.3 }}>{r.title}</Typography>
+                    <Typography sx={{ fontSize: 12.5, color: D.t3 }}>{r.text}</Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
           </Grid>
         </Grid>
 
-        <Card sx={{ ...panelStyle, mt: 3 }}>
-          <CardContent
-            sx={{
-              p: 3,
-              display: "flex",
-              flexDirection: { xs: "column", md: "row" },
-              alignItems: { xs: "flex-start", md: "center" },
-              justifyContent: "space-between",
-              gap: 2,
-            }}
-          >
+        {/* CTA footer */}
+        <Box sx={{ ...CARD, mt: 3, p: 3 }}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
             <Box>
-              <Typography variant="h5" sx={{ fontWeight: 950 }}>
-                Think before you trade.
-              </Typography>
-
-              <Typography color="text.secondary">
-                Headlines can create opportunity, but they can also trick careless traders.
-              </Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: 17, color: D.t1 }}>Think before you trade.</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t3 }}>Headlines create opportunity, but they also trick careless traders.</Typography>
             </Box>
-
-            <Button
-              variant="contained"
-              component={RouterLink}
-              to="/game"
-              sx={{
-                bgcolor: BRAND.red,
-                fontWeight: 950,
-                borderRadius: 2.2,
-                px: 3,
-                "&:hover": { bgcolor: "#E63131" },
-              }}
-            >
-              Open Simulator
+            <Button component={RouterLink} to="/game" variant="contained"
+              sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, boxShadow: "none", px: 3, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, flexShrink: 0 }}>
+              Open Simulator →
             </Button>
-          </CardContent>
-        </Card>
-      </Box>
-    </Box>
-  );
-}
-
-function SummaryCard({
-  title,
-  value,
-  icon,
-  color,
-}: {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  color: string;
-}) {
-  return (
-    <Card sx={panelStyle}>
-      <CardContent
-        sx={{
-          p: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Box>
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 950,
-              color: "text.secondary",
-              letterSpacing: 1,
-            }}
-          >
-            {title.toUpperCase()}
-          </Typography>
-
-          <Typography variant="h5" sx={{ fontWeight: 950, mt: 1 }}>
-            {value}
-          </Typography>
+          </Stack>
         </Box>
-
-        <Box
-          sx={{
-            width: 42,
-            height: 42,
-            borderRadius: 2,
-            bgcolor: `${color}33`,
-            color,
-            display: "grid",
-            placeItems: "center",
-          }}
-        >
-          {icon}
-        </Box>
-      </CardContent>
-    </Card>
-  );
-}
-
-function NewsCard({ news }: { news: MarketNews }) {
-  const isBullish = news.marketTone === "Bullish";
-  const isBearish = news.marketTone === "Bearish";
-
-  const toneColor = isBullish ? BRAND.green : isBearish ? BRAND.red : BRAND.navy;
-
-  return (
-    <Box
-      sx={{
-        p: 2,
-        mb: 2,
-        borderRadius: 3,
-        bgcolor: "#F7F9FB",
-        border: "1px solid #E5E9EF",
-      }}
-    >
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 2,
-          flexWrap: "wrap",
-          mb: 1,
-        }}
-      >
-        <Box>
-          <Typography
-            variant="caption"
-            sx={{ color: "text.secondary", fontWeight: 900 }}
-          >
-            {news.source} • Game Day {news.gameDay} • {news.category}
-          </Typography>
-
-          <Typography sx={{ fontWeight: 950, fontSize: 18 }}>
-            {news.headline}
-          </Typography>
-        </Box>
-
-        <Chip
-          size="small"
-          label={news.importance}
-          sx={{
-            bgcolor:
-              news.importance === "High"
-                ? BRAND.red
-                : news.importance === "Medium"
-                ? BRAND.green
-                : "#DCE3EA",
-            color: news.importance === "Low" ? BRAND.navy : "#fff",
-            fontWeight: 950,
-          }}
-        />
-      </Box>
-
-      <Typography color="text.secondary" sx={{ mb: 1.5 }}>
-        {news.body}
-      </Typography>
-
-      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-        <Chip
-          size="small"
-          label={news.marketTone}
-          sx={{
-            bgcolor: toneColor,
-            color: isBullish ? BRAND.navy : "#fff",
-            fontWeight: 950,
-          }}
-        />
-
-        {news.isRumor && (
-          <Chip
-            size="small"
-            label={news.isAccurate ? "Rumor" : "Unconfirmed"}
-            sx={{
-              bgcolor: "#DCE3EA",
-              color: BRAND.navy,
-              fontWeight: 900,
-            }}
-          />
-        )}
-
-        {news.relatedTickers.map((ticker) => (
-          <Chip
-            key={ticker}
-            size="small"
-            label={ticker}
-            sx={{
-              bgcolor: BRAND.navy,
-              color: "#fff",
-              fontWeight: 800,
-            }}
-          />
-        ))}
-      </Box>
+      </Container>
     </Box>
   );
 }
-
-function Tip({ number, text }: { number: string; text: string }) {
-  return (
-    <Box
-      sx={{
-        p: 1.6,
-        mb: 1.2,
-        borderRadius: 3,
-        bgcolor: "rgba(255,255,255,0.08)",
-        border: "1px solid rgba(255,255,255,0.12)",
-        display: "flex",
-        gap: 1.2,
-      }}
-    >
-      <Box
-        sx={{
-          width: 26,
-          height: 26,
-          borderRadius: 1.5,
-          bgcolor: BRAND.green,
-          color: BRAND.navy,
-          display: "grid",
-          placeItems: "center",
-          fontWeight: 950,
-          flexShrink: 0,
-        }}
-      >
-        {number}
-      </Box>
-
-      <Typography sx={{ fontWeight: 800 }}>{text}</Typography>
-    </Box>
-  );
-}
-
-function RuleBox({ title, text }: { title: string; text: string }) {
-  return (
-    <Box
-      sx={{
-        p: 2,
-        mb: 1.4,
-        borderRadius: 3,
-        bgcolor: "#F7F9FB",
-        border: "1px solid #E5E9EF",
-      }}
-    >
-      <Typography sx={{ fontWeight: 950 }}>{title}</Typography>
-      <Typography color="text.secondary">{text}</Typography>
-    </Box>
-  );
-}
-
-const panelStyle = {
-  borderRadius: 4,
-  boxShadow: "0 14px 35px rgba(44,57,71,0.08)",
-  border: "1px solid #E5E9EF",
-};

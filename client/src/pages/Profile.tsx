@@ -1,21 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  Avatar,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  Container,
-  Divider,
-  Grid,
-  IconButton,
-  Stack,
-  TextField,
-  Tooltip,
-  Typography,
+  Alert, Avatar, Box, Button, Chip, CircularProgress, Container, Divider,
+  Grid, IconButton, Stack, TextField, Tooltip, Typography,
 } from "@mui/material";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
@@ -27,24 +13,31 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { D, CARD, MONO } from "../theme/design";
 
-const BRAND = { navy: "#0F1923", navyMid: "#1A2A3A", red: "#E84040", green: "#5CC87A", muted: "#7A8FA6", paper: "#F4F6F9", border: "#DDE3EB" };
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const AVATAR_BUCKET = "avatars";
 
 interface Profile {
-  id: string;
-  display_name: string;
-  username: string;
-  bio: string;
-  avatar_url: string | null;
-  updated_at: string;
+  id: string; display_name: string; username: string;
+  bio: string; avatar_url: string | null; updated_at: string;
 }
 
-function getAvatarPath(userId: string) {
-  return `${userId}/avatar`;
-}
+function getAvatarPath(userId: string) { return `${userId}/avatar`; }
+
+const fieldSx = {
+  "& .MuiOutlinedInput-root": {
+    bgcolor: D.elevated,
+    borderRadius: 1.5,
+    "& fieldset": { borderColor: D.border },
+    "&:hover fieldset": { borderColor: D.borderHi },
+    "&.Mui-focused fieldset": { borderColor: D.brand },
+    "& input, & textarea": { color: D.t1, fontSize: 14 },
+    "&.Mui-disabled": { "& input, & textarea": { color: D.t3, WebkitTextFillColor: D.t3 } },
+  },
+  "& .MuiInputLabel-root": { color: D.t3, fontSize: 13.5, "&.Mui-focused": { color: D.brandText } },
+  "& .MuiFormHelperText-root": { color: D.t3 },
+};
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -68,17 +61,11 @@ export default function ProfilePage() {
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [avatarErr, setAvatarErr] = useState<string | null>(null);
 
-  /* ── Load profile ── */
   useEffect(() => {
     if (!user) return;
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       if (error && error.code !== "PGRST116") {
         setSaveErr("Could not load profile.");
       } else if (data) {
@@ -92,7 +79,6 @@ export default function ProfilePage() {
     })();
   }, [user]);
 
-  /* ── Validate fields ── */
   function validateProfile() {
     if (displayName.trim().length < 2) return "Display name must be at least 2 characters.";
     if (username.trim().length > 0 && !/^[a-zA-Z0-9_]{3,24}$/.test(username.trim()))
@@ -101,354 +87,212 @@ export default function ProfilePage() {
     return null;
   }
 
-  /* ── Save profile ── */
   async function handleSave() {
     if (!user) return;
     const err = validateProfile();
     if (err) { setSaveErr(err); return; }
-
-    setSaving(true);
-    setSaveMsg(null);
-    setSaveErr(null);
-
-    const payload = {
-      id: user.id,
-      display_name: displayName.trim(),
-      username: username.trim() || null,
-      bio: bio.trim(),
-      avatar_url: avatarUrl,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { error } = await supabase.from("profiles").upsert(payload);
+    setSaving(true); setSaveMsg(null); setSaveErr(null);
+    const { error } = await supabase.from("profiles").upsert({
+      id: user.id, display_name: displayName.trim(), username: username.trim() || null,
+      bio: bio.trim(), avatar_url: avatarUrl, updated_at: new Date().toISOString(),
+    });
     setSaving(false);
-
     if (error) {
-      if (error.message.includes("profiles_username_key"))
-        setSaveErr("That username is already taken. Try another.");
-      else
-        setSaveErr(error.message);
+      setSaveErr(error.message.includes("profiles_username_key") ? "That username is already taken." : error.message);
     } else {
       setSaveMsg("Profile saved successfully.");
       setTimeout(() => setSaveMsg(null), 3500);
     }
   }
 
-  /* ── Upload avatar ── */
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-
     setAvatarErr(null);
-
-    if (!file.type.startsWith("image/")) {
-      setAvatarErr("Please upload an image file (JPEG, PNG, WebP).");
-      return;
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      setAvatarErr("Image must be under 2 MB.");
-      return;
-    }
-
+    if (!file.type.startsWith("image/")) { setAvatarErr("Please upload an image file (JPEG, PNG, WebP)."); return; }
+    if (file.size > MAX_FILE_SIZE) { setAvatarErr("Image must be under 2 MB."); return; }
     setUploadingAvatar(true);
     const path = getAvatarPath(user.id);
-
-    const { error: uploadError } = await supabase.storage
-      .from(AVATAR_BUCKET)
-      .upload(path, file, { upsert: true, contentType: file.type });
-
-    if (uploadError) {
-      setAvatarErr("Upload failed: " + uploadError.message);
-      setUploadingAvatar(false);
-      return;
-    }
-
+    const { error: uploadError } = await supabase.storage.from(AVATAR_BUCKET).upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadError) { setAvatarErr("Upload failed: " + uploadError.message); setUploadingAvatar(false); return; }
     const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
-    // bust cache with a timestamp query param
     const url = `${data.publicUrl}?t=${Date.now()}`;
     setAvatarUrl(url);
-
-    // persist immediately
     await supabase.from("profiles").upsert({ id: user.id, avatar_url: url, updated_at: new Date().toISOString() });
     setUploadingAvatar(false);
-    // reset input so the same file can be re-selected
     e.target.value = "";
   }
 
-  /* ── Delete avatar ── */
   async function handleAvatarDelete() {
     if (!user || !avatarUrl) return;
-    setDeletingAvatar(true);
-    setAvatarErr(null);
-
-    const path = getAvatarPath(user.id);
-    await supabase.storage.from(AVATAR_BUCKET).remove([path]);
+    setDeletingAvatar(true); setAvatarErr(null);
+    await supabase.storage.from(AVATAR_BUCKET).remove([getAvatarPath(user.id)]);
     await supabase.from("profiles").upsert({ id: user.id, avatar_url: null, updated_at: new Date().toISOString() });
-
-    setAvatarUrl(null);
-    setDeletingAvatar(false);
+    setAvatarUrl(null); setDeletingAvatar(false);
   }
 
-  /* ── Delete account ── */
   async function handleDeleteAccount() {
     if (!user) return;
     setDeletingAccount(true);
-
-    // Delete avatar from storage if present
-    if (avatarUrl) {
-      await supabase.storage.from(AVATAR_BUCKET).remove([getAvatarPath(user.id)]);
-    }
-    // Delete profile row
+    if (avatarUrl) await supabase.storage.from(AVATAR_BUCKET).remove([getAvatarPath(user.id)]);
     await supabase.from("profiles").delete().eq("id", user.id);
-    // Sign out (actual user deletion requires service-role key — sign out is safest from client)
     await signOut();
     navigate("/", { replace: true });
   }
 
-  /* ── Render ── */
   if (!user) return null;
-
   if (loading) {
     return (
-      <Box sx={{ bgcolor: BRAND.paper, minHeight: "100vh", display: "grid", placeItems: "center" }}>
-        <CircularProgress sx={{ color: BRAND.green }} />
+      <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "grid", placeItems: "center" }}>
+        <CircularProgress sx={{ color: D.brandText }} />
       </Box>
     );
   }
 
-  const initials = (displayName || user.email || "?")
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = (displayName || user.email || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 
   return (
-    <Box sx={{ bgcolor: BRAND.paper, minHeight: "100vh" }}>
+    <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
       {/* Hero */}
-      <Box sx={{ bgcolor: BRAND.navy, color: "#fff", px: { xs: 3, md: 8 }, py: { xs: 4, md: 6 }, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={3} alignItems={{ sm: "center" }}>
-          {/* Avatar area */}
-          <Box sx={{ position: "relative", flexShrink: 0 }}>
-            <Avatar
-              src={avatarUrl ?? undefined}
-              sx={{ width: 90, height: 90, bgcolor: BRAND.navyMid, border: "3px solid rgba(255,255,255,0.14)", fontSize: 28, fontWeight: 950, color: BRAND.green }}
-            >
-              {!avatarUrl && initials}
-            </Avatar>
+      <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
+        <Container maxWidth="md" sx={{ py: { xs: 3, md: 4 } }}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={3} alignItems={{ sm: "center" }}>
+            {/* Avatar */}
+            <Box sx={{ position: "relative", flexShrink: 0 }}>
+              <Avatar src={avatarUrl ?? undefined}
+                sx={{ width: 80, height: 80, bgcolor: D.elevated, border: `2px solid ${D.border}`, fontSize: 26, fontWeight: 950, color: D.brandText }}>
+                {!avatarUrl && initials}
+              </Avatar>
+              <Tooltip title="Change photo">
+                <IconButton onClick={() => fileRef.current?.click()} disabled={uploadingAvatar}
+                  sx={{ position: "absolute", bottom: -4, right: -4, width: 28, height: 28, bgcolor: D.brand, color: "#fff", "&:hover": { bgcolor: D.brandMid }, boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
+                  {uploadingAvatar ? <CircularProgress size={12} sx={{ color: "#fff" }} /> : <CameraAltIcon sx={{ fontSize: 14 }} />}
+                </IconButton>
+              </Tooltip>
+              <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
+            </Box>
 
-            {/* Camera overlay */}
-            <Tooltip title="Change photo">
-              <IconButton
-                onClick={() => fileRef.current?.click()}
-                disabled={uploadingAvatar}
-                sx={{ position: "absolute", bottom: -4, right: -4, width: 30, height: 30, bgcolor: BRAND.green, color: BRAND.navy, "&:hover": { bgcolor: "#4AB86A" }, boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}
-              >
-                {uploadingAvatar ? <CircularProgress size={14} sx={{ color: BRAND.navy }} /> : <CameraAltIcon sx={{ fontSize: 15 }} />}
-              </IconButton>
-            </Tooltip>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
-          </Box>
+            <Box sx={{ flex: 1 }}>
+              <Chip label="PROFILE" size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+              <Typography sx={{ fontWeight: 950, fontSize: { xs: 22, md: 26 }, color: D.t1, lineHeight: 1.1 }}>
+                {displayName || user.email?.split("@")[0] || "Your Profile"}
+              </Typography>
+              <Typography sx={{ fontSize: 13, color: D.t3, mt: 0.5 }}>{user.email}</Typography>
+            </Box>
 
-          <Box sx={{ flex: 1 }}>
-            <Chip label="PROFILE" sx={{ bgcolor: "rgba(92,200,122,0.12)", color: BRAND.green, fontWeight: 900, fontSize: 10.5, fontFamily: "monospace", border: "1px solid rgba(92,200,122,0.22)", mb: 1 }} />
-            <Typography variant="h4" sx={{ fontWeight: 950, lineHeight: 1.1, fontSize: { xs: "1.7rem", md: "2.2rem" } }}>
-              {displayName || user.email?.split("@")[0] || "Your Profile"}
-            </Typography>
-            <Typography sx={{ color: "rgba(255,255,255,0.5)", fontSize: 14, mt: 0.4 }}>{user.email}</Typography>
-          </Box>
-
-          <Button
-            onClick={() => { signOut(); navigate("/"); }}
-            startIcon={<LogoutIcon />}
-            sx={{ color: "rgba(255,255,255,0.55)", fontWeight: 800, textTransform: "none", borderRadius: 2, border: "1px solid rgba(255,255,255,0.12)", px: 2, flexShrink: 0, "&:hover": { color: "#fff", borderColor: "rgba(255,255,255,0.3)" } }}
-          >
-            Log out
-          </Button>
-        </Stack>
+            <Button onClick={() => { signOut(); navigate("/"); }} startIcon={<LogoutIcon />}
+              sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 2, border: `1px solid ${D.border}`, px: 2, flexShrink: 0, fontSize: 13, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
+              Log out
+            </Button>
+          </Stack>
+        </Container>
       </Box>
 
-      <Container sx={{ py: { xs: 3, md: 5 }, maxWidth: "md" }}>
-        <Grid container spacing={3}>
-          {/* ── Profile Form ── */}
-          <Grid item xs={12}>
-            <Card sx={{ borderRadius: 3, border: `1px solid ${BRAND.border}`, boxShadow: "0 4px 20px rgba(15,25,35,0.06)" }}>
-              <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 0.5 }}>
-                  <EditIcon sx={{ color: BRAND.green, fontSize: 20 }} />
-                  <Typography variant="h6" sx={{ fontWeight: 950, color: BRAND.navy }}>Profile Details</Typography>
-                </Stack>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Your name and bio are visible on the leaderboard and achievements pages.
-                </Typography>
+      <Container maxWidth="md" sx={{ py: { xs: 3, md: 4 } }}>
+        <Stack spacing={3}>
+          {/* Profile form */}
+          <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+              <EditIcon sx={{ color: D.brandText, fontSize: 18 }} />
+              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Profile Details</Typography>
+            </Stack>
+            <Box sx={{ p: 3 }}>
+              <Typography sx={{ fontSize: 13, color: D.t3, mb: 3 }}>Your name and bio are visible on the leaderboard and achievements pages.</Typography>
 
-                {saveErr && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setSaveErr(null)}>{saveErr}</Alert>}
-                {saveMsg && <Alert severity="success" sx={{ mb: 2 }}>{saveMsg}</Alert>}
-                {avatarErr && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setAvatarErr(null)}>{avatarErr}</Alert>}
+              {saveErr && <Alert severity="error" onClose={() => setSaveErr(null)} sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{saveErr}</Alert>}
+              {saveMsg && <Alert severity="success" sx={{ mb: 2, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 13 }}>{saveMsg}</Alert>}
+              {avatarErr && <Alert severity="error" onClose={() => setAvatarErr(null)} sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{avatarErr}</Alert>}
 
-                <Grid container spacing={2.5}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label="Display Name"
-                      fullWidth
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      inputProps={{ maxLength: 50 }}
-                      helperText={`${displayName.length}/50`}
-                      required
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label="Username"
-                      fullWidth
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      inputProps={{ maxLength: 24 }}
-                      helperText="Letters, numbers, underscores. Optional."
-                      InputProps={{ startAdornment: <Typography sx={{ mr: 0.5, color: BRAND.muted }}>@</Typography> }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      label="Email"
-                      fullWidth
-                      value={user.email ?? ""}
-                      disabled
-                      helperText="Email is managed through your account credentials."
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      label="Bio"
-                      fullWidth
-                      multiline
-                      minRows={3}
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      inputProps={{ maxLength: 280 }}
-                      helperText={`${bio.length}/280 · Share your trading style or strategy.`}
-                    />
-                  </Grid>
+              <Grid container spacing={2.5}>
+                <Grid item xs={12} sm={6}>
+                  <TextField label="Display Name" fullWidth value={displayName} onChange={(e) => setDisplayName(e.target.value)} inputProps={{ maxLength: 50 }} helperText={`${displayName.length}/50`} required sx={fieldSx} />
                 </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField label="Username" fullWidth value={username} onChange={(e) => setUsername(e.target.value)} inputProps={{ maxLength: 24 }} helperText="Letters, numbers, underscores. Optional." sx={fieldSx}
+                    InputProps={{ startAdornment: <Typography sx={{ mr: 0.5, color: D.t3, fontSize: 14 }}>@</Typography> }} />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField label="Email" fullWidth value={user.email ?? ""} disabled helperText="Email is managed through your account credentials." sx={fieldSx} />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField label="Bio" fullWidth multiline minRows={3} value={bio} onChange={(e) => setBio(e.target.value)} inputProps={{ maxLength: 280 }} helperText={`${bio.length}/280 · Share your trading style.`} sx={fieldSx} />
+                </Grid>
+              </Grid>
 
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 3 }}>
-                  <Button
-                    variant="contained"
-                    startIcon={saving ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : <SaveIcon />}
-                    onClick={handleSave}
-                    disabled={saving}
-                    sx={{ bgcolor: BRAND.navy, fontWeight: 900, textTransform: "none", borderRadius: 2, px: 3, "&:hover": { bgcolor: BRAND.navyMid } }}
-                  >
-                    {saving ? "Saving..." : "Save Profile"}
+              <Button onClick={handleSave} disabled={saving} variant="contained"
+                startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon />}
+                sx={{ mt: 3, bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
+                {saving ? "Saving…" : "Save Profile"}
+              </Button>
+            </Box>
+          </Box>
+
+          {/* Avatar management */}
+          <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+              <CameraAltIcon sx={{ color: D.brandText, fontSize: 18 }} />
+              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Profile Picture</Typography>
+            </Stack>
+            <Box sx={{ p: 3 }}>
+              <Typography sx={{ fontSize: 13, color: D.t3, mb: 2.5 }}>JPEG, PNG, or WebP · Max 2 MB</Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
+                <Avatar src={avatarUrl ?? undefined} sx={{ width: 68, height: 68, bgcolor: D.elevated, border: `1px solid ${D.border}`, fontSize: 20, fontWeight: 900, color: D.brandText }}>
+                  {!avatarUrl && <AccountCircleIcon sx={{ fontSize: 36, color: D.t3 }} />}
+                </Avatar>
+                <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
+                  <Button variant="outlined" startIcon={uploadingAvatar ? <CircularProgress size={13} /> : <CameraAltIcon />}
+                    onClick={() => fileRef.current?.click()} disabled={uploadingAvatar}
+                    sx={{ color: D.t2, borderColor: D.border, fontWeight: 700, textTransform: "none", borderRadius: 1.5, fontSize: 13, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
+                    {uploadingAvatar ? "Uploading…" : avatarUrl ? "Change Photo" : "Upload Photo"}
                   </Button>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* ── Avatar Management ── */}
-          <Grid item xs={12}>
-            <Card sx={{ borderRadius: 3, border: `1px solid ${BRAND.border}`, boxShadow: "0 4px 20px rgba(15,25,35,0.06)" }}>
-              <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 0.5 }}>
-                  <CameraAltIcon sx={{ color: BRAND.green, fontSize: 20 }} />
-                  <Typography variant="h6" sx={{ fontWeight: 950, color: BRAND.navy }}>Profile Picture</Typography>
-                </Stack>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>JPEG, PNG, or WebP · Max 2 MB</Typography>
-
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
-                  <Avatar
-                    src={avatarUrl ?? undefined}
-                    sx={{ width: 72, height: 72, bgcolor: BRAND.navyMid, fontSize: 22, fontWeight: 950, color: BRAND.green, border: `2px solid ${BRAND.border}` }}
-                  >
-                    {!avatarUrl && <AccountCircleIcon sx={{ fontSize: 40, color: BRAND.muted }} />}
-                  </Avatar>
-
-                  <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
-                    <Button
-                      variant="outlined"
-                      startIcon={uploadingAvatar ? <CircularProgress size={14} /> : <CameraAltIcon />}
-                      onClick={() => fileRef.current?.click()}
-                      disabled={uploadingAvatar}
-                      sx={{ borderColor: BRAND.border, color: BRAND.navy, fontWeight: 800, textTransform: "none", borderRadius: 2, "&:hover": { borderColor: BRAND.navy } }}
-                    >
-                      {uploadingAvatar ? "Uploading..." : avatarUrl ? "Change Photo" : "Upload Photo"}
+                  {avatarUrl && (
+                    <Button startIcon={deletingAvatar ? <CircularProgress size={13} /> : <DeleteOutlineIcon />}
+                      onClick={handleAvatarDelete} disabled={deletingAvatar}
+                      sx={{ color: D.redText, border: `1px solid ${D.redBd}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, fontSize: 13, "&:hover": { bgcolor: D.redBg } }}>
+                      {deletingAvatar ? "Removing…" : "Remove Photo"}
                     </Button>
+                  )}
+                </Stack>
+              </Stack>
+            </Box>
+          </Box>
 
-                    {avatarUrl && (
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        startIcon={deletingAvatar ? <CircularProgress size={14} color="error" /> : <DeleteOutlineIcon />}
-                        onClick={handleAvatarDelete}
-                        disabled={deletingAvatar}
-                        sx={{ fontWeight: 800, textTransform: "none", borderRadius: 2 }}
-                      >
-                        {deletingAvatar ? "Removing..." : "Remove Photo"}
-                      </Button>
-                    )}
+          {/* Danger zone */}
+          <Box sx={{ bgcolor: D.surface, border: `1px solid ${D.redBd}`, borderRadius: 2, p: 0, overflow: "hidden" }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.redBd}` }}>
+              <WarningAmberIcon sx={{ color: D.redText, fontSize: 18 }} />
+              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.redText }}>Danger Zone</Typography>
+            </Stack>
+            <Box sx={{ p: 3 }}>
+              <Typography sx={{ fontSize: 13, color: D.t3, mb: 2.5 }}>
+                Deleting your account removes your profile and avatar permanently. Local game progress on this device will remain.
+              </Typography>
+              <Divider sx={{ borderColor: D.redBd, mb: 2.5 }} />
+              {!confirmDelete ? (
+                <Button startIcon={<DeleteOutlineIcon />} onClick={() => setConfirmDelete(true)}
+                  sx={{ color: D.redText, border: `1px solid ${D.redBd}`, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.redBg } }}>
+                  Delete Account
+                </Button>
+              ) : (
+                <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
+                  <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.redText, mb: 0.5 }}>Are you absolutely sure?</Typography>
+                  <Typography sx={{ fontSize: 13, color: D.t2, mb: 2 }}>This cannot be undone. Your profile and avatar will be deleted immediately.</Typography>
+                  <Stack direction="row" spacing={1.2}>
+                    <Button variant="contained" onClick={handleDeleteAccount} disabled={deletingAccount}
+                      startIcon={deletingAccount ? <CircularProgress size={13} sx={{ color: "#fff" }} /> : <DeleteOutlineIcon />}
+                      sx={{ bgcolor: D.red, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" } }}>
+                      {deletingAccount ? "Deleting…" : "Yes, delete my account"}
+                    </Button>
+                    <Button onClick={() => setConfirmDelete(false)}
+                      sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
+                      Cancel
+                    </Button>
                   </Stack>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* ── Danger Zone ── */}
-          <Grid item xs={12}>
-            <Card sx={{ borderRadius: 3, border: "1px solid rgba(232,64,64,0.28)", boxShadow: "0 4px 20px rgba(232,64,64,0.05)" }}>
-              <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 0.5 }}>
-                  <WarningAmberIcon sx={{ color: BRAND.red, fontSize: 20 }} />
-                  <Typography variant="h6" sx={{ fontWeight: 950, color: BRAND.red }}>Danger Zone</Typography>
-                </Stack>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Deleting your account removes your profile and avatar permanently. Your game progress stored locally will remain on this device.
-                </Typography>
-
-                <Divider sx={{ mb: 2.5, borderColor: "rgba(232,64,64,0.15)" }} />
-
-                {!confirmDelete ? (
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<DeleteOutlineIcon />}
-                    onClick={() => setConfirmDelete(true)}
-                    sx={{ fontWeight: 900, textTransform: "none", borderRadius: 2 }}
-                  >
-                    Delete Account
-                  </Button>
-                ) : (
-                  <Box sx={{ p: 2.5, borderRadius: 2.5, bgcolor: "#FFF2F2", border: "1px solid rgba(232,64,64,0.22)" }}>
-                    <Typography sx={{ fontWeight: 900, color: BRAND.red, mb: 0.5 }}>Are you absolutely sure?</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      This cannot be undone. Your profile and avatar will be deleted immediately.
-                    </Typography>
-                    <Stack direction="row" spacing={1.2}>
-                      <Button
-                        variant="contained"
-                        color="error"
-                        onClick={handleDeleteAccount}
-                        disabled={deletingAccount}
-                        startIcon={deletingAccount ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <DeleteOutlineIcon />}
-                        sx={{ fontWeight: 900, textTransform: "none", borderRadius: 2 }}
-                      >
-                        {deletingAccount ? "Deleting..." : "Yes, delete my account"}
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        onClick={() => setConfirmDelete(false)}
-                        sx={{ fontWeight: 800, textTransform: "none", borderRadius: 2, borderColor: BRAND.border, color: BRAND.navy }}
-                      >
-                        Cancel
-                      </Button>
-                    </Stack>
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </Stack>
       </Container>
     </Box>
   );
