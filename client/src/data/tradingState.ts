@@ -127,11 +127,62 @@ export function useTradingAccount() {
     setAccount(defaultAccount);
   }, []);
 
+  const setCash = useCallback((cash: number) => {
+    setAccount((current) => ({
+      ...current,
+      cash: roundMoney(Math.max(0, cash)),
+    }));
+  }, []);
+
+  const addCash = useCallback((amount: number) => {
+    setAccount((current) => ({
+      ...current,
+      cash: roundMoney(Math.max(0, current.cash + amount)),
+    }));
+  }, []);
+
+  const setHolding = useCallback((stock: Stock, shares: number) => {
+    setAccount((current) => {
+      const nextShares = Math.max(0, Math.floor(shares));
+      const existing = current.holdings.find(
+        (holding) => holding.symbol === stock.symbol
+      );
+
+      if (nextShares === 0) {
+        return {
+          ...current,
+          holdings: current.holdings.filter(
+            (holding) => holding.symbol !== stock.symbol
+          ),
+        };
+      }
+
+      const nextHolding = {
+        symbol: stock.symbol,
+        name: stock.name,
+        shares: nextShares,
+        averageCost: existing?.averageCost ?? stock.currentPrice,
+      };
+
+      return {
+        ...current,
+        holdings: existing
+          ? current.holdings.map((holding) =>
+              holding.symbol === stock.symbol ? nextHolding : holding
+            )
+          : [...current.holdings, nextHolding],
+      };
+    });
+  }, []);
+
   return {
     account,
     buyStock,
     sellStock,
     resetAccount,
+    setCash,
+    addCash,
+    setHolding,
   };
 }
 

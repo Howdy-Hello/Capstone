@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, Grid, IconButton, LinearProgress, Stack, Typography,
+  Grid, IconButton, LinearProgress, Stack, TextField, Typography,
 } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
@@ -14,6 +14,7 @@ import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import CloseIcon from "@mui/icons-material/Close";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
+import CodeIcon from "@mui/icons-material/Code";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import {
@@ -24,6 +25,7 @@ import { getNetWorth, getPortfolioValue, getSharesOwned, useTradingAccount } fro
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
 const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
+const DEV_CONSOLE_ENABLED = process.env.NODE_ENV !== "production";
 
 function loadSavedGameDay() {
   const savedDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
@@ -34,6 +36,7 @@ export default function Game() {
   const navigate = useNavigate();
   const [gameDay, setGameDay] = useState(loadSavedGameDay);
   const [briefingOpen, setBriefingOpen] = useState(true);
+  const [devConsoleOpen, setDevConsoleOpen] = useState(false);
   const [tradeMessage, setTradeMessage] = useState("");
   const trading = useTradingAccount();
 
@@ -53,6 +56,28 @@ export default function Game() {
 
   useEffect(() => { localStorage.setItem(GAME_DAY_STORAGE_KEY, gameDay.toString()); }, [gameDay]);
 
+  useEffect(() => {
+    if (!DEV_CONSOLE_ENABLED) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable;
+
+      if (isTyping) return;
+
+      if (event.key === "~" || event.code === "Backquote") {
+        event.preventDefault();
+        setDevConsoleOpen((open) => !open);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const handleNextDay = () => setGameDay((d) => d + 1);
   const handleResetDay = () => { setGameDay(1); setBriefingOpen(true); };
   const handleResetAccount = () => { trading.resetAccount(); setTradeMessage("Account reset to $2,000 cash."); };
@@ -66,9 +91,111 @@ export default function Game() {
     setTradeMessage(ok ? `Sold 1 share of ${stock.symbol} for ${money(stock.currentPrice)}.` : `You don't own any ${stock.symbol} shares.`);
   };
 
+  const runConsoleCommand = (rawCommand: string) => {
+    const command = rawCommand.trim();
+    const tokens = command.split(/\s+/);
+    const [name = "", arg1 = "", arg2 = ""] = tokens;
+    const action = name.toLowerCase();
+
+    if (!command) return "";
+
+    if (action === "cash" || action === "money") {
+      const mode = arg1.toLowerCase();
+      const amount = Number(arg2 || arg1);
+
+      if (Number.isNaN(amount)) return "Rejected.";
+
+      if (["increase", "inc", "add", "+", "up"].includes(mode)) {
+        trading.addCash(Math.abs(amount));
+        return "Applied.";
+      }
+
+      if (["decrease", "dec", "subtract", "sub", "-", "down"].includes(mode)) {
+        trading.addCash(-Math.abs(amount));
+        return "Applied.";
+      }
+
+      if (["set", "=", "to"].includes(mode)) {
+        trading.setCash(amount);
+        return "Applied.";
+      }
+
+      if (arg1.startsWith("+") || arg1.startsWith("-")) {
+        trading.addCash(Number(arg1));
+        return "Applied.";
+      }
+
+      trading.setCash(amount);
+      return "Applied.";
+    }
+
+    if (action === "day") {
+      const mode = arg1.toLowerCase();
+      const value = Number(arg2 || arg1);
+      if (!arg1 || Number.isNaN(value) || value < 1) return "Rejected.";
+
+      if (["increase", "inc", "add", "+", "up"].includes(mode)) {
+        setGameDay((current) => Math.max(1, current + Math.floor(value)));
+      } else if (["decrease", "dec", "subtract", "sub", "-", "down"].includes(mode)) {
+        setGameDay((current) => Math.max(1, current - Math.floor(value)));
+      } else {
+        setGameDay(Math.floor(value));
+      }
+
+      return "Applied.";
+    }
+
+    if (action === "next") {
+      const value = Number(arg1);
+      const days = arg1 ? value : 1;
+      if (Number.isNaN(days)) return "Rejected.";
+      setGameDay((current) => Math.max(1, current + Math.floor(days)));
+      return "Applied.";
+    }
+
+    if (action === "shares") {
+      const symbol = arg1.toUpperCase();
+      const shares = Number(tokens[tokens.length - 1]);
+      const stock = stocks.find((item) => item.symbol === symbol);
+      if (!symbol || Number.isNaN(shares)) return "Rejected.";
+      if (!stock) return `Unknown ticker: ${symbol}.`;
+      trading.setHolding(stock, shares);
+      return "Applied.";
+    }
+
+    if (action === "reset") {
+      const target = arg1.toLowerCase();
+      if (target === "cash") {
+        trading.setCash(2000);
+        return "Applied.";
+      }
+      if (target === "day") {
+        setGameDay(1);
+        setBriefingOpen(true);
+        return "Applied.";
+      }
+      if (target === "all") {
+        trading.resetAccount();
+        setGameDay(1);
+        setBriefingOpen(true);
+        return "Applied.";
+      }
+      return "Rejected.";
+    }
+
+    return `Rejected: ${name}.`;
+  };
+
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
       <OpeningBriefingDialog open={briefingOpen} onClose={() => setBriefingOpen(false)} stories={openingStories} />
+      {DEV_CONSOLE_ENABLED && (
+        <CommandConsole
+          open={devConsoleOpen}
+          onClose={() => setDevConsoleOpen(false)}
+          onRun={runConsoleCommand}
+        />
+      )}
 
       {/* Hero */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
@@ -300,6 +427,100 @@ export default function Game() {
           </Grid>
         </Grid>
       </Container>
+    </Box>
+  );
+}
+
+function CommandConsole({ open, onClose, onRun }: {
+  open: boolean;
+  onClose: () => void;
+  onRun: (command: string) => string;
+}) {
+  const [command, setCommand] = useState("");
+  const [history, setHistory] = useState<string[]>(["session active"]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
+  const submitCommand = () => {
+    const trimmed = command.trim();
+    if (!trimmed) return;
+
+    const output = onRun(trimmed);
+    setHistory((current) => [`> ${trimmed}`, output, ...current].slice(0, 8));
+    setCommand("");
+  };
+
+  if (!open) return null;
+
+  return (
+    <Box
+      sx={{
+        position: "fixed",
+        left: { xs: 12, md: 24 },
+        right: { xs: 12, md: "auto" },
+        bottom: { xs: 12, md: 24 },
+        width: { xs: "auto", md: 520 },
+        zIndex: 1400,
+        ...CARD,
+        overflow: "hidden",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.45)",
+      }}
+    >
+      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${D.border}` }}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <CodeIcon sx={{ fontSize: 17, color: D.brandText }} />
+          <Typography sx={{ fontWeight: 900, fontSize: 12, color: D.t2, fontFamily: MONO }}>dev</Typography>
+        </Stack>
+        <IconButton size="small" onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}>
+          <CloseIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      </Stack>
+
+      <Box sx={{ p: 2 }}>
+        <TextField
+          autoFocus
+          fullWidth
+          size="small"
+          value={command}
+          placeholder=""
+          onChange={(event) => setCommand(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              submitCommand();
+            }
+          }}
+          inputProps={{ sx: { fontFamily: MONO, fontSize: 13 } }}
+          sx={{
+            mb: 1,
+            "& .MuiOutlinedInput-root": {
+              bgcolor: D.bg,
+              color: D.t1,
+              borderRadius: 1.5,
+              "& fieldset": { borderColor: D.border },
+              "&:hover fieldset": { borderColor: D.borderHi },
+              "&.Mui-focused fieldset": { borderColor: D.brand },
+            },
+          }}
+        />
+
+        <Box sx={{ minHeight: 96, maxHeight: 148, overflow: "auto", p: 1.3, borderRadius: 1.5, bgcolor: D.bg, border: `1px solid ${D.border}` }}>
+          {history.map((line, index) => (
+            <Typography key={`${line}-${index}`} sx={{ fontSize: 11.5, color: line.startsWith(">") ? D.brandText : D.t2, fontFamily: MONO, lineHeight: 1.7 }}>
+              {line}
+            </Typography>
+          ))}
+        </Box>
+      </Box>
     </Box>
   );
 }
