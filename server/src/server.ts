@@ -3,6 +3,7 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import { connectDB } from './db/db';
+import supabaseRoutes from './routes/supabaseRoutes';
 
 dotenv.config({ path: './.env' });
 
@@ -10,6 +11,7 @@ const app = express();
 
 app.use(cors());
 app.use(bodyParser.json());
+app.use('/api', supabaseRoutes);
 
 connectDB()
   .then(() => console.log('Database connection established, starting the server...'))
