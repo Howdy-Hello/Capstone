@@ -34,7 +34,11 @@ const AuthPage: React.FC = () => {
   const qs = useQuery();
   const { user } = useAuth();
 
-  const initialMode = (qs.get("mode") === "signup" ? "signup" : "login") as Mode;
+  const requestedMode = qs.get("mode");
+  const initialMode: Mode =
+    requestedMode === "signup" || requestedMode === "reset"
+      ? requestedMode
+      : "login";
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -53,7 +57,11 @@ const AuthPage: React.FC = () => {
     params.set("mode", mode);
     window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
     setError(null);
-    setSuccessMsg(null);
+    setSuccessMsg(
+      params.get("password") === "updated"
+        ? "Password updated successfully. Log in with your new password."
+        : null
+    );
   }, [mode]);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -88,7 +96,9 @@ const AuthPage: React.FC = () => {
           setMode("login");
         }
       } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth?mode=login` });
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/update-password`,
+        });
         if (error) throw error;
         setSuccessMsg("Password reset email sent. Check your inbox.");
       }

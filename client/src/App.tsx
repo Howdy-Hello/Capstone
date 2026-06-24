@@ -10,6 +10,7 @@ import ScrollToTop from "./components/ScrollToTop";
 
 import Home from "./pages/Home";
 import AuthPage from "./pages/AuthPage";
+import UpdatePassword from "./pages/UpdatePassword";
 import Dashboard from "./pages/Dashboard";
 import Game from "./pages/Game";
 import Learn from "./pages/Learn";
@@ -39,6 +40,7 @@ function AppLayout() {
           {/* Public */}
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/update-password" element={<UpdatePassword />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/news" element={<News />} />
 
