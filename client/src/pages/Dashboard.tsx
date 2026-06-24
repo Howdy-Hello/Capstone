@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import {
-  Box, Button, Chip, Container, Divider, Grid, LinearProgress, Stack, Typography,
+  Box, Button, Chip, CircularProgress, Container, Divider, Grid, LinearProgress, Stack, Typography,
 } from "@mui/material";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import AssessmentIcon from "@mui/icons-material/Assessment";
@@ -15,19 +15,14 @@ import {
 } from "recharts";
 
 import {
-  getNewsForGameDay, getSeasonDay, getStocksForGameDay, normalizeGameDay,
+  getSeasonDay,
   SEASON_LENGTH, Stock,
 } from "../data/mockStocks";
-import { getNetWorth, getPortfolioValue, useTradingAccount } from "../data/tradingState";
+import { getNetWorth, getPortfolioValue } from "../data/tradingState";
+import { useGame } from "../context/GameContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
-const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
 const PIE_COLORS = [D.green, D.brand, D.amber, "#38BDF8", "#F87171", "#A78BFA"];
-
-function loadSavedGameDay() {
-  const savedDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
-  return normalizeGameDay(savedDay || 1);
-}
 
 function StatTile({ label, value, icon, up }: { label: string; value: string; icon: React.ReactNode; up?: boolean }) {
   const color = up === undefined ? D.brandText : up ? D.greenText : D.redText;
@@ -48,11 +43,9 @@ function StatTile({ label, value, icon, up }: { label: string; value: string; ic
 }
 
 export default function Dashboard() {
-  const gameDay = loadSavedGameDay();
+  const trading = useGame();
+  const { gameDay, stocks, news } = trading;
   const seasonDay = getSeasonDay(gameDay);
-  const stocks = useMemo(() => getStocksForGameDay(gameDay), [gameDay]);
-  const news = useMemo(() => getNewsForGameDay(gameDay), [gameDay]);
-  const trading = useTradingAccount();
   const portfolioValue = useMemo(() => getPortfolioValue(trading.account, stocks), [trading.account, stocks]);
   const netWorth = useMemo(() => getNetWorth(trading.account, stocks), [trading.account, stocks]);
 
@@ -83,6 +76,14 @@ export default function Dashboard() {
 
   const movers = useMemo(() => [...stocks].sort((a, b) => Math.abs(b.dayChangePercent) - Math.abs(a.dayChangePercent)).slice(0, 8), [stocks]);
   const returnPct = ((netWorth - 2000) / 2000) * 100;
+
+  if (trading.loading) {
+    return (
+      <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "grid", placeItems: "center" }}>
+        <CircularProgress sx={{ color: D.brandText }} />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
@@ -268,13 +269,11 @@ export default function Dashboard() {
                   <Typography sx={{ fontSize: 13, color: D.t3, py: 1 }}>No major news today. Prices still move from drift and volatility.</Typography>
                 ) : (
                   <Stack spacing={1.2}>
-                    {news.slice(0, 5).map((item) => {
-                      const bull = item.marketTone === "Bullish";
-                      return (
+                    {news.slice(0, 5).map((item) => (
                         <Box key={item.newsId} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                           <Stack direction="row" spacing={1} sx={{ mb: 0.8 }} flexWrap="wrap" useFlexGap>
-                            <Chip size="small" label={item.marketTone}
-                              sx={{ bgcolor: bull ? D.greenBg : D.redBg, color: bull ? D.greenText : D.redText, border: `1px solid ${bull ? D.greenBd : D.redBd}`, fontWeight: 800, fontSize: 10 }} />
+                            <Chip size="small" label={item.importance}
+                              sx={{ bgcolor: item.importance === "High" ? D.redBg : D.amberBg, color: item.importance === "High" ? D.redText : D.amber, border: `1px solid ${item.importance === "High" ? D.redBd : "rgba(245,158,11,0.3)"}`, fontWeight: 800, fontSize: 10 }} />
                             {item.relatedTickers.slice(0, 3).map((t) => (
                               <Chip key={t} size="small" label={t} sx={{ bgcolor: D.overlay, color: D.brandText, fontWeight: 800, fontSize: 10, fontFamily: MONO }} />
                             ))}
@@ -282,8 +281,7 @@ export default function Dashboard() {
                           <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: D.t1, mb: 0.4 }}>{item.headline}</Typography>
                           <Typography sx={{ fontSize: 12.5, color: D.t3, lineHeight: 1.6 }}>{item.body}</Typography>
                         </Box>
-                      );
-                    })}
+                    ))}
                   </Stack>
                 )}
                 <Button fullWidth variant="outlined" component={RouterLink} to="/news" sx={{ mt: 2, color: D.brandText, borderColor: D.brandBd, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.brandBg } }}>

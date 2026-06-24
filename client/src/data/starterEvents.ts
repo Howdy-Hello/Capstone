@@ -27,8 +27,8 @@ export const starterEvents: NewsEvent[] = [
     id: "4",
     title: "Chip Orders Accelerate",
     description:
-      "QuantumGrid receives stronger server-chip order indications as data-center customers expand AI capacity.",
-    affectedSymbols: ["QNT"],
+      "Inter Corporation receives stronger server-chip order indications as data-center customers expand AI capacity.",
+    affectedSymbols: ["ITC"],
     impact: 0.09
   },
   {

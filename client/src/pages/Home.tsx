@@ -18,7 +18,7 @@ const STOCKS = [
 ];
 
 const FEATURES = [
-  { icon: <BarChartIcon sx={{ fontSize: 22 }} />,           title: "Portfolio Simulation",   desc: "Trade 20 stocks across 30 simulated days with a $2,000 starting stake." },
+  { icon: <BarChartIcon sx={{ fontSize: 22 }} />,           title: "Portfolio Simulation",   desc: "Trade 21 stocks across 30 simulated days with a $2,000 starting stake." },
   { icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 22 }} />, title: "Learn the Concepts",    desc: "Built-in guide covers volatility, diversification, and risk management." },
   { icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 22 }} />, title: "Compete on Leaderboard", desc: "Compare final portfolio value with other traders and climb the ranks." },
   { icon: <ShieldOutlinedIcon sx={{ fontSize: 22 }} />,      title: "Risk-Free Practice",    desc: "No real money, no real risk — pure market mechanics in a safe sandbox." },

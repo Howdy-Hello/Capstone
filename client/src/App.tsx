@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Box, CssBaseline } from "@mui/material";
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { GameProvider } from "./context/GameContext";
 
 import Header from "./components/Header";
 import Footer from "./components/Footer";
@@ -69,7 +70,9 @@ export default function App() {
       <CssBaseline />
       <ScrollToTop />
       <AuthProvider>
-        <AppLayout />
+        <GameProvider>
+          <AppLayout />
+        </GameProvider>
       </AuthProvider>
     </BrowserRouter>
   );

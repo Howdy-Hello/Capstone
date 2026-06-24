@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
-  Box, Button, Chip, Container, Divider, Grid, LinearProgress, Stack, Typography,
+  Box, Button, Chip, CircularProgress, Container, Divider, Grid, LinearProgress, Stack, Typography,
 } from "@mui/material";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
@@ -14,10 +14,9 @@ import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
 
-import {
-  getRelatedNewsBySymbol, getStockBySymbolForGameDay, getStockHistoryBySymbol, Stock, StockPriceHistory,
-} from "../data/mockStocks";
-import { getSharesOwned, useTradingAccount } from "../data/tradingState";
+import { Stock, StockPriceHistory } from "../data/mockStocks";
+import { getSharesOwned } from "../data/tradingState";
+import { useGame } from "../context/GameContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
 type LocationState = { gameDay?: number };
@@ -32,22 +31,30 @@ export default function StockDetails() {
   const { symbol } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const trading = useTradingAccount();
+  const trading = useGame();
   const [tradeMsg, setTradeMsg] = useState("");
 
   const state = location.state as LocationState | null;
-  const gameDay = state?.gameDay ?? 1;
+  const gameDay = state?.gameDay ?? trading.gameDay;
 
-  const stock = useMemo(() => symbol ? getStockBySymbolForGameDay(symbol, gameDay) : undefined, [symbol, gameDay]);
-  const history = useMemo(() => symbol ? getStockHistoryBySymbol(symbol, gameDay) : [], [symbol, gameDay]);
-  const relatedNews = useMemo(() => symbol ? getRelatedNewsBySymbol(symbol, gameDay) : [], [symbol, gameDay]);
+  const stock = symbol ? trading.getStock(symbol) : undefined;
+  const history = symbol ? trading.getHistory(symbol) : [];
+  const relatedNews = symbol ? trading.getRelatedNews(symbol) : [];
+
+  if (trading.loading) {
+    return (
+      <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "grid", placeItems: "center" }}>
+        <CircularProgress sx={{ color: D.brandText }} />
+      </Box>
+    );
+  }
 
   if (!stock) {
     return (
       <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Box sx={{ ...CARD, p: 4, maxWidth: 480, textAlign: "center" }}>
           <Typography sx={{ fontWeight: 900, fontSize: 22, color: D.t1, mb: 1 }}>Stock not found</Typography>
-          <Typography sx={{ fontSize: 14, color: D.t3, mb: 3 }}>The symbol does not exist in the mock data.</Typography>
+          <Typography sx={{ fontSize: 14, color: D.t3, mb: 3 }}>The symbol does not exist in the market data.</Typography>
           <Button onClick={() => navigate("/game")} startIcon={<ArrowBackIcon />} variant="contained"
             sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
             Back to Market
@@ -62,12 +69,12 @@ export default function StockDetails() {
   const latestHistory = history[history.length - 1];
   const sharesOwned = getSharesOwned(trading.account, stock.symbol);
 
-  const handleBuy = () => {
-    const ok = trading.buyStock(stock);
+  const handleBuy = async () => {
+    const ok = await trading.buyStock(stock);
     setTradeMsg(ok ? `Bought 1 share of ${stock.symbol} for ${money(stock.currentPrice)}.` : `Not enough cash to buy ${stock.symbol}.`);
   };
-  const handleSell = () => {
-    const ok = trading.sellStock(stock);
+  const handleSell = async () => {
+    const ok = await trading.sellStock(stock);
     setTradeMsg(ok ? `Sold 1 share of ${stock.symbol} for ${money(stock.currentPrice)}.` : `You don't own any ${stock.symbol} shares.`);
   };
 
@@ -141,7 +148,7 @@ export default function StockDetails() {
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Box>
                   <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Price History</Typography>
-                  <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Mock close prices up to Day {gameDay}.</Typography>
+                  <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Close prices up to Day {gameDay}.</Typography>
                 </Box>
                 <Chip label={`${history.length} data points`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontSize: 11 }} />
               </Stack>
@@ -171,8 +178,8 @@ export default function StockDetails() {
             {/* Fundamentals */}
             <Box sx={{ ...CARD, p: 0, overflow: "hidden", mb: 3 }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Mock Fundamentals</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Structured mock metrics to inform trading decisions.</Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Company Fundamentals</Typography>
+                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Stored company metrics to inform trading decisions.</Typography>
               </Box>
               <Box sx={{ p: 2.5 }}>
                 <Grid container spacing={2}>
@@ -298,16 +305,13 @@ export default function StockDetails() {
                   <Typography sx={{ fontSize: 13, color: D.t3 }}>No related news yet.</Typography>
                 ) : (
                   <Stack spacing={1.2}>
-                    {relatedNews.slice(-8).map((n) => {
-                      const bull = n.marketTone === "Bullish";
-                      return (
+                    {relatedNews.slice(-8).map((n) => (
                         <Box key={n.newsId} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                          <Chip size="small" label={n.marketTone} sx={{ bgcolor: bull ? D.greenBg : D.redBg, color: bull ? D.greenText : D.redText, fontWeight: 800, fontSize: 10, mb: 0.8 }} />
+                          <Chip size="small" label={n.importance} sx={{ bgcolor: n.importance === "High" ? D.redBg : D.amberBg, color: n.importance === "High" ? D.redText : D.amber, fontWeight: 800, fontSize: 10, mb: 0.8 }} />
                           <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1, mb: 0.3 }}>Day {n.gameDay}: {n.headline}</Typography>
                           <Typography sx={{ fontSize: 12, color: D.t3, lineHeight: 1.6 }}>{n.body}</Typography>
                         </Box>
-                      );
-                    })}
+                    ))}
                   </Stack>
                 )}
               </Box>

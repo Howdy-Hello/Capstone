@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
-  Grid, IconButton, LinearProgress, Stack, TextField, Typography,
+  CircularProgress, Grid, IconButton, LinearProgress, Stack, TextField, Typography,
 } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
@@ -9,7 +9,6 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ShieldIcon from "@mui/icons-material/Shield";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
-import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import CloseIcon from "@mui/icons-material/Close";
@@ -18,30 +17,36 @@ import CodeIcon from "@mui/icons-material/Code";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import {
-  getNewsForGameDay, getOpeningStoryDays, getSeasonDay, getStocksForGameDay,
+  getOpeningStoryDays, getSeasonDay,
   SEASON_LENGTH, STORY_DAYS, Stock,
 } from "../data/mockStocks";
-import { getNetWorth, getPortfolioValue, getSharesOwned, useTradingAccount } from "../data/tradingState";
+import { getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
+import { useGame } from "../context/GameContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
-const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
 const DEV_CONSOLE_ENABLED = process.env.NODE_ENV !== "production";
-
-function loadSavedGameDay() {
-  const savedDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
-  return Number.isFinite(savedDay) && savedDay > 0 ? Math.floor(savedDay) : 1;
-}
+const BRIEFING_DISMISSED_KEY = "stockpilot-hide-opening-briefing";
 
 export default function Game() {
   const navigate = useNavigate();
-  const [gameDay, setGameDay] = useState(loadSavedGameDay);
-  const [briefingOpen, setBriefingOpen] = useState(true);
+  const [briefingOpen, setBriefingOpen] = useState(false);
+  const autoBriefingChecked = useRef(false);
   const [devConsoleOpen, setDevConsoleOpen] = useState(false);
   const [tradeMessage, setTradeMessage] = useState("");
-  const trading = useTradingAccount();
+  const [selectedSector, setSelectedSector] = useState("All");
+  const trading = useGame();
+  const { gameDay, setGameDay, stocks, news: todayNews } = trading;
 
-  const stocks = useMemo(() => getStocksForGameDay(gameDay), [gameDay]);
-  const todayNews = useMemo(() => getNewsForGameDay(gameDay), [gameDay]);
+  const sectors = useMemo(() => ["All", ...Array.from(new Set(stocks.map((stock) => stock.sector))).sort()], [stocks]);
+  const sectorCounts = useMemo(() => {
+    const counts = new Map<string, number>([["All", stocks.length]]);
+    stocks.forEach((stock) => counts.set(stock.sector, (counts.get(stock.sector) ?? 0) + 1));
+    return counts;
+  }, [stocks]);
+  const filteredStocks = useMemo(
+    () => selectedSector === "All" ? stocks : stocks.filter((stock) => stock.sector === selectedSector),
+    [selectedSector, stocks],
+  );
   const openingStories = useMemo(() => getOpeningStoryDays(), []);
   const seasonDay = getSeasonDay(gameDay);
   const portfolioValue = useMemo(() => getPortfolioValue(trading.account, stocks), [trading.account, stocks]);
@@ -54,7 +59,25 @@ export default function Game() {
     return { gainers, losers, averageMove };
   }, [stocks]);
 
-  useEffect(() => { localStorage.setItem(GAME_DAY_STORAGE_KEY, gameDay.toString()); }, [gameDay]);
+  useEffect(() => {
+    if (!sectors.includes(selectedSector)) setSelectedSector("All");
+  }, [selectedSector, sectors]);
+
+  useEffect(() => {
+    if (trading.loading || autoBriefingChecked.current) return;
+
+    autoBriefingChecked.current = true;
+    const briefingDismissed =
+      localStorage.getItem(BRIEFING_DISMISSED_KEY) === "true";
+
+    if (gameDay <= STORY_DAYS && !briefingDismissed) {
+      setBriefingOpen(true);
+    }
+  }, [gameDay, trading.loading]);
+
+  useEffect(() => {
+    if (gameDay > STORY_DAYS) setBriefingOpen(false);
+  }, [gameDay]);
 
   useEffect(() => {
     if (!DEV_CONSOLE_ENABLED) return;
@@ -78,16 +101,26 @@ export default function Game() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const handleNextDay = () => setGameDay((d) => d + 1);
-  const handleResetDay = () => { setGameDay(1); setBriefingOpen(true); };
-  const handleResetAccount = () => { trading.resetAccount(); setTradeMessage("Account reset to $2,000 cash."); };
+  if (trading.loading) {
+    return (
+      <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "grid", placeItems: "center" }}>
+        <CircularProgress sx={{ color: D.brandText }} />
+      </Box>
+    );
+  }
 
-  const handleBuyStock = (stock: Stock) => {
-    const ok = trading.buyStock(stock);
+  const handleNextDay = () => setGameDay((d) => d + 1);
+  const handleDismissBriefing = () => {
+    localStorage.setItem(BRIEFING_DISMISSED_KEY, "true");
+    setBriefingOpen(false);
+  };
+
+  const handleBuyStock = async (stock: Stock) => {
+    const ok = await trading.buyStock(stock);
     setTradeMessage(ok ? `Bought 1 share of ${stock.symbol} for ${money(stock.currentPrice)}.` : `Not enough cash to buy ${stock.symbol}.`);
   };
-  const handleSellStock = (stock: Stock) => {
-    const ok = trading.sellStock(stock);
+  const handleSellStock = async (stock: Stock) => {
+    const ok = await trading.sellStock(stock);
     setTradeMessage(ok ? `Sold 1 share of ${stock.symbol} for ${money(stock.currentPrice)}.` : `You don't own any ${stock.symbol} shares.`);
   };
 
@@ -106,26 +139,26 @@ export default function Game() {
       if (Number.isNaN(amount)) return "Rejected.";
 
       if (["increase", "inc", "add", "+", "up"].includes(mode)) {
-        trading.addCash(Math.abs(amount));
+        void trading.addCash(Math.abs(amount));
         return "Applied.";
       }
 
       if (["decrease", "dec", "subtract", "sub", "-", "down"].includes(mode)) {
-        trading.addCash(-Math.abs(amount));
+        void trading.addCash(-Math.abs(amount));
         return "Applied.";
       }
 
       if (["set", "=", "to"].includes(mode)) {
-        trading.setCash(amount);
+        void trading.setCash(amount);
         return "Applied.";
       }
 
       if (arg1.startsWith("+") || arg1.startsWith("-")) {
-        trading.addCash(Number(arg1));
+        void trading.addCash(Number(arg1));
         return "Applied.";
       }
 
-      trading.setCash(amount);
+      void trading.setCash(amount);
       return "Applied.";
     }
 
@@ -159,25 +192,29 @@ export default function Game() {
       const stock = stocks.find((item) => item.symbol === symbol);
       if (!symbol || Number.isNaN(shares)) return "Rejected.";
       if (!stock) return `Unknown ticker: ${symbol}.`;
-      trading.setHolding(stock, shares);
+      void trading.setHolding(stock, shares);
       return "Applied.";
     }
 
     if (action === "reset") {
       const target = arg1.toLowerCase();
       if (target === "cash") {
-        trading.setCash(2000);
+        void trading.setCash(2000);
         return "Applied.";
       }
       if (target === "day") {
         setGameDay(1);
-        setBriefingOpen(true);
+        if (localStorage.getItem(BRIEFING_DISMISSED_KEY) !== "true") {
+          setBriefingOpen(true);
+        }
         return "Applied.";
       }
       if (target === "all") {
-        trading.resetAccount();
+        void trading.resetAccount();
         setGameDay(1);
-        setBriefingOpen(true);
+        if (localStorage.getItem(BRIEFING_DISMISSED_KEY) !== "true") {
+          setBriefingOpen(true);
+        }
         return "Applied.";
       }
       return "Rejected.";
@@ -188,7 +225,12 @@ export default function Game() {
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
-      <OpeningBriefingDialog open={briefingOpen} onClose={() => setBriefingOpen(false)} stories={openingStories} />
+      <OpeningBriefingDialog
+        open={briefingOpen}
+        onClose={() => setBriefingOpen(false)}
+        onDontShowAgain={handleDismissBriefing}
+        stories={openingStories}
+      />
       {DEV_CONSOLE_ENABLED && (
         <CommandConsole
           open={devConsoleOpen}
@@ -213,14 +255,12 @@ export default function Game() {
                   sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
                   Next Day →
                 </Button>
-                <Button onClick={handleResetDay} startIcon={<RestartAltIcon />}
-                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
-                  Reset
-                </Button>
-                <Button onClick={() => setBriefingOpen(true)} startIcon={<AutoStoriesIcon />}
-                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
-                  Briefing
-                </Button>
+                {gameDay <= STORY_DAYS && (
+                  <Button onClick={() => setBriefingOpen(true)} startIcon={<AutoStoriesIcon />}
+                    sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
+                    Briefing
+                  </Button>
+                )}
               </Stack>
             </Grid>
             <Grid item xs={12} md={5}>
@@ -245,6 +285,14 @@ export default function Game() {
       </Box>
 
       <Container maxWidth="xl" sx={{ py: 3 }}>
+        {trading.error && (
+          <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
+            <Typography sx={{ color: D.redText, fontSize: 13, fontWeight: 800 }}>
+              Supabase: {trading.error}
+            </Typography>
+          </Box>
+        )}
+
         {/* Stat tiles */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
@@ -298,24 +346,19 @@ export default function Game() {
             </Stack>
             <Box sx={{ p: 2.5 }}>
               <Grid container spacing={2}>
-                {todayNews.map((n) => {
-                  const bull = n.marketTone === "Bullish";
-                  return (
+                {todayNews.map((n) => (
                     <Grid item xs={12} md={6} key={n.newsId}>
                       <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                         <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
                           <Chip size="small" label={n.importance}
                             sx={{ bgcolor: n.importance === "High" ? D.redBg : D.greenBg, color: n.importance === "High" ? D.redText : D.greenText, fontWeight: 800, fontSize: 10 }} />
-                          <Chip size="small" label={n.marketTone}
-                            sx={{ bgcolor: bull ? D.greenBg : D.redBg, color: bull ? D.greenText : D.redText, fontWeight: 800, fontSize: 10 }} />
                         </Stack>
                         <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.5 }}>{n.headline}</Typography>
                         <Typography sx={{ fontSize: 12.5, color: D.t3, lineHeight: 1.6, mb: 1 }}>{n.body}</Typography>
                         <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>Related: {n.relatedTickers.join(", ")}</Typography>
                       </Box>
                     </Grid>
-                  );
-                })}
+                ))}
               </Grid>
             </Box>
           </Box>
@@ -328,7 +371,9 @@ export default function Game() {
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Box>
                   <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Market</Typography>
-                  <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Click any stock to view details and chart.</Typography>
+                  <Typography sx={{ fontSize: 12.5, color: D.t3 }}>
+                    {filteredStocks.length} of {stocks.length} stocks shown. Click any stock to view details and chart.
+                  </Typography>
                 </Box>
                 <Button onClick={handleNextDay} variant="contained" size="small"
                   sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
@@ -336,14 +381,46 @@ export default function Game() {
                 </Button>
               </Stack>
               <Box sx={{ p: 2 }}>
-                {stocks.map((stock) => (
-                  <StockRow key={stock.stockId} stock={stock} gameDay={gameDay}
-                    sharesOwned={getSharesOwned(trading.account, stock.symbol)}
-                    onBuy={() => handleBuyStock(stock)}
-                    onSell={() => handleSellStock(stock)}
-                    onOpen={() => navigate(`/stocks/${stock.symbol}`, { state: { gameDay } })}
-                  />
-                ))}
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+                  {sectors.map((sector) => {
+                    const selected = sector === selectedSector;
+                    const count = sectorCounts.get(sector) ?? 0;
+
+                    return (
+                      <Chip
+                        key={sector}
+                        label={`${sector} (${count})`}
+                        clickable
+                        onClick={() => setSelectedSector(sector)}
+                        sx={{
+                          height: 30,
+                          borderRadius: 1.5,
+                          bgcolor: selected ? D.brandBg : D.elevated,
+                          border: `1px solid ${selected ? D.brandBd : D.border}`,
+                          color: selected ? D.brandText : D.t2,
+                          fontWeight: 900,
+                          fontSize: 11.5,
+                          "&:hover": { bgcolor: selected ? D.brandBg : D.overlay, borderColor: selected ? D.brandBd : D.borderHi },
+                          "& .MuiChip-label": { px: 1.2 },
+                        }}
+                      />
+                    );
+                  })}
+                </Stack>
+                {filteredStocks.length === 0 ? (
+                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                    <Typography sx={{ fontSize: 13, color: D.t3 }}>No stocks match this sector.</Typography>
+                  </Box>
+                ) : (
+                  filteredStocks.map((stock) => (
+                    <StockRow key={stock.stockId} stock={stock} gameDay={gameDay}
+                      sharesOwned={getSharesOwned(trading.account, stock.symbol)}
+                      onBuy={() => handleBuyStock(stock)}
+                      onSell={() => handleSellStock(stock)}
+                      onOpen={() => navigate(`/stocks/${stock.symbol}`, { state: { gameDay } })}
+                    />
+                  ))
+                )}
               </Box>
             </Box>
           </Grid>
@@ -353,12 +430,8 @@ export default function Game() {
             <Stack spacing={2.5}>
               {/* Portfolio */}
               <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                <Stack direction="row" alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                   <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Portfolio</Typography>
-                  <Button size="small" onClick={handleResetAccount}
-                    sx={{ color: D.redText, border: `1px solid ${D.redBd}`, fontWeight: 700, fontSize: 12, textTransform: "none", borderRadius: 1.5, px: 1.2, py: 0.4, "&:hover": { bgcolor: D.redBg } }}>
-                    Reset
-                  </Button>
                 </Stack>
                 <Box sx={{ p: 2.5 }}>
                   {trading.account.holdings.length === 0 ? (
@@ -576,8 +649,11 @@ function StockRow({ stock, gameDay, sharesOwned, onBuy, onSell, onOpen }: {
   );
 }
 
-function OpeningBriefingDialog({ open, onClose, stories }: {
-  open: boolean; onClose: () => void; stories: ReturnType<typeof getOpeningStoryDays>;
+function OpeningBriefingDialog({ open, onClose, onDontShowAgain, stories }: {
+  open: boolean;
+  onClose: () => void;
+  onDontShowAgain: () => void;
+  stories: ReturnType<typeof getOpeningStoryDays>;
 }) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
@@ -632,6 +708,10 @@ function OpeningBriefingDialog({ open, onClose, stories }: {
       </DialogContent>
 
       <DialogActions sx={{ bgcolor: D.elevated, borderTop: `1px solid ${D.border}`, p: 2.5 }}>
+        <Button onClick={onDontShowAgain}
+          sx={{ mr: "auto", color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
+          Don't show again
+        </Button>
         <Button onClick={onClose} variant="contained"
           sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", px: 3, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
           Start Trading →

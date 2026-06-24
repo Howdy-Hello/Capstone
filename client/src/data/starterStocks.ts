@@ -48,8 +48,8 @@ export const starterStocks: Stock[] = [
   },
   {
     id: "6",
-    name: "QuantumGrid Chips",
-    symbol: "QNT",
+    name: "Inter Corporation",
+    symbol: "ITC",
     price: 164,
     previousPrice: 164,
     volatility: 0.08,

@@ -9,6 +9,7 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import GoogleIcon from "@mui/icons-material/Google";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { D, MONO } from "../theme/design";
@@ -21,7 +22,7 @@ function useQuery() {
 }
 
 const PERKS = [
-  "Trade 20 real-world stocks risk-free",
+  "Trade 21 real-world stocks risk-free",
   "Start with $2,000 in simulated capital",
   "30-day market simulation with live events",
   "Compete on a global leaderboard",
@@ -94,6 +95,26 @@ const AuthPage: React.FC = () => {
     } catch (err: any) {
       setError(err?.message ?? "Something went wrong. Try again.");
     } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setSuccessMsg(null);
+    setSubmitting(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err?.message ?? "Google sign-in failed. Try again.");
       setSubmitting(false);
     }
   };
@@ -176,6 +197,15 @@ const AuthPage: React.FC = () => {
               {successMsg && <Alert severity="success" sx={{ mb: 2, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 13 }}>{successMsg}</Alert>}
 
               <Stack spacing={2} sx={{ flex: 1 }}>
+                <Button type="button" variant="outlined" size="large" disabled={submitting} onClick={handleGoogleSignIn} startIcon={<GoogleIcon />}
+                  sx={{ color: D.t1, borderColor: D.border, bgcolor: D.elevated, py: 1.35, borderRadius: 2, fontWeight: 900, fontSize: 14, textTransform: "none", "&:hover": { borderColor: D.borderHi, bgcolor: D.overlay } }}>
+                  Continue with Google
+                </Button>
+
+                <Divider sx={{ borderColor: D.border, my: 0.5 }}>
+                  <Typography component="span" sx={{ px: 1.2, fontSize: 11, color: D.t3, fontFamily: MONO }}>OR</Typography>
+                </Divider>
+
                 {mode === "signup" && (
                   <TextField label="Full name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required sx={field} />
                 )}

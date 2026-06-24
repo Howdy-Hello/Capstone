@@ -89,6 +89,13 @@ export type OpeningStoryDay = {
   playerHint: string;
 };
 
+export const NEWS_PUBLISHERS = {
+  cynTimes: "The CYN Times",
+  techInsider: "Tech Insider",
+  expedition: "Expedition",
+  reddot: "Reddot",
+} as const;
+
 export const SEASON_LENGTH = 30;
 export const STORY_DAYS = 3;
 
@@ -98,7 +105,7 @@ export const openingStoryDays: OpeningStoryDay[] = [
     title: "Day 1: Tech confidence returns",
     summary:
       "The market opens with optimism around AI software and cybersecurity. Travel stocks start weak because fuel and weather concerns pressure airlines.",
-    rising: ["CAI", "CYB", "RBT", "PAP", "QNT"],
+    rising: ["CAI", "CYB", "RBT", "PAP", "ITC"],
     falling: ["SKY", "MIN", "OMG", "FRX"],
     playerHint:
       "Growth stocks start strong, but high-risk names can reverse quickly. Watch the tech names before buying too aggressively.",
@@ -108,7 +115,7 @@ export const openingStoryDays: OpeningStoryDay[] = [
     title: "Day 2: Defensive money rotates in",
     summary:
       "Healthcare, utilities, grocery, and education stocks receive buying interest. Energy and airlines weaken as demand and fuel concerns return.",
-    rising: ["MCH", "AQL", "FDM", "EDU", "HOM", "AGR"],
+    rising: ["MCH", "AQL", "FDM", "EDU", "C22", "AGR"],
     falling: ["GVE", "SKY", "MIN", "SLD"],
     playerHint:
       "Defensive stocks may be safer when the market looks mixed. Look at margins, debt, and dividend yield before deciding.",
@@ -119,7 +126,7 @@ export const openingStoryDays: OpeningStoryDay[] = [
     summary:
       "Investors return to higher-growth stocks after strong product and partnership rumors. Luxury and media stocks underperform after valuation concerns.",
     rising: ["CYB", "RBT", "CAI", "GVE", "PAP", "BCL", "SLD"],
-    falling: ["LUX", "OMG", "URB", "HOM", "FRX"],
+    falling: ["LUX", "OMG", "HLW", "URB", "C22", "FRX"],
     playerHint:
       "Momentum is improving, but some stocks may already be expensive. Compare price movement with P/E ratio and revenue growth.",
   },
@@ -384,6 +391,29 @@ export const mockStockCompanies: StockCompany[] = [
     },
   },
   {
+    stockId: "stock_hlw",
+    symbol: "HLW",
+    name: "Mount. Para Pictures",
+    sector: "Communication",
+    industry: "Movie Studio",
+    description:
+      "Film and television studio whose performance depends on box-office releases, production costs, licensing, and streaming partnerships.",
+    startingPrice: 72,
+    volatility: 0.041,
+    trendBias: 0.0004,
+    riskLevel: "High",
+    isActive: true,
+    fundamentals: {
+      peRatio: 28.6,
+      eps: 2.31,
+      revenueGrowth: 8.7,
+      profitMargin: 7.4,
+      debtToEquity: 1.26,
+      dividendYield: 0,
+      analystRating: "Hold",
+    },
+  },
+  {
     stockId: "stock_lux",
     symbol: "LUX",
     name: "LuxeWear Holdings",
@@ -431,8 +461,8 @@ export const mockStockCompanies: StockCompany[] = [
   },
   {
     stockId: "stock_hom",
-    symbol: "HOM",
-    name: "HomeBase Realty",
+    symbol: "C22",
+    name: "Century 22",
     sector: "Real Estate",
     industry: "Residential REIT",
     description:
@@ -476,9 +506,9 @@ export const mockStockCompanies: StockCompany[] = [
     },
   },
   {
-    stockId: "stock_qnt",
-    symbol: "QNT",
-    name: "QuantumGrid Chips",
+    stockId: "stock_itc",
+    symbol: "ITC",
+    name: "Inter Corporation",
     sector: "Technology",
     industry: "Semiconductors",
     description:
@@ -604,11 +634,12 @@ const hardcodedFirstThreeDayCloses: Record<string, Record<number, number>> = {
   CYB: { 1: 138.8, 2: 141.25, 3: 150.4 },
   RBT: { 1: 121.75, 2: 122.3, 3: 129.6 },
   OMG: { 1: 62.2, 2: 63.1, 3: 60.95 },
+  HLW: { 1: 73.15, 2: 74.05, 3: 69.8 },
   LUX: { 1: 147.4, 2: 149.1, 3: 144.8 },
   MIN: { 1: 70.55, 2: 68.9, 3: 69.3 },
-  HOM: { 1: 51.2, 2: 52.55, 3: 51.65 },
+  C22: { 1: 51.2, 2: 52.55, 3: 51.65 },
   EDU: { 1: 37.35, 2: 39.15, 3: 40.05 },
-  QNT: { 1: 171.4, 2: 173.25, 3: 181.9 },
+  ITC: { 1: 171.4, 2: 173.25, 3: 181.9 },
   BCL: { 1: 57.2, 2: 59.05, 3: 63.4 },
   FRX: { 1: 81.3, 2: 80.6, 3: 78.95 },
   AGR: { 1: 49.45, 2: 50.85, 3: 51.15 },
@@ -619,7 +650,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day1_cai_ai_demand",
     gameDay: 1,
-    source: "MarketWatch Daily",
+    source: NEWS_PUBLISHERS.techInsider,
     headline: "Closed Ai jumps as AI software demand improves",
     body:
       "Closed Ai says enterprise customers are expanding AI workflow subscriptions after a stronger pilot-conversion quarter. Traders are watching whether new contracts can offset high research spending.",
@@ -635,7 +666,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day1_cyb_security_spending",
     gameDay: 1,
-    source: "Sector Brief",
+    source: NEWS_PUBLISHERS.techInsider,
     headline: "CyberFort rallies as cybersecurity spending rises",
     body:
       "A sector survey shows security budgets rising after several large companies approved cloud-protection upgrades. CyberFort may benefit because most of its revenue comes from recurring enterprise contracts.",
@@ -651,7 +682,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day1_sky_fuel_pressure",
     gameDay: 1,
-    source: "Airline Market Brief",
+    source: NEWS_PUBLISHERS.expedition,
     headline: "SkyBridge falls as fuel costs pressure airline margins",
     body:
       "Jet fuel prices moved higher while winter weather delayed several major routes. Investors worry SkyBridge may need to discount fares even as operating costs rise.",
@@ -665,15 +696,15 @@ const hardcodedOpeningNews: MarketNews[] = [
     category: "macro",
   },
   {
-    newsId: "story_day1_qnt_chip_orders",
+    newsId: "story_day1_itc_chip_orders",
     gameDay: 1,
-    source: "Silicon Ledger",
-    headline: "QuantumGrid gains after server-chip order report",
+    source: NEWS_PUBLISHERS.techInsider,
+    headline: "Inter Corporation gains after server-chip order report",
     body:
-      "Component suppliers say QuantumGrid increased production reservations for its next AI accelerator. The report improves confidence in near-term chip demand, although capacity constraints remain a risk.",
+      "Component suppliers say Inter Corporation increased production reservations for its next AI accelerator. The report improves confidence in near-term chip demand, although capacity constraints remain a risk.",
     importance: "High",
     marketTone: "Bullish",
-    relatedTickers: ["QNT"],
+    relatedTickers: ["ITC"],
     expectedImpact: 0.052,
     actualImpact: 0.045,
     isAccurate: true,
@@ -683,7 +714,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day1_frx_port_delays",
     gameDay: 1,
-    source: "Logistics Desk",
+    source: NEWS_PUBLISHERS.expedition,
     headline: "FreightFlex slips as port delays slow shipments",
     body:
       "FreightFlex warned customers that port congestion and driver shortages could extend delivery times. The update raises concern that contract penalties may weigh on quarterly margins.",
@@ -699,7 +730,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day2_mch_product_approval",
     gameDay: 2,
-    source: "Health Finance Wire",
+    source: NEWS_PUBLISHERS.cynTimes,
     headline: "MediCore rises after new diagnostic product approval",
     body:
       "MediCore received approval for a diagnostic scanner aimed at regional clinics. The product may improve long-term sales, but investors are still watching launch costs and hospital purchasing cycles.",
@@ -715,7 +746,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day2_aql_city_contract",
     gameDay: 2,
-    source: "Infrastructure Daily",
+    source: NEWS_PUBLISHERS.cynTimes,
     headline: "AquaLife wins city water infrastructure contract",
     body:
       "AquaLife won a multi-year city water infrastructure contract that adds predictable project revenue. The deal also gives the company a stronger reference customer for future municipal bids.",
@@ -731,7 +762,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day2_gve_demand_warning",
     gameDay: 2,
-    source: "Global Energy Brief",
+    source: NEWS_PUBLISHERS.cynTimes,
     headline: "GreenVolt slips as renewable demand forecast weakens",
     body:
       "Analysts lowered near-term demand expectations for renewable energy storage projects after utilities delayed purchasing decisions. GreenVolt may still grow long term, but traders are reacting to slower order timing.",
@@ -747,7 +778,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day2_agr_grocery_contract",
     gameDay: 2,
-    source: "Consumer Staples Wire",
+    source: NEWS_PUBLISHERS.cynTimes,
     headline: "AgriPure rises after private-label grocery deal",
     body:
       "AgriPure signed a supply agreement with a national grocery chain for frozen meals and pantry staples. The contract is not flashy, but it may support steady volume during a cautious consumer market.",
@@ -763,7 +794,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day2_sld_grid_delay",
     gameDay: 2,
-    source: "Energy Permits Journal",
+    source: NEWS_PUBLISHERS.cynTimes,
     headline: "SolarDawn dips after grid-connection delay",
     body:
       "SolarDawn disclosed that two utility-scale projects are waiting longer for grid-connection approval. The assets are still expected to proceed, but delayed revenue recognition may pressure the stock.",
@@ -779,7 +810,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day3_rbt_factory_contract",
     gameDay: 3,
-    source: "Automation Wire",
+    source: NEWS_PUBLISHERS.techInsider,
     headline: "RoboWorks wins warehouse automation deal",
     body:
       "RoboWorks signed a warehouse automation deal with a large logistics operator. The contract includes robotic picking systems and maintenance services, giving investors more confidence in recurring revenue.",
@@ -795,7 +826,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day3_pap_product_cycle",
     gameDay: 3,
-    source: "Phone Viewer",
+    source: NEWS_PUBLISHERS.reddot,
     headline: "PineApple gains ahead of product cycle optimism",
     body:
       "Supplier checks point to stronger device demand ahead of PineApple's next product cycle. Investors are also watching whether premium pricing can hold if consumer spending weakens.",
@@ -811,7 +842,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day3_omg_content_costs",
     gameDay: 3,
-    source: "Media Market Desk",
+    source: NEWS_PUBLISHERS.cynTimes,
     headline: "OmniMedia weakens after content cost concerns",
     body:
       "Analysts warned that rising content costs may pressure OmniMedia's margins. Subscriber growth remains positive, but investors worry that more spending is needed to compete for major releases.",
@@ -825,9 +856,25 @@ const hardcodedOpeningNews: MarketNews[] = [
     category: "operations",
   },
   {
+    newsId: "story_day3_hlw_production_costs",
+    gameDay: 3,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Mount. Para Pictures slides as production costs rise",
+    body:
+      "Mount. Para Pictures reported higher production and marketing costs for its upcoming release slate. Strong audience interest could still support ticket sales, but investors are concerned about pressure on studio margins.",
+    importance: "Medium",
+    marketTone: "Bearish",
+    relatedTickers: ["HLW"],
+    expectedImpact: -0.049,
+    actualImpact: -0.057,
+    isAccurate: true,
+    isRumor: false,
+    category: "operations",
+  },
+  {
     newsId: "story_day3_bcl_trial_update",
     gameDay: 3,
-    source: "BioResearch Wire",
+    source: NEWS_PUBLISHERS.cynTimes,
     headline: "BioCloud climbs after early trial data improves",
     body:
       "BioCloud released early-stage therapy data showing stronger patient response rates than its prior study. The trial is still small, so traders are balancing optimism with biotech execution risk.",
@@ -843,7 +890,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day3_sld_tax_credit_report",
     gameDay: 3,
-    source: "Clean Power Monitor",
+    source: NEWS_PUBLISHERS.cynTimes,
     headline: "SolarDawn rebounds on tax-credit clarification",
     body:
       "A new policy clarification suggests SolarDawn's delayed projects may still qualify for clean-energy credits. The update reduces some financing concern after yesterday's grid-connection delay.",
@@ -859,7 +906,7 @@ const hardcodedOpeningNews: MarketNews[] = [
   {
     newsId: "story_day3_frx_retail_volume_warning",
     gameDay: 3,
-    source: "Retail Supply Chain Brief",
+    source: NEWS_PUBLISHERS.expedition,
     headline: "FreightFlex falls after retail shipment warning",
     body:
       "Several retail customers lowered shipment volume forecasts for the next month. FreightFlex may need to run its network with lower utilization, which can pressure profit margins.",
@@ -872,16 +919,6 @@ const hardcodedOpeningNews: MarketNews[] = [
     isRumor: false,
     category: "macro",
   },
-];
-
-const newsSources = [
-  "MarketWatch Daily",
-  "Investor Pulse",
-  "Sector Brief",
-  "Finance Wire",
-  "Street Rumors",
-  "Global Market Desk",
-  "Trading Terminal",
 ];
 
 const bullishTemplates = [
@@ -1048,6 +1085,34 @@ function getEventTemplate(company: StockCompany, gameDay: number) {
   return templates[index];
 }
 
+function getNewsSource(
+  company: StockCompany,
+  event: { isRumor: boolean },
+  gameDay: number
+) {
+  if (event.isRumor) return NEWS_PUBLISHERS.reddot;
+
+  if (company.sector === "Technology") {
+    return NEWS_PUBLISHERS.techInsider;
+  }
+
+  if (
+    company.sector === "Travel"
+    || company.industry === "Airlines"
+    || company.industry === "Freight Logistics"
+  ) {
+    return NEWS_PUBLISHERS.expedition;
+  }
+
+  const reddotRoll = seededRandom(
+    `publisher-reddot-${company.symbol}-${gameDay}`
+  );
+
+  return reddotRoll < 0.12
+    ? NEWS_PUBLISHERS.reddot
+    : NEWS_PUBLISHERS.cynTimes;
+}
+
 function generateEventForCompany(
   company: StockCompany,
   gameDay: number
@@ -1059,10 +1124,6 @@ function generateEventForCompany(
   const template = getEventTemplate(company, gameDay);
 
   if (!template) return null;
-
-  const sourceIndex = Math.floor(
-    seededRandom(`source-${company.symbol}-${gameDay}`) * newsSources.length
-  );
 
   const actualImpact = seededRange(
     `impact-${company.symbol}-${gameDay}`,
@@ -1081,7 +1142,7 @@ function generateEventForCompany(
   return {
     newsId: `news_${company.symbol.toLowerCase()}_${gameDay}`,
     gameDay,
-    source: newsSources[sourceIndex],
+    source: getNewsSource(company, template, gameDay),
     headline: `${company.name} ${template.headline}`,
     body: template.body,
     importance: template.importance,

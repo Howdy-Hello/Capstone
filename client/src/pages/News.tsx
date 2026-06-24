@@ -1,29 +1,20 @@
-import React, { useMemo } from "react";
+import React from "react";
 import {
-  Box, Button, Chip, Container, Divider, Grid, Stack, Typography,
+  Box, Button, Chip, Container, Grid, Stack, Typography,
 } from "@mui/material";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
 import {
-  getNewsForGameDay, getSeasonDay, MarketNews, normalizeGameDay, SEASON_LENGTH,
+  getSeasonDay, MarketNews, SEASON_LENGTH,
 } from "../data/mockStocks";
+import { useGame } from "../context/GameContext";
 import { D, CARD, MONO } from "../theme/design";
-
-const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
 
 type LocationState = { gameDay?: number };
 
-function loadSavedGameDay() {
-  const savedDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
-  return Number.isFinite(savedDay) && savedDay > 0 ? Math.floor(savedDay) : 1;
-}
-
 function NewsCard({ news }: { news: MarketNews }) {
-  const bull = news.marketTone === "Bullish";
   const imp = news.importance === "High";
   return (
     <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 2 }}>
@@ -39,8 +30,6 @@ function NewsCard({ news }: { news: MarketNews }) {
       </Stack>
       <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.7, mb: 1.5 }}>{news.body}</Typography>
       <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
-        <Chip size="small" label={news.marketTone}
-          sx={{ bgcolor: bull ? D.greenBg : D.redBg, color: bull ? D.greenText : D.redText, border: `1px solid ${bull ? D.greenBd : D.redBd}`, fontWeight: 800, fontSize: 10 }} />
         {news.isRumor && (
           <Chip size="small" label={news.isAccurate ? "Rumor" : "Unconfirmed"} sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 700, fontSize: 10 }} />
         )}
@@ -55,11 +44,11 @@ function NewsCard({ news }: { news: MarketNews }) {
 export default function News() {
   const location = useLocation();
   const state = location.state as LocationState | null;
-  const gameDay = normalizeGameDay(state?.gameDay ?? loadSavedGameDay());
+  const game = useGame();
+  const gameDay = state?.gameDay ?? game.gameDay;
   const seasonDay = getSeasonDay(gameDay);
-  const marketNews = useMemo(() => getNewsForGameDay(gameDay), [gameDay]);
-  const bullishNews = marketNews.filter((n) => n.marketTone === "Bullish");
-  const bearishNews = marketNews.filter((n) => n.marketTone === "Bearish");
+  const marketNews = gameDay === game.gameDay ? game.news : [];
+  const relatedTickerCount = new Set(marketNews.flatMap((n) => n.relatedTickers)).size;
   const highImportance = marketNews.filter((n) => n.importance === "High");
 
   return (
@@ -86,8 +75,8 @@ export default function News() {
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
             { label: "Game Day",       val: gameDay.toString(),           icon: <NewspaperIcon sx={{ fontSize: 20 }} />,      up: undefined },
-            { label: "Bullish",        val: bullishNews.length.toString(), icon: <TrendingUpIcon sx={{ fontSize: 20 }} />,    up: true },
-            { label: "Bearish",        val: bearishNews.length.toString(), icon: <TrendingDownIcon sx={{ fontSize: 20 }} />,  up: false },
+            { label: "Stories",        val: marketNews.length.toString(), icon: <NewspaperIcon sx={{ fontSize: 20 }} />,      up: undefined },
+            { label: "Tickers",        val: relatedTickerCount.toString(), icon: <NewspaperIcon sx={{ fontSize: 20 }} />,      up: undefined },
             { label: "High Priority",  val: highImportance.length.toString(), icon: <ReportProblemIcon sx={{ fontSize: 20 }} />, up: false },
           ].map((s) => {
             const color = s.up === undefined ? D.brandText : s.up ? D.greenText : D.redText;
