@@ -16,7 +16,6 @@ import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "../lib/supabase";
 import { D } from "../theme/design";
 
 const nav = [
@@ -29,18 +28,11 @@ const nav = [
 const Header: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [menuAnchor, setMenuAnchor] = React.useState<null | HTMLElement>(null);
-  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
 
   const isActive = (to: string) => pathname === to || (to !== "/" && pathname.startsWith(to));
-
-  React.useEffect(() => {
-    if (!user) { setAvatarUrl(null); return; }
-    supabase.from("profiles").select("avatar_url").eq("id", user.id).single()
-      .then(({ data }) => setAvatarUrl(data?.avatar_url ?? null));
-  }, [user]);
 
   const handleSignOut = async () => {
     setMenuAnchor(null);
@@ -49,7 +41,19 @@ const Header: React.FC = () => {
     navigate("/", { replace: true });
   };
 
-  const initials = (user?.email ?? "?").slice(0, 2).toUpperCase();
+  const profileName =
+    profile?.display_name
+    || profile?.username
+    || user?.email?.split("@")[0]
+    || "Player";
+  const menuHandle = profile?.username ? `@${profile.username}` : user?.email;
+  const avatarUrl = profile?.avatar_url ?? null;
+  const initials = profileName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <>
@@ -107,7 +111,7 @@ const Header: React.FC = () => {
                   <Avatar src={avatarUrl ?? undefined} sx={{ width: 26, height: 26, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}`, fontSize: 11, fontWeight: 900, color: D.brandText }}>
                     {!avatarUrl && initials}
                   </Avatar>
-                  {user.email?.split("@")[0]}
+                  {profileName}
                 </Button>
 
                 <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}
@@ -116,8 +120,8 @@ const Header: React.FC = () => {
                   anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
                 >
                   <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${D.border}` }}>
-                    <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1 }}>{user.email?.split("@")[0]}</Typography>
-                    <Typography sx={{ fontSize: 11, color: D.t3 }}>{user.email}</Typography>
+                    <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1 }}>{profileName}</Typography>
+                    <Typography sx={{ fontSize: 11, color: D.t3 }}>{menuHandle}</Typography>
                   </Box>
                   {[
                     { label: "My Profile", to: "/profile", icon: <AccountCircleOutlinedIcon sx={{ fontSize: 16 }} /> },
@@ -191,8 +195,8 @@ const Header: React.FC = () => {
                     {!avatarUrl && initials}
                   </Avatar>
                   <Box>
-                    <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1 }}>{user.email?.split("@")[0]}</Typography>
-                    <Typography sx={{ fontSize: 10, color: D.t3 }}>{user.email}</Typography>
+                    <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1 }}>{profileName}</Typography>
+                    <Typography sx={{ fontSize: 10, color: D.t3 }}>{menuHandle}</Typography>
                   </Box>
                 </Stack>
               </Box>

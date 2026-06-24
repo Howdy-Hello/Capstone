@@ -20,6 +20,7 @@ import {
 } from "../data/mockStocks";
 import { getNetWorth, getPortfolioValue } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
+import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
 const PIE_COLORS = [D.green, D.brand, D.amber, "#38BDF8", "#F87171", "#A78BFA"];
@@ -44,7 +45,13 @@ function StatTile({ label, value, icon, up }: { label: string; value: string; ic
 
 export default function Dashboard() {
   const trading = useGame();
+  const { user, profile } = useAuth();
   const { gameDay, stocks, news } = trading;
+  const playerName =
+    profile?.display_name
+    || profile?.username
+    || user?.email?.split("@")[0]
+    || "Trader";
   const seasonDay = getSeasonDay(gameDay);
   const portfolioValue = useMemo(() => getPortfolioValue(trading.account, stocks), [trading.account, stocks]);
   const netWorth = useMemo(() => getNetWorth(trading.account, stocks), [trading.account, stocks]);
@@ -93,7 +100,9 @@ export default function Dashboard() {
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
             <Box>
               <Chip label={`DAY ${gameDay}`} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Trading Dashboard</Typography>
+              <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
+                {playerName}&apos;s Dashboard
+              </Typography>
               <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Live portfolio view for Game Day {gameDay} · Season {seasonDay}/{SEASON_LENGTH}</Typography>
             </Box>
             <Box sx={{ ...CARD, p: 2.5, minWidth: 280 }}>

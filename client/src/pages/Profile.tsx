@@ -18,11 +18,6 @@ import { D, CARD, MONO } from "../theme/design";
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const AVATAR_BUCKET = "avatars";
 
-interface Profile {
-  id: string; display_name: string; username: string;
-  bio: string; avatar_url: string | null; updated_at: string;
-}
-
 function getAvatarPath(userId: string) { return `${userId}/avatar`; }
 
 const fieldSx = {
@@ -40,17 +35,15 @@ const fieldSx = {
 };
 
 export default function ProfilePage() {
-  const { user, signOut } = useAuth();
+  const { user, profile, profileLoading, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [deletingAvatar, setDeletingAvatar] = useState(false);
@@ -63,21 +56,11 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-    (async () => {
-      setLoading(true);
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (error && error.code !== "PGRST116") {
-        setSaveErr("Could not load profile.");
-      } else if (data) {
-        setProfile(data);
-        setDisplayName(data.display_name ?? "");
-        setUsername(data.username ?? "");
-        setBio(data.bio ?? "");
-        if (data.avatar_url) setAvatarUrl(data.avatar_url);
-      }
-      setLoading(false);
-    })();
-  }, [user]);
+    setDisplayName(profile?.display_name ?? "");
+    setUsername(profile?.username ?? "");
+    setBio(profile?.bio ?? "");
+    setAvatarUrl(profile?.avatar_url ?? null);
+  }, [profile, user]);
 
   function validateProfile() {
     if (displayName.trim().length < 2) return "Display name must be at least 2 characters.";
@@ -100,6 +83,7 @@ export default function ProfilePage() {
     if (error) {
       setSaveErr(error.message.includes("profiles_username_key") ? "That username is already taken." : error.message);
     } else {
+      await refreshProfile();
       setSaveMsg("Profile saved successfully.");
       setTimeout(() => setSaveMsg(null), 3500);
     }
@@ -118,7 +102,17 @@ export default function ProfilePage() {
     const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
     const url = `${data.publicUrl}?t=${Date.now()}`;
     setAvatarUrl(url);
-    await supabase.from("profiles").upsert({ id: user.id, avatar_url: url, updated_at: new Date().toISOString() });
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: user.id,
+      avatar_url: url,
+      updated_at: new Date().toISOString(),
+    });
+    if (profileError) {
+      setAvatarErr("Could not save profile photo: " + profileError.message);
+      setUploadingAvatar(false);
+      return;
+    }
+    await refreshProfile();
     setUploadingAvatar(false);
     e.target.value = "";
   }
@@ -129,6 +123,7 @@ export default function ProfilePage() {
     await supabase.storage.from(AVATAR_BUCKET).remove([getAvatarPath(user.id)]);
     await supabase.from("profiles").upsert({ id: user.id, avatar_url: null, updated_at: new Date().toISOString() });
     setAvatarUrl(null); setDeletingAvatar(false);
+    await refreshProfile();
   }
 
   async function handleDeleteAccount() {
@@ -141,7 +136,7 @@ export default function ProfilePage() {
   }
 
   if (!user) return null;
-  if (loading) {
+  if (profileLoading) {
     return (
       <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "grid", placeItems: "center" }}>
         <CircularProgress sx={{ color: D.brandText }} />
