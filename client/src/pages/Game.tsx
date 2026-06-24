@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
-  CircularProgress, Grid, IconButton, LinearProgress, Stack, TextField, Typography,
+  CircularProgress, Divider, Grid, IconButton, LinearProgress, Stack, TextField, Typography,
 } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
@@ -14,6 +14,9 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import CloseIcon from "@mui/icons-material/Close";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CodeIcon from "@mui/icons-material/Code";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import {
@@ -33,6 +36,9 @@ export default function Game() {
   const autoBriefingChecked = useRef(false);
   const [devConsoleOpen, setDevConsoleOpen] = useState(false);
   const [tradeMessage, setTradeMessage] = useState("");
+  const [tradeDialog, setTradeDialog] = useState<{ stock: Stock; mode: "buy" | "sell" } | null>(null);
+  const [seasonEndOpen, setSeasonEndOpen] = useState(false);
+  const seasonEndShownRef = useRef(false);
   const [selectedSector, setSelectedSector] = useState("All");
   const trading = useGame();
   const { gameDay, setGameDay, stocks, news: todayNews } = trading;
@@ -80,6 +86,13 @@ export default function Game() {
   }, [gameDay]);
 
   useEffect(() => {
+    if (!trading.loading && gameDay >= SEASON_LENGTH && !seasonEndShownRef.current) {
+      seasonEndShownRef.current = true;
+      setSeasonEndOpen(true);
+    }
+  }, [gameDay, trading.loading]);
+
+  useEffect(() => {
     if (!DEV_CONSOLE_ENABLED) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -115,13 +128,22 @@ export default function Game() {
     setBriefingOpen(false);
   };
 
-  const handleBuyStock = async (stock: Stock) => {
-    const ok = await trading.buyStock(stock);
-    setTradeMessage(ok ? `Bought 1 share of ${stock.symbol} for ${money(stock.currentPrice)}.` : `Not enough cash to buy ${stock.symbol}.`);
-  };
-  const handleSellStock = async (stock: Stock) => {
-    const ok = await trading.sellStock(stock);
-    setTradeMessage(ok ? `Sold 1 share of ${stock.symbol} for ${money(stock.currentPrice)}.` : `You don't own any ${stock.symbol} shares.`);
+  const handleBuyStock = (stock: Stock) => setTradeDialog({ stock, mode: "buy" });
+  const handleSellStock = (stock: Stock) => setTradeDialog({ stock, mode: "sell" });
+
+  const handleTradeConfirm = async (stock: Stock, mode: "buy" | "sell", quantity: number) => {
+    const fn = mode === "buy" ? trading.buyStock : trading.sellStock;
+    const ok = await fn(stock, quantity);
+    const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
+    const total = money(stock.currentPrice * quantity);
+    setTradeMessage(
+      ok
+        ? `${mode === "buy" ? "Bought" : "Sold"} ${shares} of ${stock.symbol} for ${total}.`
+        : mode === "buy"
+          ? `Not enough cash to buy ${shares} of ${stock.symbol}.`
+          : `Not enough shares to sell.`
+    );
+    setTradeDialog(null);
   };
 
   const runConsoleCommand = (rawCommand: string) => {
@@ -230,6 +252,25 @@ export default function Game() {
         onClose={() => setBriefingOpen(false)}
         onDontShowAgain={handleDismissBriefing}
         stories={openingStories}
+      />
+      {tradeDialog && (
+        <TradeDialog
+          stock={tradeDialog.stock}
+          mode={tradeDialog.mode}
+          cash={trading.account.cash}
+          sharesOwned={getSharesOwned(trading.account, tradeDialog.stock.symbol)}
+          onClose={() => setTradeDialog(null)}
+          onConfirm={(qty) => handleTradeConfirm(tradeDialog.stock, tradeDialog.mode, qty)}
+        />
+      )}
+      <SeasonEndDialog
+        open={seasonEndOpen}
+        account={trading.account}
+        stocks={stocks}
+        netWorth={netWorth}
+        onClose={() => setSeasonEndOpen(false)}
+        onNewGame={async () => { setSeasonEndOpen(false); await trading.resetAccount(); seasonEndShownRef.current = false; }}
+        onLeaderboard={() => { setSeasonEndOpen(false); navigate("/leaderboard"); }}
       />
       {DEV_CONSOLE_ENABLED && (
         <CommandConsole
@@ -646,6 +687,279 @@ function StockRow({ stock, gameDay, sharesOwned, onBuy, onSell, onOpen }: {
         </Button>
       </Stack>
     </Box>
+  );
+}
+
+function TradeDialog({ stock, mode, cash, sharesOwned, onClose, onConfirm }: {
+  stock: Stock;
+  mode: "buy" | "sell";
+  cash: number;
+  sharesOwned: number;
+  onClose: () => void;
+  onConfirm: (quantity: number) => void;
+}) {
+  const maxQty = mode === "buy"
+    ? Math.max(1, Math.floor(cash / stock.currentPrice))
+    : Math.max(0, sharesOwned);
+  const [quantity, setQuantity] = useState(1);
+  const qty = Math.min(Math.max(1, quantity), maxQty);
+  const total = qty * stock.currentPrice;
+  const canConfirm = mode === "buy" ? cash >= total : sharesOwned >= qty;
+  const isBuy = mode === "buy";
+
+  const adjust = (delta: number) => setQuantity((q) => Math.min(maxQty, Math.max(1, q + delta)));
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="xs" fullWidth
+      PaperProps={{ sx: { bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden" } }}>
+      <DialogTitle sx={{ bgcolor: D.elevated, borderBottom: `1px solid ${D.border}`, p: 2.5 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Box>
+            <Typography sx={{ fontWeight: 900, fontSize: 17, color: D.t1 }}>
+              {isBuy ? "Buy" : "Sell"} {stock.symbol}
+            </Typography>
+            <Typography sx={{ fontSize: 12.5, color: D.t3 }}>{stock.name}</Typography>
+          </Box>
+          <IconButton size="small" onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}>
+            <CloseIcon sx={{ fontSize: 17 }} />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
+
+      <DialogContent sx={{ bgcolor: D.bg, p: 2.5 }}>
+        <Stack spacing={2} sx={{ pt: 0.5 }}>
+          <Stack direction="row" justifyContent="space-between">
+            <Typography sx={{ fontSize: 13, color: D.t3 }}>Price per share</Typography>
+            <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(stock.currentPrice)}</Typography>
+          </Stack>
+          {isBuy ? (
+            <Stack direction="row" justifyContent="space-between">
+              <Typography sx={{ fontSize: 13, color: D.t3 }}>Available cash</Typography>
+              <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(cash)}</Typography>
+            </Stack>
+          ) : (
+            <Stack direction="row" justifyContent="space-between">
+              <Typography sx={{ fontSize: 13, color: D.t3 }}>Shares owned</Typography>
+              <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{sharesOwned}</Typography>
+            </Stack>
+          )}
+
+          <Divider sx={{ borderColor: D.border }} />
+
+          <Box>
+            <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 1.2 }}>QUANTITY</Typography>
+            <Stack direction="row" alignItems="center" spacing={1.5}>
+              <IconButton size="small" onClick={() => adjust(-1)} disabled={qty <= 1}
+                sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, color: D.t2, borderRadius: 1.5,
+                  "&:hover": { bgcolor: D.overlay, color: D.t1 }, "&.Mui-disabled": { color: D.t3 } }}>
+                <RemoveIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+              <TextField
+                size="small"
+                value={qty}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (!Number.isNaN(v)) setQuantity(v);
+                }}
+                inputProps={{ min: 1, max: maxQty, sx: { textAlign: "center", fontFamily: MONO, fontWeight: 900, fontSize: 18, py: 0.8 } }}
+                sx={{
+                  width: 80,
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: D.elevated, color: D.t1, borderRadius: 1.5,
+                    "& fieldset": { borderColor: D.border },
+                    "&:hover fieldset": { borderColor: D.borderHi },
+                    "&.Mui-focused fieldset": { borderColor: D.brand },
+                  },
+                }}
+              />
+              <IconButton size="small" onClick={() => adjust(1)} disabled={qty >= maxQty}
+                sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, color: D.t2, borderRadius: 1.5,
+                  "&:hover": { bgcolor: D.overlay, color: D.t1 }, "&.Mui-disabled": { color: D.t3 } }}>
+                <AddIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+              <Button size="small" onClick={() => setQuantity(maxQty)} disabled={qty >= maxQty}
+                sx={{ color: D.brandText, fontSize: 11, fontWeight: 800, textTransform: "none", px: 1 }}>
+                Max
+              </Button>
+            </Stack>
+          </Box>
+
+          <Box sx={{ p: 2, borderRadius: 2, bgcolor: isBuy ? D.greenBg : D.redBg, border: `1px solid ${isBuy ? D.greenBd : D.redBd}` }}>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography sx={{ fontSize: 13, color: D.t2, fontWeight: 700 }}>
+                {isBuy ? "Total cost" : "Total proceeds"}
+              </Typography>
+              <Typography sx={{ fontSize: 18, fontWeight: 950, color: isBuy ? D.greenText : D.redText, fontFamily: MONO }}>
+                {money(total)}
+              </Typography>
+            </Stack>
+            {isBuy && (
+              <Typography sx={{ fontSize: 11.5, color: D.t3, mt: 0.5 }}>
+                Remaining: {money(cash - total)}
+              </Typography>
+            )}
+          </Box>
+        </Stack>
+      </DialogContent>
+
+      <DialogActions sx={{ bgcolor: D.elevated, borderTop: `1px solid ${D.border}`, p: 2 }}>
+        <Button onClick={onClose}
+          sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
+          Cancel
+        </Button>
+        <Button variant="contained" disabled={!canConfirm} onClick={() => onConfirm(qty)}
+          sx={{
+            bgcolor: isBuy ? D.green : D.red, color: "#fff", fontWeight: 800, textTransform: "none",
+            borderRadius: 1.5, boxShadow: "none", px: 3,
+            "&:hover": { bgcolor: isBuy ? "#16A34A" : "#DC2626", boxShadow: "none" },
+            "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 },
+          }}>
+          {isBuy ? "Buy" : "Sell"} {qty} share{qty === 1 ? "" : "s"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function SeasonEndDialog({ open, account, stocks, netWorth, onClose, onNewGame, onLeaderboard }: {
+  open: boolean;
+  account: ReturnType<typeof useGame>["account"];
+  stocks: Stock[];
+  netWorth: number;
+  onClose: () => void;
+  onNewGame: () => void;
+  onLeaderboard: () => void;
+}) {
+  const STARTING_CASH = 2_000;
+  const returnPct = ((netWorth - STARTING_CASH) / STARTING_CASH) * 100;
+  const isProfit = netWorth >= STARTING_CASH;
+
+  const holdingStats = account.holdings.map((h) => {
+    const live = stocks.find((s) => s.symbol === h.symbol);
+    const currentPrice = live?.currentPrice ?? h.averageCost;
+    const value = currentPrice * h.shares;
+    const pnlPct = h.averageCost > 0 ? ((currentPrice - h.averageCost) / h.averageCost) * 100 : 0;
+    return { ...h, currentPrice, value, pnlPct };
+  }).sort((a, b) => b.pnlPct - a.pnlPct);
+
+  const best = holdingStats[0];
+  const worst = holdingStats[holdingStats.length - 1];
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
+      PaperProps={{ sx: { bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden" } }}>
+      <DialogTitle sx={{ bgcolor: D.elevated, borderBottom: `1px solid ${D.border}`, p: 3 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <EmojiEventsIcon sx={{ color: D.amber, fontSize: 24 }} />
+            <Box>
+              <Typography sx={{ fontWeight: 900, fontSize: 18, color: D.t1 }}>Season Complete</Typography>
+              <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Day 30 — Final Results</Typography>
+            </Box>
+          </Stack>
+          <IconButton size="small" onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}>
+            <CloseIcon sx={{ fontSize: 17 }} />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
+
+      <DialogContent sx={{ bgcolor: D.bg, p: 3 }}>
+        <Stack spacing={2.5}>
+          {/* Net worth hero */}
+          <Box sx={{ p: 3, borderRadius: 2, bgcolor: isProfit ? D.greenBg : D.redBg, border: `1px solid ${isProfit ? D.greenBd : D.redBd}`, textAlign: "center" }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>FINAL NET WORTH</Typography>
+            <Typography sx={{ fontSize: 40, fontWeight: 950, color: isProfit ? D.greenText : D.redText, fontFamily: MONO, lineHeight: 1, mb: 0.8 }}>
+              {money(netWorth)}
+            </Typography>
+            <Chip
+              icon={isProfit ? <TrendingUpIcon sx={{ fontSize: 14 }} /> : <TrendingDownIcon sx={{ fontSize: 14 }} />}
+              label={`${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}% vs $2,000 starting capital`}
+              sx={{ bgcolor: isProfit ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", color: isProfit ? D.greenText : D.redText, fontWeight: 800, fontSize: 12 }}
+            />
+          </Box>
+
+          {/* Stats row */}
+          <Grid container spacing={1.5}>
+            {[
+              { label: "Starting Capital", val: money(STARTING_CASH) },
+              { label: "Cash Remaining", val: money(account.cash) },
+              { label: "Portfolio Value", val: money(netWorth - account.cash) },
+              { label: "Total Return", val: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%` },
+            ].map((s) => (
+              <Grid item xs={6} key={s.label}>
+                <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}` }}>
+                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.3 }}>{s.label.toUpperCase()}</Typography>
+                  <Typography sx={{ fontSize: 16, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* Best/Worst */}
+          {holdingStats.length >= 1 && (
+            <>
+              <Divider sx={{ borderColor: D.border }} />
+              <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO }}>HOLDINGS PERFORMANCE</Typography>
+              <Stack spacing={1}>
+                {holdingStats.map((h) => {
+                  const up = h.pnlPct >= 0;
+                  return (
+                    <Box key={h.symbol} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}` }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Box>
+                          <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: D.t1, fontFamily: MONO }}>{h.symbol}</Typography>
+                          <Typography sx={{ fontSize: 12, color: D.t3 }}>{h.shares} share{h.shares === 1 ? "" : "s"} · avg {money(h.averageCost)}</Typography>
+                        </Box>
+                        <Box sx={{ textAlign: "right" }}>
+                          <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{money(h.value)}</Typography>
+                          <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: up ? D.greenText : D.redText }}>{pct(h.pnlPct)}</Typography>
+                        </Box>
+                      </Stack>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </>
+          )}
+
+          {/* Best / worst callouts */}
+          {holdingStats.length >= 2 && (
+            <Grid container spacing={1.5}>
+              <Grid item xs={6}>
+                <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.greenBg, border: `1px solid ${D.greenBd}` }}>
+                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.greenText, fontFamily: MONO, mb: 0.3 }}>BEST PICK</Typography>
+                  <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{best.symbol}</Typography>
+                  <Typography sx={{ fontSize: 12.5, color: D.greenText, fontWeight: 800 }}>{pct(best.pnlPct)}</Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={6}>
+                <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
+                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.redText, fontFamily: MONO, mb: 0.3 }}>WORST PICK</Typography>
+                  <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{worst.symbol}</Typography>
+                  <Typography sx={{ fontSize: 12.5, color: D.redText, fontWeight: 800 }}>{pct(worst.pnlPct)}</Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          )}
+        </Stack>
+      </DialogContent>
+
+      <DialogActions sx={{ bgcolor: D.elevated, borderTop: `1px solid ${D.border}`, p: 2.5, gap: 1 }}>
+        <Button onClick={onLeaderboard}
+          sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
+          Leaderboard
+        </Button>
+        <Box sx={{ flex: 1 }} />
+        <Button onClick={onClose}
+          sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
+          Dismiss
+        </Button>
+        <Button variant="contained" onClick={onNewGame}
+          sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", px: 3, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
+          New Game →
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 

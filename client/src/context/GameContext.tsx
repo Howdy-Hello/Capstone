@@ -88,8 +88,8 @@ type TradeResult = {
 
 type GameContextValue = {
   account: TradingAccount;
-  buyStock: (stock: Stock) => Promise<boolean>;
-  sellStock: (stock: Stock) => Promise<boolean>;
+  buyStock: (stock: Stock, quantity?: number) => Promise<boolean>;
+  sellStock: (stock: Stock, quantity?: number) => Promise<boolean>;
   resetAccount: () => Promise<void>;
   setCash: (cash: number) => Promise<void>;
   addCash: (amount: number) => Promise<void>;
@@ -103,6 +103,8 @@ type GameContextValue = {
   getRelatedNews: (symbol: string) => MarketNews[];
   loading: boolean;
   error: string | null;
+  sessionId: string | null;
+  reloadSession: () => Promise<void>;
 };
 
 const defaultAccount: TradingAccount = {
@@ -414,16 +416,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const executeTrade = useCallback(async (
     stock: Stock,
-    tradeType: "buy" | "sell"
+    tradeType: "buy" | "sell",
+    quantity = 1
   ) => {
     if (!session || !user) return false;
-    if (tradeType === "buy" && account.cash < stock.currentPrice) return false;
-    if (
-      tradeType === "sell"
-      && !account.holdings.some(
-        (holding) => holding.symbol === stock.symbol && holding.shares > 0
-      )
-    ) return false;
+    if (tradeType === "buy" && account.cash < stock.currentPrice * quantity) return false;
+    if (tradeType === "sell") {
+      const holding = account.holdings.find((h) => h.symbol === stock.symbol);
+      if (!holding || holding.shares < quantity) return false;
+    }
 
     const { data, error: tradeError } = await supabase.rpc("execute_trade", {
       target_session_id: session.id,
@@ -431,7 +432,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       target_trade_type: tradeType,
       target_price: stock.currentPrice,
       target_game_day: gameDay,
-      target_quantity: 1,
+      target_quantity: quantity,
     });
 
     if (tradeError) {
@@ -485,12 +486,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [account.cash, account.holdings, gameDay, session, user]);
 
   const buyStock = useCallback(
-    (stock: Stock) => executeTrade(stock, "buy"),
+    (stock: Stock, quantity = 1) => executeTrade(stock, "buy", quantity),
     [executeTrade]
   );
 
   const sellStock = useCallback(
-    (stock: Stock) => executeTrade(stock, "sell"),
+    (stock: Stock, quantity = 1) => executeTrade(stock, "sell", quantity),
     [executeTrade]
   );
 
@@ -607,10 +608,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     getRelatedNews,
     loading,
     error,
+    sessionId: session?.id ?? null,
+    reloadSession: loadOrCreateSession,
   }), [
     account, addCash, buyStock, error, gameDay, getHistory, getRelatedNews,
-    getStock, loading, news, resetAccount, sellStock, setCash, setGameDay,
-    setHolding, stocks,
+    getStock, loading, loadOrCreateSession, news, resetAccount, sellStock,
+    setCash, setGameDay, setHolding, session, stocks,
   ]);
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

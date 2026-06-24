@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import {
-  Box, Button, Chip, CircularProgress, Container, Divider, Grid, LinearProgress, Stack, Typography,
+  Box, Button, Chip, CircularProgress, Container, Divider, Grid, IconButton,
+  LinearProgress, Stack, TextField, Typography,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
@@ -33,6 +36,7 @@ export default function StockDetails() {
   const location = useLocation();
   const trading = useGame();
   const [tradeMsg, setTradeMsg] = useState("");
+  const [quantity, setQuantity] = useState(1);
 
   const state = location.state as LocationState | null;
   const gameDay = state?.gameDay ?? trading.gameDay;
@@ -70,12 +74,14 @@ export default function StockDetails() {
   const sharesOwned = getSharesOwned(trading.account, stock.symbol);
 
   const handleBuy = async () => {
-    const ok = await trading.buyStock(stock);
-    setTradeMsg(ok ? `Bought 1 share of ${stock.symbol} for ${money(stock.currentPrice)}.` : `Not enough cash to buy ${stock.symbol}.`);
+    const ok = await trading.buyStock(stock, quantity);
+    const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
+    setTradeMsg(ok ? `Bought ${shares} of ${stock.symbol} for ${money(stock.currentPrice * quantity)}.` : `Not enough cash to buy ${shares} of ${stock.symbol}.`);
   };
   const handleSell = async () => {
-    const ok = await trading.sellStock(stock);
-    setTradeMsg(ok ? `Sold 1 share of ${stock.symbol} for ${money(stock.currentPrice)}.` : `You don't own any ${stock.symbol} shares.`);
+    const ok = await trading.sellStock(stock, quantity);
+    const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
+    setTradeMsg(ok ? `Sold ${shares} of ${stock.symbol} for ${money(stock.currentPrice * quantity)}.` : `Not enough shares to sell.`);
   };
 
   return (
@@ -269,9 +275,49 @@ export default function StockDetails() {
               {/* Trading actions */}
               <Box sx={{ ...CARD, p: 3 }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.5 }}>Trading Actions</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>
-                  Cash: {money(trading.account.cash)} · Owned: {sharesOwned} share{sharesOwned === 1 ? "" : "s"}
-                </Typography>
+                <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
+                  <Typography sx={{ fontSize: 13, color: D.t3 }}>Cash: {money(trading.account.cash)}</Typography>
+                  <Typography sx={{ fontSize: 13, color: D.t3 }}>Owned: {sharesOwned}</Typography>
+                </Stack>
+
+                {/* Quantity stepper */}
+                <Box sx={{ mb: 2 }}>
+                  <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 1 }}>QUANTITY</Typography>
+                  <Stack direction="row" alignItems="center" spacing={1.5}>
+                    <IconButton size="small" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1}
+                      sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, color: D.t2, borderRadius: 1.5,
+                        "&:hover": { bgcolor: D.overlay, color: D.t1 }, "&.Mui-disabled": { color: D.t3 } }}>
+                      <RemoveIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                    <TextField
+                      size="small"
+                      value={quantity}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (!Number.isNaN(v) && v >= 1) setQuantity(v);
+                      }}
+                      inputProps={{ min: 1, sx: { textAlign: "center", fontFamily: MONO, fontWeight: 900, fontSize: 17, py: 0.8 } }}
+                      sx={{
+                        width: 80,
+                        "& .MuiOutlinedInput-root": {
+                          bgcolor: D.elevated, color: D.t1, borderRadius: 1.5,
+                          "& fieldset": { borderColor: D.border },
+                          "&:hover fieldset": { borderColor: D.borderHi },
+                          "&.Mui-focused fieldset": { borderColor: D.brand },
+                        },
+                      }}
+                    />
+                    <IconButton size="small" onClick={() => setQuantity((q) => q + 1)}
+                      sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, color: D.t2, borderRadius: 1.5,
+                        "&:hover": { bgcolor: D.overlay, color: D.t1 } }}>
+                      <AddIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                    <Typography sx={{ fontSize: 13, color: D.t3, fontFamily: MONO }}>
+                      = {money(stock.currentPrice * quantity)}
+                    </Typography>
+                  </Stack>
+                </Box>
+
                 {tradeMsg && (
                   <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 1.5 }}>
                     <Typography sx={{ fontSize: 13, fontWeight: 700, color: D.t1 }}>{tradeMsg}</Typography>
@@ -279,12 +325,13 @@ export default function StockDetails() {
                 )}
                 <Stack spacing={1}>
                   <Button fullWidth variant="contained" onClick={handleBuy}
-                    sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" } }}>
-                    Buy {stock.symbol}
+                    disabled={trading.account.cash < stock.currentPrice * quantity}
+                    sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+                    Buy {quantity} {quantity === 1 ? "share" : "shares"}
                   </Button>
-                  <Button fullWidth variant="contained" disabled={sharesOwned === 0} onClick={handleSell}
+                  <Button fullWidth variant="contained" disabled={sharesOwned < quantity} onClick={handleSell}
                     sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
-                    Sell {stock.symbol}
+                    Sell {quantity} {quantity === 1 ? "share" : "shares"}
                   </Button>
                   <Button fullWidth onClick={() => navigate("/game")}
                     sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>

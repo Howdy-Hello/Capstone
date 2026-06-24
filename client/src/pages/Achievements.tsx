@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Box, Button, Chip, Container, Grid, LinearProgress, Stack, Typography,
+  Box, Button, Chip, CircularProgress, Container, Grid, LinearProgress, Stack, Typography,
 } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import LockIcon from "@mui/icons-material/Lock";
@@ -12,26 +12,33 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import ShieldIcon from "@mui/icons-material/Shield";
 import { Link as RouterLink } from "react-router-dom";
 import { D, CARD, MONO } from "../theme/design";
+import { useAchievements } from "../hooks/useAchievements";
 
-type Achievement = {
-  id: string; title: string; description: string; unlocked: boolean;
-  progress: number; reward: string; category: string; icon: React.ReactNode;
+const ICONS: Record<string, React.ReactNode> = {
+  first_trade:     <TrendingUpIcon />,
+  smart_investor:  <AccountBalanceWalletIcon />,
+  risk_taker:      <PieChartIcon />,
+  cash_discipline: <ShieldIcon />,
+  market_master:   <EmojiEventsIcon />,
+  hot_streak:      <LocalFireDepartmentIcon />,
 };
 
-const achievements: Achievement[] = [
-  { id: "1", title: "First Trade",       description: "Buy your first stock.",                                          unlocked: true,  progress: 100, reward: "+100 XP", category: "Trading",   icon: <TrendingUpIcon /> },
-  { id: "2", title: "Smart Investor",    description: "Reach a net worth of $15,000.",                                  unlocked: true,  progress: 100, reward: "+250 XP", category: "Portfolio", icon: <AccountBalanceWalletIcon /> },
-  { id: "3", title: "Risk Taker",        description: "Invest in three different companies.",                           unlocked: false, progress: 67,  reward: "+300 XP", category: "Trading",   icon: <PieChartIcon /> },
-  { id: "4", title: "Cash Discipline",   description: "Keep at least 20% of net worth in cash for 5 game days.",       unlocked: false, progress: 45,  reward: "+350 XP", category: "Risk",      icon: <ShieldIcon /> },
-  { id: "5", title: "Market Master",     description: "Reach a net worth of $50,000.",                                 unlocked: false, progress: 37,  reward: "+750 XP", category: "Mastery",   icon: <EmojiEventsIcon /> },
-  { id: "6", title: "Hot Streak",        description: "Finish 3 game days in a row with positive portfolio growth.",   unlocked: false, progress: 33,  reward: "+500 XP", category: "Mastery",   icon: <LocalFireDepartmentIcon /> },
-];
-
-const unlockedCount = achievements.filter((a) => a.unlocked).length;
-const totalCount = achievements.length;
-const completionPct = Math.round((unlockedCount / totalCount) * 100);
-
 export default function Achievements() {
+  const { achievements, totalXP, loading } = useAchievements();
+
+  const unlockedCount  = achievements.filter((a) => a.unlocked).length;
+  const totalCount     = achievements.length;
+  const completionPct  = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
+  const nextGoal       = achievements.find((a) => !a.unlocked);
+
+  if (loading) {
+    return (
+      <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "grid", placeItems: "center" }}>
+        <CircularProgress sx={{ color: D.brandText }} />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
       {/* Hero */}
@@ -39,9 +46,12 @@ export default function Achievements() {
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
             <Box>
-              <Chip label="ACHIEVEMENT SYSTEM" size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+              <Chip label="ACHIEVEMENT SYSTEM" size="small"
+                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
               <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Milestones</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Achievements reward strong trading habits and portfolio growth.</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
+                Achievements reward strong trading habits and portfolio growth.
+              </Typography>
             </Box>
             <Box sx={{ ...CARD, p: 2.5, minWidth: 280 }}>
               <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
@@ -50,7 +60,7 @@ export default function Achievements() {
               </Stack>
               <LinearProgress variant="determinate" value={completionPct}
                 sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
-              <Typography sx={{ fontSize: 11.5, color: D.t3, mt: 1 }}>{unlockedCount} of {totalCount} unlocked</Typography>
+              <Typography sx={{ fontSize: 11.5, color: D.t3, mt: 1 }}>{unlockedCount} of {totalCount} unlocked · {totalXP} XP earned</Typography>
             </Box>
           </Stack>
         </Container>
@@ -60,10 +70,10 @@ export default function Achievements() {
         {/* Stats */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
-            { label: "Unlocked",  val: unlockedCount.toString(),                         icon: <CheckCircleIcon sx={{ fontSize: 20 }} />,          up: true },
-            { label: "Locked",    val: (totalCount - unlockedCount).toString(),           icon: <LockIcon sx={{ fontSize: 20 }} />,                 up: false },
-            { label: "Total XP",  val: "350",                                             icon: <LocalFireDepartmentIcon sx={{ fontSize: 20 }} />,  up: true },
-            { label: "Next Goal", val: "Risk Taker",                                      icon: <PieChartIcon sx={{ fontSize: 20 }} />,             up: undefined },
+            { label: "Unlocked",  val: unlockedCount.toString(),            icon: <CheckCircleIcon sx={{ fontSize: 20 }} />,         up: true       },
+            { label: "Locked",    val: (totalCount - unlockedCount).toString(), icon: <LockIcon sx={{ fontSize: 20 }} />,            up: false      },
+            { label: "Total XP",  val: totalXP.toString(),                  icon: <LocalFireDepartmentIcon sx={{ fontSize: 20 }} />, up: true       },
+            { label: "Next Goal", val: nextGoal?.title ?? "All done!",      icon: <PieChartIcon sx={{ fontSize: 20 }} />,            up: undefined  },
           ].map((s) => {
             const color = s.up === undefined ? D.brandText : s.up ? D.greenText : D.redText;
             const bg    = s.up === undefined ? D.brandBg   : s.up ? D.greenBg   : D.redBg;
@@ -89,22 +99,35 @@ export default function Achievements() {
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Achievement Progress</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Track what you have unlocked and what to aim for next.</Typography>
+                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Progress updates live as you trade.</Typography>
               </Box>
               <Box sx={{ p: 2.5 }}>
                 <Grid container spacing={2}>
                   {achievements.map((a) => (
                     <Grid item xs={12} sm={6} key={a.id}>
-                      <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: a.unlocked ? D.greenBg : D.elevated, border: `1px solid ${a.unlocked ? D.greenBd : D.border}`, height: "100%" }}>
+                      <Box sx={{
+                        p: 2.5, borderRadius: 2, height: "100%",
+                        bgcolor: a.unlocked ? D.greenBg : D.elevated,
+                        border: `1px solid ${a.unlocked ? D.greenBd : D.border}`,
+                      }}>
                         <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                          <Box sx={{ width: 44, height: 44, borderRadius: 2, bgcolor: a.unlocked ? D.greenBg : D.overlay, color: a.unlocked ? D.greenText : D.t3, display: "grid", placeItems: "center", flexShrink: 0 }}>
-                            {a.unlocked ? <CheckCircleIcon sx={{ fontSize: 22 }} /> : a.icon}
+                          <Box sx={{
+                            width: 44, height: 44, borderRadius: 2, flexShrink: 0, display: "grid", placeItems: "center",
+                            bgcolor: a.unlocked ? D.greenBg : D.overlay,
+                            color:   a.unlocked ? D.greenText : D.t3,
+                          }}>
+                            {a.unlocked ? <CheckCircleIcon sx={{ fontSize: 22 }} /> : ICONS[a.id]}
                           </Box>
                           <Box sx={{ flex: 1 }}>
                             <Stack direction="row" justifyContent="space-between" gap={1}>
                               <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1 }}>{a.title}</Typography>
                               <Chip size="small" label={a.unlocked ? "Unlocked" : "Locked"}
-                                sx={{ bgcolor: a.unlocked ? D.greenBg : D.overlay, color: a.unlocked ? D.greenText : D.t3, border: `1px solid ${a.unlocked ? D.greenBd : D.border}`, fontWeight: 800, fontSize: 10 }} />
+                                sx={{
+                                  bgcolor: a.unlocked ? D.greenBg : D.overlay,
+                                  color:   a.unlocked ? D.greenText : D.t3,
+                                  border: `1px solid ${a.unlocked ? D.greenBd : D.border}`,
+                                  fontWeight: 800, fontSize: 10,
+                                }} />
                             </Stack>
                             <Typography sx={{ fontSize: 12.5, color: D.t2, mt: 0.5, mb: 1.5, lineHeight: 1.6 }}>{a.description}</Typography>
                             <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.6 }}>
@@ -113,7 +136,14 @@ export default function Achievements() {
                             </Stack>
                             <LinearProgress variant="determinate" value={a.progress}
                               sx={{ height: 4, borderRadius: 99, bgcolor: D.border, "& .MuiLinearProgress-bar": { bgcolor: a.unlocked ? D.green : D.brand, borderRadius: 99 } }} />
-                            <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: a.unlocked ? D.greenText : D.brandText, mt: 1 }}>Reward: {a.reward}</Typography>
+                            <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: a.unlocked ? D.greenText : D.brandText, mt: 1 }}>
+                              {a.reward}
+                              {a.unlockedAt && (
+                                <Typography component="span" sx={{ fontSize: 10.5, fontWeight: 600, color: D.t3, ml: 1 }}>
+                                  · {new Date(a.unlockedAt).toLocaleDateString()}
+                                </Typography>
+                              )}
+                            </Typography>
                           </Box>
                         </Stack>
                       </Box>
@@ -127,33 +157,36 @@ export default function Achievements() {
           {/* Sidebar */}
           <Grid item xs={12} md={4}>
             <Stack spacing={2.5}>
-              <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.5 }}>Next Unlock</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>You are close to unlocking Risk Taker.</Typography>
-                <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}`, mb: 2 }}>
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: D.brandBg, color: D.brandText, display: "grid", placeItems: "center", flexShrink: 0 }}>
-                      <PieChartIcon sx={{ fontSize: 20 }} />
-                    </Box>
-                    <Box>
-                      <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1 }}>Risk Taker</Typography>
-                      <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Invest in 3 companies.</Typography>
-                    </Box>
-                  </Stack>
-                  <Box sx={{ mt: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.6 }}>
-                      <Typography sx={{ fontSize: 11.5, color: D.t3 }}>Progress</Typography>
-                      <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: D.brandText }}>67%</Typography>
+              {/* Next unlock */}
+              {nextGoal && (
+                <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
+                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.5 }}>Next Unlock</Typography>
+                  <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>You are closest to unlocking {nextGoal.title}.</Typography>
+                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}`, mb: 2 }}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: D.brandBg, color: D.brandText, display: "grid", placeItems: "center", flexShrink: 0 }}>
+                        {ICONS[nextGoal.id]}
+                      </Box>
+                      <Box>
+                        <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1 }}>{nextGoal.title}</Typography>
+                        <Typography sx={{ fontSize: 12.5, color: D.t3 }}>{nextGoal.description}</Typography>
+                      </Box>
                     </Stack>
-                    <LinearProgress variant="determinate" value={67}
-                      sx={{ height: 5, borderRadius: 99, bgcolor: D.border, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+                    <Box sx={{ mt: 2 }}>
+                      <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.6 }}>
+                        <Typography sx={{ fontSize: 11.5, color: D.t3 }}>Progress</Typography>
+                        <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: D.brandText }}>{nextGoal.progress}%</Typography>
+                      </Stack>
+                      <LinearProgress variant="determinate" value={nextGoal.progress}
+                        sx={{ height: 5, borderRadius: 99, bgcolor: D.border, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+                    </Box>
                   </Box>
+                  <Button fullWidth component={RouterLink} to="/game" variant="contained"
+                    sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
+                    Continue Trading →
+                  </Button>
                 </Box>
-                <Button fullWidth component={RouterLink} to="/game" variant="contained"
-                  sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-                  Continue Trading →
-                </Button>
-              </Box>
+              )}
 
               <Box sx={{ ...CARD, p: 3 }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.5 }}>How to Unlock More</Typography>
@@ -161,9 +194,10 @@ export default function Achievements() {
                 <Stack spacing={1}>
                   {[
                     "Buy your first stock to start progress.",
-                    "Diversify across multiple companies.",
-                    "Grow net worth steadily instead of gambling.",
+                    "Diversify across 3+ companies.",
+                    "Grow net worth above $15,000 then $50,000.",
                     "Keep enough cash to survive market drops.",
+                    "Advance game days to build streak records.",
                   ].map((tip) => (
                     <Stack key={tip} direction="row" spacing={1} alignItems="flex-start">
                       <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: D.brandText, mt: 0.8, flexShrink: 0 }} />
