@@ -14,15 +14,26 @@ import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
+import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
+import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { D } from "../theme/design";
 
 const nav = [
-  { to: "/dashboard", label: "Dashboard", icon: <DashboardOutlinedIcon sx={{ fontSize: 17 }} /> },
-  { to: "/game",      label: "Game",       icon: <SportsEsportsOutlinedIcon sx={{ fontSize: 17 }} /> },
-  { to: "/learn",     label: "Learn",      icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
-  { to: "/news",      label: "News",       icon: <ArticleOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/dashboard",   label: "Dashboard",   icon: <DashboardOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/game",        label: "Game",         icon: <SportsEsportsOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/leaderboard", label: "Leaderboard",  icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/learn",       label: "Learn",        icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/news",        label: "News",         icon: <ArticleOutlinedIcon sx={{ fontSize: 17 }} /> },
+];
+
+const accountMenu = [
+  { label: "My Profile",    to: "/profile",      icon: <AccountCircleOutlinedIcon sx={{ fontSize: 16 }} /> },
+  { label: "Dashboard",     to: "/dashboard",    icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
+  { label: "Achievements",  to: "/achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 16 }} /> },
+  { label: "Save & Load",   to: "/save-load",    icon: <SaveOutlinedIcon sx={{ fontSize: 16 }} /> },
 ];
 
 const Header: React.FC = () => {
@@ -123,10 +134,7 @@ const Header: React.FC = () => {
                     <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1 }}>{profileName}</Typography>
                     <Typography sx={{ fontSize: 11, color: D.t3 }}>{menuHandle}</Typography>
                   </Box>
-                  {[
-                    { label: "My Profile", to: "/profile", icon: <AccountCircleOutlinedIcon sx={{ fontSize: 16 }} /> },
-                    { label: "Dashboard",  to: "/dashboard", icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
-                  ].map((item) => (
+                  {accountMenu.map((item) => (
                     <MenuItem key={item.to} onClick={() => { setMenuAnchor(null); navigate(item.to); }}
                       sx={{ gap: 1.2, fontSize: 13, fontWeight: 700, color: D.t2, py: 1, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
                       {item.icon}{item.label}
@@ -200,10 +208,13 @@ const Header: React.FC = () => {
                   </Box>
                 </Stack>
               </Box>
-              <Button component={RouterLink} to="/profile" onClick={() => setDrawerOpen(false)} startIcon={<AccountCircleOutlinedIcon />} fullWidth
-                sx={{ color: D.t2, fontWeight: 700, fontSize: 13, textTransform: "none", justifyContent: "flex-start", px: 1.5, borderRadius: 1.5, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
-                My Profile
-              </Button>
+              {accountMenu.map((item) => (
+                <Button key={item.to} component={RouterLink} to={item.to} onClick={() => setDrawerOpen(false)}
+                  startIcon={item.icon} fullWidth
+                  sx={{ color: D.t2, fontWeight: 700, fontSize: 13, textTransform: "none", justifyContent: "flex-start", px: 1.5, borderRadius: 1.5, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
+                  {item.label}
+                </Button>
+              ))}
               <Button onClick={handleSignOut} startIcon={<LogoutOutlinedIcon />} fullWidth
                 sx={{ color: D.redText, fontWeight: 700, fontSize: 13, textTransform: "none", justifyContent: "flex-start", px: 1.5, borderRadius: 1.5, "&:hover": { bgcolor: D.redBg } }}>
                 Log out

@@ -25,6 +25,7 @@ import {
 } from "../data/mockStocks";
 import { getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
+import { useAchievements } from "../hooks/useAchievements";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
 const DEV_CONSOLE_ENABLED = process.env.NODE_ENV !== "production";
@@ -41,6 +42,7 @@ export default function Game() {
   const seasonEndShownRef = useRef(false);
   const [selectedSector, setSelectedSector] = useState("All");
   const trading = useGame();
+  const { resetStreakForNewGame } = useAchievements();
   const { gameDay, setGameDay, stocks, news: todayNews } = trading;
 
   const sectors = useMemo(() => ["All", ...Array.from(new Set(stocks.map((stock) => stock.sector))).sort()], [stocks]);
@@ -269,7 +271,7 @@ export default function Game() {
         stocks={stocks}
         netWorth={netWorth}
         onClose={() => setSeasonEndOpen(false)}
-        onNewGame={async () => { setSeasonEndOpen(false); await trading.resetAccount(); seasonEndShownRef.current = false; }}
+        onNewGame={async () => { setSeasonEndOpen(false); resetStreakForNewGame(); await trading.resetAccount(); seasonEndShownRef.current = false; }}
         onLeaderboard={() => { setSeasonEndOpen(false); navigate("/leaderboard"); }}
       />
       {DEV_CONSOLE_ENABLED && (
