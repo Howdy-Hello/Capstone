@@ -17,6 +17,7 @@ import { D, CARD, MONO } from "../theme/design";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const AVATAR_BUCKET = "avatars";
+const API_BASE_URL = process.env.REACT_APP_API_URL ?? "http://localhost:5000";
 
 function getAvatarPath(userId: string) { return `${userId}/avatar`; }
 
@@ -128,11 +129,46 @@ export default function ProfilePage() {
 
   async function handleDeleteAccount() {
     if (!user) return;
-    setDeletingAccount(true);
-    if (avatarUrl) await supabase.storage.from(AVATAR_BUCKET).remove([getAvatarPath(user.id)]);
-    await supabase.from("profiles").delete().eq("id", user.id);
-    await signOut();
-    navigate("/", { replace: true });
+    setDeletingAccount(true); setSaveErr(null);
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+
+    if (sessionError || !accessToken) {
+      setSaveErr("Your session expired. Log in again before deleting your account.");
+      setDeletingAccount(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/account`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.message ?? "Account deletion failed.");
+      }
+
+      localStorage.removeItem("stockpilot-current-game-day");
+      localStorage.removeItem("stockpilot-trading-account");
+      localStorage.removeItem("stockpilot-save-slots");
+      localStorage.removeItem("stockpilot-current-save");
+      await signOut();
+      navigate("/", { replace: true });
+    } catch (deleteError: any) {
+      const message =
+        deleteError instanceof TypeError
+          ? "Could not reach the account service. Make sure the backend server is running."
+          : deleteError?.message ?? "Account deletion failed.";
+      setSaveErr(message);
+      setDeletingAccount(false);
+      setConfirmDelete(false);
+    }
   }
 
   if (!user) return null;
@@ -260,7 +296,8 @@ export default function ProfilePage() {
             </Stack>
             <Box sx={{ p: 3 }}>
               <Typography sx={{ fontSize: 13, color: D.t3, mb: 2.5 }}>
-                Deleting your account removes your profile and avatar permanently. Local game progress on this device will remain.
+                Deleting your account permanently removes your login, profile,
+                avatar, game sessions, holdings, and trade history.
               </Typography>
               <Divider sx={{ borderColor: D.redBd, mb: 2.5 }} />
               {!confirmDelete ? (
@@ -271,7 +308,10 @@ export default function ProfilePage() {
               ) : (
                 <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
                   <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.redText, mb: 0.5 }}>Are you absolutely sure?</Typography>
-                  <Typography sx={{ fontSize: 13, color: D.t2, mb: 2 }}>This cannot be undone. Your profile and avatar will be deleted immediately.</Typography>
+                  <Typography sx={{ fontSize: 13, color: D.t2, mb: 2 }}>
+                    This cannot be undone. All account and simulator data will
+                    be deleted immediately.
+                  </Typography>
                   <Stack direction="row" spacing={1.2}>
                     <Button variant="contained" onClick={handleDeleteAccount} disabled={deletingAccount}
                       startIcon={deletingAccount ? <CircularProgress size={13} sx={{ color: "#fff" }} /> : <DeleteOutlineIcon />}

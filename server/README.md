@@ -30,6 +30,7 @@ The Express app mounts Supabase SDK routes under `/api`:
 
 - `GET /api/health` uses `auth: "none"`
 - `GET /api/me` uses `auth: "user"` and requires `Authorization: Bearer <user-jwt>`
+- `DELETE /api/account` uses `auth: "user"` and permanently deletes the authenticated user
 - `GET /api/admin/profile-count` uses `auth: "secret"` and requires `apikey: <SUPABASE_SECRET_KEY>`
 
 Route handlers use the local Express adapter in `src/lib/supabaseServer.ts`, which wraps `withSupabase` from `@supabase/server` and exposes `ctx.supabase` and `ctx.supabaseAdmin`.
