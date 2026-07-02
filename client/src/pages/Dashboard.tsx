@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box, Button, Chip, CircularProgress, Container, Divider, Grid, LinearProgress, Stack, Typography,
 } from "@mui/material";
@@ -21,7 +21,19 @@ import {
 import { getNetWorth, getPortfolioValue } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../lib/supabase";
 import { D, CARD, MONO, money, pct } from "../theme/design";
+
+type TradeRecord = {
+  id: string;
+  game_day: number;
+  trade_type: "buy" | "sell";
+  quantity: number;
+  price_per_share: number;
+  total_amount: number;
+  executed_at: string;
+  stocks: { symbol: string; company_name: string } | null;
+};
 
 const PIE_COLORS = [D.green, D.brand, D.amber, "#38BDF8", "#F87171", "#A78BFA"];
 
@@ -47,6 +59,9 @@ export default function Dashboard() {
   const trading = useGame();
   const { user, profile } = useAuth();
   const { gameDay, stocks, news } = trading;
+  const [tradeHistory, setTradeHistory] = useState<TradeRecord[]>([]);
+  const [tradeHistoryLoading, setTradeHistoryLoading] = useState(true);
+
   const playerName =
     profile?.display_name
     || profile?.username
@@ -55,6 +70,21 @@ export default function Dashboard() {
   const seasonDay = getSeasonDay(gameDay);
   const portfolioValue = useMemo(() => getPortfolioValue(trading.account, stocks), [trading.account, stocks]);
   const netWorth = useMemo(() => getNetWorth(trading.account, stocks), [trading.account, stocks]);
+
+  useEffect(() => {
+    if (!user) return;
+    setTradeHistoryLoading(true);
+    supabase
+      .from("trades")
+      .select("id, game_day, trade_type, quantity, price_per_share, total_amount, executed_at, stocks(symbol, company_name)")
+      .eq("user_id", user.id)
+      .order("executed_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        setTradeHistory((data ?? []) as unknown as TradeRecord[]);
+        setTradeHistoryLoading(false);
+      });
+  }, [user]);
 
   const holdings = useMemo(() => trading.account.holdings.map((h) => {
     const stock = stocks.find((s) => s.symbol === h.symbol);
@@ -197,6 +227,16 @@ export default function Dashboard() {
                             <LinearProgress variant="determinate" value={Math.min(100, alloc)}
                               sx={{ height: 4, borderRadius: 99, bgcolor: D.border, "& .MuiLinearProgress-bar": { bgcolor: up ? D.green : D.red, borderRadius: 99 } }} />
                           </Box>
+                          <Stack direction="row" spacing={1} sx={{ mt: 1.2 }}>
+                            <Button size="small" component={RouterLink} to={`/stocks/${h.symbol}`}
+                              sx={{ color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", px: 1.2, py: 0.4, borderRadius: 1.2, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}`, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
+                              View Chart →
+                            </Button>
+                            <Button size="small" component={RouterLink} to="/game"
+                              sx={{ color: D.t2, fontSize: 11, fontWeight: 700, textTransform: "none", px: 1.2, py: 0.4, borderRadius: 1.2, border: `1px solid ${D.border}`, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
+                              Trade
+                            </Button>
+                          </Stack>
                         </Box>
                       );
                     })}
@@ -338,6 +378,71 @@ export default function Dashboard() {
             </Box>
           </Grid>
         </Grid>
+
+        {/* ── Trade History ─────────────────────────────────────────────── */}
+        <Box sx={{ ...CARD, p: 0, overflow: "hidden", mt: 3 }}>
+          <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+            <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Trade History</Typography>
+            <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Your last 20 executed buys and sells.</Typography>
+          </Box>
+          <Box sx={{ p: 2.5 }}>
+            {tradeHistoryLoading ? (
+              <Box sx={{ display: "grid", placeItems: "center", py: 4 }}>
+                <CircularProgress sx={{ color: D.brandText }} />
+              </Box>
+            ) : tradeHistory.length === 0 ? (
+              <Box sx={{ p: 3, borderRadius: 2, bgcolor: D.elevated, border: `1px dashed ${D.borderHi}`, textAlign: "center" }}>
+                <Typography sx={{ fontWeight: 800, fontSize: 15, color: D.t1, mb: 0.5 }}>No trades yet.</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Buy your first stock to start your trading log.</Typography>
+                <Button component={RouterLink} to="/game" variant="contained"
+                  sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
+                  Go to Market →
+                </Button>
+              </Box>
+            ) : (
+              <Stack spacing={1}>
+                {tradeHistory.map((t) => {
+                  const isBuy = t.trade_type === "buy";
+                  const sym   = t.stocks?.symbol ?? "—";
+                  return (
+                    <Box key={t.id} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                      <Grid container spacing={1.5} alignItems="center">
+                        <Grid item xs="auto">
+                          <Chip size="small" label={isBuy ? "BUY" : "SELL"}
+                            sx={{ bgcolor: isBuy ? D.greenBg : D.redBg, color: isBuy ? D.greenText : D.redText, border: `1px solid ${isBuy ? D.greenBd : D.redBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, minWidth: 40 }} />
+                        </Grid>
+                        <Grid item xs>
+                          <Stack direction="row" spacing={0.8} alignItems="center">
+                            <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: D.t1, fontFamily: MONO }}>{sym}</Typography>
+                            <Typography sx={{ fontSize: 12, color: D.t3 }}>{t.stocks?.company_name ?? ""}</Typography>
+                          </Stack>
+                        </Grid>
+                        <Grid item xs={4} sm={2}>
+                          <Typography sx={{ fontSize: 10.5, color: D.t3 }}>Qty</Typography>
+                          <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{t.quantity}</Typography>
+                        </Grid>
+                        <Grid item xs={4} sm={2}>
+                          <Typography sx={{ fontSize: 10.5, color: D.t3 }}>Price</Typography>
+                          <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(t.price_per_share)}</Typography>
+                        </Grid>
+                        <Grid item xs={4} sm={2}>
+                          <Typography sx={{ fontSize: 10.5, color: D.t3 }}>Total</Typography>
+                          <Typography sx={{ fontSize: 13, fontWeight: 800, color: isBuy ? D.redText : D.greenText, fontFamily: MONO }}>
+                            {isBuy ? "−" : "+"}{money(t.total_amount)}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={2}>
+                          <Typography sx={{ fontSize: 11.5, color: D.brandText, fontFamily: MONO, fontWeight: 700 }}>Day {t.game_day}</Typography>
+                          <Typography sx={{ fontSize: 11, color: D.t3 }}>{new Date(t.executed_at).toLocaleDateString()}</Typography>
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            )}
+          </Box>
+        </Box>
       </Container>
     </Box>
   );

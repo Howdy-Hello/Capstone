@@ -4,6 +4,9 @@ import {
 } from "@mui/material";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
 import {
@@ -14,8 +17,15 @@ import { D, CARD, MONO } from "../theme/design";
 
 type LocationState = { gameDay?: number };
 
+const TONE_CONFIG = {
+  Bullish:  { label: "Bullish",  icon: <TrendingUpIcon sx={{ fontSize: 12 }} />,   bg: "greenBg",   color: "greenText",  bd: "greenBd"  },
+  Bearish:  { label: "Bearish",  icon: <TrendingDownIcon sx={{ fontSize: 12 }} />, bg: "redBg",     color: "redText",    bd: "redBd"    },
+  Unclear:  { label: "Unclear",  icon: <HelpOutlineIcon sx={{ fontSize: 12 }} />,  bg: "amberBg",   color: "amber",      bd: ""         },
+} as const;
+
 function NewsCard({ news }: { news: MarketNews }) {
-  const imp = news.importance === "High";
+  const imp  = news.importance === "High";
+  const tone = TONE_CONFIG[news.marketTone] ?? TONE_CONFIG.Unclear;
   return (
     <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 2 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2} sx={{ mb: 1.2 }}>
@@ -25,8 +35,20 @@ function NewsCard({ news }: { news: MarketNews }) {
           </Typography>
           <Typography sx={{ fontWeight: 800, fontSize: 15, color: D.t1, lineHeight: 1.5 }}>{news.headline}</Typography>
         </Box>
-        <Chip size="small" label={news.importance}
-          sx={{ bgcolor: imp ? D.redBg : D.amberBg, color: imp ? D.redText : D.amber, border: `1px solid ${imp ? D.redBd : "rgba(245,158,11,0.3)"}`, fontWeight: 800, fontSize: 10, flexShrink: 0 }} />
+        <Stack direction="row" spacing={0.6} flexShrink={0}>
+          <Chip size="small"
+            icon={tone.icon}
+            label={tone.label}
+            sx={{
+              bgcolor: D[tone.bg as keyof typeof D] as string,
+              color: D[tone.color as keyof typeof D] as string,
+              border: `1px solid ${tone.bd ? (D[tone.bd as keyof typeof D] as string) : "rgba(245,158,11,0.3)"}`,
+              fontWeight: 800, fontSize: 10,
+              "& .MuiChip-icon": { color: "inherit" },
+            }} />
+          <Chip size="small" label={news.importance}
+            sx={{ bgcolor: imp ? D.redBg : D.amberBg, color: imp ? D.redText : D.amber, border: `1px solid ${imp ? D.redBd : "rgba(245,158,11,0.3)"}`, fontWeight: 800, fontSize: 10 }} />
+        </Stack>
       </Stack>
       <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.7, mb: 1.5 }}>{news.body}</Typography>
       <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
@@ -34,7 +56,9 @@ function NewsCard({ news }: { news: MarketNews }) {
           <Chip size="small" label={news.isAccurate ? "Rumor" : "Unconfirmed"} sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 700, fontSize: 10 }} />
         )}
         {news.relatedTickers.map((t) => (
-          <Chip key={t} size="small" label={t} sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, fontSize: 10, fontFamily: MONO }} />
+          <Chip key={t} size="small" label={t}
+            component={RouterLink} to={`/stocks/${t}`} clickable
+            sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, fontSize: 10, fontFamily: MONO, cursor: "pointer", textDecoration: "none" }} />
         ))}
       </Stack>
     </Box>

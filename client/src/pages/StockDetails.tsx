@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box, Button, Chip, CircularProgress, Container, Divider, Grid, IconButton,
   LinearProgress, Stack, TextField, Typography,
@@ -35,7 +35,7 @@ export default function StockDetails() {
   const navigate = useNavigate();
   const location = useLocation();
   const trading = useGame();
-  const [tradeMsg, setTradeMsg] = useState("");
+  const [tradeMsg, setTradeMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [quantity, setQuantity] = useState(1);
 
   const state = location.state as LocationState | null;
@@ -73,15 +73,22 @@ export default function StockDetails() {
   const latestHistory = history[history.length - 1];
   const sharesOwned = getSharesOwned(trading.account, stock.symbol);
 
+  // Auto-dismiss trade message
+  useEffect(() => {
+    if (!tradeMsg) return;
+    const t = setTimeout(() => setTradeMsg(null), 3500);
+    return () => clearTimeout(t);
+  }, [tradeMsg]);
+
   const handleBuy = async () => {
     const ok = await trading.buyStock(stock, quantity);
     const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
-    setTradeMsg(ok ? `Bought ${shares} of ${stock.symbol} for ${money(stock.currentPrice * quantity)}.` : `Not enough cash to buy ${shares} of ${stock.symbol}.`);
+    setTradeMsg({ ok, text: ok ? `Bought ${shares} of ${stock.symbol} for ${money(stock.currentPrice * quantity)}.` : `Not enough cash to buy ${shares} of ${stock.symbol}.` });
   };
   const handleSell = async () => {
     const ok = await trading.sellStock(stock, quantity);
     const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
-    setTradeMsg(ok ? `Sold ${shares} of ${stock.symbol} for ${money(stock.currentPrice * quantity)}.` : `Not enough shares to sell.`);
+    setTradeMsg({ ok, text: ok ? `Sold ${shares} of ${stock.symbol} for ${money(stock.currentPrice * quantity)}.` : `Not enough shares to sell.` });
   };
 
   return (
@@ -321,11 +328,16 @@ export default function StockDetails() {
                       = {money(stock.currentPrice * quantity)}
                     </Typography>
                   </Stack>
+                  <Typography sx={{ fontSize: 11, color: D.t3, mt: 0.5, fontFamily: MONO }}>
+                    Cash after: <Box component="span" sx={{ color: trading.account.cash - stock.currentPrice * quantity >= 0 ? D.greenText : D.redText, fontWeight: 700 }}>
+                      {money(Math.max(0, trading.account.cash - stock.currentPrice * quantity))}
+                    </Box>
+                  </Typography>
                 </Box>
 
                 {tradeMsg && (
-                  <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 1.5 }}>
-                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: D.t1 }}>{tradeMsg}</Typography>
+                  <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: tradeMsg.ok ? D.greenBg : D.redBg, border: `1px solid ${tradeMsg.ok ? D.greenBd : D.redBd}`, mb: 1.5 }}>
+                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: tradeMsg.ok ? D.greenText : D.redText }}>{tradeMsg.text}</Typography>
                   </Box>
                 )}
                 <Stack spacing={1}>

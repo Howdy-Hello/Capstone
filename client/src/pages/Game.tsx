@@ -66,6 +66,13 @@ export default function Game() {
   const seasonDay = getSeasonDay(gameDay);
   const portfolioValue = useMemo(() => getPortfolioValue(trading.account, stocks), [trading.account, stocks]);
   const netWorth = useMemo(() => getNetWorth(trading.account, stocks), [trading.account, stocks]);
+  const portfolioPnL = useMemo(() =>
+    trading.account.holdings.reduce((sum, h) => {
+      const live = stocks.find((s) => s.symbol === h.symbol);
+      return sum + ((live?.currentPrice ?? h.averageCost) - h.averageCost) * h.shares;
+    }, 0),
+    [trading.account.holdings, stocks],
+  );
 
   const marketSummary = useMemo(() => {
     const gainers = stocks.filter((s) => s.dayChangePercent >= 0).length;
@@ -116,6 +123,12 @@ export default function Game() {
       setMyRank(myIdx >= 0 ? myIdx + 1 : null);
     })();
   }, [user]);
+
+  useEffect(() => {
+    if (!tradeMessage) return;
+    const t = setTimeout(() => setTradeMessage(""), 3500);
+    return () => clearTimeout(t);
+  }, [tradeMessage]);
 
   useEffect(() => {
     if (!DEV_CONSOLE_ENABLED) return;
@@ -384,11 +397,14 @@ export default function Game() {
         </Grid>
 
         {/* Trade message */}
-        {tradeMessage && (
-          <Box sx={{ ...CARD, p: 2, mb: 2.5 }}>
-            <Typography sx={{ fontSize: 13.5, fontWeight: 800, color: D.t1 }}>{tradeMessage}</Typography>
-          </Box>
-        )}
+        {tradeMessage && (() => {
+          const ok = tradeMessage.startsWith("Bought") || tradeMessage.startsWith("Sold");
+          return (
+            <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: ok ? D.greenBg : D.redBg, border: `1px solid ${ok ? D.greenBd : D.redBd}` }}>
+              <Typography sx={{ fontSize: 13.5, fontWeight: 800, color: ok ? D.greenText : D.redText }}>{tradeMessage}</Typography>
+            </Box>
+          );
+        })()}
 
         {/* Story mode notice */}
         {gameDay <= STORY_DAYS && (
@@ -496,21 +512,50 @@ export default function Game() {
             <Stack spacing={2.5}>
               {/* Portfolio */}
               <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-                <Stack direction="row" alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                   <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Portfolio</Typography>
+                  {trading.account.holdings.length > 0 && (
+                    <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: portfolioPnL >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
+                      {portfolioPnL >= 0 ? "+" : ""}{money(portfolioPnL)} P/L
+                    </Typography>
+                  )}
                 </Stack>
                 <Box sx={{ p: 2.5 }}>
                   {trading.account.holdings.length === 0 ? (
-                    <Typography sx={{ fontSize: 13, color: D.t3 }}>No shares owned yet.</Typography>
+                    <Box sx={{ textAlign: "center", py: 1.5 }}>
+                      <Typography sx={{ fontSize: 13, color: D.t3, mb: 1 }}>No shares owned yet.</Typography>
+                      <Typography sx={{ fontSize: 12, color: D.t3 }}>Buy a stock from the market to start building your portfolio.</Typography>
+                    </Box>
                   ) : (
                     <Stack spacing={1}>
                       {trading.account.holdings.map((h) => {
                         const live = stocks.find((s) => s.symbol === h.symbol);
-                        const val = (live?.currentPrice ?? h.averageCost) * h.shares;
+                        const currentPrice = live?.currentPrice ?? h.averageCost;
+                        const val = currentPrice * h.shares;
+                        const pnl = (currentPrice - h.averageCost) * h.shares;
+                        const pnlPct = h.averageCost > 0 ? ((currentPrice - h.averageCost) / h.averageCost) * 100 : 0;
+                        const up = pnl >= 0;
                         return (
-                          <Box key={h.symbol} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                            <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: D.t1, fontFamily: MONO }}>{h.symbol} · {h.shares} share{h.shares === 1 ? "" : "s"}</Typography>
-                            <Typography sx={{ fontSize: 12, color: D.t3 }}>Avg {money(h.averageCost)} · Value {money(val)}</Typography>
+                          <Box key={h.symbol} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${up ? D.greenBd : D.redBd}` }}>
+                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                              <Box>
+                                <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: D.t1, fontFamily: MONO }}>
+                                  {h.symbol}
+                                  <Typography component="span" sx={{ fontWeight: 500, fontSize: 11.5, color: D.t3, ml: 0.8 }}>× {h.shares}</Typography>
+                                </Typography>
+                                <Typography sx={{ fontSize: 11.5, color: D.t3 }}>Avg {money(h.averageCost)}</Typography>
+                              </Box>
+                              <Box sx={{ textAlign: "right" }}>
+                                <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1, fontFamily: MONO }}>{money(val)}</Typography>
+                                <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: up ? D.greenText : D.redText }}>
+                                  {pnl >= 0 ? "+" : ""}{money(pnl)} ({pct(pnlPct, 1)})
+                                </Typography>
+                              </Box>
+                            </Stack>
+                            <Button size="small" onClick={() => navigate(`/stocks/${h.symbol}`, { state: { gameDay } })}
+                              sx={{ mt: 0.8, color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto", height: "auto", lineHeight: 1 }}>
+                              View details →
+                            </Button>
                           </Box>
                         );
                       })}

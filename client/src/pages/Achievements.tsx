@@ -111,12 +111,21 @@ export default function Achievements() {
                         border: `1px solid ${a.unlocked ? D.greenBd : D.border}`,
                       }}>
                         <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                          <Box sx={{
-                            width: 44, height: 44, borderRadius: 2, flexShrink: 0, display: "grid", placeItems: "center",
-                            bgcolor: a.unlocked ? D.greenBg : D.overlay,
-                            color:   a.unlocked ? D.greenText : D.t3,
-                          }}>
-                            {a.unlocked ? <CheckCircleIcon sx={{ fontSize: 22 }} /> : ICONS[a.id]}
+                          <Box sx={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
+                            <Box sx={{
+                              width: 44, height: 44, borderRadius: 2, display: "grid", placeItems: "center",
+                              bgcolor: a.unlocked ? D.greenBg : D.overlay,
+                              color:   a.unlocked ? D.greenText : D.t3,
+                            }}>
+                              {ICONS[a.id] ?? <EmojiEventsIcon />}
+                            </Box>
+                            {a.unlocked && (
+                              <CheckCircleIcon sx={{
+                                position: "absolute", bottom: -4, right: -4,
+                                fontSize: 16, color: D.green,
+                                bgcolor: D.bg, borderRadius: "50%",
+                              }} />
+                            )}
                           </Box>
                           <Box sx={{ flex: 1 }}>
                             <Stack direction="row" justifyContent="space-between" gap={1}>
