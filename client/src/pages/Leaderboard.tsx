@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Avatar, Box, Button, Chip, CircularProgress, Container, Grid,
-  LinearProgress, Stack, Typography,
+  IconButton, InputAdornment, LinearProgress, Stack,
+  TextField, ToggleButton, ToggleButtonGroup, Typography,
 } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -9,6 +10,8 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
 import { Link as RouterLink } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -27,19 +30,32 @@ type RankedPlayer = LeaderboardRow & {
   rank: number;
   displayUsername: string;
   badge: string;
+  tierColor: string;
 };
 
 const MEDAL_COLORS = ["#F59E0B", "#94A3B8", "#C98B5F"];
 
-function badgeFor(rank: number): string {
-  if (rank === 1) return "Champion";
-  if (rank <= 3) return "Expert";
-  if (rank <= 10) return "Rising";
-  return "Player";
+function tierFor(rank: number): { label: string; color: string } {
+  if (rank === 1) return { label: "Champion", color: "#F59E0B" };
+  if (rank <= 3) return { label: "Expert",   color: "#94A3B8" };
+  if (rank <= 10) return { label: "Elite",   color: D.brandText };
+  if (rank <= 25) return { label: "Rising",  color: D.greenText };
+  return { label: "Player", color: D.t3 };
 }
 
-function avatarLetter(player: RankedPlayer): string {
-  return (player.displayUsername[0] ?? "?").toUpperCase();
+function buildRanked(rows: LeaderboardRow[]): RankedPlayer[] {
+  return rows.map((row, i) => {
+    const tier = tierFor(i + 1);
+    return {
+      ...row,
+      best_net_worth: Number(row.best_net_worth),
+      return_pct:     Number(row.return_pct),
+      rank:           i + 1,
+      displayUsername: row.username ?? row.display_name ?? "Anonymous",
+      badge:           tier.label,
+      tierColor:       tier.color,
+    };
+  });
 }
 
 export default function Leaderboard() {
@@ -48,6 +64,8 @@ export default function Leaderboard() {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [sortBy, setSortBy]     = useState<"net_worth" | "return_pct">("net_worth");
+  const [search, setSearch]     = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -56,39 +74,40 @@ export default function Leaderboard() {
 
     (async () => {
       const { data, error: rpcError } = await supabase.rpc("get_leaderboard", { p_limit: 50 });
-
       if (cancelled) return;
-
-      if (rpcError) {
-        setError(rpcError.message);
-        setLoading(false);
-        return;
-      }
-
-      const rows = (data ?? []) as LeaderboardRow[];
-      const ranked: RankedPlayer[] = rows.map((row, i) => ({
-        ...row,
-        best_net_worth: Number(row.best_net_worth),
-        return_pct:     Number(row.return_pct),
-        rank: i + 1,
-        displayUsername: row.username ?? row.display_name ?? "Anonymous",
-        badge: badgeFor(i + 1),
-      }));
-
-      setPlayers(ranked);
+      if (rpcError) { setError(rpcError.message); setLoading(false); return; }
+      setPlayers(buildRanked((data ?? []) as LeaderboardRow[]));
       setLoading(false);
     })();
 
     return () => { cancelled = true; };
   }, [refreshKey]);
 
-  const topThree     = players.slice(0, 3);
-  const currentEntry = user ? players.find((p) => p.user_id === user.id) : undefined;
-  const topNetWorth  = players[0]?.best_net_worth ?? 1;
+  const sorted = useMemo(() => {
+    const base = sortBy === "return_pct"
+      ? [...players].sort((a, b) => b.return_pct - a.return_pct)
+      : [...players].sort((a, b) => b.best_net_worth - a.best_net_worth);
+    return base.map((p, i) => {
+      const tier = tierFor(i + 1);
+      return { ...p, rank: i + 1, badge: tier.label, tierColor: tier.color };
+    });
+  }, [players, sortBy]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return sorted;
+    const q = search.toLowerCase();
+    return sorted.filter((p) => p.displayUsername.toLowerCase().includes(q));
+  }, [sorted, search]);
+
+  const topThree     = sorted.slice(0, 3);
+  const currentEntry = user ? sorted.find((p) => p.user_id === user.id) : undefined;
+  const topValue     = sorted[0]
+    ? (sortBy === "net_worth" ? sorted[0].best_net_worth : sorted[0].return_pct)
+    : 1;
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
-      {/* Hero */}
+      {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
@@ -96,7 +115,7 @@ export default function Leaderboard() {
               <Chip label="GLOBAL RANKINGS" size="small"
                 sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
               <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Leaderboard</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Rankings based on best net worth across all completed runs.</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Global rankings across all completed trading seasons.</Typography>
             </Box>
             <Box sx={{ ...CARD, p: 2.5, minWidth: 240 }}>
               <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>YOUR RANK</Typography>
@@ -104,7 +123,11 @@ export default function Leaderboard() {
                 {loading ? "—" : currentEntry ? `#${currentEntry.rank}` : "—"}
               </Typography>
               {currentEntry && (
-                <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>{money(currentEntry.best_net_worth)} best run</Typography>
+                <>
+                  <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>{money(currentEntry.best_net_worth)} best run</Typography>
+                  <Chip label={currentEntry.badge} size="small"
+                    sx={{ mt: 0.8, bgcolor: D.brandBg, color: currentEntry.tierColor, fontWeight: 800, fontSize: 10 }} />
+                </>
               )}
               <Button component={RouterLink} to="/game" size="small"
                 sx={{ mt: 1.2, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 700, fontSize: 12, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
@@ -116,33 +139,29 @@ export default function Leaderboard() {
       </Box>
 
       <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-        {/* Stats */}
+        {/* ── Stat tiles ───────────────────────────────────────────────────── */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
-            { label: "Top Net Worth",   val: players[0] ? money(players[0].best_net_worth) : "—", icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />,           up: true      },
-            { label: "Your Best Run",   val: currentEntry ? money(currentEntry.best_net_worth) : "—", icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: true      },
-            { label: "Your Return",     val: currentEntry ? `+${currentEntry.return_pct.toFixed(1)}%` : "—", icon: <TrendingUpIcon sx={{ fontSize: 20 }} />,   up: true      },
-            { label: "Players Ranked",  val: loading ? "—" : players.length.toString(),            icon: <WorkspacePremiumIcon sx={{ fontSize: 20 }} />,       up: undefined },
-          ].map((s) => {
-            const color = s.up === undefined ? D.brandText : D.greenText;
-            const bg    = s.up === undefined ? D.brandBg   : D.greenBg;
-            return (
-              <Grid item xs={12} sm={6} md={3} key={s.label}>
-                <Box sx={{ ...CARD, p: 2.5 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                    <Box>
-                      <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
-                      <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
-                    </Box>
-                    <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
-                  </Stack>
-                </Box>
-              </Grid>
-            );
-          })}
+            { label: "Top Net Worth",  val: sorted[0] ? money(sorted[0].best_net_worth) : "—",                                         icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />,           color: "#F59E0B",   bg: "rgba(245,158,11,0.1)" },
+            { label: "Your Best Run",  val: currentEntry ? money(currentEntry.best_net_worth) : "—",                                   icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />,   color: D.greenText, bg: D.greenBg },
+            { label: "Your Return",    val: currentEntry ? `${currentEntry.return_pct >= 0 ? "+" : ""}${currentEntry.return_pct.toFixed(1)}%` : "—", icon: <TrendingUpIcon sx={{ fontSize: 20 }} />, color: D.greenText, bg: D.greenBg },
+            { label: "Players Ranked", val: loading ? "—" : players.length.toString(),                                                  icon: <WorkspacePremiumIcon sx={{ fontSize: 20 }} />,      color: D.brandText, bg: D.brandBg },
+          ].map((s) => (
+            <Grid item xs={12} sm={6} md={3} key={s.label}>
+              <Box sx={{ ...CARD, p: 2.5 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Box>
+                    <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
+                    <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                  </Box>
+                  <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: s.bg, color: s.color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
+                </Stack>
+              </Box>
+            </Grid>
+          ))}
         </Grid>
 
-        {/* Error */}
+        {/* ── Error ────────────────────────────────────────────────────────── */}
         {error && (
           <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
             <Typography sx={{ color: D.redText, fontSize: 13, fontWeight: 800 }}>Could not load leaderboard: {error}</Typography>
@@ -155,84 +174,208 @@ export default function Leaderboard() {
           </Box>
         ) : (
           <Grid container spacing={3}>
-            {/* Top 3 podium */}
+            {/* ── Podium + top 3 ─────────────────────────────────────────── */}
             <Grid item xs={12} md={4}>
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3, height: "100%" }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 0.5 }}>Top Traders</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>The strongest players by best net worth.</Typography>
-                <Stack spacing={1.5}>
-                  {topThree.length === 0 ? (
-                    <Typography sx={{ fontSize: 13, color: D.t3 }}>No runs completed yet. Be the first!</Typography>
-                  ) : (
-                    topThree.map((p) => (
-                      <Box key={p.user_id} sx={{ p: 2, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${p.user_id === user?.id ? D.brandBd : D.border}` }}>
-                        <Stack direction="row" spacing={1.5} alignItems="center">
-                          <Avatar sx={{ bgcolor: MEDAL_COLORS[p.rank - 1] ?? D.brand, color: D.bg, fontWeight: 900, width: 36, height: 36, fontSize: 15 }}>
-                            {avatarLetter(p)}
-                          </Avatar>
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography sx={{ fontWeight: 900, fontSize: 14, color: p.user_id === user?.id ? D.brandText : D.t1 }}>
-                              {p.displayUsername}{p.user_id === user?.id ? " (You)" : ""}
+                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>The strongest players this season.</Typography>
+
+                {topThree.length === 0 ? (
+                  <Typography sx={{ fontSize: 13, color: D.t3 }}>No runs completed yet. Be the first!</Typography>
+                ) : (
+                  <>
+                    {/* Visual podium: 2nd | 1st | 3rd */}
+                    <Stack direction="row" alignItems="flex-end" justifyContent="center" spacing={1} sx={{ mb: 3 }}>
+                      {([1, 0, 2] as const).map((idx) => {
+                        const p = topThree[idx];
+                        if (!p) return <Box key={idx} sx={{ flex: 1 }} />;
+                        const podiumHeights = [90, 130, 70];
+                        const isYou = p.user_id === user?.id;
+                        return (
+                          <Box key={p.user_id} sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                            <Avatar src={p.avatar_url ?? undefined}
+                              sx={{
+                                width: idx === 0 ? 52 : 40,
+                                height: idx === 0 ? 52 : 40,
+                                bgcolor: MEDAL_COLORS[idx],
+                                color: "#09090F",
+                                fontWeight: 900,
+                                fontSize: idx === 0 ? 20 : 16,
+                                mb: 0.8,
+                                border: isYou ? `2px solid ${D.brand}` : "none",
+                              }}>
+                              {p.displayUsername[0]?.toUpperCase()}
+                            </Avatar>
+                            <Typography sx={{ fontSize: 11, fontWeight: 900, color: isYou ? D.brandText : D.t1, textAlign: "center", mb: 0.3, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {p.displayUsername}
                             </Typography>
-                            <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>{money(p.best_net_worth)}</Typography>
+                            <Typography sx={{ fontSize: 10, color: D.t3, fontFamily: MONO, textAlign: "center", mb: 0.8 }}>
+                              {sortBy === "net_worth" ? money(p.best_net_worth) : `${p.return_pct >= 0 ? "+" : ""}${p.return_pct.toFixed(1)}%`}
+                            </Typography>
+                            <Box sx={{
+                              width: "100%",
+                              height: podiumHeights[idx],
+                              borderRadius: "4px 4px 0 0",
+                              bgcolor: `${MEDAL_COLORS[idx]}18`,
+                              border: `1px solid ${MEDAL_COLORS[idx]}33`,
+                              borderBottom: "none",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}>
+                              <Typography sx={{ fontSize: idx === 0 ? 22 : 18, fontWeight: 950, color: MEDAL_COLORS[idx], fontFamily: MONO }}>
+                                #{p.rank}
+                              </Typography>
+                            </Box>
                           </Box>
-                          <MilitaryTechIcon sx={{ color: MEDAL_COLORS[p.rank - 1] ?? D.t3, fontSize: 20 }} />
-                        </Stack>
-                      </Box>
-                    ))
-                  )}
-                </Stack>
+                        );
+                      })}
+                    </Stack>
+
+                    {/* Top-3 detail cards */}
+                    <Stack spacing={1.5}>
+                      {topThree.map((p) => (
+                        <Box key={p.user_id} sx={{ p: 2, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${p.user_id === user?.id ? D.brandBd : D.border}` }}>
+                          <Stack direction="row" spacing={1.5} alignItems="center">
+                            <Avatar src={p.avatar_url ?? undefined}
+                              sx={{ bgcolor: MEDAL_COLORS[p.rank - 1] ?? D.brand, color: "#09090F", fontWeight: 900, width: 36, height: 36, fontSize: 15 }}>
+                              {p.displayUsername[0]?.toUpperCase()}
+                            </Avatar>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Typography sx={{ fontWeight: 900, fontSize: 14, color: p.user_id === user?.id ? D.brandText : D.t1 }} noWrap>
+                                {p.displayUsername}{p.user_id === user?.id ? " (You)" : ""}
+                              </Typography>
+                              <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>
+                                {sortBy === "net_worth" ? money(p.best_net_worth) : `${p.return_pct >= 0 ? "+" : ""}${p.return_pct.toFixed(1)}%`}
+                              </Typography>
+                            </Box>
+                            <MilitaryTechIcon sx={{ color: MEDAL_COLORS[p.rank - 1] ?? D.t3, fontSize: 20 }} />
+                          </Stack>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </>
+                )}
               </Box>
             </Grid>
 
-            {/* Full table */}
+            {/* ── Full table ───────────────────────────────────────────────── */}
             <Grid item xs={12} md={8}>
               <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-                <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                {/* Header + controls */}
+                <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                   <Box>
                     <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Full Leaderboard</Typography>
-                    <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Best net worth per player across all game runs.</Typography>
+                    <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Best performance per player across all runs.</Typography>
                   </Box>
-                  <Button size="small" startIcon={<RefreshIcon sx={{ fontSize: 14 }} />} onClick={() => setRefreshKey((k) => k + 1)}
-                    sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, fontSize: 12, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
-                    Refresh
-                  </Button>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <ToggleButtonGroup
+                      value={sortBy} exclusive size="small"
+                      onChange={(_, v) => { if (v) setSortBy(v); }}
+                      sx={{
+                        "& .MuiToggleButton-root": {
+                          color: D.t3, borderColor: D.border, fontSize: 11, fontWeight: 700,
+                          textTransform: "none", px: 1.5, py: 0.6,
+                          "&.Mui-selected": { color: D.brandText, bgcolor: D.brandBg, borderColor: D.brandBd },
+                        },
+                      }}>
+                      <ToggleButton value="net_worth">Net Worth</ToggleButton>
+                      <ToggleButton value="return_pct">Return %</ToggleButton>
+                    </ToggleButtonGroup>
+                    <IconButton size="small" onClick={() => setRefreshKey((k) => k + 1)}
+                      sx={{ color: D.t2, border: `1px solid ${D.border}`, borderRadius: 1.5, p: 0.8, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
+                      <RefreshIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Stack>
                 </Stack>
+
+                {/* Search */}
+                <Box sx={{ px: 2.5, pt: 2, pb: 0.5 }}>
+                  <TextField
+                    fullWidth size="small" placeholder="Search players…"
+                    value={search} onChange={(e) => setSearch(e.target.value)}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 16, color: D.t3 }} /></InputAdornment>,
+                      endAdornment: search ? (
+                        <InputAdornment position="end">
+                          <IconButton size="small" onClick={() => setSearch("")} sx={{ color: D.t3 }}>
+                            <ClearIcon sx={{ fontSize: 14 }} />
+                          </IconButton>
+                        </InputAdornment>
+                      ) : null,
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        bgcolor: D.elevated, color: D.t1, borderRadius: 1.5,
+                        "& fieldset": { borderColor: D.border },
+                        "&:hover fieldset": { borderColor: D.borderHi },
+                        "&.Mui-focused fieldset": { borderColor: D.brand },
+                        "& input": { fontSize: 13, py: 0.9 },
+                      },
+                    }}
+                  />
+                </Box>
+
+                {/* Rows */}
                 <Box sx={{ p: 2.5 }}>
-                  {players.length === 0 ? (
+                  {filtered.length === 0 ? (
                     <Box sx={{ p: 4, borderRadius: 2, bgcolor: D.elevated, border: `1px dashed ${D.borderHi}`, textAlign: "center" }}>
-                      <Typography sx={{ fontWeight: 800, fontSize: 16, color: D.t1, mb: 0.5 }}>No players yet.</Typography>
-                      <Typography sx={{ fontSize: 13, color: D.t3 }}>Complete a game run to appear on the leaderboard.</Typography>
+                      <Typography sx={{ fontWeight: 800, fontSize: 16, color: D.t1, mb: 0.5 }}>
+                        {players.length === 0 ? "No players yet." : "No results found."}
+                      </Typography>
+                      <Typography sx={{ fontSize: 13, color: D.t3 }}>
+                        {players.length === 0 ? "Complete a game run to appear on the leaderboard." : "Try a different search term."}
+                      </Typography>
                     </Box>
                   ) : (
                     <Stack spacing={1.2}>
-                      {players.map((p) => {
+                      {filtered.map((p) => {
                         const isYou    = p.user_id === user?.id;
-                        const progress = Math.min(100, (p.best_net_worth / topNetWorth) * 100);
+                        const val      = sortBy === "net_worth" ? p.best_net_worth : p.return_pct;
+                        const progress = Math.min(100, topValue > 0 ? (val / topValue) * 100 : 0);
+                        const rankBg   = p.rank === 1 ? "rgba(245,158,11,0.12)" : p.rank === 2 ? "rgba(148,163,184,0.12)" : p.rank === 3 ? "rgba(201,139,95,0.12)" : D.overlay;
                         return (
                           <Box key={p.user_id} sx={{ p: 2, borderRadius: 2, bgcolor: isYou ? D.brandBg : D.elevated, border: `1px solid ${isYou ? D.brandBd : D.border}` }}>
                             <Grid container spacing={1.5} alignItems="center">
-                              <Grid item xs={12} sm={1}>
+                              {/* Rank */}
+                              <Grid item xs="auto">
                                 <Chip label={`#${p.rank}`} size="small"
-                                  sx={{ bgcolor: p.rank <= 3 ? D.brand : D.overlay, color: p.rank <= 3 ? "#fff" : D.t3, fontWeight: 900, fontSize: 10, fontFamily: MONO }} />
+                                  sx={{ bgcolor: rankBg, color: p.rank <= 3 ? MEDAL_COLORS[p.rank - 1] : D.t3, fontWeight: 900, fontSize: 10, fontFamily: MONO, minWidth: 38 }} />
                               </Grid>
+
+                              {/* Player */}
+                              <Grid item xs>
+                                <Stack direction="row" spacing={1.2} alignItems="center">
+                                  <Avatar src={p.avatar_url ?? undefined}
+                                    sx={{ width: 30, height: 30, bgcolor: D.brand, fontSize: 12, fontWeight: 900, flexShrink: 0 }}>
+                                    {p.displayUsername[0]?.toUpperCase()}
+                                  </Avatar>
+                                  <Box sx={{ minWidth: 0 }}>
+                                    <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: isYou ? D.brandText : D.t1, lineHeight: 1.2 }} noWrap>
+                                      {p.displayUsername}{isYou ? " (You)" : ""}
+                                    </Typography>
+                                    <Chip label={p.badge} size="small"
+                                      sx={{ height: 16, bgcolor: "transparent", color: p.tierColor, fontWeight: 800, fontSize: 9.5, "& .MuiChip-label": { px: 0.8 } }} />
+                                  </Box>
+                                </Stack>
+                              </Grid>
+
+                              {/* Net worth */}
                               <Grid item xs={12} sm={3}>
-                                <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: isYou ? D.brandText : D.t1 }}>
-                                  {p.displayUsername}{isYou ? " (You)" : ""}
-                                </Typography>
-                                <Typography sx={{ fontSize: 11.5, color: D.t3 }}>{p.badge}</Typography>
-                              </Grid>
-                              <Grid item xs={6} sm={2}>
                                 <Typography sx={{ fontSize: 10.5, color: D.t3 }}>Net Worth</Typography>
                                 <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(p.best_net_worth)}</Typography>
                               </Grid>
+
+                              {/* Return */}
                               <Grid item xs={6} sm={2}>
                                 <Typography sx={{ fontSize: 10.5, color: D.t3 }}>Return</Typography>
                                 <Typography sx={{ fontSize: 13, fontWeight: 800, color: p.return_pct >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
                                   {p.return_pct >= 0 ? "+" : ""}{p.return_pct.toFixed(1)}%
                                 </Typography>
                               </Grid>
-                              <Grid item xs={12} sm={4}>
+
+                              {/* Progress bar */}
+                              <Grid item xs={12} sm={3}>
                                 <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
                                   <Typography sx={{ fontSize: 11, color: D.t3 }}>vs #1</Typography>
                                   <Typography sx={{ fontSize: 11, fontWeight: 800, color: isYou ? D.brandText : D.t2 }}>{Math.round(progress)}%</Typography>

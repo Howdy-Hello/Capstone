@@ -312,6 +312,11 @@ export default function StockDetails() {
                         "&:hover": { bgcolor: D.overlay, color: D.t1 } }}>
                       <AddIcon sx={{ fontSize: 16 }} />
                     </IconButton>
+                    <Button size="small"
+                      onClick={() => setQuantity(Math.max(1, Math.floor(trading.account.cash / stock.currentPrice)))}
+                      sx={{ color: D.brandText, fontSize: 11, fontWeight: 800, textTransform: "none", px: 1, minWidth: "auto" }}>
+                      Max
+                    </Button>
                     <Typography sx={{ fontSize: 13, color: D.t3, fontFamily: MONO }}>
                       = {money(stock.currentPrice * quantity)}
                     </Typography>

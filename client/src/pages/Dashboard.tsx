@@ -121,10 +121,10 @@ export default function Dashboard() {
         {/* Stat tiles */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
-            { label: "Cash",        value: money(trading.account.cash), icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: undefined },
-            { label: "Portfolio",   value: money(portfolioValue),        icon: <PieChartIcon sx={{ fontSize: 20 }} />,            up: undefined },
-            { label: "Net Worth",   value: money(netWorth),              icon: <AssessmentIcon sx={{ fontSize: 20 }} />,          up: returnPct >= 0 },
-            { label: "Market Avg",  value: pct(marketSummary.averageMove, 2), icon: marketSummary.averageMove >= 0 ? <TrendingUpIcon sx={{ fontSize: 20 }} /> : <TrendingDownIcon sx={{ fontSize: 20 }} />, up: marketSummary.averageMove >= 0 },
+            { label: "Cash",         value: money(trading.account.cash), icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: undefined },
+            { label: "Portfolio",    value: money(portfolioValue),        icon: <PieChartIcon sx={{ fontSize: 20 }} />,            up: undefined },
+            { label: "Net Worth",    value: money(netWorth),              icon: <AssessmentIcon sx={{ fontSize: 20 }} />,          up: returnPct >= 0 },
+            { label: "Total Return", value: pct(returnPct, 2),            icon: returnPct >= 0 ? <TrendingUpIcon sx={{ fontSize: 20 }} /> : <TrendingDownIcon sx={{ fontSize: 20 }} />, up: returnPct >= 0 },
           ].map((s) => (
             <Grid item xs={12} sm={6} md={3} key={s.label}>
               <StatTile {...s} />

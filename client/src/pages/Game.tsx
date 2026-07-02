@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
+  Avatar, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
   CircularProgress, Divider, Grid, IconButton, LinearProgress, Stack, TextField, Typography,
 } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -26,13 +26,18 @@ import {
 import { getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
 import { useAchievements } from "../hooks/useAchievements";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
 const DEV_CONSOLE_ENABLED = process.env.NODE_ENV !== "production";
 const BRIEFING_DISMISSED_KEY = "stockpilot-hide-opening-briefing";
 
+type MiniLeaderEntry = { rank: number; username: string; net_worth: number; user_id: string };
+
 export default function Game() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [briefingOpen, setBriefingOpen] = useState(false);
   const autoBriefingChecked = useRef(false);
   const [devConsoleOpen, setDevConsoleOpen] = useState(false);
@@ -41,6 +46,8 @@ export default function Game() {
   const [seasonEndOpen, setSeasonEndOpen] = useState(false);
   const seasonEndShownRef = useRef(false);
   const [selectedSector, setSelectedSector] = useState("All");
+  const [topPlayers, setTopPlayers] = useState<MiniLeaderEntry[]>([]);
+  const [myRank, setMyRank] = useState<number | null>(null);
   const trading = useGame();
   const { resetStreakForNewGame } = useAchievements();
   const { gameDay, setGameDay, stocks, news: todayNews } = trading;
@@ -93,6 +100,22 @@ export default function Game() {
       setSeasonEndOpen(true);
     }
   }, [gameDay, trading.loading]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.rpc("get_leaderboard", { p_limit: 50 });
+      if (!data) return;
+      const rows = data as Array<{ user_id: string; best_net_worth: number | string; username: string | null; display_name: string | null }>;
+      setTopPlayers(rows.slice(0, 5).map((r, i) => ({
+        rank: i + 1,
+        username: r.username ?? r.display_name ?? "Anonymous",
+        net_worth: Number(r.best_net_worth),
+        user_id: r.user_id,
+      })));
+      const myIdx = user ? rows.findIndex((r) => r.user_id === user.id) : -1;
+      setMyRank(myIdx >= 0 ? myIdx + 1 : null);
+    })();
+  }, [user]);
 
   useEffect(() => {
     if (!DEV_CONSOLE_ENABLED) return;
@@ -538,6 +561,49 @@ export default function Game() {
                     </Box>
                   ))}
                 </Stack>
+              </Box>
+
+              {/* Mini Leaderboard */}
+              <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <EmojiEventsIcon sx={{ fontSize: 17, color: "#F59E0B" }} />
+                    <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Top Traders</Typography>
+                  </Stack>
+                  <Button component={RouterLink} to="/leaderboard" size="small"
+                    sx={{ color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", px: 0.5 }}>
+                    View All →
+                  </Button>
+                </Stack>
+                <Box sx={{ p: 2.5 }}>
+                  {myRank !== null && (
+                    <Box sx={{ p: 1.5, mb: 1.5, borderRadius: 2, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}` }}>
+                      <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: D.brandText }}>Your rank: #{myRank}</Typography>
+                    </Box>
+                  )}
+                  {topPlayers.length === 0 ? (
+                    <Typography sx={{ fontSize: 13, color: D.t3 }}>No runs completed yet.</Typography>
+                  ) : (
+                    <Stack spacing={1}>
+                      {topPlayers.map((p) => (
+                        <Stack key={p.user_id} direction="row" spacing={1.5} alignItems="center">
+                          <Avatar sx={{ width: 28, height: 28, bgcolor: p.rank <= 3 ? "#7C3AED" : D.overlay, fontSize: 12, fontWeight: 900 }}>
+                            {p.username[0]?.toUpperCase()}
+                          </Avatar>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography sx={{ fontSize: 13, fontWeight: 800, color: user?.id === p.user_id ? D.brandText : D.t1 }} noWrap>
+                              {p.username}{user?.id === p.user_id ? " (You)" : ""}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ textAlign: "right", flexShrink: 0 }}>
+                            <Typography sx={{ fontSize: 10.5, color: D.t3, fontFamily: MONO }}>#{p.rank}</Typography>
+                            <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: D.t2, fontFamily: MONO }}>{money(p.net_worth)}</Typography>
+                          </Box>
+                        </Stack>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
               </Box>
             </Stack>
           </Grid>
