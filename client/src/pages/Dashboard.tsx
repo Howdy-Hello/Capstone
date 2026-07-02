@@ -14,10 +14,7 @@ import {
   ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
 } from "recharts";
 
-import {
-  getSeasonDay,
-  SEASON_LENGTH, Stock,
-} from "../data/mockStocks";
+import { Stock } from "../data/mockStocks";
 import { getNetWorth, getPortfolioValue } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
@@ -67,7 +64,6 @@ export default function Dashboard() {
     || profile?.username
     || user?.email?.split("@")[0]
     || "Trader";
-  const seasonDay = getSeasonDay(gameDay);
   const portfolioValue = useMemo(() => getPortfolioValue(trading.account, stocks), [trading.account, stocks]);
   const netWorth = useMemo(() => getNetWorth(trading.account, stocks), [trading.account, stocks]);
 
@@ -133,14 +129,14 @@ export default function Dashboard() {
               <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
                 {playerName}&apos;s Dashboard
               </Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Live portfolio view for Game Day {gameDay} · Season {seasonDay}/{SEASON_LENGTH}</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Live portfolio view for Game Day {gameDay} · open-ended session</Typography>
             </Box>
             <Box sx={{ ...CARD, p: 2.5, minWidth: 280 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO }}>SEASON PROGRESS</Typography>
-                <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>{seasonDay}/{SEASON_LENGTH}</Typography>
+                <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO }}>SESSION STATUS</Typography>
+                <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>DAY {gameDay}</Typography>
               </Stack>
-              <LinearProgress variant="determinate" value={(seasonDay / SEASON_LENGTH) * 100}
+              <LinearProgress variant="indeterminate"
                 sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
             </Box>
           </Stack>

@@ -125,50 +125,6 @@ function relatedSymbol(
   return relation?.symbol;
 }
 
-function mapDatabaseStock(
-  row: DatabaseStock,
-  today: DatabasePrice | undefined,
-  yesterday: DatabasePrice | undefined
-): Stock {
-  const startingPrice = asNumber(row.initial_price);
-  const currentPrice = today
-    ? asNumber(today.close_price)
-    : asNumber(row.current_price);
-  const previousPrice = yesterday
-    ? asNumber(yesterday.close_price)
-    : startingPrice;
-  const dayChange = currentPrice - previousPrice;
-
-  return {
-    stockId: `stock_${row.id}`,
-    symbol: row.symbol,
-    name: row.company_name,
-    sector: row.sector,
-    industry: row.industry,
-    description: row.description,
-    startingPrice,
-    volatility: asNumber(row.volatility),
-    trendBias: asNumber(row.trend_bias),
-    riskLevel: row.risk_level,
-    isActive: row.is_active,
-    fundamentals: {
-      peRatio: asNumber(row.pe_ratio),
-      eps: asNumber(row.eps),
-      revenueGrowth: asNumber(row.revenue_growth),
-      profitMargin: asNumber(row.profit_margin),
-      debtToEquity: asNumber(row.debt_to_equity),
-      dividendYield: asNumber(row.dividend_yield),
-      analystRating: row.analyst_rating,
-    },
-    currentPrice,
-    previousPrice,
-    dayChange,
-    dayChangePercent: previousPrice > 0 ? (dayChange / previousPrice) * 100 : 0,
-    volume: today ? asNumber(today.volume) : 0,
-    eventImpact: today ? asNumber(today.event_impact) : 0,
-  };
-}
-
 function mapDatabaseEvent(row: DatabaseEvent): MarketNews {
   const impacts = row.event_stock_impacts ?? [];
 
@@ -209,6 +165,153 @@ function mapDatabasePrice(row: DatabasePrice, symbol: string): StockPriceHistory
     change,
     changePercent: openPrice > 0 ? (change / openPrice) * 100 : 0,
     eventImpact: asNumber(row.event_impact),
+  };
+}
+
+function hashString(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash;
+}
+
+function seededRandom(seed: string) {
+  return (hashString(seed) % 1_000_000) / 1_000_000;
+}
+
+function seededRange(seed: string, min: number, max: number) {
+  return min + seededRandom(seed) * (max - min);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function round2(value: number) {
+  return Number(value.toFixed(2));
+}
+
+function generateContinuationPricePoint(
+  stock: DatabaseStock,
+  previousClose: number,
+  gameDay: number
+): StockPriceHistory {
+  const symbol = stock.symbol;
+  const marketDrift =
+    0.0007 +
+    Math.sin(gameDay / 14) * 0.003 +
+    seededRange(`market-continuation-${gameDay}`, -0.006, 0.006);
+  const sectorDrift =
+    Math.sin((gameDay + hashString(stock.sector) % 11) / 8) * 0.004 +
+    seededRange(`sector-continuation-${stock.sector}-${gameDay}`, -0.004, 0.004);
+  const randomShock =
+    seededRange(`shock-continuation-${symbol}-${gameDay}`, -1, 1) *
+    asNumber(stock.volatility);
+  const dailyReturn = clamp(
+    marketDrift + sectorDrift + asNumber(stock.trend_bias) + randomShock,
+    -0.15,
+    0.15
+  );
+
+  const openPrice = previousClose;
+  const closePrice = Math.max(1, openPrice * (1 + dailyReturn));
+  const intradayRange =
+    Math.abs(dailyReturn) * 0.45 +
+    asNumber(stock.volatility) *
+      seededRange(`range-continuation-${symbol}-${gameDay}`, 0.18, 0.5);
+  const highPrice = Math.max(openPrice, closePrice) * (1 + intradayRange);
+  const lowPrice = Math.min(openPrice, closePrice) * (1 - intradayRange * 0.8);
+  const baseVolume =
+    stock.risk_level === "High"
+      ? 1_200_000
+      : stock.risk_level === "Medium"
+        ? 850_000
+        : 600_000;
+  const activityBoost = Math.abs(dailyReturn) * 12;
+  const randomBoost = seededRange(`volume-continuation-${symbol}-${gameDay}`, -0.12, 0.22);
+
+  return {
+    priceId: `generated_${symbol.toLowerCase()}_${gameDay}`,
+    stockId: symbol,
+    symbol,
+    gameDay,
+    openPrice: round2(openPrice),
+    highPrice: round2(highPrice),
+    lowPrice: round2(Math.max(1, lowPrice)),
+    closePrice: round2(closePrice),
+    volume: Math.round(baseVolume * (1 + activityBoost + randomBoost)),
+    change: round2(closePrice - openPrice),
+    changePercent: openPrice > 0 ? round2(((closePrice - openPrice) / openPrice) * 100) : 0,
+    eventImpact: 0,
+  };
+}
+
+function getHistoryForDatabaseStock(
+  stock: DatabaseStock,
+  prices: DatabasePrice[],
+  throughDay: number
+) {
+  const storedHistory = prices
+    .filter((price) => relatedSymbol(price.stocks) === stock.symbol)
+    .map((price) => mapDatabasePrice(price, stock.symbol))
+    .sort((a, b) => a.gameDay - b.gameDay);
+
+  const safeGameDay = normalizeGameDay(throughDay);
+  const visibleHistory = storedHistory.filter((price) => price.gameDay <= safeGameDay);
+  const lastStoredPoint = storedHistory[storedHistory.length - 1];
+
+  if (!lastStoredPoint || safeGameDay <= lastStoredPoint.gameDay) {
+    return visibleHistory;
+  }
+
+  const generatedHistory = [...visibleHistory];
+  let previousClose = lastStoredPoint.closePrice;
+
+  for (let day = lastStoredPoint.gameDay + 1; day <= safeGameDay; day += 1) {
+    const point = generateContinuationPricePoint(stock, previousClose, day);
+    generatedHistory.push(point);
+    previousClose = point.closePrice;
+  }
+
+  return generatedHistory;
+}
+
+function mapStockFromHistory(row: DatabaseStock, history: StockPriceHistory[]): Stock {
+  const startingPrice = asNumber(row.initial_price);
+  const today = history[history.length - 1];
+  const yesterday = history[history.length - 2];
+  const currentPrice = today?.closePrice ?? asNumber(row.current_price);
+  const previousPrice = yesterday?.closePrice ?? startingPrice;
+  const dayChange = currentPrice - previousPrice;
+
+  return {
+    stockId: `stock_${row.id}`,
+    symbol: row.symbol,
+    name: row.company_name,
+    sector: row.sector,
+    industry: row.industry,
+    description: row.description,
+    startingPrice,
+    volatility: asNumber(row.volatility),
+    trendBias: asNumber(row.trend_bias),
+    riskLevel: row.risk_level,
+    isActive: row.is_active,
+    fundamentals: {
+      peRatio: asNumber(row.pe_ratio),
+      eps: asNumber(row.eps),
+      revenueGrowth: asNumber(row.revenue_growth),
+      profitMargin: asNumber(row.profit_margin),
+      debtToEquity: asNumber(row.debt_to_equity),
+      dividendYield: asNumber(row.dividend_yield),
+      analystRating: row.analyst_rating,
+    },
+    currentPrice: round2(currentPrice),
+    previousPrice: round2(previousPrice),
+    dayChange: round2(dayChange),
+    dayChangePercent: previousPrice > 0 ? round2((dayChange / previousPrice) * 100) : 0,
+    volume: today?.volume ?? 0,
+    eventImpact: today?.eventImpact ?? 0,
   };
 }
 
@@ -352,18 +455,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return databaseStocks
       .filter((stock) => stock.is_active)
       .map((stock) => {
-        const today = databasePrices.find(
-          (price) =>
-            relatedSymbol(price.stocks) === stock.symbol
-            && price.game_day === gameDay
-        );
-        const yesterday = databasePrices.find(
-          (price) =>
-            relatedSymbol(price.stocks) === stock.symbol
-            && price.game_day === gameDay - 1
-        );
-
-        return mapDatabaseStock(stock, today, yesterday);
+        const history = getHistoryForDatabaseStock(stock, databasePrices, gameDay);
+        return mapStockFromHistory(stock, history);
       });
   }, [databasePrices, databaseStocks, gameDay]);
 
@@ -374,12 +467,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [databaseEvents, gameDay]);
 
   const getHistory = useCallback((symbol: string) => {
-    return databasePrices
-      .filter((price) => relatedSymbol(price.stocks) === symbol)
-      .filter((price) => price.game_day <= gameDay)
-      .map((price) => mapDatabasePrice(price, symbol))
-      .sort((a, b) => a.gameDay - b.gameDay);
-  }, [databasePrices, gameDay]);
+    const stock = databaseStocks.find(
+      (item) => item.symbol.toLowerCase() === symbol.toLowerCase()
+    );
+
+    return stock ? getHistoryForDatabaseStock(stock, databasePrices, gameDay) : [];
+  }, [databasePrices, databaseStocks, gameDay]);
 
   const getStock = useCallback(
     (symbol: string) => stocks.find(
@@ -401,7 +494,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   ) => {
     setGameDayState((current) => {
       const requested = typeof day === "function" ? day(current) : day;
-      const next = Math.min(30, normalizeGameDay(requested));
+      const next = normalizeGameDay(requested);
 
       if (session) {
         void supabase

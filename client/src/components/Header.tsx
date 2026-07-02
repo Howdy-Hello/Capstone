@@ -12,6 +12,7 @@ import SportsEsportsOutlinedIcon from "@mui/icons-material/SportsEsportsOutlined
 import AutoStoriesOutlinedIcon from "@mui/icons-material/AutoStoriesOutlined";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
@@ -30,6 +31,7 @@ const nav = [
 ];
 
 const accountMenu = [
+  { label: "Settings",      to: "/settings",     icon: <SettingsOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "My Profile",    to: "/profile",      icon: <AccountCircleOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Dashboard",     to: "/dashboard",    icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Achievements",  to: "/achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 16 }} /> },

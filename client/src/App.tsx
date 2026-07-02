@@ -3,6 +3,8 @@ import { Box, CssBaseline } from "@mui/material";
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { GameProvider } from "./context/GameContext";
+import { ThemeProvider, useThemeSettings } from "./context/ThemeContext";
+import { D } from "./theme/design";
 
 import Header from "./components/Header";
 import Footer from "./components/Footer";
@@ -29,8 +31,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 function AppLayout() {
+  useThemeSettings();
+
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", width: "100%", m: 0, p: 0, bgcolor: "#09090F" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", width: "100%", m: 0, p: 0, bgcolor: D.bg }}>
       <Box component="header" sx={{ width: "100%", flexShrink: 0 }}>
         <Header />
       </Box>
@@ -56,6 +60,7 @@ function AppLayout() {
           <Route path="/save-load" element={<ProtectedRoute><SaveLoad /></ProtectedRoute>} />
           <Route path="/stocks/:symbol" element={<ProtectedRoute><StockDetails /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         </Routes>
       </Box>
 
@@ -71,11 +76,13 @@ export default function App() {
     <BrowserRouter>
       <CssBaseline />
       <ScrollToTop />
-      <AuthProvider>
-        <GameProvider>
-          <AppLayout />
-        </GameProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <GameProvider>
+            <AppLayout />
+          </GameProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

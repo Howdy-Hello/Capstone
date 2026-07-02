@@ -14,14 +14,12 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import CloseIcon from "@mui/icons-material/Close";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CodeIcon from "@mui/icons-material/Code";
-import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import {
-  getOpeningStoryDays, getSeasonDay,
-  SEASON_LENGTH, STORY_DAYS, Stock,
+  getOpeningStoryDays, STORY_DAYS, Stock,
 } from "../data/mockStocks";
 import { getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
@@ -43,13 +41,11 @@ export default function Game() {
   const [devConsoleOpen, setDevConsoleOpen] = useState(false);
   const [tradeMessage, setTradeMessage] = useState("");
   const [tradeDialog, setTradeDialog] = useState<{ stock: Stock; mode: "buy" | "sell" } | null>(null);
-  const [seasonEndOpen, setSeasonEndOpen] = useState(false);
-  const seasonEndShownRef = useRef(false);
   const [selectedSector, setSelectedSector] = useState("All");
   const [topPlayers, setTopPlayers] = useState<MiniLeaderEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
   const trading = useGame();
-  const { resetStreakForNewGame } = useAchievements();
+  useAchievements();
   const { gameDay, setGameDay, stocks, news: todayNews } = trading;
 
   const sectors = useMemo(() => ["All", ...Array.from(new Set(stocks.map((stock) => stock.sector))).sort()], [stocks]);
@@ -63,7 +59,6 @@ export default function Game() {
     [selectedSector, stocks],
   );
   const openingStories = useMemo(() => getOpeningStoryDays(), []);
-  const seasonDay = getSeasonDay(gameDay);
   const portfolioValue = useMemo(() => getPortfolioValue(trading.account, stocks), [trading.account, stocks]);
   const netWorth = useMemo(() => getNetWorth(trading.account, stocks), [trading.account, stocks]);
   const portfolioPnL = useMemo(() =>
@@ -301,15 +296,6 @@ export default function Game() {
           onConfirm={(qty) => handleTradeConfirm(tradeDialog.stock, tradeDialog.mode, qty)}
         />
       )}
-      <SeasonEndDialog
-        open={seasonEndOpen}
-        account={trading.account}
-        stocks={stocks}
-        netWorth={netWorth}
-        onClose={() => setSeasonEndOpen(false)}
-        onNewGame={async () => { setSeasonEndOpen(false); resetStreakForNewGame(); await trading.resetAccount(); seasonEndShownRef.current = false; }}
-        onLeaderboard={() => { setSeasonEndOpen(false); navigate("/leaderboard"); }}
-      />
       {DEV_CONSOLE_ENABLED && (
         <CommandConsole
           open={devConsoleOpen}
@@ -327,7 +313,7 @@ export default function Game() {
                 sx={{ bgcolor: gameDay <= STORY_DAYS ? D.redBg : D.brandBg, color: gameDay <= STORY_DAYS ? D.redText : D.brandText, border: `1px solid ${gameDay <= STORY_DAYS ? D.redBd : D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1.2 }} />
               <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>Stock Market Simulator</Typography>
               <Typography sx={{ fontSize: 13, color: D.t2, mb: 2.5 }}>
-                Days 1–3 are story-driven. From Day 4, the deterministic pricing engine takes over.
+                The market is open-ended. Once seeded market data runs out, drift and volatility keep prices moving.
               </Typography>
               <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
                 <Button onClick={handleNextDay} variant="contained"
@@ -352,10 +338,10 @@ export default function Game() {
                   label={marketSummary.averageMove >= 0 ? "Positive Day" : "Negative Day"}
                   sx={{ bgcolor: marketSummary.averageMove >= 0 ? D.greenBg : D.redBg, color: marketSummary.averageMove >= 0 ? D.greenText : D.redText, border: `1px solid ${marketSummary.averageMove >= 0 ? D.greenBd : D.redBd}`, fontWeight: 800, mb: 2 }} />
                 <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.8 }}>
-                  <Typography sx={{ fontSize: 12, color: D.t3 }}>Season: Day {seasonDay}/{SEASON_LENGTH}</Typography>
-                  <Typography sx={{ fontSize: 12, color: D.t3 }}>{((seasonDay / SEASON_LENGTH) * 100).toFixed(0)}%</Typography>
+                  <Typography sx={{ fontSize: 12, color: D.t3 }}>Open-ended session</Typography>
+                  <Typography sx={{ fontSize: 12, color: D.t3 }}>Day {gameDay}</Typography>
                 </Stack>
-                <LinearProgress variant="determinate" value={(seasonDay / SEASON_LENGTH) * 100}
+                <LinearProgress variant="indeterminate"
                   sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
               </Box>
             </Grid>
@@ -413,7 +399,7 @@ export default function Game() {
               <AutoStoriesIcon sx={{ color: D.redText, fontSize: 20 }} />
               <Box>
                 <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1 }}>Story Mode Active</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t2 }}>Days 1–3 are scripted to teach market movement. From Day 4, the formula engine takes over.</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t2 }}>Days 1-3 are scripted to teach market movement. The session keeps running without a final day.</Typography>
               </Box>
             </Stack>
           </Box>
@@ -567,13 +553,13 @@ export default function Game() {
               {/* Game loop */}
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.8 }}>Game Loop</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Seeded randomness, sector drift, volatility, and generated events from Day 4 onward.</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Seeded randomness, sector drift, and volatility keep the market running indefinitely.</Typography>
                 <Stack spacing={1} sx={{ mb: 2 }}>
                   {[
                     "Use the first 3 days to learn the market story.",
                     "Open stock details before buying.",
                     "Compare P/E, growth, debt, and margin.",
-                    "From Day 4, pricing is formula-based.",
+                    "Advance as many days as you want.",
                   ].map((tip) => (
                     <Stack key={tip} direction="row" spacing={1} alignItems="flex-start">
                       <Box sx={{ width: 4, height: 4, borderRadius: "50%", bgcolor: D.brandText, mt: 0.8, flexShrink: 0 }} />
@@ -928,148 +914,6 @@ function TradeDialog({ stock, mode, cash, sharesOwned, onClose, onConfirm }: {
             "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 },
           }}>
           {isBuy ? "Buy" : "Sell"} {qty} share{qty === 1 ? "" : "s"}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-function SeasonEndDialog({ open, account, stocks, netWorth, onClose, onNewGame, onLeaderboard }: {
-  open: boolean;
-  account: ReturnType<typeof useGame>["account"];
-  stocks: Stock[];
-  netWorth: number;
-  onClose: () => void;
-  onNewGame: () => void;
-  onLeaderboard: () => void;
-}) {
-  const STARTING_CASH = 2_000;
-  const returnPct = ((netWorth - STARTING_CASH) / STARTING_CASH) * 100;
-  const isProfit = netWorth >= STARTING_CASH;
-
-  const holdingStats = account.holdings.map((h) => {
-    const live = stocks.find((s) => s.symbol === h.symbol);
-    const currentPrice = live?.currentPrice ?? h.averageCost;
-    const value = currentPrice * h.shares;
-    const pnlPct = h.averageCost > 0 ? ((currentPrice - h.averageCost) / h.averageCost) * 100 : 0;
-    return { ...h, currentPrice, value, pnlPct };
-  }).sort((a, b) => b.pnlPct - a.pnlPct);
-
-  const best = holdingStats[0];
-  const worst = holdingStats[holdingStats.length - 1];
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
-      PaperProps={{ sx: { bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden" } }}>
-      <DialogTitle sx={{ bgcolor: D.elevated, borderBottom: `1px solid ${D.border}`, p: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <EmojiEventsIcon sx={{ color: D.amber, fontSize: 24 }} />
-            <Box>
-              <Typography sx={{ fontWeight: 900, fontSize: 18, color: D.t1 }}>Season Complete</Typography>
-              <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Day 30 — Final Results</Typography>
-            </Box>
-          </Stack>
-          <IconButton size="small" onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}>
-            <CloseIcon sx={{ fontSize: 17 }} />
-          </IconButton>
-        </Stack>
-      </DialogTitle>
-
-      <DialogContent sx={{ bgcolor: D.bg, p: 3 }}>
-        <Stack spacing={2.5}>
-          {/* Net worth hero */}
-          <Box sx={{ p: 3, borderRadius: 2, bgcolor: isProfit ? D.greenBg : D.redBg, border: `1px solid ${isProfit ? D.greenBd : D.redBd}`, textAlign: "center" }}>
-            <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>FINAL NET WORTH</Typography>
-            <Typography sx={{ fontSize: 40, fontWeight: 950, color: isProfit ? D.greenText : D.redText, fontFamily: MONO, lineHeight: 1, mb: 0.8 }}>
-              {money(netWorth)}
-            </Typography>
-            <Chip
-              icon={isProfit ? <TrendingUpIcon sx={{ fontSize: 14 }} /> : <TrendingDownIcon sx={{ fontSize: 14 }} />}
-              label={`${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}% vs $2,000 starting capital`}
-              sx={{ bgcolor: isProfit ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", color: isProfit ? D.greenText : D.redText, fontWeight: 800, fontSize: 12 }}
-            />
-          </Box>
-
-          {/* Stats row */}
-          <Grid container spacing={1.5}>
-            {[
-              { label: "Starting Capital", val: money(STARTING_CASH) },
-              { label: "Cash Remaining", val: money(account.cash) },
-              { label: "Portfolio Value", val: money(netWorth - account.cash) },
-              { label: "Total Return", val: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%` },
-            ].map((s) => (
-              <Grid item xs={6} key={s.label}>
-                <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}` }}>
-                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.3 }}>{s.label.toUpperCase()}</Typography>
-                  <Typography sx={{ fontSize: 16, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
-
-          {/* Best/Worst */}
-          {holdingStats.length >= 1 && (
-            <>
-              <Divider sx={{ borderColor: D.border }} />
-              <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO }}>HOLDINGS PERFORMANCE</Typography>
-              <Stack spacing={1}>
-                {holdingStats.map((h) => {
-                  const up = h.pnlPct >= 0;
-                  return (
-                    <Box key={h.symbol} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}` }}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Box>
-                          <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: D.t1, fontFamily: MONO }}>{h.symbol}</Typography>
-                          <Typography sx={{ fontSize: 12, color: D.t3 }}>{h.shares} share{h.shares === 1 ? "" : "s"} · avg {money(h.averageCost)}</Typography>
-                        </Box>
-                        <Box sx={{ textAlign: "right" }}>
-                          <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{money(h.value)}</Typography>
-                          <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: up ? D.greenText : D.redText }}>{pct(h.pnlPct)}</Typography>
-                        </Box>
-                      </Stack>
-                    </Box>
-                  );
-                })}
-              </Stack>
-            </>
-          )}
-
-          {/* Best / worst callouts */}
-          {holdingStats.length >= 2 && (
-            <Grid container spacing={1.5}>
-              <Grid item xs={6}>
-                <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.greenBg, border: `1px solid ${D.greenBd}` }}>
-                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.greenText, fontFamily: MONO, mb: 0.3 }}>BEST PICK</Typography>
-                  <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{best.symbol}</Typography>
-                  <Typography sx={{ fontSize: 12.5, color: D.greenText, fontWeight: 800 }}>{pct(best.pnlPct)}</Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
-                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.redText, fontFamily: MONO, mb: 0.3 }}>WORST PICK</Typography>
-                  <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{worst.symbol}</Typography>
-                  <Typography sx={{ fontSize: 12.5, color: D.redText, fontWeight: 800 }}>{pct(worst.pnlPct)}</Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          )}
-        </Stack>
-      </DialogContent>
-
-      <DialogActions sx={{ bgcolor: D.elevated, borderTop: `1px solid ${D.border}`, p: 2.5, gap: 1 }}>
-        <Button onClick={onLeaderboard}
-          sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
-          Leaderboard
-        </Button>
-        <Box sx={{ flex: 1 }} />
-        <Button onClick={onClose}
-          sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
-          Dismiss
-        </Button>
-        <Button variant="contained" onClick={onNewGame}
-          sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", px: 3, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-          New Game →
         </Button>
       </DialogActions>
     </Dialog>

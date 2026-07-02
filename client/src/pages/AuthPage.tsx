@@ -24,7 +24,7 @@ function useQuery() {
 const PERKS = [
   "Trade 21 real-world stocks risk-free",
   "Start with $2,000 in simulated capital",
-  "30-day market simulation with live events",
+  "Open-ended market simulation",
   "Compete on a global leaderboard",
   "In-depth market education built-in",
 ];

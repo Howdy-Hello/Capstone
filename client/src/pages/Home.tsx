@@ -18,7 +18,7 @@ const STOCKS = [
 ];
 
 const FEATURES = [
-  { icon: <BarChartIcon sx={{ fontSize: 22 }} />,           title: "Portfolio Simulation",   desc: "Trade 21 stocks across 30 simulated days with a $2,000 starting stake." },
+  { icon: <BarChartIcon sx={{ fontSize: 22 }} />,           title: "Portfolio Simulation",   desc: "Trade 21 stocks for as many simulated days as you want with a $2,000 starting stake." },
   { icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 22 }} />, title: "Learn the Concepts",    desc: "Built-in guide covers volatility, diversification, and risk management." },
   { icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 22 }} />, title: "Compete on Leaderboard", desc: "Compare final portfolio value with other traders and climb the ranks." },
   { icon: <ShieldOutlinedIcon sx={{ fontSize: 22 }} />,      title: "Risk-Free Practice",    desc: "No real money, no real risk — pure market mechanics in a safe sandbox." },
@@ -27,8 +27,8 @@ const FEATURES = [
 const STEPS = [
   { n: "01", title: "Create an account",      desc: "Sign up free and your trading desk is ready instantly." },
   { n: "02", title: "Get your $2,000 stake",  desc: "Every new game resets to $2,000 in simulated cash." },
-  { n: "03", title: "Trade stocks each day",  desc: "Buy and sell in a turn-based market across 30 days." },
-  { n: "04", title: "See how you rank",       desc: "Submit your score to the live leaderboard at game end." },
+  { n: "03", title: "Trade stocks each day",  desc: "Buy and sell in an open-ended turn-based market." },
+  { n: "04", title: "See how you rank",       desc: "Your best net worth updates the live leaderboard." },
 ];
 
 const MotionBox = motion(Box);
@@ -52,7 +52,7 @@ export default function Home() {
                   <Box component="span" sx={{ color: D.brandText }}>Risk nothing.</Box>
                 </Typography>
                 <Typography sx={{ fontSize: { xs: 15, md: 17 }, color: D.t2, lineHeight: 1.8, mb: 3.5, maxWidth: 480 }}>
-                  StockPilot puts $2,000 of simulated capital in your hands. Navigate 30 days of market events, build your portfolio, and learn what separates disciplined traders from the rest.
+                  StockPilot puts $2,000 of simulated capital in your hands. Keep advancing the market, build your portfolio, and learn what separates disciplined traders from the rest.
                 </Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                   <Button component={RouterLink} to="/auth?mode=signup" variant="contained"
@@ -84,7 +84,7 @@ export default function Home() {
                       <Chip label="+20.9%" size="small" icon={<TrendingUpIcon sx={{ fontSize: 12 }} />}
                         sx={{ bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, fontWeight: 800, fontSize: 11, mb: 0.3 }} />
                     </Stack>
-                    <Typography sx={{ fontSize: 11, color: D.t3, mt: 0.5 }}>Day 18 of 30 · 4 positions</Typography>
+                    <Typography sx={{ fontSize: 11, color: D.t3, mt: 0.5 }}>Day 48 · 4 positions</Typography>
                   </Box>
                   <Box sx={{ px: 2.5, py: 1.5 }}>
                     {STOCKS.map((s) => {

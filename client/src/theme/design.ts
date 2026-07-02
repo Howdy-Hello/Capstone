@@ -1,7 +1,35 @@
-// APEX TERMINAL — StockPilot Design System
+// APEX TERMINAL - StockPilot Design System
 // Dark-first, data-dense, finance-grade UI
 
-export const D = {
+export type DesignColors = {
+  bg: string;
+  surface: string;
+  elevated: string;
+  overlay: string;
+  border: string;
+  borderHi: string;
+  green: string;
+  greenBg: string;
+  greenBd: string;
+  greenText: string;
+  red: string;
+  redBg: string;
+  redBd: string;
+  redText: string;
+  amber: string;
+  amberBg: string;
+  brand: string;
+  brandMid: string;
+  brandBg: string;
+  brandBd: string;
+  brandText: string;
+  t1: string;
+  t2: string;
+  t3: string;
+  t4: string;
+};
+
+export const DEFAULT_COLORS: DesignColors = {
   // Backgrounds
   bg:        '#09090F',
   surface:   '#0E101A',
@@ -40,10 +68,16 @@ export const D = {
   t4:  '#1E293B',
 };
 
+export const D: DesignColors = { ...DEFAULT_COLORS };
+
+export function applyDesignColors(colors: DesignColors) {
+  Object.assign(D, colors);
+}
+
 // Shared card style
 export const CARD = {
-  bgcolor:      D.surface,
-  border:       `1px solid ${D.border}`,
+  get bgcolor() { return D.surface; },
+  get border() { return `1px solid ${D.border}`; },
   borderRadius: 2,
   boxShadow:    'none',
 } as const;

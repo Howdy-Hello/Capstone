@@ -7,7 +7,7 @@ const cols = {
   Product:  [{ l: "Dashboard",   h: "/dashboard"   }, { l: "Game",         h: "/game"        }, { l: "News",      h: "/news"        }],
   Play:     [{ l: "Leaderboard", h: "/leaderboard" }, { l: "Achievements", h: "/achievements"}, { l: "Save & Load", h: "/save-load" }],
   Learn:    [{ l: "Tutorial",    h: "/learn"        }, { l: "Guide",       h: "/learn"        }],
-  Account:  [{ l: "Log in",     h: "/auth?mode=login" }, { l: "Sign up",  h: "/auth?mode=signup" }, { l: "Profile", h: "/profile" }],
+  Account:  [{ l: "Log in",     h: "/auth?mode=login" }, { l: "Sign up",  h: "/auth?mode=signup" }, { l: "Settings", h: "/settings" }, { l: "Profile", h: "/profile" }],
 };
 
 const Footer: React.FC = () => (

@@ -10,9 +10,10 @@ import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import ThemeSettingsPanel from "../components/ThemeSettingsPanel";
 import { D, CARD, MONO } from "../theme/design";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
@@ -38,6 +39,7 @@ const fieldSx = {
 export default function ProfilePage() {
   const { user, profile, profileLoading, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [displayName, setDisplayName] = useState("");
@@ -181,6 +183,7 @@ export default function ProfilePage() {
   }
 
   const initials = (displayName || user.email || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+  const isSettings = pathname === "/settings";
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
@@ -204,9 +207,9 @@ export default function ProfilePage() {
             </Box>
 
             <Box sx={{ flex: 1 }}>
-              <Chip label="PROFILE" size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+              <Chip label={isSettings ? "SETTINGS" : "PROFILE"} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
               <Typography sx={{ fontWeight: 950, fontSize: { xs: 22, md: 26 }, color: D.t1, lineHeight: 1.1 }}>
-                {displayName || user.email?.split("@")[0] || "Your Profile"}
+                {isSettings ? "Account Settings" : displayName || user.email?.split("@")[0] || "Your Profile"}
               </Typography>
               <Typography sx={{ fontSize: 13, color: D.t3, mt: 0.5 }}>{user.email}</Typography>
             </Box>
@@ -257,6 +260,8 @@ export default function ProfilePage() {
               </Button>
             </Box>
           </Box>
+
+          <ThemeSettingsPanel />
 
           {/* Avatar management */}
           <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>

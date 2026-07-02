@@ -78,6 +78,10 @@ export type MarketNews = {
   isAccurate: boolean;
   isRumor: boolean;
   category: EventCategory;
+  impactByTicker?: Record<string, {
+    expectedImpact: number;
+    actualImpact: number;
+  }>;
 };
 
 export type OpeningStoryDay = {
@@ -96,7 +100,6 @@ export const NEWS_PUBLISHERS = {
   reddot: "Reddot",
 } as const;
 
-export const SEASON_LENGTH = 30;
 export const STORY_DAYS = 3;
 
 export const openingStoryDays: OpeningStoryDay[] = [
@@ -921,6 +924,147 @@ const hardcodedOpeningNews: MarketNews[] = [
   },
 ];
 
+const gasPriceStoryNews: MarketNews[] = [
+  {
+    newsId: "arc_gas_day4_supply_warning",
+    gameDay: 4,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Oil supply warning pushes fuel markets higher",
+    body:
+      "Refinery issues and shipping delays raised concern that fuel supplies could tighten over the next several weeks. Energy names attracted buyers, while airlines and freight operators came under pressure from higher expected operating costs.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["GVE", "SLD", "SKY", "FRX"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "macro",
+    impactByTicker: {
+      GVE: { expectedImpact: 0.026, actualImpact: 0.025 },
+      SLD: { expectedImpact: 0.019, actualImpact: 0.018 },
+      SKY: { expectedImpact: -0.028, actualImpact: -0.025 },
+      FRX: { expectedImpact: -0.017, actualImpact: -0.015 },
+    },
+  },
+  {
+    newsId: "arc_gas_day6_pump_prices_climb",
+    gameDay: 6,
+    source: NEWS_PUBLISHERS.expedition,
+    headline: "Drivers face higher gas prices as travel demand grows",
+    body:
+      "Gas prices climbed across several regions as summer travel demand met tighter fuel supply. Travel shares weakened, delivery companies warned about route costs, and consumer names slipped as households prepared for higher weekly expenses.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["GVE", "SLD", "SKY", "FRX", "LUX", "FDM", "AGR"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "macro",
+    impactByTicker: {
+      GVE: { expectedImpact: 0.037, actualImpact: 0.035 },
+      SLD: { expectedImpact: 0.027, actualImpact: 0.025 },
+      SKY: { expectedImpact: -0.049, actualImpact: -0.045 },
+      FRX: { expectedImpact: -0.034, actualImpact: -0.03 },
+      LUX: { expectedImpact: -0.02, actualImpact: -0.018 },
+      FDM: { expectedImpact: -0.009, actualImpact: -0.008 },
+      AGR: { expectedImpact: -0.007, actualImpact: -0.006 },
+    },
+  },
+  {
+    newsId: "arc_gas_day8_airline_pressure",
+    gameDay: 8,
+    source: NEWS_PUBLISHERS.expedition,
+    headline: "Fuel costs put pressure on travel companies",
+    body:
+      "Airlines warned that sustained fuel increases could force higher ticket prices or weaker margins. Investors marked down SkyBridge sharply while fuel-sensitive logistics firms stayed volatile.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["SKY", "FRX", "GVE"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "macro",
+    impactByTicker: {
+      SKY: { expectedImpact: -0.069, actualImpact: -0.065 },
+      FRX: { expectedImpact: -0.028, actualImpact: -0.025 },
+      GVE: { expectedImpact: 0.022, actualImpact: 0.02 },
+    },
+  },
+  {
+    newsId: "arc_gas_day10_delivery_surcharges",
+    gameDay: 10,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Delivery firms add fuel surcharges as gas prices rise",
+    body:
+      "Freight and delivery companies added temporary fuel surcharges to protect margins. The move may help profits later, but customers pushed back and retailers warned that shipping costs could weigh on demand.",
+    importance: "Medium",
+    marketTone: "Unclear",
+    relatedTickers: ["FRX", "FDM", "AGR", "LUX"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "operations",
+    impactByTicker: {
+      FRX: { expectedImpact: -0.031, actualImpact: -0.028 },
+      FDM: { expectedImpact: -0.016, actualImpact: -0.014 },
+      AGR: { expectedImpact: -0.014, actualImpact: -0.012 },
+      LUX: { expectedImpact: -0.023, actualImpact: -0.02 },
+    },
+  },
+  {
+    newsId: "arc_gas_day13_government_response",
+    gameDay: 13,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Officials weigh emergency measures to cool gas prices",
+    body:
+      "Officials discussed emergency fuel reserves and temporary tax relief to slow the rise in gas prices. Energy stocks cooled as traders priced in policy pressure, while travel and consumer shares recovered part of their losses.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["GVE", "SLD", "SKY", "FRX", "LUX"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "macro",
+    impactByTicker: {
+      GVE: { expectedImpact: -0.028, actualImpact: -0.025 },
+      SLD: { expectedImpact: -0.02, actualImpact: -0.018 },
+      SKY: { expectedImpact: 0.032, actualImpact: 0.03 },
+      FRX: { expectedImpact: 0.02, actualImpact: 0.018 },
+      LUX: { expectedImpact: 0.014, actualImpact: 0.012 },
+    },
+  },
+  {
+    newsId: "arc_gas_day16_prices_ease",
+    gameDay: 16,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Gas prices begin to ease after weeks of pressure",
+    body:
+      "Fuel prices stabilized as supply improved and emergency measures reduced market anxiety. Travel and logistics shares rebounded, but energy names gave back some earlier gains as the spike faded.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["SKY", "FRX", "LUX", "FDM", "AGR", "GVE", "SLD"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "macro",
+    impactByTicker: {
+      SKY: { expectedImpact: 0.048, actualImpact: 0.045 },
+      FRX: { expectedImpact: 0.032, actualImpact: 0.03 },
+      LUX: { expectedImpact: 0.02, actualImpact: 0.018 },
+      FDM: { expectedImpact: 0.011, actualImpact: 0.01 },
+      AGR: { expectedImpact: 0.011, actualImpact: 0.01 },
+      GVE: { expectedImpact: -0.022, actualImpact: -0.02 },
+      SLD: { expectedImpact: -0.014, actualImpact: -0.012 },
+    },
+  },
+];
+
 const bullishTemplates = [
   {
     category: "earnings" as EventCategory,
@@ -1063,6 +1207,19 @@ function getHardcodedOpeningNewsForCompany(
   );
 }
 
+function getGasPriceStoryNewsForCompany(
+  company: StockCompany,
+  gameDay: number
+): MarketNews | null {
+  return (
+    gasPriceStoryNews.find(
+      (news) =>
+        news.gameDay === gameDay &&
+        news.relatedTickers.some((ticker) => ticker === company.symbol)
+    ) ?? null
+  );
+}
+
 function getEventTemplate(company: StockCompany, gameDay: number) {
   const eventRoll = seededRandom(`event-roll-${company.symbol}-${gameDay}`);
 
@@ -1121,6 +1278,10 @@ function generateEventForCompany(
     return getHardcodedOpeningNewsForCompany(company, gameDay);
   }
 
+  const gasPriceStoryEvent = getGasPriceStoryNewsForCompany(company, gameDay);
+
+  if (gasPriceStoryEvent) return gasPriceStoryEvent;
+
   const template = getEventTemplate(company, gameDay);
 
   if (!template) return null;
@@ -1158,7 +1319,7 @@ function generateEventForCompany(
 
 function getEventImpact(company: StockCompany, gameDay: number) {
   const event = generateEventForCompany(company, gameDay);
-  return event?.actualImpact ?? 0;
+  return event?.impactByTicker?.[company.symbol]?.actualImpact ?? event?.actualImpact ?? 0;
 }
 
 function generateVolume(
@@ -1355,9 +1516,13 @@ export function getNewsForGameDay(gameDay: number): MarketNews[] {
     return hardcodedOpeningNews.filter((news) => news.gameDay === safeGameDay);
   }
 
-  return mockStockCompanies
+  const gasPriceNews = gasPriceStoryNews.filter((news) => news.gameDay === safeGameDay);
+  const generatedNews = mockStockCompanies
     .map((company) => generateEventForCompany(company, safeGameDay))
-    .filter(Boolean) as MarketNews[];
+    .filter((news): news is MarketNews => Boolean(news))
+    .filter((news) => !gasPriceNews.some((storyNews) => storyNews.newsId === news.newsId));
+
+  return [...gasPriceNews, ...generatedNews];
 }
 
 export function getNewsUpToGameDay(gameDay: number): MarketNews[] {
@@ -1382,9 +1547,4 @@ export function getRelatedNewsBySymbol(
       (ticker) => ticker.toLowerCase() === symbol.toLowerCase()
     )
   );
-}
-
-export function getSeasonDay(gameDay: number) {
-  const safeGameDay = normalizeGameDay(gameDay);
-  return ((safeGameDay - 1) % SEASON_LENGTH) + 1;
 }

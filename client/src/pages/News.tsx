@@ -9,9 +9,7 @@ import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
-import {
-  getSeasonDay, MarketNews, SEASON_LENGTH,
-} from "../data/mockStocks";
+import { MarketNews } from "../data/mockStocks";
 import { useGame } from "../context/GameContext";
 import { D, CARD, MONO } from "../theme/design";
 
@@ -70,7 +68,6 @@ export default function News() {
   const state = location.state as LocationState | null;
   const game = useGame();
   const gameDay = state?.gameDay ?? game.gameDay;
-  const seasonDay = getSeasonDay(gameDay);
   const marketNews = gameDay === game.gameDay ? game.news : [];
   const relatedTickerCount = new Set(marketNews.flatMap((n) => n.relatedTickers)).size;
   const highImportance = marketNews.filter((n) => n.importance === "High");
@@ -84,7 +81,7 @@ export default function News() {
             <Box>
               <Chip label={`DAY ${gameDay} NEWS`} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
               <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Market Headlines</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Events driving simulator prices on Day {gameDay} · Season {seasonDay}/{SEASON_LENGTH}</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Story headlines for Day {gameDay}. Later days can run without major news.</Typography>
             </Box>
             <Button component={RouterLink} to="/game" variant="contained"
               sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, alignSelf: { xs: "flex-start", md: "center" } }}>
