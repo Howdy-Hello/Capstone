@@ -16,6 +16,7 @@ import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CodeIcon from "@mui/icons-material/Code";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import {
@@ -95,13 +96,6 @@ export default function Game() {
   useEffect(() => {
     if (gameDay > STORY_DAYS) setBriefingOpen(false);
   }, [gameDay]);
-
-  useEffect(() => {
-    if (!trading.loading && gameDay >= SEASON_LENGTH && !seasonEndShownRef.current) {
-      seasonEndShownRef.current = true;
-      setSeasonEndOpen(true);
-    }
-  }, [gameDay, trading.loading]);
 
   useEffect(() => {
     (async () => {

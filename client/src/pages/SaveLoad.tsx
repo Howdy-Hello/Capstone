@@ -120,7 +120,7 @@ export default function SaveLoad() {
       return;
     }
 
-    // Reload game context state then navigate to game
+    await trading.setGameDay(slot.game_day);
     await trading.reloadSession();
     setMessage({ text: `Loaded "${slot.slot_name}". Resuming from Day ${slot.game_day}.`, severity: "success" });
     setLoadingSlot(null);

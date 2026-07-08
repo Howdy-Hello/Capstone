@@ -1,5 +1,5 @@
 import React, {
-  createContext, useCallback, useContext, useEffect, useMemo, useState,
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from "react";
 
 import {
@@ -18,6 +18,10 @@ import { useAuth } from "./AuthContext";
 
 const STARTING_CASH = 2_000;
 const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
+
+function gameDayStorageKey(sessionId: string) {
+  return `${GAME_DAY_STORAGE_KEY}:${sessionId}`;
+}
 
 type DatabaseStock = {
   id: number;
@@ -95,7 +99,7 @@ type GameContextValue = {
   addCash: (amount: number) => Promise<void>;
   setHolding: (stock: Stock, shares: number) => Promise<void>;
   gameDay: number;
-  setGameDay: (day: number | ((current: number) => number)) => void;
+  setGameDay: (day: number | ((current: number) => number)) => Promise<void>;
   stocks: Stock[];
   news: MarketNews[];
   getStock: (symbol: string) => Stock | undefined;
@@ -328,6 +332,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [databasePrices, setDatabasePrices] = useState<DatabasePrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const gameDayRef = useRef(gameDay);
+
+  useEffect(() => {
+    gameDayRef.current = gameDay;
+  }, [gameDay]);
 
   const loadMarketData = useCallback(async () => {
     const [stocksResult, eventsResult, pricesResult] = await Promise.all([
@@ -414,7 +423,25 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
 
     const holdings = await loadHoldings(activeSession.id);
-    const currentDay = normalizeGameDay(activeSession.current_day);
+    const storedSessionDay = Number(localStorage.getItem(gameDayStorageKey(activeSession.id)));
+    const storedLegacyDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
+    const savedDay = normalizeGameDay(storedSessionDay || storedLegacyDay || 1);
+    const databaseDay = normalizeGameDay(activeSession.current_day);
+    const currentDay = databaseDay === 1 && savedDay > 1 ? savedDay : databaseDay;
+
+    if (currentDay !== databaseDay) {
+      const { error: dayError } = await supabase
+        .from("game_sessions")
+        .update({ current_day: currentDay })
+        .eq("id", activeSession.id);
+
+      if (dayError) throw dayError;
+      activeSession = { ...activeSession, current_day: currentDay };
+    }
+
+    localStorage.setItem(gameDayStorageKey(activeSession.id), currentDay.toString());
+    localStorage.setItem(GAME_DAY_STORAGE_KEY, currentDay.toString());
+    gameDayRef.current = currentDay;
 
     setSession(activeSession);
     setGameDayState(currentDay);
@@ -489,22 +516,30 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       .sort((a, b) => b.gameDay - a.gameDay);
   }, [databaseEvents, gameDay]);
 
-  const setGameDay = useCallback((
+  const setGameDay = useCallback(async (
     day: number | ((current: number) => number)
   ) => {
-    setGameDayState((current) => {
-      const requested = typeof day === "function" ? day(current) : day;
-      const next = normalizeGameDay(requested);
+    const requested = typeof day === "function" ? day(gameDayRef.current) : day;
+    const next = normalizeGameDay(requested);
 
-      if (session) {
-        void supabase
-          .from("game_sessions")
-          .update({ current_day: next })
-          .eq("id", session.id);
-      }
+    gameDayRef.current = next;
+    setGameDayState(next);
+    localStorage.setItem(GAME_DAY_STORAGE_KEY, next.toString());
 
-      return next;
-    });
+    if (!session) return;
+
+    localStorage.setItem(gameDayStorageKey(session.id), next.toString());
+
+    const { error: dayError } = await supabase
+      .from("game_sessions")
+      .update({ current_day: next })
+      .eq("id", session.id);
+
+    if (dayError) {
+      setError(dayError.message);
+    } else {
+      setError(null);
+    }
   }, [session]);
 
   const executeTrade = useCallback(async (
@@ -602,6 +637,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
 
     const nextSession = data as GameSession;
+    localStorage.setItem(gameDayStorageKey(nextSession.id), "1");
+    localStorage.setItem(GAME_DAY_STORAGE_KEY, "1");
+    gameDayRef.current = 1;
     setSession(nextSession);
     setAccount(defaultAccount);
     setGameDayState(1);
