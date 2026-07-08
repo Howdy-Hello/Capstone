@@ -20,6 +20,8 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AllInclusiveIcon from "@mui/icons-material/AllInclusive";
 import TimerIcon from "@mui/icons-material/Timer";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import StarIcon from "@mui/icons-material/Star";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import {
@@ -558,6 +560,8 @@ export default function Game() {
                   filteredStocks.map((stock) => (
                     <StockRow key={stock.stockId} stock={stock} gameDay={gameDay}
                       sharesOwned={getSharesOwned(trading.account, stock.symbol)}
+                      watchlisted={trading.isWatchlisted(stock.symbol)}
+                      onToggleWatchlist={() => trading.toggleWatchlist(stock)}
                       onBuy={() => handleBuyStock(stock)}
                       onSell={() => handleSellStock(stock)}
                       onOpen={() => navigate(`/stocks/${stock.symbol}`, { state: { gameDay } })}
@@ -617,6 +621,59 @@ export default function Game() {
                               sx={{ mt: 0.8, color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto", height: "auto", lineHeight: 1 }}>
                               View details →
                             </Button>
+                          </Box>
+                        );
+                      })}
+                    </Stack>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Watchlist */}
+              <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <StarIcon sx={{ fontSize: 18, color: D.amber }} />
+                    <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Watchlist</Typography>
+                  </Stack>
+                  <Chip label={`${trading.watchlistStocks.length}`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 900, fontSize: 10 }} />
+                </Stack>
+                <Box sx={{ p: 2.5 }}>
+                  {trading.watchlistStocks.length === 0 ? (
+                    <Box sx={{ textAlign: "center", py: 1.5 }}>
+                      <Typography sx={{ fontSize: 13, color: D.t3, mb: 1 }}>No watched stocks yet.</Typography>
+                      <Typography sx={{ fontSize: 12, color: D.t3 }}>Use the star beside a ticker to track it without buying shares.</Typography>
+                    </Box>
+                  ) : (
+                    <Stack spacing={1}>
+                      {trading.watchlistStocks.map((watched) => {
+                        const up = watched.dayChangePercent >= 0;
+                        const sharesOwned = getSharesOwned(trading.account, watched.symbol);
+                        return (
+                          <Box key={watched.symbol} sx={{ p: 1.6, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                              <Box sx={{ minWidth: 0 }}>
+                                <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: D.t1, fontFamily: MONO }}>{watched.symbol}</Typography>
+                                <Typography sx={{ fontSize: 11.5, color: D.t3 }} noWrap>{watched.name}</Typography>
+                                <Typography sx={{ fontSize: 11, color: D.t3 }}>{sharesOwned > 0 ? `${sharesOwned} owned` : "Not owned"}</Typography>
+                              </Box>
+                              <Box sx={{ textAlign: "right", flexShrink: 0 }}>
+                                <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1, fontFamily: MONO }}>{money(watched.currentPrice)}</Typography>
+                                <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: up ? D.greenText : D.redText }}>
+                                  {pct(watched.dayChangePercent)}
+                                </Typography>
+                              </Box>
+                            </Stack>
+                            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                              <Button size="small" onClick={() => navigate(`/stocks/${watched.symbol}`, { state: { gameDay } })}
+                                sx={{ color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto" }}>
+                                Compare details
+                              </Button>
+                              <Button size="small" onClick={() => trading.removeFromWatchlist(watched)}
+                                sx={{ color: D.t3, fontSize: 11, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto" }}>
+                                Remove
+                              </Button>
+                            </Stack>
                           </Box>
                         );
                       })}
@@ -808,8 +865,8 @@ function CommandConsole({ open, onClose, onRun }: {
   );
 }
 
-function StockRow({ stock, gameDay, sharesOwned, onBuy, onSell, onOpen }: {
-  stock: Stock; gameDay: number; sharesOwned: number; onBuy: () => void; onSell: () => void; onOpen: () => void;
+function StockRow({ stock, gameDay, sharesOwned, watchlisted, onBuy, onSell, onToggleWatchlist, onOpen }: {
+  stock: Stock; gameDay: number; sharesOwned: number; watchlisted: boolean; onBuy: () => void; onSell: () => void; onToggleWatchlist: () => void; onOpen: () => void;
 }) {
   const up = stock.dayChangePercent >= 0;
   return (
@@ -827,6 +884,24 @@ function StockRow({ stock, gameDay, sharesOwned, onBuy, onSell, onOpen }: {
     >
       <Box>
         <Stack direction="row" spacing={1.5} alignItems="center">
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleWatchlist();
+            }}
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 1.5,
+              color: watchlisted ? D.amber : D.t3,
+              border: `1px solid ${watchlisted ? D.amber : D.border}`,
+              bgcolor: watchlisted ? D.amberBg : D.elevated,
+              "&:hover": { color: D.amber, borderColor: D.amber, bgcolor: D.amberBg },
+            }}
+          >
+            {watchlisted ? <StarIcon sx={{ fontSize: 17 }} /> : <StarBorderIcon sx={{ fontSize: 17 }} />}
+          </IconButton>
           <Box sx={{ width: 38, height: 38, borderRadius: 2, bgcolor: up ? D.greenBg : D.redBg, color: up ? D.greenText : D.redText, display: "grid", placeItems: "center", flexShrink: 0 }}>
             <ShowChartIcon sx={{ fontSize: 18 }} />
           </Box>

@@ -16,6 +16,8 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
+import StarIcon from "@mui/icons-material/Star";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
 
 import { Stock, StockPriceHistory } from "../data/mockStocks";
 import { getSharesOwned } from "../data/tradingState";
@@ -45,6 +47,13 @@ export default function StockDetails() {
   const history = symbol ? trading.getHistory(symbol) : [];
   const relatedNews = symbol ? trading.getRelatedNews(symbol) : [];
 
+  // Auto-dismiss trade message
+  useEffect(() => {
+    if (!tradeMsg) return;
+    const t = setTimeout(() => setTradeMsg(null), 3500);
+    return () => clearTimeout(t);
+  }, [tradeMsg]);
+
   if (trading.loading) {
     return (
       <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "grid", placeItems: "center" }}>
@@ -72,13 +81,7 @@ export default function StockDetails() {
   const riskScore = getRiskScore(stock.riskLevel);
   const latestHistory = history[history.length - 1];
   const sharesOwned = getSharesOwned(trading.account, stock.symbol);
-
-  // Auto-dismiss trade message
-  useEffect(() => {
-    if (!tradeMsg) return;
-    const t = setTimeout(() => setTradeMsg(null), 3500);
-    return () => clearTimeout(t);
-  }, [tradeMsg]);
+  const watchlisted = trading.isWatchlisted(stock.symbol);
 
   const handleBuy = async () => {
     const ok = await trading.buyStock(stock, quantity);
@@ -110,6 +113,10 @@ export default function StockDetails() {
               </Stack>
               <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>{stock.name}</Typography>
               <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.7, maxWidth: 600 }}>{stock.description}</Typography>
+              <Button onClick={() => trading.toggleWatchlist(stock)} startIcon={watchlisted ? <StarIcon /> : <StarBorderIcon />}
+                sx={{ mt: 2, color: watchlisted ? D.amber : D.t2, border: `1px solid ${watchlisted ? D.amber : D.border}`, bgcolor: watchlisted ? D.amberBg : "transparent", fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.amber, borderColor: D.amber, bgcolor: D.amberBg } }}>
+                {watchlisted ? "Watching" : "Add to Watchlist"}
+              </Button>
             </Grid>
             <Grid item xs={12} md={5}>
               <Box sx={{ ...CARD, p: 3 }}>
@@ -281,7 +288,11 @@ export default function StockDetails() {
 
               {/* Trading actions */}
               <Box sx={{ ...CARD, p: 3 }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.5 }}>Trading Actions</Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Trading Actions</Typography>
+                  <Chip label={watchlisted ? "WATCHING" : "WATCHLIST"} size="small"
+                    sx={{ bgcolor: watchlisted ? D.amberBg : D.overlay, color: watchlisted ? D.amber : D.t3, fontWeight: 900, fontSize: 10, fontFamily: MONO }} />
+                </Stack>
                 <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
                   <Typography sx={{ fontSize: 13, color: D.t3 }}>Cash: {money(trading.account.cash)}</Typography>
                   <Typography sx={{ fontSize: 13, color: D.t3 }}>Owned: {sharesOwned}</Typography>

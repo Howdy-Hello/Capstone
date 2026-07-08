@@ -101,6 +101,12 @@ type GameContextValue = {
   setCash: (cash: number) => Promise<void>;
   addCash: (amount: number) => Promise<void>;
   setHolding: (stock: Stock, shares: number) => Promise<void>;
+  addToWatchlist: (stock: Stock) => Promise<void>;
+  removeFromWatchlist: (stock: Stock) => Promise<void>;
+  toggleWatchlist: (stock: Stock) => Promise<void>;
+  isWatchlisted: (symbol: string) => boolean;
+  watchlistSymbols: string[];
+  watchlistStocks: Stock[];
   gameDay: number;
   setGameDay: (day: number | ((current: number) => number)) => Promise<void>;
   gameMode: GameMode;
@@ -349,6 +355,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [databaseStocks, setDatabaseStocks] = useState<DatabaseStock[]>([]);
   const [databaseEvents, setDatabaseEvents] = useState<DatabaseEvent[]>([]);
   const [databasePrices, setDatabasePrices] = useState<DatabasePrice[]>([]);
+  const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const gameDayRef = useRef(gameDay);
@@ -415,10 +422,35 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const loadWatchlist = useCallback(async () => {
+    if (!user) {
+      setWatchlistSymbols([]);
+      return;
+    }
+
+    const { data, error: watchlistError } = await supabase
+      .from("user_watchlist")
+      .select("stocks (symbol)")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (watchlistError) throw watchlistError;
+
+    const symbols = (data ?? [])
+      .map((row: any) => {
+        const stock = Array.isArray(row.stocks) ? row.stocks[0] : row.stocks;
+        return stock?.symbol;
+      })
+      .filter((symbol): symbol is string => Boolean(symbol));
+
+    setWatchlistSymbols(symbols);
+  }, [user]);
+
   const loadOrCreateSession = useCallback(async () => {
     if (!user) {
       setSession(null);
       setAccount(defaultAccount);
+      setWatchlistSymbols([]);
       return;
     }
 
@@ -473,7 +505,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       cash: asNumber(activeSession.cash_balance),
       holdings,
     });
-  }, [loadHoldings, user]);
+    await loadWatchlist();
+  }, [loadHoldings, loadWatchlist, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -738,6 +771,59 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     });
   }, [databaseStocks, session]);
 
+  const isWatchlisted = useCallback((symbol: string) => (
+    watchlistSymbols.some((item) => item.toLowerCase() === symbol.toLowerCase())
+  ), [watchlistSymbols]);
+
+  const addToWatchlist = useCallback(async (stock: Stock) => {
+    if (!user) return;
+    const databaseStock = databaseStocks.find((item) => item.symbol === stock.symbol);
+    if (!databaseStock) return;
+
+    setWatchlistSymbols((current) => (
+      current.includes(stock.symbol) ? current : [stock.symbol, ...current]
+    ));
+
+    const { error: watchlistError } = await supabase.from("user_watchlist").upsert({
+      user_id: user.id,
+      stock_id: databaseStock.id,
+    }, { onConflict: "user_id,stock_id" });
+
+    if (watchlistError) {
+      setError(watchlistError.message);
+      setWatchlistSymbols((current) => current.filter((symbol) => symbol !== stock.symbol));
+    }
+  }, [databaseStocks, user]);
+
+  const removeFromWatchlist = useCallback(async (stock: Stock) => {
+    if (!user) return;
+    const databaseStock = databaseStocks.find((item) => item.symbol === stock.symbol);
+    if (!databaseStock) return;
+
+    setWatchlistSymbols((current) => current.filter((symbol) => symbol !== stock.symbol));
+
+    const { error: watchlistError } = await supabase
+      .from("user_watchlist")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("stock_id", databaseStock.id);
+
+    if (watchlistError) {
+      setError(watchlistError.message);
+      setWatchlistSymbols((current) => (
+        current.includes(stock.symbol) ? current : [stock.symbol, ...current]
+      ));
+    }
+  }, [databaseStocks, user]);
+
+  const toggleWatchlist = useCallback(async (stock: Stock) => {
+    if (isWatchlisted(stock.symbol)) {
+      await removeFromWatchlist(stock);
+    } else {
+      await addToWatchlist(stock);
+    }
+  }, [addToWatchlist, isWatchlisted, removeFromWatchlist]);
+
   const syncSessionValue = useCallback(async () => {
     if (!session || loading) return;
     const portfolioValue = getPortfolioValue(account, stocks);
@@ -760,6 +846,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const maxGameDay = gameMode === "limited_30" ? LIMITED_GAME_DAYS : null;
   const isGameComplete = maxGameDay !== null && gameDay >= maxGameDay;
+  const watchlistStocks = useMemo(() => (
+    watchlistSymbols
+      .map((symbol) => stocks.find((stock) => stock.symbol === symbol))
+      .filter((stock): stock is Stock => Boolean(stock))
+  ), [stocks, watchlistSymbols]);
 
   const value = useMemo<GameContextValue>(() => ({
     account,
@@ -769,6 +860,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setCash,
     addCash,
     setHolding,
+    addToWatchlist,
+    removeFromWatchlist,
+    toggleWatchlist,
+    isWatchlisted,
+    watchlistSymbols,
+    watchlistStocks,
     gameDay,
     setGameDay,
     gameMode,
@@ -785,10 +882,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     reloadSession: loadOrCreateSession,
     syncSessionValue,
   }), [
-    account, addCash, buyStock, error, gameDay, gameMode, getHistory, getRelatedNews,
+    account, addCash, addToWatchlist, buyStock, error, gameDay, gameMode, getHistory, getRelatedNews,
     getStock, loading, loadOrCreateSession, news, resetAccount, sellStock,
     setCash, setGameDay, setHolding, session, stocks, syncSessionValue,
-    maxGameDay, isGameComplete,
+    maxGameDay, isGameComplete, isWatchlisted, removeFromWatchlist,
+    toggleWatchlist, watchlistStocks, watchlistSymbols,
   ]);
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
