@@ -5,7 +5,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
 } from "recharts";
@@ -82,6 +82,10 @@ export default function StockDetails() {
   const latestHistory = history[history.length - 1];
   const sharesOwned = getSharesOwned(trading.account, stock.symbol);
   const watchlisted = trading.isWatchlisted(stock.symbol);
+  const compareSymbol =
+    trading.watchlistStocks.find((item) => item.symbol !== stock.symbol)?.symbol
+    ?? trading.stocks.find((item) => item.symbol !== stock.symbol)?.symbol
+    ?? stock.symbol;
 
   const handleBuy = async () => {
     const ok = await trading.buyStock(stock, quantity);
@@ -116,6 +120,10 @@ export default function StockDetails() {
               <Button onClick={() => trading.toggleWatchlist(stock)} startIcon={watchlisted ? <StarIcon /> : <StarBorderIcon />}
                 sx={{ mt: 2, color: watchlisted ? D.amber : D.t2, border: `1px solid ${watchlisted ? D.amber : D.border}`, bgcolor: watchlisted ? D.amberBg : "transparent", fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.amber, borderColor: D.amber, bgcolor: D.amberBg } }}>
                 {watchlisted ? "Watching" : "Add to Watchlist"}
+              </Button>
+              <Button component={RouterLink} to={`/compare?left=${stock.symbol}&right=${compareSymbol}`}
+                sx={{ mt: 2, ml: 1, color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
+                Compare
               </Button>
             </Grid>
             <Grid item xs={12} md={5}>
