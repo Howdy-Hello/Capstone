@@ -21,6 +21,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Achievements from "./pages/Achievements";
 import SaveLoad from "./pages/SaveLoad";
 import StockDetails from "./pages/StockDetails";
+import CompareStocks from "./pages/CompareStocks";
 import Profile from "./pages/Profile";
 
 const NotFound: React.FC = () => (
@@ -70,6 +71,7 @@ function AppLayout() {
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
           <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
           <Route path="/save-load" element={<ProtectedRoute><SaveLoad /></ProtectedRoute>} />
+          <Route path="/compare" element={<ProtectedRoute><CompareStocks /></ProtectedRoute>} />
           <Route path="/stocks/:symbol" element={<ProtectedRoute><StockDetails /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

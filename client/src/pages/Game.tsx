@@ -654,7 +654,15 @@ export default function Game() {
                     <StarIcon sx={{ fontSize: 18, color: D.amber }} />
                     <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Watchlist</Typography>
                   </Stack>
-                  <Chip label={`${trading.watchlistStocks.length}`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 900, fontSize: 10 }} />
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    {trading.watchlistStocks.length >= 2 && (
+                      <Button component={RouterLink} to={`/compare?left=${trading.watchlistStocks[0].symbol}&right=${trading.watchlistStocks[1].symbol}`} size="small"
+                        sx={{ color: D.brandText, fontSize: 11, fontWeight: 800, textTransform: "none", px: 0.5 }}>
+                        Compare
+                      </Button>
+                    )}
+                    <Chip label={`${trading.watchlistStocks.length}`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 900, fontSize: 10 }} />
+                  </Stack>
                 </Stack>
                 <Box sx={{ p: 2.5 }}>
                   {trading.watchlistStocks.length === 0 ? (
@@ -683,9 +691,13 @@ export default function Game() {
                               </Box>
                             </Stack>
                             <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                              <Button size="small" component={RouterLink} to={`/compare?left=${watched.symbol}&right=${trading.watchlistStocks.find((item) => item.symbol !== watched.symbol)?.symbol ?? stocks.find((item) => item.symbol !== watched.symbol)?.symbol ?? watched.symbol}`}
+                                sx={{ color: D.greenText, fontSize: 11, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto" }}>
+                                Compare
+                              </Button>
                               <Button size="small" onClick={() => navigate(`/stocks/${watched.symbol}`, { state: { gameDay } })}
                                 sx={{ color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto" }}>
-                                Compare details
+                                Details
                               </Button>
                               <Button size="small" onClick={() => trading.removeFromWatchlist(watched)}
                                 sx={{ color: D.t3, fontSize: 11, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto" }}>
