@@ -15,7 +15,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import { useGame } from "../context/GameContext";
+import { GameMode, useGame } from "../context/GameContext";
 import { getNetWorth, getPortfolioValue } from "../data/tradingState";
 import { D, CARD, MONO, money } from "../theme/design";
 
@@ -31,6 +31,7 @@ type SaveSlot = {
   id: string;
   slot_name: string;
   game_day: number;
+  game_mode: GameMode;
   cash_balance: number;
   net_worth: number;
   holdings_snapshot: HoldingSnapshot[];
@@ -91,6 +92,7 @@ export default function SaveLoad() {
       user_id:           user.id,
       slot_name:         `Day ${trading.gameDay} Run`,
       game_day:          trading.gameDay,
+      game_mode:         trading.gameMode,
       cash_balance:      trading.account.cash,
       net_worth:         netWorth,
       holdings_snapshot: holdingsSnapshot,
@@ -144,6 +146,7 @@ export default function SaveLoad() {
   }), [slots]);
 
   const latestSlot = slots[0];
+  const currentModeLabel = trading.gameMode === "limited_30" ? "30-Day" : "Infinite";
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
@@ -198,8 +201,8 @@ export default function SaveLoad() {
           {[
             { label: "Save Slots",     val: `${slots.length} / ${MAX_SLOTS}`, icon: <FolderOpenIcon sx={{ fontSize: 20 }} />,           up: true      },
             { label: "Current Day",    val: `Day ${trading.gameDay}`,          icon: <CalendarTodayIcon sx={{ fontSize: 20 }} />,        up: undefined },
+            { label: "Mode",           val: currentModeLabel,                  icon: <ShieldIcon sx={{ fontSize: 20 }} />,               up: undefined },
             { label: "Best Net Worth", val: money(summary.bestNetWorth),       icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: true      },
-            { label: "Highest Day",    val: `Day ${summary.highestDay}`,       icon: <ShieldIcon sx={{ fontSize: 20 }} />,               up: undefined },
           ].map((s) => {
             const color = s.up === undefined ? D.brandText : D.greenText;
             const bg    = s.up === undefined ? D.brandBg   : D.greenBg;
@@ -263,9 +266,9 @@ export default function SaveLoad() {
                             </Grid>
                             {[
                               { label: "Day",      val: `${slot.game_day}`,            color: undefined },
+                              { label: "Mode",     val: slot.game_mode === "limited_30" ? "30D" : "Inf", color: undefined },
                               { label: "Net Worth", val: money(slot.net_worth),         color: undefined },
                               { label: "Return",   val: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(1)}%`, color: returnPct >= 0 ? D.greenText : D.redText },
-                              { label: "Holdings", val: `${slot.holdings_snapshot.length}`,  color: undefined },
                             ].map((m) => (
                               <Grid item xs={6} sm={1.5} key={m.label}>
                                 <Typography sx={{ fontSize: 10.5, color: D.t3 }}>{m.label}</Typography>

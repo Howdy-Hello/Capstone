@@ -56,6 +56,7 @@ export default function Dashboard() {
   const trading = useGame();
   const { user, profile } = useAuth();
   const { gameDay, stocks, news } = trading;
+  const modeLabel = trading.gameMode === "limited_30" ? "30-day challenge" : "infinite session";
   const [tradeHistory, setTradeHistory] = useState<TradeRecord[]>([]);
   const [tradeHistoryLoading, setTradeHistoryLoading] = useState(true);
 
@@ -129,14 +130,14 @@ export default function Dashboard() {
               <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
                 {playerName}&apos;s Dashboard
               </Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Live portfolio view for Game Day {gameDay} · open-ended session</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Live portfolio view for Game Day {gameDay} · {modeLabel}</Typography>
             </Box>
             <Box sx={{ ...CARD, p: 2.5, minWidth: 280 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                 <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO }}>SESSION STATUS</Typography>
-                <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>DAY {gameDay}</Typography>
+                <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>DAY {gameDay}{trading.maxGameDay ? `/${trading.maxGameDay}` : ""}</Typography>
               </Stack>
-              <LinearProgress variant="indeterminate"
+              <LinearProgress variant={trading.maxGameDay ? "determinate" : "indeterminate"} value={trading.maxGameDay ? (gameDay / trading.maxGameDay) * 100 : undefined}
                 sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
             </Box>
           </Stack>

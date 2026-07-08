@@ -15,6 +15,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import { Link as RouterLink } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { useGame } from "../context/GameContext";
 import { D, CARD, MONO, money } from "../theme/design";
 
 type LeaderboardRow = {
@@ -60,6 +61,7 @@ function buildRanked(rows: LeaderboardRow[]): RankedPlayer[] {
 
 export default function Leaderboard() {
   const { user } = useAuth();
+  const { syncSessionValue } = useGame();
   const [players, setPlayers]   = useState<RankedPlayer[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
@@ -73,6 +75,8 @@ export default function Leaderboard() {
     setError(null);
 
     (async () => {
+      await syncSessionValue();
+      if (cancelled) return;
       const { data, error: rpcError } = await supabase.rpc("get_leaderboard", { p_limit: 50 });
       if (cancelled) return;
       if (rpcError) { setError(rpcError.message); setLoading(false); return; }
@@ -81,7 +85,7 @@ export default function Leaderboard() {
     })();
 
     return () => { cancelled = true; };
-  }, [refreshKey]);
+  }, [refreshKey, syncSessionValue]);
 
   const sorted = useMemo(() => {
     const base = sortBy === "return_pct"
@@ -115,7 +119,7 @@ export default function Leaderboard() {
               <Chip label="GLOBAL RANKINGS" size="small"
                 sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
               <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Leaderboard</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Global rankings across all completed trading seasons.</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Global rankings across live trading runs.</Typography>
             </Box>
             <Box sx={{ ...CARD, p: 2.5, minWidth: 240 }}>
               <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>YOUR RANK</Typography>
@@ -178,10 +182,10 @@ export default function Leaderboard() {
             <Grid item xs={12} md={4}>
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3, height: "100%" }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 0.5 }}>Top Traders</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>The strongest players this season.</Typography>
+                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>The strongest players right now.</Typography>
 
                 {topThree.length === 0 ? (
-                  <Typography sx={{ fontSize: 13, color: D.t3 }}>No runs completed yet. Be the first!</Typography>
+                  <Typography sx={{ fontSize: 13, color: D.t3 }}>No ranked runs yet. Be the first!</Typography>
                 ) : (
                   <>
                     {/* Visual podium: 2nd | 1st | 3rd */}
@@ -324,7 +328,7 @@ export default function Leaderboard() {
                         {players.length === 0 ? "No players yet." : "No results found."}
                       </Typography>
                       <Typography sx={{ fontSize: 13, color: D.t3 }}>
-                        {players.length === 0 ? "Complete a game run to appear on the leaderboard." : "Try a different search term."}
+                        {players.length === 0 ? "Start a run to appear on the leaderboard." : "Try a different search term."}
                       </Typography>
                     </Box>
                   ) : (

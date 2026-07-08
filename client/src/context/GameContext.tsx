@@ -18,6 +18,8 @@ import { useAuth } from "./AuthContext";
 
 const STARTING_CASH = 2_000;
 const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
+export const LIMITED_GAME_DAYS = 30;
+export type GameMode = "infinite" | "limited_30";
 
 function gameDayStorageKey(sessionId: string) {
   return `${GAME_DAY_STORAGE_KEY}:${sessionId}`;
@@ -81,6 +83,7 @@ type GameSession = {
   id: string;
   current_day: number;
   cash_balance: number | string;
+  game_mode?: GameMode | null;
 };
 
 type TradeResult = {
@@ -94,12 +97,15 @@ type GameContextValue = {
   account: TradingAccount;
   buyStock: (stock: Stock, quantity?: number) => Promise<boolean>;
   sellStock: (stock: Stock, quantity?: number) => Promise<boolean>;
-  resetAccount: () => Promise<void>;
+  resetAccount: (mode?: GameMode) => Promise<void>;
   setCash: (cash: number) => Promise<void>;
   addCash: (amount: number) => Promise<void>;
   setHolding: (stock: Stock, shares: number) => Promise<void>;
   gameDay: number;
   setGameDay: (day: number | ((current: number) => number)) => Promise<void>;
+  gameMode: GameMode;
+  maxGameDay: number | null;
+  isGameComplete: boolean;
   stocks: Stock[];
   news: MarketNews[];
   getStock: (symbol: string) => Stock | undefined;
@@ -109,6 +115,7 @@ type GameContextValue = {
   error: string | null;
   sessionId: string | null;
   reloadSession: () => Promise<void>;
+  syncSessionValue: () => Promise<void>;
 };
 
 const defaultAccount: TradingAccount = {
@@ -120,6 +127,17 @@ const GameContext = createContext<GameContextValue | undefined>(undefined);
 
 function asNumber(value: number | string | null | undefined) {
   return Number(value ?? 0);
+}
+
+function normalizeGameMode(value: string | null | undefined): GameMode {
+  return value === "limited_30" ? "limited_30" : "infinite";
+}
+
+function clampGameDayForMode(day: number, mode: GameMode) {
+  const normalized = normalizeGameDay(day);
+  return mode === "limited_30"
+    ? Math.min(LIMITED_GAME_DAYS, normalized)
+    : normalized;
 }
 
 function relatedSymbol(
@@ -323,6 +341,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [session, setSession] = useState<GameSession | null>(null);
   const [account, setAccount] = useState<TradingAccount>(defaultAccount);
+  const [gameMode, setGameModeState] = useState<GameMode>("infinite");
   const [gameDay, setGameDayState] = useState(() => {
     const saved = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
     return normalizeGameDay(saved || 1);
@@ -405,7 +424,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     const { data: existing, error: sessionError } = await supabase
       .from("game_sessions")
-      .select("id, current_day, cash_balance")
+      .select("id, current_day, cash_balance, game_mode")
       .eq("user_id", user.id)
       .eq("status", "active")
       .order("updated_at", { ascending: false })
@@ -417,26 +436,30 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     let activeSession = existing as GameSession | null;
 
     if (!activeSession) {
-      const { data, error: createError } = await supabase.rpc("start_new_game");
+      const { data, error: createError } = await supabase.rpc("start_new_game_with_mode", {
+        target_game_mode: "infinite",
+      });
       if (createError) throw createError;
       activeSession = data as GameSession;
     }
 
     const holdings = await loadHoldings(activeSession.id);
+    const activeMode = normalizeGameMode(activeSession.game_mode);
     const storedSessionDay = Number(localStorage.getItem(gameDayStorageKey(activeSession.id)));
     const storedLegacyDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
-    const savedDay = normalizeGameDay(storedSessionDay || storedLegacyDay || 1);
-    const databaseDay = normalizeGameDay(activeSession.current_day);
+    const savedDay = clampGameDayForMode(storedSessionDay || storedLegacyDay || 1, activeMode);
+    const rawDatabaseDay = normalizeGameDay(activeSession.current_day);
+    const databaseDay = clampGameDayForMode(rawDatabaseDay, activeMode);
     const currentDay = databaseDay === 1 && savedDay > 1 ? savedDay : databaseDay;
 
-    if (currentDay !== databaseDay) {
+    if (currentDay !== rawDatabaseDay || activeMode !== activeSession.game_mode) {
       const { error: dayError } = await supabase
         .from("game_sessions")
-        .update({ current_day: currentDay })
+        .update({ current_day: currentDay, game_mode: activeMode })
         .eq("id", activeSession.id);
 
       if (dayError) throw dayError;
-      activeSession = { ...activeSession, current_day: currentDay };
+      activeSession = { ...activeSession, current_day: currentDay, game_mode: activeMode };
     }
 
     localStorage.setItem(gameDayStorageKey(activeSession.id), currentDay.toString());
@@ -444,6 +467,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     gameDayRef.current = currentDay;
 
     setSession(activeSession);
+    setGameModeState(activeMode);
     setGameDayState(currentDay);
     setAccount({
       cash: asNumber(activeSession.cash_balance),
@@ -520,7 +544,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     day: number | ((current: number) => number)
   ) => {
     const requested = typeof day === "function" ? day(gameDayRef.current) : day;
-    const next = normalizeGameDay(requested);
+    const next = clampGameDayForMode(requested, gameMode);
 
     gameDayRef.current = next;
     setGameDayState(next);
@@ -532,7 +556,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     const { error: dayError } = await supabase
       .from("game_sessions")
-      .update({ current_day: next })
+      .update({ current_day: next, game_mode: gameMode })
       .eq("id", session.id);
 
     if (dayError) {
@@ -540,7 +564,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } else {
       setError(null);
     }
-  }, [session]);
+  }, [gameMode, session]);
 
   const executeTrade = useCallback(async (
     stock: Stock,
@@ -623,14 +647,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     [executeTrade]
   );
 
-  const resetAccount = useCallback(async () => {
+  const resetAccount = useCallback(async (mode: GameMode = gameMode) => {
+    const nextMode = normalizeGameMode(mode);
     if (!user) {
       setAccount(defaultAccount);
+      setGameModeState(nextMode);
       setGameDayState(1);
       return;
     }
 
-    const { data, error: resetError } = await supabase.rpc("start_new_game");
+    const { data, error: resetError } = await supabase.rpc("start_new_game_with_mode", {
+      target_game_mode: nextMode,
+    });
     if (resetError) {
       setError(resetError.message);
       return;
@@ -641,10 +669,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(GAME_DAY_STORAGE_KEY, "1");
     gameDayRef.current = 1;
     setSession(nextSession);
+    setGameModeState(nextMode);
     setAccount(defaultAccount);
     setGameDayState(1);
     setError(null);
-  }, [user]);
+  }, [gameMode, user]);
 
   const setCash = useCallback(async (cash: number) => {
     const nextCash = Math.max(0, Number(cash.toFixed(2)));
@@ -709,18 +738,28 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     });
   }, [databaseStocks, session]);
 
-  useEffect(() => {
+  const syncSessionValue = useCallback(async () => {
     if (!session || loading) return;
-
     const portfolioValue = getPortfolioValue(account, stocks);
-    void supabase
+    const { error: valueError } = await supabase
       .from("game_sessions")
       .update({
         portfolio_value: Number(portfolioValue.toFixed(2)),
         net_worth: Number((account.cash + portfolioValue).toFixed(2)),
       })
       .eq("id", session.id);
+
+    if (valueError) {
+      setError(valueError.message);
+    }
   }, [account, loading, session, stocks]);
+
+  useEffect(() => {
+    void syncSessionValue();
+  }, [syncSessionValue]);
+
+  const maxGameDay = gameMode === "limited_30" ? LIMITED_GAME_DAYS : null;
+  const isGameComplete = maxGameDay !== null && gameDay >= maxGameDay;
 
   const value = useMemo<GameContextValue>(() => ({
     account,
@@ -732,6 +771,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setHolding,
     gameDay,
     setGameDay,
+    gameMode,
+    maxGameDay,
+    isGameComplete,
     stocks,
     news,
     getStock,
@@ -741,10 +783,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     error,
     sessionId: session?.id ?? null,
     reloadSession: loadOrCreateSession,
+    syncSessionValue,
   }), [
-    account, addCash, buyStock, error, gameDay, getHistory, getRelatedNews,
+    account, addCash, buyStock, error, gameDay, gameMode, getHistory, getRelatedNews,
     getStock, loading, loadOrCreateSession, news, resetAccount, sellStock,
-    setCash, setGameDay, setHolding, session, stocks,
+    setCash, setGameDay, setHolding, session, stocks, syncSessionValue,
+    maxGameDay, isGameComplete,
   ]);
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

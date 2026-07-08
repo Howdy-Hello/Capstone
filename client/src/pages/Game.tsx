@@ -17,13 +17,16 @@ import CodeIcon from "@mui/icons-material/Code";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import AllInclusiveIcon from "@mui/icons-material/AllInclusive";
+import TimerIcon from "@mui/icons-material/Timer";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import {
   getOpeningStoryDays, STORY_DAYS, Stock,
 } from "../data/mockStocks";
 import { getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
-import { useGame } from "../context/GameContext";
+import { GameMode, useGame } from "../context/GameContext";
 import { useAchievements } from "../hooks/useAchievements";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -47,7 +50,10 @@ export default function Game() {
   const [myRank, setMyRank] = useState<number | null>(null);
   const trading = useGame();
   useAchievements();
-  const { gameDay, setGameDay, stocks, news: todayNews } = trading;
+  const {
+    gameDay, gameMode, isGameComplete, maxGameDay, setGameDay,
+    stocks, news: todayNews, syncSessionValue,
+  } = trading;
 
   const sectors = useMemo(() => ["All", ...Array.from(new Set(stocks.map((stock) => stock.sector))).sort()], [stocks]);
   const sectorCounts = useMemo(() => {
@@ -76,6 +82,23 @@ export default function Game() {
     const averageMove = stocks.reduce((sum, s) => sum + s.dayChangePercent, 0) / stocks.length;
     return { gainers, losers, averageMove };
   }, [stocks]);
+  const modeLabel = gameMode === "limited_30" ? "30-Day Challenge" : "Infinite";
+  const modeDescription = gameMode === "limited_30"
+    ? "A focused 30-day scoring run. Rankings use your best net worth at the finish."
+    : "An open-ended sandbox. Keep advancing days as long as you want.";
+  const gameLoopTips = gameMode === "limited_30"
+    ? [
+        "Use the first 3 days to learn the market story.",
+        "Build a position before the 30-day clock runs out.",
+        "Your best net worth drives the leaderboard.",
+        "Start a new challenge when Day 30 ends.",
+      ]
+    : [
+        "Use the first 3 days to learn the market story.",
+        "Open stock details before buying.",
+        "Compare P/E, growth, debt, and margin.",
+        "Advance as many days as you want.",
+      ];
 
   useEffect(() => {
     if (!sectors.includes(selectedSector)) setSelectedSector("All");
@@ -98,9 +121,15 @@ export default function Game() {
   }, [gameDay]);
 
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
-      const { data } = await supabase.rpc("get_leaderboard", { p_limit: 50 });
-      if (!data) return;
+      await syncSessionValue();
+      if (cancelled) return;
+
+      const { data, error } = await supabase.rpc("get_leaderboard", { p_limit: 50 });
+      if (cancelled || error || !data) return;
+
       const rows = data as Array<{ user_id: string; best_net_worth: number | string; username: string | null; display_name: string | null }>;
       setTopPlayers(rows.slice(0, 5).map((r, i) => ({
         rank: i + 1,
@@ -111,7 +140,11 @@ export default function Game() {
       const myIdx = user ? rows.findIndex((r) => r.user_id === user.id) : -1;
       setMyRank(myIdx >= 0 ? myIdx + 1 : null);
     })();
-  }, [user]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [netWorth, syncSessionValue, user]);
 
   useEffect(() => {
     if (!tradeMessage) return;
@@ -149,7 +182,13 @@ export default function Game() {
     );
   }
 
-  const handleNextDay = () => setGameDay((d) => d + 1);
+  const handleNextDay = () => {
+    if (isGameComplete) return;
+    void setGameDay((d) => d + 1);
+  };
+  const handleNewRun = (mode: GameMode) => {
+    void trading.resetAccount(mode);
+  };
   const handleDismissBriefing = () => {
     localStorage.setItem(BRIEFING_DISMISSED_KEY, "true");
     setBriefingOpen(false);
@@ -259,11 +298,19 @@ export default function Game() {
         return "Applied.";
       }
       if (target === "all") {
-        void trading.resetAccount();
+        void trading.resetAccount(gameMode);
         setGameDay(1);
         if (localStorage.getItem(BRIEFING_DISMISSED_KEY) !== "true") {
           setBriefingOpen(true);
         }
+        return "Applied.";
+      }
+      if (target === "infinite") {
+        void trading.resetAccount("infinite");
+        return "Applied.";
+      }
+      if (target === "limited" || target === "30") {
+        void trading.resetAccount("limited_30");
         return "Applied.";
       }
       return "Rejected.";
@@ -303,16 +350,29 @@ export default function Game() {
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
           <Grid container spacing={3} alignItems="center">
             <Grid item xs={12} md={7}>
-              <Chip label={`DAY ${gameDay}`} size="small"
-                sx={{ bgcolor: gameDay <= STORY_DAYS ? D.redBg : D.brandBg, color: gameDay <= STORY_DAYS ? D.redText : D.brandText, border: `1px solid ${gameDay <= STORY_DAYS ? D.redBd : D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1.2 }} />
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.2 }}>
+                <Chip label={`DAY ${gameDay}${maxGameDay ? ` / ${maxGameDay}` : ""}`} size="small"
+                  sx={{ bgcolor: gameDay <= STORY_DAYS ? D.redBg : D.brandBg, color: gameDay <= STORY_DAYS ? D.redText : D.brandText, border: `1px solid ${gameDay <= STORY_DAYS ? D.redBd : D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
+                <Chip icon={gameMode === "limited_30" ? <TimerIcon sx={{ fontSize: 14 }} /> : <AllInclusiveIcon sx={{ fontSize: 14 }} />}
+                  label={modeLabel} size="small"
+                  sx={{ bgcolor: D.elevated, color: D.t2, border: `1px solid ${D.border}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
+              </Stack>
               <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>Stock Market Simulator</Typography>
               <Typography sx={{ fontSize: 13, color: D.t2, mb: 2.5 }}>
-                The market is open-ended. Once seeded market data runs out, drift and volatility keep prices moving.
+                {modeDescription}
               </Typography>
               <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
-                <Button onClick={handleNextDay} variant="contained"
-                  sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-                  Next Day →
+                <Button onClick={handleNextDay} variant="contained" disabled={isGameComplete}
+                  sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+                  {isGameComplete ? "Run Complete" : "Next Day →"}
+                </Button>
+                <Button onClick={() => handleNewRun("infinite")} startIcon={<AllInclusiveIcon />}
+                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
+                  Infinite
+                </Button>
+                <Button onClick={() => handleNewRun("limited_30")} startIcon={<TimerIcon />}
+                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
+                  30-Day
                 </Button>
                 {gameDay <= STORY_DAYS && (
                   <Button onClick={() => setBriefingOpen(true)} startIcon={<AutoStoriesIcon />}
@@ -332,11 +392,11 @@ export default function Game() {
                   label={marketSummary.averageMove >= 0 ? "Positive Day" : "Negative Day"}
                   sx={{ bgcolor: marketSummary.averageMove >= 0 ? D.greenBg : D.redBg, color: marketSummary.averageMove >= 0 ? D.greenText : D.redText, border: `1px solid ${marketSummary.averageMove >= 0 ? D.greenBd : D.redBd}`, fontWeight: 800, mb: 2 }} />
                 <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.8 }}>
-                  <Typography sx={{ fontSize: 12, color: D.t3 }}>Open-ended session</Typography>
-                  <Typography sx={{ fontSize: 12, color: D.t3 }}>Day {gameDay}</Typography>
+                  <Typography sx={{ fontSize: 12, color: D.t3 }}>{modeLabel}</Typography>
+                  <Typography sx={{ fontSize: 12, color: D.t3 }}>Day {gameDay}{maxGameDay ? `/${maxGameDay}` : ""}</Typography>
                 </Stack>
-                <LinearProgress variant="indeterminate"
-                  sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+                <LinearProgress variant={maxGameDay ? "determinate" : "indeterminate"} value={maxGameDay ? (gameDay / maxGameDay) * 100 : undefined}
+                  sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: isGameComplete ? D.green : D.brand, borderRadius: 99 } }} />
               </Box>
             </Grid>
           </Grid>
@@ -357,7 +417,7 @@ export default function Game() {
           {[
             { label: "Cash",      val: money(trading.account.cash), icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: true },
             { label: "Portfolio", val: money(portfolioValue),        icon: <StorefrontIcon sx={{ fontSize: 20 }} />,          up: true },
-            { label: "Gainers",   val: `${marketSummary.gainers}/${stocks.length}`, icon: <TrendingUpIcon sx={{ fontSize: 20 }} />, up: true },
+            { label: "Mode",      val: gameMode === "limited_30" ? "30 Day" : "Infinite", icon: gameMode === "limited_30" ? <TimerIcon sx={{ fontSize: 20 }} /> : <AllInclusiveIcon sx={{ fontSize: 20 }} />, up: true },
             { label: "Net Worth", val: money(netWorth),              icon: <NewspaperIcon sx={{ fontSize: 20 }} />,           up: netWorth >= 2000 },
           ].map((s) => (
             <Grid item xs={12} sm={6} md={3} key={s.label}>
@@ -386,6 +446,27 @@ export default function Game() {
           );
         })()}
 
+        {isGameComplete && (
+          <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.greenBg, border: `1px solid ${D.greenBd}`, mb: 2.5 }}>
+            <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5}>
+              <Box>
+                <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.greenText }}>30-Day Challenge Complete</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t2 }}>Your Day 30 net worth is ready for the leaderboard. Start another challenge or switch to Infinite mode.</Typography>
+              </Box>
+              <Stack direction="row" spacing={1}>
+                <Button onClick={() => handleNewRun("limited_30")} startIcon={<RestartAltIcon />}
+                  sx={{ color: D.greenText, border: `1px solid ${D.greenBd}`, fontWeight: 800, textTransform: "none", borderRadius: 1.5 }}>
+                  New 30-Day
+                </Button>
+                <Button onClick={() => handleNewRun("infinite")} startIcon={<AllInclusiveIcon />}
+                  sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg }}>
+                  Infinite Run
+                </Button>
+              </Stack>
+            </Stack>
+          </Box>
+        )}
+
         {/* Story mode notice */}
         {gameDay <= STORY_DAYS && (
           <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}`, mb: 2.5 }}>
@@ -393,7 +474,7 @@ export default function Game() {
               <AutoStoriesIcon sx={{ color: D.redText, fontSize: 20 }} />
               <Box>
                 <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1 }}>Story Mode Active</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t2 }}>Days 1-3 are scripted to teach market movement. The session keeps running without a final day.</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t2 }}>Days 1-3 are scripted to teach market movement. {gameMode === "limited_30" ? "This challenge ends on Day 30." : "This run keeps going without a final day."}</Typography>
               </Box>
             </Stack>
           </Box>
@@ -437,9 +518,9 @@ export default function Game() {
                     {filteredStocks.length} of {stocks.length} stocks shown. Click any stock to view details and chart.
                   </Typography>
                 </Box>
-                <Button onClick={handleNextDay} variant="contained" size="small"
-                  sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-                  Next Day →
+                <Button onClick={handleNextDay} variant="contained" size="small" disabled={isGameComplete}
+                  sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+                  {isGameComplete ? "Complete" : "Next Day →"}
                 </Button>
               </Stack>
               <Box sx={{ p: 2 }}>
@@ -547,14 +628,9 @@ export default function Game() {
               {/* Game loop */}
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.8 }}>Game Loop</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Seeded randomness, sector drift, and volatility keep the market running indefinitely.</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>{gameMode === "limited_30" ? "Beat the market before Day 30 ends." : "Seeded randomness, sector drift, and volatility keep the market running indefinitely."}</Typography>
                 <Stack spacing={1} sx={{ mb: 2 }}>
-                  {[
-                    "Use the first 3 days to learn the market story.",
-                    "Open stock details before buying.",
-                    "Compare P/E, growth, debt, and margin.",
-                    "Advance as many days as you want.",
-                  ].map((tip) => (
+                  {gameLoopTips.map((tip) => (
                     <Stack key={tip} direction="row" spacing={1} alignItems="flex-start">
                       <Box sx={{ width: 4, height: 4, borderRadius: "50%", bgcolor: D.brandText, mt: 0.8, flexShrink: 0 }} />
                       <Typography sx={{ fontSize: 12.5, color: D.t2, lineHeight: 1.6 }}>{tip}</Typography>
@@ -607,7 +683,7 @@ export default function Game() {
                     </Box>
                   )}
                   {topPlayers.length === 0 ? (
-                    <Typography sx={{ fontSize: 13, color: D.t3 }}>No runs completed yet.</Typography>
+                    <Typography sx={{ fontSize: 13, color: D.t3 }}>No ranked runs yet.</Typography>
                   ) : (
                     <Stack spacing={1}>
                       {topPlayers.map((p) => (
