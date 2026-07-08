@@ -163,7 +163,7 @@ const Header: React.FC = () => {
           </Stack>
 
           {/* Mobile hamburger */}
-          <IconButton onClick={() => setDrawerOpen(true)} sx={{ color: D.t2, display: { xs: "flex", md: "none" }, p: 0.8 }}>
+          <IconButton onClick={() => setDrawerOpen(true)} aria-label="Open navigation menu" title="Open menu" sx={{ color: D.t2, display: { xs: "flex", md: "none" }, p: 0.8 }}>
             <MenuIcon />
           </IconButton>
         </Toolbar>
@@ -180,7 +180,7 @@ const Header: React.FC = () => {
               </Box>
               <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1 }}>StockPilot</Typography>
             </Stack>
-            <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: D.t3, p: 0.5 }}>
+            <IconButton onClick={() => setDrawerOpen(false)} aria-label="Close navigation menu" title="Close menu" sx={{ color: D.t3, p: 0.5 }}>
               <CloseIcon sx={{ fontSize: 20 }} />
             </IconButton>
           </Stack>

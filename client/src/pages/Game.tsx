@@ -22,7 +22,7 @@ import TimerIcon from "@mui/icons-material/Timer";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
   getOpeningStoryDays, STORY_DAYS, Stock,
@@ -47,7 +47,11 @@ export default function Game() {
   const [devConsoleOpen, setDevConsoleOpen] = useState(false);
   const [tradeMessage, setTradeMessage] = useState("");
   const [tradeDialog, setTradeDialog] = useState<{ stock: Stock; mode: "buy" | "sell" } | null>(null);
-  const [selectedSector, setSelectedSector] = useState("All");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedSector = searchParams.get("sector") ?? "All";
+  const setSelectedSector = (sector: string) => {
+    setSearchParams(sector === "All" ? {} : { sector }, { replace: true });
+  };
   const [topPlayers, setTopPlayers] = useState<MiniLeaderEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
   const trading = useGame();
@@ -153,6 +157,19 @@ export default function Game() {
     const t = setTimeout(() => setTradeMessage(""), 3500);
     return () => clearTimeout(t);
   }, [tradeMessage]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
+      if (e.key === "ArrowRight" && !isGameComplete) {
+        e.preventDefault();
+        void setGameDay((d) => d + 1);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isGameComplete, setGameDay]);
 
   useEffect(() => {
     if (!DEV_CONSOLE_ENABLED) return;
@@ -365,6 +382,7 @@ export default function Game() {
               </Typography>
               <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
                 <Button onClick={handleNextDay} variant="contained" disabled={isGameComplete}
+                  title={isGameComplete ? undefined : "Advance to next day (→)"}
                   sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                   {isGameComplete ? "Run Complete" : "Next Day →"}
                 </Button>
@@ -886,6 +904,8 @@ function StockRow({ stock, gameDay, sharesOwned, watchlisted, onBuy, onSell, onT
         <Stack direction="row" spacing={1.5} alignItems="center">
           <IconButton
             size="small"
+            title={watchlisted ? "Remove from watchlist" : "Add to watchlist"}
+            aria-label={watchlisted ? "Remove from watchlist" : "Add to watchlist"}
             onClick={(e) => {
               e.stopPropagation();
               onToggleWatchlist();

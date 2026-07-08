@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Avatar, Box, Button, Chip, CircularProgress, Container, Grid,
   IconButton, InputAdornment, LinearProgress, Stack,
-  TextField, ToggleButton, ToggleButtonGroup, Typography,
+  TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
 } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -35,6 +35,14 @@ type RankedPlayer = LeaderboardRow & {
 };
 
 const MEDAL_COLORS = ["#F59E0B", "#94A3B8", "#C98B5F"];
+
+const TIER_TOOLTIPS: Record<string, string> = {
+  Champion: "Rank #1 — all-time highest net worth",
+  Expert:   "Rank #2–3 — top 3 performers",
+  Elite:    "Rank #4–10 — top 10 performers",
+  Rising:   "Rank #11–25 — top 25 performers",
+  Player:   "Rank #26+ — keep trading to climb",
+};
 
 function tierFor(rank: number): { label: string; color: string } {
   if (rank === 1) return { label: "Champion", color: "#F59E0B" };
@@ -103,6 +111,14 @@ export default function Leaderboard() {
     return sorted.filter((p) => p.displayUsername.toLowerCase().includes(q));
   }, [sorted, search]);
 
+  const myRowRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!loading && myRowRef.current) {
+      setTimeout(() => myRowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+    }
+  }, [loading]);
+
   const topThree     = sorted.slice(0, 3);
   const currentEntry = user ? sorted.find((p) => p.user_id === user.id) : undefined;
   const topValue     = sorted[0]
@@ -129,8 +145,10 @@ export default function Leaderboard() {
               {currentEntry && (
                 <>
                   <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>{money(currentEntry.best_net_worth)} best run</Typography>
-                  <Chip label={currentEntry.badge} size="small"
-                    sx={{ mt: 0.8, bgcolor: D.brandBg, color: currentEntry.tierColor, fontWeight: 800, fontSize: 10 }} />
+                  <Tooltip title={TIER_TOOLTIPS[currentEntry.badge] ?? ""} placement="bottom" arrow>
+                    <Chip label={currentEntry.badge} size="small"
+                      sx={{ mt: 0.8, bgcolor: D.brandBg, color: currentEntry.tierColor, fontWeight: 800, fontSize: 10, cursor: "help" }} />
+                  </Tooltip>
                 </>
               )}
               <Button component={RouterLink} to="/game" size="small"
@@ -286,7 +304,7 @@ export default function Leaderboard() {
                       <ToggleButton value="net_worth">Net Worth</ToggleButton>
                       <ToggleButton value="return_pct">Return %</ToggleButton>
                     </ToggleButtonGroup>
-                    <IconButton size="small" onClick={() => setRefreshKey((k) => k + 1)}
+                    <IconButton size="small" title="Refresh leaderboard" aria-label="Refresh leaderboard" onClick={() => setRefreshKey((k) => k + 1)}
                       sx={{ color: D.t2, border: `1px solid ${D.border}`, borderRadius: 1.5, p: 0.8, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
                       <RefreshIcon sx={{ fontSize: 16 }} />
                     </IconButton>
@@ -339,7 +357,7 @@ export default function Leaderboard() {
                         const progress = Math.min(100, topValue > 0 ? (val / topValue) * 100 : 0);
                         const rankBg   = p.rank === 1 ? "rgba(245,158,11,0.12)" : p.rank === 2 ? "rgba(148,163,184,0.12)" : p.rank === 3 ? "rgba(201,139,95,0.12)" : D.overlay;
                         return (
-                          <Box key={p.user_id} sx={{ p: 2, borderRadius: 2, bgcolor: isYou ? D.brandBg : D.elevated, border: `1px solid ${isYou ? D.brandBd : D.border}` }}>
+                          <Box key={p.user_id} ref={isYou ? myRowRef : undefined} sx={{ p: 2, borderRadius: 2, bgcolor: isYou ? D.brandBg : D.elevated, border: `1px solid ${isYou ? D.brandBd : D.border}` }}>
                             <Grid container spacing={1.5} alignItems="center">
                               {/* Rank */}
                               <Grid item xs="auto">
@@ -358,8 +376,10 @@ export default function Leaderboard() {
                                     <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: isYou ? D.brandText : D.t1, lineHeight: 1.2 }} noWrap>
                                       {p.displayUsername}{isYou ? " (You)" : ""}
                                     </Typography>
-                                    <Chip label={p.badge} size="small"
-                                      sx={{ height: 16, bgcolor: "transparent", color: p.tierColor, fontWeight: 800, fontSize: 9.5, "& .MuiChip-label": { px: 0.8 } }} />
+                                    <Tooltip title={TIER_TOOLTIPS[p.badge] ?? ""} placement="top" arrow>
+                                      <Chip label={p.badge} size="small"
+                                        sx={{ height: 16, bgcolor: "transparent", color: p.tierColor, fontWeight: 800, fontSize: 9.5, cursor: "help", "& .MuiChip-label": { px: 0.8 } }} />
+                                    </Tooltip>
                                   </Box>
                                 </Stack>
                               </Grid>
