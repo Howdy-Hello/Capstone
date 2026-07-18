@@ -57,12 +57,15 @@ const AuthPage: React.FC = () => {
     params.set("mode", mode);
     window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
     setError(null);
-    setSuccessMsg(
-      params.get("password") === "updated"
-        ? "Password updated successfully. Log in with your new password."
-        : null
-    );
   }, [mode]);
+
+  // Show the "password updated" message once on arrival, without clobbering a
+  // success message set by a mode switch (e.g. the post-signup "Account created").
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("password") === "updated") {
+      setSuccessMsg("Password updated successfully. Log in with your new password.");
+    }
+  }, []);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 

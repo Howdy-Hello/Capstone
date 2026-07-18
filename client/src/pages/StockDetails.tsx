@@ -339,7 +339,7 @@ export default function StockDetails() {
                       <AddIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                     <Button size="small"
-                      onClick={() => setQuantity(Math.max(1, Math.floor(trading.account.cash / stock.currentPrice)))}
+                      onClick={() => setQuantity(stock.currentPrice > 0 ? Math.max(1, Math.floor(trading.account.cash / stock.currentPrice)) : 1)}
                       sx={{ color: D.brandText, fontSize: 11, fontWeight: 800, textTransform: "none", px: 1, minWidth: "auto" }}>
                       Max
                     </Button>

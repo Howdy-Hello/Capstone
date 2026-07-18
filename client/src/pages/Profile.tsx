@@ -57,13 +57,20 @@ export default function ProfilePage() {
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [avatarErr, setAvatarErr] = useState<string | null>(null);
 
+  // Seed the form from the profile only once per user (after the initial fetch).
+  // A later refreshProfile() — e.g. after an avatar upload — must not overwrite
+  // edits the user has typed but not yet saved.
+  const seededUserRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!user) return;
+    if (!user) { seededUserRef.current = null; return; }
+    if (profileLoading) return;
+    if (seededUserRef.current === user.id) return;
+    seededUserRef.current = user.id;
     setDisplayName(profile?.display_name ?? "");
     setUsername(profile?.username ?? "");
     setBio(profile?.bio ?? "");
     setAvatarUrl(profile?.avatar_url ?? null);
-  }, [profile, user]);
+  }, [profile, user, profileLoading]);
 
   function validateProfile() {
     if (displayName.trim().length < 2) return "Display name must be at least 2 characters.";
@@ -156,10 +163,11 @@ export default function ProfilePage() {
         throw new Error(result.message ?? "Account deletion failed.");
       }
 
-      localStorage.removeItem("stockpilot-current-game-day");
-      localStorage.removeItem("stockpilot-trading-account");
-      localStorage.removeItem("stockpilot-save-slots");
-      localStorage.removeItem("stockpilot-current-save");
+      // Session-scoped keys carry dynamic ":<sessionId>" / "-<userId>" suffixes,
+      // so sweep every StockPilot game/session key by prefix.
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith("stockpilot-"))
+        .forEach((key) => localStorage.removeItem(key));
       await signOut();
       navigate("/", { replace: true });
     } catch (deleteError: any) {
@@ -214,7 +222,7 @@ export default function ProfilePage() {
               <Typography sx={{ fontSize: 13, color: D.t3, mt: 0.5 }}>{user.email}</Typography>
             </Box>
 
-            <Button onClick={() => { signOut(); navigate("/"); }} startIcon={<LogoutIcon />}
+            <Button onClick={async () => { await signOut(); navigate("/"); }} startIcon={<LogoutIcon />}
               sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 2, border: `1px solid ${D.border}`, px: 2, flexShrink: 0, fontSize: 13, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
               Log out
             </Button>

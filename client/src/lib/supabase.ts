@@ -7,9 +7,9 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error("Missing Supabase environment variables.");
 }
 
-if (!supabaseUrl.endsWith(".supabase.co")) {
+if (!/^https?:\/\//.test(supabaseUrl)) {
   throw new Error(
-    "REACT_APP_SUPABASE_URL must be the Supabase API URL, for example https://your-project-ref.supabase.co."
+    "REACT_APP_SUPABASE_URL must be a full URL, for example https://your-project-ref.supabase.co."
   );
 }
 

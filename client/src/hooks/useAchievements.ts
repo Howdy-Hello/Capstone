@@ -107,11 +107,18 @@ export function useAchievements() {
   // Update streak counters each time gameDay advances
   const prevDayRef = useRef(0);
   useEffect(() => {
-    if (!user || loading || gameDay <= prevDayRef.current) return;
+    if (!user || loading) return;
 
-    const advancing = gameDay > prevDayRef.current;
+    // First run after load: adopt the current day as the baseline instead of
+    // treating the jump from 0 as a real advance (which double-counted streaks).
+    if (prevDayRef.current === 0) {
+      prevDayRef.current = gameDay;
+      return;
+    }
+
+    if (gameDay <= prevDayRef.current) return;
     prevDayRef.current = gameDay;
-    if (!advancing || gameDay <= streak.lastCheckedDay) return;
+    if (gameDay <= streak.lastCheckedDay) return;
 
     const cashPct = netWorth > 0 ? (account.cash / netWorth) * 100 : 0;
     const next: StreakState = {

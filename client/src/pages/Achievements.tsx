@@ -29,7 +29,9 @@ export default function Achievements() {
   const unlockedCount  = achievements.filter((a) => a.unlocked).length;
   const totalCount     = achievements.length;
   const completionPct  = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
-  const nextGoal       = achievements.find((a) => !a.unlocked);
+  const nextGoal       = [...achievements]
+    .filter((a) => !a.unlocked)
+    .sort((a, b) => b.progress - a.progress)[0];
 
   if (loading) {
     return (

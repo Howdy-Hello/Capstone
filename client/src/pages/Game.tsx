@@ -85,7 +85,9 @@ export default function Game() {
   const marketSummary = useMemo(() => {
     const gainers = stocks.filter((s) => s.dayChangePercent >= 0).length;
     const losers = stocks.length - gainers;
-    const averageMove = stocks.reduce((sum, s) => sum + s.dayChangePercent, 0) / stocks.length;
+    const averageMove = stocks.length
+      ? stocks.reduce((sum, s) => sum + s.dayChangePercent, 0) / stocks.length
+      : 0;
     return { gainers, losers, averageMove };
   }, [stocks]);
   const modeLabel = gameMode === "limited_30" ? "30-Day Challenge" : "Infinite";

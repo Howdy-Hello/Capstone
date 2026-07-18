@@ -121,9 +121,16 @@ export default function Leaderboard() {
 
   const topThree     = sorted.slice(0, 3);
   const currentEntry = user ? sorted.find((p) => p.user_id === user.id) : undefined;
-  const topValue     = sorted[0]
-    ? (sortBy === "net_worth" ? sorted[0].best_net_worth : sorted[0].return_pct)
-    : 1;
+  // "Top Net Worth" is the maximum net worth regardless of the active sort.
+  const topNetWorth  = players.length
+    ? players.reduce((max, p) => Math.max(max, p.best_net_worth), -Infinity)
+    : null;
+  // Progress bars are normalized across the currently-sorted metric's range, so
+  // they stay meaningful even when every value is negative (e.g. Return %).
+  const metricValues = sorted.map((p) => (sortBy === "net_worth" ? p.best_net_worth : p.return_pct));
+  const metricMax    = metricValues.length ? Math.max(...metricValues) : 0;
+  const metricMin    = metricValues.length ? Math.min(...metricValues) : 0;
+  const metricRange  = metricMax - metricMin;
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
@@ -164,7 +171,7 @@ export default function Leaderboard() {
         {/* ── Stat tiles ───────────────────────────────────────────────────── */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
-            { label: "Top Net Worth",  val: sorted[0] ? money(sorted[0].best_net_worth) : "—",                                         icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />,           color: "#F59E0B",   bg: "rgba(245,158,11,0.1)" },
+            { label: "Top Net Worth",  val: topNetWorth !== null ? money(topNetWorth) : "—",                                            icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />,           color: "#F59E0B",   bg: "rgba(245,158,11,0.1)" },
             { label: "Your Best Run",  val: currentEntry ? money(currentEntry.best_net_worth) : "—",                                   icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />,   color: D.greenText, bg: D.greenBg },
             { label: "Your Return",    val: currentEntry ? `${currentEntry.return_pct >= 0 ? "+" : ""}${currentEntry.return_pct.toFixed(1)}%` : "—", icon: <TrendingUpIcon sx={{ fontSize: 20 }} />, color: D.greenText, bg: D.greenBg },
             { label: "Players Ranked", val: loading ? "—" : players.length.toString(),                                                  icon: <WorkspacePremiumIcon sx={{ fontSize: 20 }} />,      color: D.brandText, bg: D.brandBg },
@@ -354,7 +361,7 @@ export default function Leaderboard() {
                       {filtered.map((p) => {
                         const isYou    = p.user_id === user?.id;
                         const val      = sortBy === "net_worth" ? p.best_net_worth : p.return_pct;
-                        const progress = Math.min(100, topValue > 0 ? (val / topValue) * 100 : 0);
+                        const progress = Math.max(0, Math.min(100, metricRange > 0 ? ((val - metricMin) / metricRange) * 100 : 100));
                         const rankBg   = p.rank === 1 ? "rgba(245,158,11,0.12)" : p.rank === 2 ? "rgba(148,163,184,0.12)" : p.rank === 3 ? "rgba(201,139,95,0.12)" : D.overlay;
                         return (
                           <Box key={p.user_id} ref={isYou ? myRowRef : undefined} sx={{ p: 2, borderRadius: 2, bgcolor: isYou ? D.brandBg : D.elevated, border: `1px solid ${isYou ? D.brandBd : D.border}` }}>

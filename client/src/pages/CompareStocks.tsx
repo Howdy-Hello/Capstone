@@ -48,8 +48,14 @@ export default function CompareStocks() {
   useEffect(() => {
     if (trading.loading || trading.stocks.length === 0) return;
 
-    setLeftSymbol((current) => current || trading.watchlistStocks[0]?.symbol || trading.stocks[0]?.symbol || "");
-    setRightSymbol((current) => current || trading.watchlistStocks.find((stock) => stock.symbol !== leftSymbol)?.symbol || firstDifferent(trading.stocks, leftSymbol));
+    const resolvedLeft =
+      leftSymbol || trading.watchlistStocks[0]?.symbol || trading.stocks[0]?.symbol || "";
+    setLeftSymbol(resolvedLeft);
+    setRightSymbol((current) =>
+      current
+      || trading.watchlistStocks.find((stock) => stock.symbol !== resolvedLeft)?.symbol
+      || firstDifferent(trading.stocks, resolvedLeft)
+    );
   }, [leftSymbol, trading.loading, trading.stocks, trading.watchlistStocks]);
 
   useEffect(() => {

@@ -70,6 +70,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     setTradeHistoryLoading(true);
     supabase
       .from("trades")
@@ -78,9 +79,11 @@ export default function Dashboard() {
       .order("executed_at", { ascending: false })
       .limit(20)
       .then(({ data }) => {
+        if (cancelled) return;
         setTradeHistory((data ?? []) as unknown as TradeRecord[]);
         setTradeHistoryLoading(false);
       });
+    return () => { cancelled = true; };
   }, [user]);
 
   const holdings = useMemo(() => trading.account.holdings.map((h) => {
@@ -95,7 +98,9 @@ export default function Dashboard() {
 
   const marketSummary = useMemo(() => {
     const gainers = stocks.filter((s) => s.dayChangePercent >= 0).length;
-    const averageMove = stocks.reduce((sum, s) => sum + s.dayChangePercent, 0) / stocks.length;
+    const averageMove = stocks.length
+      ? stocks.reduce((sum, s) => sum + s.dayChangePercent, 0) / stocks.length
+      : 0;
     const strongest = [...stocks].sort((a, b) => b.dayChangePercent - a.dayChangePercent)[0];
     const weakest = [...stocks].sort((a, b) => a.dayChangePercent - b.dayChangePercent)[0];
     return { gainers, losers: stocks.length - gainers, averageMove, strongest, weakest };

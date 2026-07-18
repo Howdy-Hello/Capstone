@@ -1,12 +1,13 @@
 import React from "react";
 import { Box, Container, Divider, Grid, Link, Stack, Typography } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
 import { D } from "../theme/design";
 
 const cols = {
   Product:  [{ l: "Dashboard",   h: "/dashboard"   }, { l: "Game",         h: "/game"        }, { l: "News",      h: "/news"        }],
   Play:     [{ l: "Leaderboard", h: "/leaderboard" }, { l: "Achievements", h: "/achievements"}, { l: "Save & Load", h: "/save-load" }],
-  Learn:    [{ l: "Tutorial",    h: "/learn"        }, { l: "Guide",       h: "/learn"        }],
+  Learn:    [{ l: "Tutorial",    h: "/learn"        }, { l: "Guide",       h: "/learn?tab=guide" }],
   Account:  [{ l: "Log in",     h: "/auth?mode=login" }, { l: "Sign up",  h: "/auth?mode=signup" }, { l: "Settings", h: "/settings" }, { l: "Profile", h: "/profile" }],
 };
 
@@ -36,7 +37,7 @@ const Footer: React.FC = () => (
             </Typography>
             <Stack spacing={0.9}>
               {items.map((item) => (
-                <Link key={item.l} href={item.h} underline="none"
+                <Link key={item.l} component={RouterLink} to={item.h} underline="none"
                   sx={{ color: D.t3, fontSize: 13, fontWeight: 600, transition: "color 120ms", "&:hover": { color: D.t1 } }}>
                   {item.l}
                 </Link>
