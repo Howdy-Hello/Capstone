@@ -1,0 +1,18 @@
+# Netlify deploy config for the StockPilot client.
+# Overrides the repo's default build (which mv's output into ../docs for GitHub
+# Pages) so Netlify publishes the CRA build directory directly.
+
+[build]
+  base = "client"
+  command = "react-scripts build"
+  publish = "build"
+
+[build.environment]
+  # CRA treats lint warnings as errors when CI=true; keep deploys resilient.
+  CI = "false"
+
+# SPA fallback so client-side routes (/game, /leaderboard, …) resolve.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

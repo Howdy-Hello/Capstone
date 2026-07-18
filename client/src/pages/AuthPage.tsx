@@ -47,6 +47,8 @@ const AuthPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (user) navigate("/dashboard", { replace: true });
@@ -87,7 +89,11 @@ const AuthPage: React.FC = () => {
     try {
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          // Surface a resend option when the account exists but isn't confirmed.
+          if (/confirm|verif/i.test(error.message)) setPendingEmail(email);
+          throw error;
+        }
         navigate("/dashboard", { replace: true });
       } else if (mode === "signup") {
         const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } });
@@ -95,7 +101,8 @@ const AuthPage: React.FC = () => {
         if (data.session) {
           navigate("/dashboard", { replace: true });
         } else {
-          setSuccessMsg("Account created! Check your email to confirm, then log in.");
+          setSuccessMsg("Account created! Check your email to confirm your address, then log in.");
+          setPendingEmail(email);
           setMode("login");
         }
       } else {
@@ -129,6 +136,22 @@ const AuthPage: React.FC = () => {
     } catch (err: any) {
       setError(err?.message ?? "Google sign-in failed. Try again.");
       setSubmitting(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    const target = pendingEmail || email;
+    if (!target) return;
+    setResending(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.resend({ type: "signup", email: target });
+      if (error) throw error;
+      setSuccessMsg(`Confirmation email re-sent to ${target}. Check your inbox and spam folder.`);
+    } catch (err: any) {
+      setError(err?.message ?? "Could not resend the confirmation email.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -208,6 +231,12 @@ const AuthPage: React.FC = () => {
 
               {error && <Alert severity="error" sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{error}</Alert>}
               {successMsg && <Alert severity="success" sx={{ mb: 2, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 13 }}>{successMsg}</Alert>}
+              {pendingEmail && (
+                <Button type="button" variant="text" size="small" disabled={resending} onClick={handleResendConfirmation}
+                  sx={{ mb: 2, alignSelf: "flex-start", color: D.brandText, textTransform: "none", fontWeight: 700, fontSize: 12.5, px: 0, "&:hover": { bgcolor: "transparent", color: D.t1 } }}>
+                  {resending ? "Sending…" : `Resend confirmation email to ${pendingEmail}`}
+                </Button>
+              )}
 
               <Stack spacing={2} sx={{ flex: 1 }}>
                 <Button type="button" variant="outlined" size="large" disabled={submitting} onClick={handleGoogleSignIn} startIcon={<GoogleIcon />}

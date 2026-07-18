@@ -5,13 +5,33 @@ import dotenv from 'dotenv';
 import { connectDB } from './db/db';
 import supabaseRoutes from './routes/supabaseRoutes';
 import gameRoutes from './routes/gameRoutes';
+import { rateLimit } from './middleware/rateLimit';
 
 dotenv.config({ path: './.env' });
 
 const app = express();
 
-app.use(cors());
+// Behind a hosting proxy (Render/Railway) so req.ip reflects the real client.
+app.set('trust proxy', 1);
+
+// Lock CORS to configured origins in production; reflect the request origin in
+// dev (when CLIENT_ORIGIN is unset).
+const allowedOrigins = (process.env.CLIENT_ORIGIN ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    credentials: true,
+  })
+);
 app.use(bodyParser.json());
+
+// Global request cap per IP across the API.
+app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 300, bucket: 'global' }));
+
 app.use('/api', supabaseRoutes);
 app.use('/api', gameRoutes);
 

@@ -1,7 +1,20 @@
 import { Router } from 'express';
 import { supabaseHandler } from '../lib/supabaseServer';
+import { validateBody } from '../middleware/validate';
+import { rateLimit } from '../middleware/rateLimit';
 
 const router = Router();
+
+// Gameplay writes are called frequently during a session, so this is generous —
+// it only guards against runaway loops, not normal play.
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  bucket: 'game-write',
+  message: 'Too many game updates — slow down and try again shortly.',
+});
+
+const MODES = ['infinite', 'limited_30'] as const;
 
 function normalizeMode(value: unknown): 'infinite' | 'limited_30' {
   return value === 'limited_30' ? 'limited_30' : 'infinite';
@@ -28,7 +41,11 @@ router.get('/leaderboard', supabaseHandler({ auth: 'none' }, async (req, ctx) =>
 
 // POST /api/leaderboard/submit  { netWorth, gameMode?, day? }
 // Records the caller's best score via the SECURITY DEFINER RPC (auth-enforced).
-router.post('/leaderboard/submit', supabaseHandler({ auth: 'user' }, async (req, ctx) => {
+router.post('/leaderboard/submit', writeLimiter, validateBody({
+  netWorth: { type: 'number', required: true, min: 0, max: 1_000_000_000_000 },
+  gameMode: { type: 'string', enum: MODES },
+  day: { type: 'integer', min: 1 },
+}), supabaseHandler({ auth: 'user' }, async (req, ctx) => {
   const body = await req.json().catch(() => ({}));
   const netWorth = Number(body?.netWorth);
 
@@ -49,7 +66,13 @@ router.post('/leaderboard/submit', supabaseHandler({ auth: 'user' }, async (req,
 // POST /api/game/sync  { sessionId, portfolioValue, netWorth, gameMode?, day? }
 // Persists a session's value to game_sessions (under the caller's RLS) and
 // records the leaderboard score in one round-trip.
-router.post('/game/sync', supabaseHandler({ auth: 'user' }, async (req, ctx) => {
+router.post('/game/sync', writeLimiter, validateBody({
+  sessionId: { type: 'string', required: true, min: 1, max: 64 },
+  portfolioValue: { type: 'number', required: true, min: 0, max: 1_000_000_000_000 },
+  netWorth: { type: 'number', required: true, min: 0, max: 1_000_000_000_000 },
+  gameMode: { type: 'string', enum: MODES },
+  day: { type: 'integer', min: 1 },
+}), supabaseHandler({ auth: 'user' }, async (req, ctx) => {
   const body = await req.json().catch(() => ({}));
   const sessionId = typeof body?.sessionId === 'string' ? body.sessionId : '';
   const netWorth = Number(body?.netWorth);

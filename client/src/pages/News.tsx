@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Box, Button, Chip, Container, Grid, Stack, Typography,
+  Box, Button, Chip, Container, Grid, LinearProgress, Stack, Typography,
 } from "@mui/material";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
@@ -9,9 +9,15 @@ import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
-import { MarketNews } from "../data/mockStocks";
+import { getNewsCredibility, MarketNews, NewsCredibility } from "../data/mockStocks";
 import { useGame } from "../context/GameContext";
 import { D, CARD, MONO } from "../theme/design";
+
+function credColorKeys(rating: NewsCredibility["rating"]): { fg: keyof typeof D; bg: keyof typeof D } {
+  if (rating === "high") return { fg: "greenText", bg: "greenBg" };
+  if (rating === "medium") return { fg: "amber", bg: "amberBg" };
+  return { fg: "redText", bg: "redBg" };
+}
 
 type LocationState = { gameDay?: number };
 
@@ -24,6 +30,8 @@ const TONE_CONFIG = {
 function NewsCard({ news }: { news: MarketNews }) {
   const imp  = news.importance === "High";
   const tone = TONE_CONFIG[news.marketTone] ?? TONE_CONFIG.Unclear;
+  const cred = getNewsCredibility(news);
+  const credKeys = credColorKeys(cred.rating);
   return (
     <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 2 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2} sx={{ mb: 1.2 }}>
@@ -48,6 +56,14 @@ function NewsCard({ news }: { news: MarketNews }) {
             sx={{ bgcolor: imp ? D.redBg : D.amberBg, color: imp ? D.redText : D.amber, border: `1px solid ${imp ? D.redBd : "rgba(245,158,11,0.3)"}`, fontWeight: 800, fontSize: 10 }} />
         </Stack>
       </Stack>
+      <Box sx={{ mb: 1.5 }}>
+        <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.4 }}>
+          <Typography sx={{ fontSize: 10, color: D.t3, fontFamily: MONO, letterSpacing: 0.4 }}>SOURCE CREDIBILITY</Typography>
+          <Typography sx={{ fontSize: 10, fontWeight: 800, fontFamily: MONO, color: D[credKeys.fg] as string }}>{cred.label} · {cred.score}%</Typography>
+        </Stack>
+        <LinearProgress variant="determinate" value={cred.score}
+          sx={{ height: 4, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D[credKeys.fg] as string, borderRadius: 99 } }} />
+      </Box>
       <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.7, mb: 1.5 }}>{news.body}</Typography>
       <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
         {news.isRumor && (

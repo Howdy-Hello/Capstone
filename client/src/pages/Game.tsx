@@ -17,6 +17,7 @@ import CodeIcon from "@mui/icons-material/Code";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AllInclusiveIcon from "@mui/icons-material/AllInclusive";
 import TimerIcon from "@mui/icons-material/Timer";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
@@ -25,11 +26,12 @@ import StarBorderIcon from "@mui/icons-material/StarBorder";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
-  getOpeningStoryDays, STORY_DAYS, Stock,
+  getNewsCredibility, getOpeningStoryDays, STORY_DAYS, Stock,
 } from "../data/mockStocks";
 import { getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
 import { GameMode, useGame } from "../context/GameContext";
 import { useAchievements } from "../hooks/useAchievements";
+import { useDailyGoals } from "../hooks/useDailyGoals";
 import { fetchLeaderboard } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
@@ -56,6 +58,7 @@ export default function Game() {
   const [myRank, setMyRank] = useState<number | null>(null);
   const trading = useGame();
   useAchievements();
+  const dailyGoals = useDailyGoals();
   const {
     gameDay, gameMode, isGameComplete, maxGameDay, setGameDay,
     stocks, news: todayNews, syncSessionValue,
@@ -531,6 +534,12 @@ export default function Game() {
                         <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
                           <Chip size="small" label={n.importance}
                             sx={{ bgcolor: n.importance === "High" ? D.redBg : D.greenBg, color: n.importance === "High" ? D.redText : D.greenText, fontWeight: 800, fontSize: 10 }} />
+                          {(() => {
+                            const c = getNewsCredibility(n);
+                            const fg = c.rating === "high" ? D.greenText : c.rating === "medium" ? D.amber : D.redText;
+                            const bg = c.rating === "high" ? D.greenBg : c.rating === "medium" ? D.amberBg : D.redBg;
+                            return <Chip size="small" label={`${c.label} · ${c.score}%`} sx={{ bgcolor: bg, color: fg, fontWeight: 800, fontSize: 10 }} />;
+                          })()}
                         </Stack>
                         <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.5 }}>{n.headline}</Typography>
                         <Typography sx={{ fontSize: 12.5, color: D.t3, lineHeight: 1.6, mb: 1 }}>{n.body}</Typography>
@@ -725,6 +734,37 @@ export default function Game() {
                       })}
                     </Stack>
                   )}
+                </Box>
+              </Box>
+
+              {/* Daily goals */}
+              <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <CheckCircleIcon sx={{ fontSize: 18, color: D.brandText }} />
+                    <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Daily Goals</Typography>
+                  </Stack>
+                  <Chip label={`${dailyGoals.completedCount}/${dailyGoals.goals.length}`} size="small"
+                    sx={{ bgcolor: dailyGoals.completedCount === dailyGoals.goals.length ? D.greenBg : D.overlay, color: dailyGoals.completedCount === dailyGoals.goals.length ? D.greenText : D.t3, fontWeight: 900, fontSize: 10 }} />
+                </Stack>
+                <Box sx={{ p: 2.5 }}>
+                  <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 1.5 }}>Fresh objectives each day. Day {gameDay} · {dailyGoals.totalXp} XP earned.</Typography>
+                  <Stack spacing={1.2}>
+                    {dailyGoals.goals.map((g) => (
+                      <Box key={g.id} sx={{ p: 1.6, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${g.done ? D.greenBd : D.border}` }}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                          <Stack direction="row" spacing={0.8} alignItems="center">
+                            {g.done && <CheckCircleIcon sx={{ fontSize: 14, color: D.greenText }} />}
+                            <Typography sx={{ fontSize: 13, fontWeight: 800, color: g.done ? D.greenText : D.t1 }}>{g.title}</Typography>
+                          </Stack>
+                          <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: D.t3, fontFamily: MONO }}>+{g.rewardXp} XP</Typography>
+                        </Stack>
+                        <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 0.8 }}>{g.description}</Typography>
+                        <LinearProgress variant="determinate" value={g.progress}
+                          sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: g.done ? D.green : D.brand, borderRadius: 99 } }} />
+                      </Box>
+                    ))}
+                  </Stack>
                 </Box>
               </Box>
 

@@ -132,6 +132,49 @@ export const NEWS_PUBLISHERS = {
   reddot: "Reddot",
 } as const;
 
+// News-credibility mechanic. Reputable outlets report confirmed facts; the rumor
+// mill (Reddot) is often first but unreliable. Players learn to weight headlines
+// by their source instead of trading every one.
+export const PUBLISHER_RELIABILITY: Record<string, number> = {
+  [NEWS_PUBLISHERS.cynTimes]: 90,
+  [NEWS_PUBLISHERS.techInsider]: 82,
+  [NEWS_PUBLISHERS.expedition]: 78,
+  [NEWS_PUBLISHERS.reddot]: 44,
+};
+
+export type CredibilityRating = "high" | "medium" | "low";
+
+export type NewsCredibility = {
+  score: number; // 0–100 estimated reliability of the report
+  label: string;
+  rating: CredibilityRating;
+};
+
+export function getPublisherReliability(source: string): number {
+  return PUBLISHER_RELIABILITY[source] ?? 65;
+}
+
+// An up-front estimate from OBSERVABLE signals only (source, rumor flag,
+// importance) — never from `isAccurate`, which is the hidden truth the player
+// discovers through price action.
+export function getNewsCredibility(news: MarketNews): NewsCredibility {
+  let score = getPublisherReliability(news.source);
+  if (news.isRumor) score -= 28;
+  if (news.category === "rumor") score -= 8;
+  if (news.importance === "High") score += 6;
+  else if (news.importance === "Low") score -= 5;
+
+  score = Math.max(8, Math.min(98, Math.round(score)));
+  const rating: CredibilityRating = score >= 72 ? "high" : score >= 48 ? "medium" : "low";
+  const label = news.isRumor
+    ? score >= 50 ? "Developing" : "Speculative"
+    : score >= 80 ? "Verified"
+    : score >= 60 ? "Reliable"
+    : "Unverified";
+
+  return { score, label, rating };
+}
+
 export const STORY_DAYS = 3;
 export const DEFAULT_MARKET_SEED = "STOCKPILOT";
 export const MARKET_SEED_LENGTH = 6;
@@ -1374,6 +1417,46 @@ const bullishTemplates = [
     impactMax: 0.045,
     isRumor: true,
   },
+  {
+    category: "earnings" as EventCategory,
+    importance: "High" as Importance,
+    headline: "raises full-year guidance",
+    body:
+      "Management lifted its revenue and profit outlook for the year, citing durable demand and improving margins. Guidance raises often matter more than a single quarter because they reset expectations for several periods ahead.",
+    impactMin: 0.03,
+    impactMax: 0.08,
+    isRumor: false,
+  },
+  {
+    category: "operations" as EventCategory,
+    importance: "Medium" as Importance,
+    headline: "receives an analyst upgrade to Buy",
+    body:
+      "A major brokerage upgraded the stock, arguing the market underappreciates the company's growth runway. Upgrades can attract momentum buyers, though the move fades if fundamentals don't follow.",
+    impactMin: 0.012,
+    impactMax: 0.05,
+    isRumor: false,
+  },
+  {
+    category: "operations" as EventCategory,
+    importance: "Medium" as Importance,
+    headline: "announces a share buyback and dividend increase",
+    body:
+      "The board approved a buyback and a higher dividend, signalling confidence in cash flow. Returning capital can support the share price, but it also means less cash reinvested in growth.",
+    impactMin: 0.01,
+    impactMax: 0.04,
+    isRumor: false,
+  },
+  {
+    category: "product" as EventCategory,
+    importance: "High" as Importance,
+    headline: "wins regulatory approval for a key product",
+    body:
+      "Regulators cleared a flagship product, removing a major overhang and opening a new revenue line. Approval-driven moves can be large because the outcome was previously uncertain.",
+    impactMin: 0.035,
+    impactMax: 0.085,
+    isRumor: false,
+  },
 ];
 
 const bearishTemplates = [
@@ -1416,6 +1499,56 @@ const bearishTemplates = [
     impactMin: -0.045,
     impactMax: -0.01,
     isRumor: true,
+  },
+  {
+    category: "earnings" as EventCategory,
+    importance: "High" as Importance,
+    headline: "misses earnings and cuts guidance",
+    body:
+      "The company missed estimates and lowered its outlook, a combination the market treats harshly because it questions both execution and the forward story. Recovery usually depends on the next quarter's results.",
+    impactMin: -0.1,
+    impactMax: -0.04,
+    isRumor: false,
+  },
+  {
+    category: "lawsuit" as EventCategory,
+    importance: "High" as Importance,
+    headline: "faces a regulatory investigation",
+    body:
+      "Regulators opened an investigation into the company's practices. Even before any finding, the uncertainty and potential fines can weigh on the stock until the scope becomes clearer.",
+    impactMin: -0.085,
+    impactMax: -0.03,
+    isRumor: false,
+  },
+  {
+    category: "product" as EventCategory,
+    importance: "High" as Importance,
+    headline: "issues a product recall over safety concerns",
+    body:
+      "A recall raises direct costs and reputational risk. The market weighs whether it's a contained, one-off issue or a sign of deeper quality problems.",
+    impactMin: -0.08,
+    impactMax: -0.025,
+    isRumor: false,
+  },
+  {
+    category: "operations" as EventCategory,
+    importance: "Medium" as Importance,
+    headline: "slides after a surprise executive departure",
+    body:
+      "A senior leader is leaving unexpectedly. Departures can spook investors when they suggest internal disagreement or trouble that isn't yet public.",
+    impactMin: -0.05,
+    impactMax: -0.015,
+    isRumor: false,
+  },
+  {
+    category: "macro" as EventCategory,
+    importance: "Medium" as Importance,
+    headline: "falls after announcing a dilutive share sale",
+    body:
+      "The company plans to raise capital by issuing new shares, diluting existing holders. It shores up the balance sheet but signals the business needs cash on hand.",
+    impactMin: -0.055,
+    impactMax: -0.02,
+    isRumor: false,
   },
 ];
 
