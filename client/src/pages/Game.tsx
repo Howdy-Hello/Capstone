@@ -239,6 +239,16 @@ export default function Game() {
 
     if (!command) return "";
 
+    if (
+      action === "seed"
+      || action === "marketseed"
+      || action === "stockpilotseed"
+      || action === "stockpilotseed()"
+    ) {
+      const arcs = trading.storyArcs.length ? trading.storyArcs.join(", ") : "none";
+      return `Seed ${trading.marketSeed} | Mode ${gameMode} | Day ${gameDay} | Arcs ${arcs}${trading.sessionId ? ` | Session ${trading.sessionId}` : ""}`;
+    }
+
     if (action === "cash" || action === "money") {
       const mode = arg1.toLowerCase();
       const amount = Number(arg2 || arg1);

@@ -3,8 +3,15 @@ import React, {
 } from "react";
 
 import {
+  generateMarketSeedCode,
+  getNewsForGameDay,
+  getRelatedNewsBySymbol,
+  getSelectedStoryArcKeys,
+  getStockHistoryBySymbol,
+  getStocksForGameDay,
   MarketNews,
   normalizeGameDay,
+  normalizeMarketSeed,
   Stock,
   StockPriceHistory,
 } from "../data/mockStocks";
@@ -18,11 +25,16 @@ import { useAuth } from "./AuthContext";
 
 const STARTING_CASH = 2_000;
 const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
+const GAME_SEED_STORAGE_KEY = "stockpilot-market-seed";
 export const LIMITED_GAME_DAYS = 30;
 export type GameMode = "infinite" | "limited_30";
 
 function gameDayStorageKey(sessionId: string) {
   return `${GAME_DAY_STORAGE_KEY}:${sessionId}`;
+}
+
+function marketSeedStorageKey(sessionId: string) {
+  return `${GAME_SEED_STORAGE_KEY}:${sessionId}`;
 }
 
 type DatabaseStock = {
@@ -84,6 +96,7 @@ type GameSession = {
   current_day: number;
   cash_balance: number | string;
   game_mode?: GameMode | null;
+  game_seed?: string | null;
 };
 
 type TradeResult = {
@@ -110,6 +123,8 @@ type GameContextValue = {
   gameDay: number;
   setGameDay: (day: number | ((current: number) => number)) => Promise<void>;
   gameMode: GameMode;
+  marketSeed: string;
+  storyArcs: string[];
   maxGameDay: number | null;
   isGameComplete: boolean;
   stocks: Stock[];
@@ -137,6 +152,10 @@ function asNumber(value: number | string | null | undefined) {
 
 function normalizeGameMode(value: string | null | undefined): GameMode {
   return value === "limited_30" ? "limited_30" : "infinite";
+}
+
+function isMissingSeedColumn(error: { message?: string } | null | undefined) {
+  return Boolean(error?.message?.toLowerCase().includes("game_seed"));
 }
 
 function clampGameDayForMode(day: number, mode: GameMode) {
@@ -220,6 +239,26 @@ function round2(value: number) {
   return Number(value.toFixed(2));
 }
 
+function getContinuationMeanReversion(stock: DatabaseStock, previousClose: number) {
+  const startingPrice = asNumber(stock.initial_price);
+  if (startingPrice <= 0 || previousClose <= 0) return 0;
+
+  const priceMultiple = previousClose / startingPrice;
+  return clamp(-Math.log(priceMultiple) * 0.012, -0.035, 0.025);
+}
+
+function getContinuationTrendBias(stock: DatabaseStock, gameDay: number) {
+  const fadeStartDay = 45;
+  const fadeEndDay = 180;
+  const fadeProgress = clamp(
+    (gameDay - fadeStartDay) / (fadeEndDay - fadeStartDay),
+    0,
+    1
+  );
+
+  return asNumber(stock.trend_bias) * (1 - fadeProgress * 0.85);
+}
+
 function generateContinuationPricePoint(
   stock: DatabaseStock,
   previousClose: number,
@@ -236,8 +275,10 @@ function generateContinuationPricePoint(
   const randomShock =
     seededRange(`shock-continuation-${symbol}-${gameDay}`, -1, 1) *
     asNumber(stock.volatility);
+  const trendBias = getContinuationTrendBias(stock, gameDay);
+  const meanReversion = getContinuationMeanReversion(stock, previousClose);
   const dailyReturn = clamp(
-    marketDrift + sectorDrift + asNumber(stock.trend_bias) + randomShock,
+    marketDrift + sectorDrift + trendBias + meanReversion + randomShock,
     -0.15,
     0.15
   );
@@ -348,6 +389,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<GameSession | null>(null);
   const [account, setAccount] = useState<TradingAccount>(defaultAccount);
   const [gameMode, setGameModeState] = useState<GameMode>("infinite");
+  const [marketSeed, setMarketSeed] = useState(() => (
+    normalizeMarketSeed(localStorage.getItem(GAME_SEED_STORAGE_KEY))
+  ));
   const [gameDay, setGameDayState] = useState(() => {
     const saved = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
     return normalizeGameDay(saved || 1);
@@ -454,14 +498,27 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const { data: existing, error: sessionError } = await supabase
+    let sessionResult = await supabase
       .from("game_sessions")
-      .select("id, current_day, cash_balance, game_mode")
+      .select("id, current_day, cash_balance, game_mode, game_seed")
       .eq("user_id", user.id)
       .eq("status", "active")
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (isMissingSeedColumn(sessionResult.error)) {
+      sessionResult = await supabase
+        .from("game_sessions")
+        .select("id, current_day, cash_balance, game_mode")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    }
+
+    const { data: existing, error: sessionError } = sessionResult;
 
     if (sessionError) throw sessionError;
 
@@ -477,6 +534,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     const holdings = await loadHoldings(activeSession.id);
     const activeMode = normalizeGameMode(activeSession.game_mode);
+    const storedSessionSeed = localStorage.getItem(marketSeedStorageKey(activeSession.id));
+    const storedLegacySeed = localStorage.getItem(GAME_SEED_STORAGE_KEY);
+    const activeSeed = normalizeMarketSeed(
+      activeMode === "limited_30"
+        ? activeSession.game_seed ?? storedSessionSeed ?? storedLegacySeed ?? generateMarketSeedCode()
+        : activeSession.game_seed ?? storedSessionSeed ?? storedLegacySeed
+    );
     const storedSessionDay = Number(localStorage.getItem(gameDayStorageKey(activeSession.id)));
     const storedLegacyDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
     const savedDay = clampGameDayForMode(storedSessionDay || storedLegacyDay || 1, activeMode);
@@ -484,22 +548,44 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const databaseDay = clampGameDayForMode(rawDatabaseDay, activeMode);
     const currentDay = databaseDay === 1 && savedDay > 1 ? savedDay : databaseDay;
 
-    if (currentDay !== rawDatabaseDay || activeMode !== activeSession.game_mode) {
+    if (
+      currentDay !== rawDatabaseDay
+      || activeMode !== activeSession.game_mode
+      || (activeMode === "limited_30" && activeSession.game_seed !== activeSeed)
+    ) {
       const { error: dayError } = await supabase
         .from("game_sessions")
-        .update({ current_day: currentDay, game_mode: activeMode })
+        .update({ current_day: currentDay, game_mode: activeMode, game_seed: activeSeed })
         .eq("id", activeSession.id);
 
-      if (dayError) throw dayError;
-      activeSession = { ...activeSession, current_day: currentDay, game_mode: activeMode };
+      if (isMissingSeedColumn(dayError)) {
+        const { error: retryError } = await supabase
+          .from("game_sessions")
+          .update({ current_day: currentDay, game_mode: activeMode })
+          .eq("id", activeSession.id);
+
+        if (retryError) throw retryError;
+      } else if (dayError) {
+        throw dayError;
+      }
+
+      activeSession = {
+        ...activeSession,
+        current_day: currentDay,
+        game_mode: activeMode,
+        game_seed: activeSeed,
+      };
     }
 
     localStorage.setItem(gameDayStorageKey(activeSession.id), currentDay.toString());
     localStorage.setItem(GAME_DAY_STORAGE_KEY, currentDay.toString());
+    localStorage.setItem(marketSeedStorageKey(activeSession.id), activeSeed);
+    localStorage.setItem(GAME_SEED_STORAGE_KEY, activeSeed);
     gameDayRef.current = currentDay;
 
     setSession(activeSession);
     setGameModeState(activeMode);
+    setMarketSeed(activeSeed);
     setGameDayState(currentDay);
     setAccount({
       cash: asNumber(activeSession.cash_balance),
@@ -536,27 +622,39 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [gameDay]);
 
   const stocks = useMemo(() => {
+    if (gameMode === "limited_30") {
+      return getStocksForGameDay(gameDay, marketSeed);
+    }
+
     return databaseStocks
       .filter((stock) => stock.is_active)
       .map((stock) => {
         const history = getHistoryForDatabaseStock(stock, databasePrices, gameDay);
         return mapStockFromHistory(stock, history);
       });
-  }, [databasePrices, databaseStocks, gameDay]);
+  }, [databasePrices, databaseStocks, gameDay, gameMode, marketSeed]);
 
   const news = useMemo(() => {
+    if (gameMode === "limited_30") {
+      return getNewsForGameDay(gameDay, marketSeed);
+    }
+
     return databaseEvents
       .filter((event) => event.game_day === gameDay)
       .map(mapDatabaseEvent);
-  }, [databaseEvents, gameDay]);
+  }, [databaseEvents, gameDay, gameMode, marketSeed]);
 
   const getHistory = useCallback((symbol: string) => {
+    if (gameMode === "limited_30") {
+      return getStockHistoryBySymbol(symbol, gameDay, marketSeed);
+    }
+
     const stock = databaseStocks.find(
       (item) => item.symbol.toLowerCase() === symbol.toLowerCase()
     );
 
     return stock ? getHistoryForDatabaseStock(stock, databasePrices, gameDay) : [];
-  }, [databasePrices, databaseStocks, gameDay]);
+  }, [databasePrices, databaseStocks, gameDay, gameMode, marketSeed]);
 
   const getStock = useCallback(
     (symbol: string) => stocks.find(
@@ -566,12 +664,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   );
 
   const getRelatedNews = useCallback((symbol: string) => {
+    if (gameMode === "limited_30") {
+      return getRelatedNewsBySymbol(symbol, gameDay, marketSeed);
+    }
+
     return databaseEvents
       .filter((event) => event.game_day <= gameDay)
       .map(mapDatabaseEvent)
       .filter((event) => event.relatedTickers.includes(symbol))
       .sort((a, b) => b.gameDay - a.gameDay);
-  }, [databaseEvents, gameDay]);
+  }, [databaseEvents, gameDay, gameMode, marketSeed]);
 
   const setGameDay = useCallback(async (
     day: number | ((current: number) => number)
@@ -682,9 +784,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const resetAccount = useCallback(async (mode: GameMode = gameMode) => {
     const nextMode = normalizeGameMode(mode);
+    const nextSeed = normalizeMarketSeed(
+      nextMode === "limited_30" ? generateMarketSeedCode() : marketSeed
+    );
+
     if (!user) {
       setAccount(defaultAccount);
       setGameModeState(nextMode);
+      setMarketSeed(nextSeed);
+      localStorage.setItem(GAME_SEED_STORAGE_KEY, nextSeed);
       setGameDayState(1);
       return;
     }
@@ -698,15 +806,28 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
 
     const nextSession = data as GameSession;
+    const { error: seedError } = await supabase
+      .from("game_sessions")
+      .update({ game_seed: nextSeed })
+      .eq("id", nextSession.id);
+
+    if (seedError && !isMissingSeedColumn(seedError)) {
+      setError(seedError.message);
+      return;
+    }
+
     localStorage.setItem(gameDayStorageKey(nextSession.id), "1");
     localStorage.setItem(GAME_DAY_STORAGE_KEY, "1");
+    localStorage.setItem(marketSeedStorageKey(nextSession.id), nextSeed);
+    localStorage.setItem(GAME_SEED_STORAGE_KEY, nextSeed);
     gameDayRef.current = 1;
-    setSession(nextSession);
+    setSession({ ...nextSession, game_seed: nextSeed });
     setGameModeState(nextMode);
+    setMarketSeed(nextSeed);
     setAccount(defaultAccount);
     setGameDayState(1);
     setError(null);
-  }, [gameMode, user]);
+  }, [gameMode, marketSeed, user]);
 
   const setCash = useCallback(async (cash: number) => {
     const nextCash = Math.max(0, Number(cash.toFixed(2)));
@@ -846,11 +967,38 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const maxGameDay = gameMode === "limited_30" ? LIMITED_GAME_DAYS : null;
   const isGameComplete = maxGameDay !== null && gameDay >= maxGameDay;
+  const storyArcs = useMemo(() => (
+    gameMode === "limited_30" ? getSelectedStoryArcKeys(marketSeed) : []
+  ), [gameMode, marketSeed]);
   const watchlistStocks = useMemo(() => (
     watchlistSymbols
       .map((symbol) => stocks.find((stock) => stock.symbol === symbol))
       .filter((stock): stock is Stock => Boolean(stock))
   ), [stocks, watchlistSymbols]);
+
+  useEffect(() => {
+    const command = () => ({
+      mode: gameMode,
+      seed: marketSeed,
+      storyArcs,
+      day: gameDay,
+      sessionId: session?.id ?? null,
+    });
+
+    (window as typeof window & {
+      stockpilotSeed?: typeof command;
+      stockPilotSeed?: typeof command;
+    }).stockpilotSeed = command;
+    (window as typeof window & {
+      stockpilotSeed?: typeof command;
+      stockPilotSeed?: typeof command;
+    }).stockPilotSeed = command;
+
+    return () => {
+      delete (window as typeof window & { stockpilotSeed?: typeof command }).stockpilotSeed;
+      delete (window as typeof window & { stockPilotSeed?: typeof command }).stockPilotSeed;
+    };
+  }, [gameDay, gameMode, marketSeed, session, storyArcs]);
 
   const value = useMemo<GameContextValue>(() => ({
     account,
@@ -869,6 +1017,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     gameDay,
     setGameDay,
     gameMode,
+    marketSeed,
+    storyArcs,
     maxGameDay,
     isGameComplete,
     stocks,
@@ -884,7 +1034,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }), [
     account, addCash, addToWatchlist, buyStock, error, gameDay, gameMode, getHistory, getRelatedNews,
     getStock, loading, loadOrCreateSession, news, resetAccount, sellStock,
-    setCash, setGameDay, setHolding, session, stocks, syncSessionValue,
+    marketSeed, setCash, setGameDay, setHolding, session, stocks, storyArcs, syncSessionValue,
     maxGameDay, isGameComplete, isWatchlisted, removeFromWatchlist,
     toggleWatchlist, watchlistStocks, watchlistSymbols,
   ]);

@@ -211,7 +211,7 @@ export default function Leaderboard() {
                       {([1, 0, 2] as const).map((idx) => {
                         const p = topThree[idx];
                         if (!p) return <Box key={idx} sx={{ flex: 1 }} />;
-                        const podiumHeights = [90, 130, 70];
+                        const podiumHeights = [130, 90, 70];
                         const isYou = p.user_id === user?.id;
                         return (
                           <Box key={p.user_id} sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>

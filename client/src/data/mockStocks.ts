@@ -84,6 +84,38 @@ export type MarketNews = {
   }>;
 };
 
+export type MarketEventSeedImpact = {
+  symbol: string;
+  expectedImpact: number;
+  actualImpact: number;
+};
+
+export type MarketEventSeed = {
+  eventKey: string;
+  gameDay: number;
+  source: string;
+  headline: string;
+  body: string;
+  importance: Importance;
+  marketTone: MarketTone;
+  category: EventCategory;
+  isAccurate: boolean;
+  isRumor: boolean;
+  arcKey?: string;
+  impacts: MarketEventSeedImpact[];
+};
+
+export type ThirtyDayMarketSeed = {
+  schemaVersion: 1;
+  gameMode: "limited_30";
+  seedCode: string;
+  generatedDays: 30;
+  storyArcs: string[];
+  stocks: StockCompany[];
+  prices: StockPriceHistory[];
+  events: MarketEventSeed[];
+};
+
 export type OpeningStoryDay = {
   gameDay: number;
   title: string;
@@ -101,6 +133,11 @@ export const NEWS_PUBLISHERS = {
 } as const;
 
 export const STORY_DAYS = 3;
+export const DEFAULT_MARKET_SEED = "STOCKPILOT";
+export const MARKET_SEED_LENGTH = 6;
+export const MARKET_SEED_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const MARKET_SEED_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const MARKET_SEED_NUMBERS = "23456789";
 
 export const openingStoryDays: OpeningStoryDay[] = [
   {
@@ -1065,6 +1102,237 @@ const gasPriceStoryNews: MarketNews[] = [
   },
 ];
 
+const cyberBreachStoryNews: MarketNews[] = [
+  {
+    newsId: "arc_cyber_day18_payment_breach",
+    gameDay: 18,
+    source: NEWS_PUBLISHERS.techInsider,
+    headline: "Payment breach raises cybersecurity spending expectations",
+    body:
+      "A payment network breach at several retailers pushed boards to accelerate security reviews. Cybersecurity vendors gained as investors expected emergency software spending, while consumer and banking names slipped on fraud and remediation risk.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["CYB", "FDM", "URB", "LUX"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "operations",
+    impactByTicker: {
+      CYB: { expectedImpact: 0.052, actualImpact: 0.05 },
+      FDM: { expectedImpact: -0.021, actualImpact: -0.019 },
+      URB: { expectedImpact: -0.016, actualImpact: -0.014 },
+      LUX: { expectedImpact: -0.013, actualImpact: -0.012 },
+    },
+  },
+  {
+    newsId: "arc_cyber_day20_security_contracts",
+    gameDay: 20,
+    source: NEWS_PUBLISHERS.techInsider,
+    headline: "Companies rush to sign new security contracts",
+    body:
+      "Retailers, banks, and media platforms began signing short-cycle cybersecurity contracts after the breach widened. CyberFort and Closed Ai benefited from demand for monitoring tools, while OmniMedia faced scrutiny over account-protection costs.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["CYB", "CAI", "OMG", "URB"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "contract",
+    impactByTicker: {
+      CYB: { expectedImpact: 0.064, actualImpact: 0.06 },
+      CAI: { expectedImpact: 0.029, actualImpact: 0.027 },
+      OMG: { expectedImpact: -0.026, actualImpact: -0.024 },
+      URB: { expectedImpact: -0.012, actualImpact: -0.01 },
+    },
+  },
+  {
+    newsId: "arc_cyber_day24_breach_contained",
+    gameDay: 24,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Breach fallout eases as firms report containment",
+    body:
+      "Investigators said the payment breach appeared contained, reducing the risk of a broader consumer pullback. Retail and banking shares recovered some losses, while cybersecurity stocks cooled after a sharp run-up.",
+    importance: "Medium",
+    marketTone: "Unclear",
+    relatedTickers: ["FDM", "URB", "LUX", "CYB", "CAI"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "operations",
+    impactByTicker: {
+      FDM: { expectedImpact: 0.022, actualImpact: 0.02 },
+      URB: { expectedImpact: 0.018, actualImpact: 0.016 },
+      LUX: { expectedImpact: 0.016, actualImpact: 0.014 },
+      CYB: { expectedImpact: -0.031, actualImpact: -0.028 },
+      CAI: { expectedImpact: -0.012, actualImpact: -0.01 },
+    },
+  },
+];
+
+const rateCycleStoryNews: MarketNews[] = [
+  {
+    newsId: "arc_rates_day19_inflation_hot",
+    gameDay: 19,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Hot inflation data pressures rate-sensitive stocks",
+    body:
+      "Inflation came in above forecasts, raising expectations that borrowing costs could stay elevated. Banks gained on higher rate assumptions, while real estate, solar projects, and expensive growth stocks sold off.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["URB", "C22", "SLD", "PAP", "ITC"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "macro",
+    impactByTicker: {
+      URB: { expectedImpact: 0.03, actualImpact: 0.028 },
+      C22: { expectedImpact: -0.041, actualImpact: -0.038 },
+      SLD: { expectedImpact: -0.032, actualImpact: -0.03 },
+      PAP: { expectedImpact: -0.022, actualImpact: -0.02 },
+      ITC: { expectedImpact: -0.026, actualImpact: -0.024 },
+    },
+  },
+  {
+    newsId: "arc_rates_day22_mortgage_slowdown",
+    gameDay: 22,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Mortgage demand slows as financing costs bite",
+    body:
+      "Mortgage applications and home-tour traffic weakened after rate expectations moved higher. Century 22 fell on rental-growth concerns, while defensive utilities and grocery stocks held up better than the broader market.",
+    importance: "Medium",
+    marketTone: "Unclear",
+    relatedTickers: ["C22", "AQL", "FDM", "URB"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "macro",
+    impactByTicker: {
+      C22: { expectedImpact: -0.048, actualImpact: -0.045 },
+      AQL: { expectedImpact: 0.015, actualImpact: 0.014 },
+      FDM: { expectedImpact: 0.012, actualImpact: 0.011 },
+      URB: { expectedImpact: -0.011, actualImpact: -0.01 },
+    },
+  },
+  {
+    newsId: "arc_rates_day27_policy_pause",
+    gameDay: 27,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Policy makers signal patience after growth cools",
+    body:
+      "Officials suggested they could pause further tightening if inflation continues to moderate. Real estate and solar shares bounced as financing fears eased, while banks gave back part of their rate-driven gains.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["C22", "SLD", "PAP", "ITC", "URB"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "macro",
+    impactByTicker: {
+      C22: { expectedImpact: 0.046, actualImpact: 0.043 },
+      SLD: { expectedImpact: 0.035, actualImpact: 0.033 },
+      PAP: { expectedImpact: 0.02, actualImpact: 0.018 },
+      ITC: { expectedImpact: 0.023, actualImpact: 0.021 },
+      URB: { expectedImpact: -0.021, actualImpact: -0.019 },
+    },
+  },
+];
+
+const healthcareTrialStoryNews: MarketNews[] = [
+  {
+    newsId: "arc_health_day21_trial_success",
+    gameDay: 21,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Medical trial data lifts health innovation stocks",
+    body:
+      "BioCloud released encouraging trial data for a targeted therapy platform, lifting healthcare risk appetite. Medical device supplier MediCore rose in sympathy as investors looked for follow-on diagnostic demand.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["BCL", "MCH", "EDU"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "product",
+    impactByTicker: {
+      BCL: { expectedImpact: 0.083, actualImpact: 0.078 },
+      MCH: { expectedImpact: 0.026, actualImpact: 0.024 },
+      EDU: { expectedImpact: 0.01, actualImpact: 0.009 },
+    },
+  },
+  {
+    newsId: "arc_health_day25_review_questions",
+    gameDay: 25,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Regulators ask follow-up questions on trial design",
+    body:
+      "Regulators requested additional detail on patient selection and monitoring in BioCloud's trial. The request did not stop the program, but traders marked down biotech risk and rotated toward steadier healthcare revenue.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["BCL", "MCH", "AQL"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "macro",
+    impactByTicker: {
+      BCL: { expectedImpact: -0.061, actualImpact: -0.057 },
+      MCH: { expectedImpact: 0.016, actualImpact: 0.014 },
+      AQL: { expectedImpact: 0.009, actualImpact: 0.008 },
+    },
+  },
+  {
+    newsId: "arc_health_day29_partner_funding",
+    gameDay: 29,
+    source: NEWS_PUBLISHERS.techInsider,
+    headline: "BioCloud secures partner funding for next trial phase",
+    body:
+      "BioCloud announced partner funding to support the next phase of its trial program. The deal reduced dilution concerns, helped MediCore on diagnostics expectations, and lifted risk appetite across smaller growth names.",
+    importance: "High",
+    marketTone: "Unclear",
+    relatedTickers: ["BCL", "MCH", "EDU", "CAI"],
+    expectedImpact: 0,
+    actualImpact: 0,
+    isAccurate: true,
+    isRumor: false,
+    category: "partnership",
+    impactByTicker: {
+      BCL: { expectedImpact: 0.067, actualImpact: 0.063 },
+      MCH: { expectedImpact: 0.024, actualImpact: 0.022 },
+      EDU: { expectedImpact: 0.018, actualImpact: 0.016 },
+      CAI: { expectedImpact: 0.014, actualImpact: 0.012 },
+    },
+  },
+];
+
+const storyArcDefinitions = [
+  {
+    arcKey: "gas_prices",
+    selectionWeight: 0.72,
+    events: gasPriceStoryNews,
+  },
+  {
+    arcKey: "cyber_breach",
+    selectionWeight: 0.58,
+    events: cyberBreachStoryNews,
+  },
+  {
+    arcKey: "rate_cycle",
+    selectionWeight: 0.58,
+    events: rateCycleStoryNews,
+  },
+  {
+    arcKey: "healthcare_trial",
+    selectionWeight: 0.58,
+    events: healthcareTrialStoryNews,
+  },
+];
+
 const bullishTemplates = [
   {
     category: "earnings" as EventCategory,
@@ -1162,13 +1430,49 @@ function hashString(input: string) {
   return hash >>> 0;
 }
 
-function seededRandom(seed: string) {
-  const hash = hashString(seed);
+export function normalizeMarketSeed(seed?: string | null) {
+  const cleaned = String(seed ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+
+  return cleaned || DEFAULT_MARKET_SEED;
+}
+
+export function generateMarketSeedCode(length = MARKET_SEED_LENGTH) {
+  const safeLength = Math.max(2, length);
+  const values = new Uint32Array(safeLength);
+
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    crypto.getRandomValues(values);
+  } else {
+    for (let index = 0; index < safeLength; index += 1) {
+      values[index] = Math.floor(Math.random() * MARKET_SEED_ALPHABET.length);
+    }
+  }
+
+  const seed = Array.from(values, (value) => (
+    MARKET_SEED_ALPHABET[value % MARKET_SEED_ALPHABET.length]
+  ));
+
+  if (!seed.some((char) => MARKET_SEED_NUMBERS.includes(char))) {
+    seed[1] = MARKET_SEED_NUMBERS[values[1] % MARKET_SEED_NUMBERS.length];
+  }
+
+  if (!seed.some((char) => MARKET_SEED_LETTERS.includes(char))) {
+    seed[0] = MARKET_SEED_LETTERS[values[0] % MARKET_SEED_LETTERS.length];
+  }
+
+  return seed.join("");
+}
+
+function seededRandom(seed: string, marketSeed?: string | null) {
+  const seedCode = normalizeMarketSeed(marketSeed);
+  const hash = hashString(`${seedCode}:${seed}`);
   return (hash % 1_000_000) / 1_000_000;
 }
 
-function seededRange(seed: string, min: number, max: number) {
-  return min + seededRandom(seed) * (max - min);
+function seededRange(seed: string, min: number, max: number, marketSeed?: string | null) {
+  return min + seededRandom(seed, marketSeed) * (max - min);
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -1179,17 +1483,131 @@ function round2(value: number) {
   return Number(value.toFixed(2));
 }
 
-function getSectorDrift(sector: string, gameDay: number) {
+function getArcKey(newsId: string) {
+  if (newsId.startsWith("arc_gas_")) return "gas_prices";
+  if (newsId.startsWith("arc_cyber_")) return "cyber_breach";
+  if (newsId.startsWith("arc_rates_")) return "rate_cycle";
+  if (newsId.startsWith("arc_health_")) return "healthcare_trial";
+  if (newsId.startsWith("story_day")) return "opening_tutorial";
+  return undefined;
+}
+
+function getSelectedStoryArcDefinitions(marketSeed?: string | null) {
+  const seedCode = normalizeMarketSeed(marketSeed);
+  const arcCount = 1 + Math.floor(
+    seededRandom("story-arc-count", seedCode) * storyArcDefinitions.length
+  );
+
+  return [...storyArcDefinitions]
+    .sort((a, b) => {
+      const scoreA =
+        seededRandom(`story-arc-rank-${a.arcKey}`, seedCode) * a.selectionWeight;
+      const scoreB =
+        seededRandom(`story-arc-rank-${b.arcKey}`, seedCode) * b.selectionWeight;
+
+      return scoreB - scoreA;
+    })
+    .slice(0, arcCount);
+}
+
+export function getSelectedStoryArcKeys(marketSeed?: string | null) {
+  return getSelectedStoryArcDefinitions(marketSeed).map((arc) => arc.arcKey);
+}
+
+function getStoryArcNewsForGameDay(gameDay: number, marketSeed?: string | null) {
+  return getSelectedStoryArcDefinitions(marketSeed)
+    .flatMap((arc) => arc.events)
+    .filter((news) => news.gameDay === gameDay);
+}
+
+function uniqueMarketNews(newsItems: MarketNews[]) {
+  const seen = new Set<string>();
+
+  return newsItems.filter((news) => {
+    if (seen.has(news.newsId)) return false;
+    seen.add(news.newsId);
+    return true;
+  });
+}
+
+function uniqueMarketEventSeeds(seeds: MarketEventSeed[]) {
+  const seen = new Set<string>();
+
+  return seeds.filter((seed) => {
+    if (seen.has(seed.eventKey)) return false;
+    seen.add(seed.eventKey);
+    return true;
+  });
+}
+
+function getImpactForTicker(news: MarketNews, symbol: string) {
+  const tickerImpact = news.impactByTicker?.[symbol];
+
+  return {
+    symbol,
+    expectedImpact: tickerImpact?.expectedImpact ?? news.expectedImpact,
+    actualImpact: tickerImpact?.actualImpact ?? news.actualImpact,
+  };
+}
+
+export function marketNewsToSeed(news: MarketNews): MarketEventSeed {
+  return {
+    eventKey: news.newsId,
+    gameDay: news.gameDay,
+    source: news.source,
+    headline: news.headline,
+    body: news.body,
+    importance: news.importance,
+    marketTone: news.marketTone,
+    category: news.category,
+    isAccurate: news.isAccurate,
+    isRumor: news.isRumor,
+    arcKey: getArcKey(news.newsId),
+    impacts: news.relatedTickers.map((symbol) => getImpactForTicker(news, symbol)),
+  };
+}
+
+export function marketNewsFromSeed(seed: MarketEventSeed): MarketNews {
+  const impactByTicker = seed.impacts.reduce<NonNullable<MarketNews["impactByTicker"]>>(
+    (impacts, impact) => ({
+      ...impacts,
+      [impact.symbol]: {
+        expectedImpact: impact.expectedImpact,
+        actualImpact: impact.actualImpact,
+      },
+    }),
+    {}
+  );
+
+  return {
+    newsId: seed.eventKey,
+    gameDay: seed.gameDay,
+    source: seed.source,
+    headline: seed.headline,
+    body: seed.body,
+    importance: seed.importance,
+    marketTone: seed.marketTone,
+    relatedTickers: seed.impacts.map((impact) => impact.symbol),
+    expectedImpact: seed.impacts[0]?.expectedImpact ?? 0,
+    actualImpact: seed.impacts[0]?.actualImpact ?? 0,
+    isAccurate: seed.isAccurate,
+    isRumor: seed.isRumor,
+    category: seed.category,
+    impactByTicker,
+  };
+}
+
+function getSectorDrift(sector: string, gameDay: number, marketSeed?: string | null) {
   const sectorWave = Math.sin((gameDay + hashString(sector) % 11) / 8) * 0.004;
-  const sectorShock = seededRange(`sector-${sector}-${gameDay}`, -0.004, 0.004);
+  const sectorShock = seededRange(`sector-${sector}-${gameDay}`, -0.004, 0.004, marketSeed);
 
   return sectorWave + sectorShock;
 }
 
-function getMarketDrift(gameDay: number) {
+function getMarketDrift(gameDay: number, marketSeed?: string | null) {
   const longTermBias = 0.0007;
   const cycle = Math.sin(gameDay / 14) * 0.003;
-  const randomMarketShock = seededRange(`market-${gameDay}`, -0.006, 0.006);
+  const randomMarketShock = seededRange(`market-${gameDay}`, -0.006, 0.006, marketSeed);
 
   return longTermBias + cycle + randomMarketShock;
 }
@@ -1207,21 +1625,25 @@ function getHardcodedOpeningNewsForCompany(
   );
 }
 
-function getGasPriceStoryNewsForCompany(
+function getStoryArcNewsForCompany(
   company: StockCompany,
-  gameDay: number
+  gameDay: number,
+  marketSeed?: string | null
 ): MarketNews | null {
   return (
-    gasPriceStoryNews.find(
+    getStoryArcNewsForGameDay(gameDay, marketSeed).find(
       (news) =>
-        news.gameDay === gameDay &&
         news.relatedTickers.some((ticker) => ticker === company.symbol)
     ) ?? null
   );
 }
 
-function getEventTemplate(company: StockCompany, gameDay: number) {
-  const eventRoll = seededRandom(`event-roll-${company.symbol}-${gameDay}`);
+function getEventTemplate(
+  company: StockCompany,
+  gameDay: number,
+  marketSeed?: string | null
+) {
+  const eventRoll = seededRandom(`event-roll-${company.symbol}-${gameDay}`, marketSeed);
 
   const riskBoost =
     company.riskLevel === "High" ? 0.1 : company.riskLevel === "Medium" ? 0.05 : 0;
@@ -1230,13 +1652,13 @@ function getEventTemplate(company: StockCompany, gameDay: number) {
 
   if (eventRoll > eventChance) return null;
 
-  const toneRoll = seededRandom(`event-tone-${company.symbol}-${gameDay}`);
+  const toneRoll = seededRandom(`event-tone-${company.symbol}-${gameDay}`, marketSeed);
   const isBullish = toneRoll >= 0.48;
 
   const templates = isBullish ? bullishTemplates : bearishTemplates;
 
   const index = Math.floor(
-    seededRandom(`event-template-${company.symbol}-${gameDay}`) * templates.length
+    seededRandom(`event-template-${company.symbol}-${gameDay}`, marketSeed) * templates.length
   );
 
   return templates[index];
@@ -1245,7 +1667,8 @@ function getEventTemplate(company: StockCompany, gameDay: number) {
 function getNewsSource(
   company: StockCompany,
   event: { isRumor: boolean },
-  gameDay: number
+  gameDay: number,
+  marketSeed?: string | null
 ) {
   if (event.isRumor) return NEWS_PUBLISHERS.reddot;
 
@@ -1262,7 +1685,8 @@ function getNewsSource(
   }
 
   const reddotRoll = seededRandom(
-    `publisher-reddot-${company.symbol}-${gameDay}`
+    `publisher-reddot-${company.symbol}-${gameDay}`,
+    marketSeed
   );
 
   return reddotRoll < 0.12
@@ -1272,30 +1696,33 @@ function getNewsSource(
 
 function generateEventForCompany(
   company: StockCompany,
-  gameDay: number
+  gameDay: number,
+  marketSeed?: string | null
 ): MarketNews | null {
   if (gameDay <= STORY_DAYS) {
     return getHardcodedOpeningNewsForCompany(company, gameDay);
   }
 
-  const gasPriceStoryEvent = getGasPriceStoryNewsForCompany(company, gameDay);
+  const storyArcEvent = getStoryArcNewsForCompany(company, gameDay, marketSeed);
 
-  if (gasPriceStoryEvent) return gasPriceStoryEvent;
+  if (storyArcEvent) return storyArcEvent;
 
-  const template = getEventTemplate(company, gameDay);
+  const template = getEventTemplate(company, gameDay, marketSeed);
 
   if (!template) return null;
 
   const actualImpact = seededRange(
     `impact-${company.symbol}-${gameDay}`,
     template.impactMin,
-    template.impactMax
+    template.impactMax,
+    marketSeed
   );
 
   const expectedImpact = actualImpact * seededRange(
     `expected-${company.symbol}-${gameDay}`,
     0.8,
-    1.25
+    1.25,
+    marketSeed
   );
 
   const marketTone: MarketTone = actualImpact >= 0 ? "Bullish" : "Bearish";
@@ -1303,7 +1730,7 @@ function generateEventForCompany(
   return {
     newsId: `news_${company.symbol.toLowerCase()}_${gameDay}`,
     gameDay,
-    source: getNewsSource(company, template, gameDay),
+    source: getNewsSource(company, template, gameDay, marketSeed),
     headline: `${company.name} ${template.headline}`,
     body: template.body,
     importance: template.importance,
@@ -1311,14 +1738,14 @@ function generateEventForCompany(
     relatedTickers: [company.symbol],
     expectedImpact: round2(expectedImpact),
     actualImpact: round2(actualImpact),
-    isAccurate: !template.isRumor || seededRandom(`accuracy-${company.symbol}-${gameDay}`) > 0.35,
+    isAccurate: !template.isRumor || seededRandom(`accuracy-${company.symbol}-${gameDay}`, marketSeed) > 0.35,
     isRumor: template.isRumor,
     category: template.category,
   };
 }
 
-function getEventImpact(company: StockCompany, gameDay: number) {
-  const event = generateEventForCompany(company, gameDay);
+function getEventImpact(company: StockCompany, gameDay: number, marketSeed?: string | null) {
+  const event = generateEventForCompany(company, gameDay, marketSeed);
   return event?.impactByTicker?.[company.symbol]?.actualImpact ?? event?.actualImpact ?? 0;
 }
 
@@ -1326,7 +1753,8 @@ function generateVolume(
   company: StockCompany,
   dailyReturn: number,
   eventImpact: number,
-  gameDay: number
+  gameDay: number,
+  marketSeed?: string | null
 ) {
   const baseVolume =
     company.riskLevel === "High"
@@ -1337,7 +1765,7 @@ function generateVolume(
 
   const activityBoost = Math.abs(dailyReturn) * 12;
   const eventBoost = Math.abs(eventImpact) > 0 ? 0.35 : 0;
-  const randomBoost = seededRange(`volume-${company.symbol}-${gameDay}`, -0.12, 0.22);
+  const randomBoost = seededRange(`volume-${company.symbol}-${gameDay}`, -0.12, 0.22, marketSeed);
 
   return Math.round(baseVolume * (1 + activityBoost + eventBoost + randomBoost));
 }
@@ -1345,7 +1773,8 @@ function generateVolume(
 function generateHardcodedOpeningPricePoint(
   company: StockCompany,
   previousClose: number,
-  gameDay: number
+  gameDay: number,
+  marketSeed?: string | null
 ): StockPriceHistory | null {
   const hardcodedClose = hardcodedFirstThreeDayCloses[company.symbol]?.[gameDay];
 
@@ -1354,12 +1783,12 @@ function generateHardcodedOpeningPricePoint(
   const openPrice = previousClose;
   const closePrice = hardcodedClose;
   const dailyReturn = (closePrice - openPrice) / openPrice;
-  const event = generateEventForCompany(company, gameDay);
+  const event = generateEventForCompany(company, gameDay, marketSeed);
   const eventImpact = event?.actualImpact ?? 0;
 
   const intradayRange =
     Math.abs(dailyReturn) * 0.35 +
-    company.volatility * seededRange(`story-range-${company.symbol}-${gameDay}`, 0.18, 0.38);
+    company.volatility * seededRange(`story-range-${company.symbol}-${gameDay}`, 0.18, 0.38, marketSeed);
 
   const highPrice = Math.max(openPrice, closePrice) * (1 + intradayRange);
   const lowPrice = Math.min(openPrice, closePrice) * (1 - intradayRange * 0.7);
@@ -1373,7 +1802,7 @@ function generateHardcodedOpeningPricePoint(
     highPrice: round2(highPrice),
     lowPrice: round2(Math.max(1, lowPrice)),
     closePrice: round2(closePrice),
-    volume: generateVolume(company, dailyReturn, eventImpact, gameDay),
+    volume: generateVolume(company, dailyReturn, eventImpact, gameDay, marketSeed),
     change: round2(closePrice - openPrice),
     changePercent: round2(dailyReturn * 100),
     eventImpact: round2(eventImpact),
@@ -1384,21 +1813,23 @@ function generateHardcodedOpeningPricePoint(
 function generateNextPricePoint(
   company: StockCompany,
   previousClose: number,
-  gameDay: number
+  gameDay: number,
+  marketSeed?: string | null
 ): StockPriceHistory {
   const hardcoded = generateHardcodedOpeningPricePoint(
     company,
     previousClose,
-    gameDay
+    gameDay,
+    marketSeed
   );
 
   if (hardcoded) return hardcoded;
 
-  const marketDrift = getMarketDrift(gameDay);
-  const sectorDrift = getSectorDrift(company.sector, gameDay);
+  const marketDrift = getMarketDrift(gameDay, marketSeed);
+  const sectorDrift = getSectorDrift(company.sector, gameDay, marketSeed);
   const randomShock =
-    seededRange(`shock-${company.symbol}-${gameDay}`, -1, 1) * company.volatility;
-  const eventImpact = getEventImpact(company, gameDay);
+    seededRange(`shock-${company.symbol}-${gameDay}`, -1, 1, marketSeed) * company.volatility;
+  const eventImpact = getEventImpact(company, gameDay, marketSeed);
 
   let dailyReturn =
     marketDrift +
@@ -1414,12 +1845,12 @@ function generateNextPricePoint(
 
   const intradayRange =
     Math.abs(dailyReturn) * 0.45 +
-    company.volatility * seededRange(`range-${company.symbol}-${gameDay}`, 0.18, 0.5);
+    company.volatility * seededRange(`range-${company.symbol}-${gameDay}`, 0.18, 0.5, marketSeed);
 
   const highPrice = Math.max(openPrice, closePrice) * (1 + intradayRange);
   const lowPrice = Math.min(openPrice, closePrice) * (1 - intradayRange * 0.8);
 
-  const event = generateEventForCompany(company, gameDay);
+  const event = generateEventForCompany(company, gameDay, marketSeed);
 
   return {
     priceId: `price_${company.symbol.toLowerCase()}_${gameDay}`,
@@ -1430,7 +1861,7 @@ function generateNextPricePoint(
     highPrice: round2(highPrice),
     lowPrice: round2(Math.max(1, lowPrice)),
     closePrice: round2(closePrice),
-    volume: generateVolume(company, dailyReturn, eventImpact, gameDay),
+    volume: generateVolume(company, dailyReturn, eventImpact, gameDay, marketSeed),
     change: round2(closePrice - openPrice),
     changePercent: round2(dailyReturn * 100),
     eventImpact: round2(eventImpact),
@@ -1452,7 +1883,8 @@ export function getCompanyBySymbol(symbol: string) {
 
 export function getStockHistoryBySymbol(
   symbol: string,
-  gameDay: number
+  gameDay: number,
+  marketSeed?: string | null
 ): StockPriceHistory[] {
   const company = getCompanyBySymbol(symbol);
   const safeGameDay = normalizeGameDay(gameDay);
@@ -1463,7 +1895,7 @@ export function getStockHistoryBySymbol(
   let previousClose = company.startingPrice;
 
   for (let day = 1; day <= safeGameDay; day += 1) {
-    const point = generateNextPricePoint(company, previousClose, day);
+    const point = generateNextPricePoint(company, previousClose, day, marketSeed);
     history.push(point);
     previousClose = point.closePrice;
   }
@@ -1473,14 +1905,15 @@ export function getStockHistoryBySymbol(
 
 export function getStockBySymbolForGameDay(
   symbol: string,
-  gameDay: number
+  gameDay: number,
+  marketSeed?: string | null
 ): Stock | undefined {
   const company = getCompanyBySymbol(symbol);
 
   if (!company) return undefined;
 
   const safeGameDay = normalizeGameDay(gameDay);
-  const history = getStockHistoryBySymbol(symbol, safeGameDay);
+  const history = getStockHistoryBySymbol(symbol, safeGameDay, marketSeed);
   const today = history[history.length - 1];
   const yesterday = history[history.length - 2];
 
@@ -1500,49 +1933,93 @@ export function getStockBySymbolForGameDay(
   };
 }
 
-export function getStocksForGameDay(gameDay: number): Stock[] {
+export function getStocksForGameDay(gameDay: number, marketSeed?: string | null): Stock[] {
   const safeGameDay = normalizeGameDay(gameDay);
 
   return mockStockCompanies
     .filter((company) => company.isActive)
-    .map((company) => getStockBySymbolForGameDay(company.symbol, safeGameDay))
+    .map((company) => getStockBySymbolForGameDay(company.symbol, safeGameDay, marketSeed))
     .filter(Boolean) as Stock[];
 }
 
-export function getNewsForGameDay(gameDay: number): MarketNews[] {
+export function getNewsForGameDay(gameDay: number, marketSeed?: string | null): MarketNews[] {
   const safeGameDay = normalizeGameDay(gameDay);
 
   if (safeGameDay <= STORY_DAYS) {
     return hardcodedOpeningNews.filter((news) => news.gameDay === safeGameDay);
   }
 
-  const gasPriceNews = gasPriceStoryNews.filter((news) => news.gameDay === safeGameDay);
+  const arcNews = getStoryArcNewsForGameDay(safeGameDay, marketSeed);
   const generatedNews = mockStockCompanies
-    .map((company) => generateEventForCompany(company, safeGameDay))
+    .map((company) => generateEventForCompany(company, safeGameDay, marketSeed))
     .filter((news): news is MarketNews => Boolean(news))
-    .filter((news) => !gasPriceNews.some((storyNews) => storyNews.newsId === news.newsId));
+    .filter((news) => !arcNews.some((storyNews) => storyNews.newsId === news.newsId));
 
-  return [...gasPriceNews, ...generatedNews];
+  return uniqueMarketNews([...arcNews, ...generatedNews]);
 }
 
-export function getNewsUpToGameDay(gameDay: number): MarketNews[] {
+export function getMarketEventSeedsForGameDay(
+  gameDay: number,
+  marketSeed?: string | null
+): MarketEventSeed[] {
+  return getNewsForGameDay(gameDay, marketSeed).map(marketNewsToSeed);
+}
+
+export function getNewsUpToGameDay(gameDay: number, marketSeed?: string | null): MarketNews[] {
   const safeGameDay = normalizeGameDay(gameDay);
   const news: MarketNews[] = [];
 
   for (let day = 1; day <= safeGameDay; day += 1) {
-    news.push(...getNewsForGameDay(day));
+    news.push(...getNewsForGameDay(day, marketSeed));
   }
 
   return news;
 }
 
+export function getMarketEventSeedsUpToGameDay(
+  gameDay: number,
+  marketSeed?: string | null
+): MarketEventSeed[] {
+  const safeGameDay = normalizeGameDay(gameDay);
+  const seeds: MarketEventSeed[] = [];
+
+  for (let day = 1; day <= safeGameDay; day += 1) {
+    seeds.push(...getMarketEventSeedsForGameDay(day, marketSeed));
+  }
+
+  return uniqueMarketEventSeeds(seeds);
+}
+
+export function getThirtyDayMarketEventSeeds(marketSeed?: string | null) {
+  return getMarketEventSeedsUpToGameDay(30, marketSeed);
+}
+
+export function generateThirtyDayMarketSeed(marketSeed?: string | null): ThirtyDayMarketSeed {
+  const seedCode = normalizeMarketSeed(marketSeed);
+  const stocks = mockStockCompanies.filter((company) => company.isActive);
+
+  return {
+    schemaVersion: 1,
+    gameMode: "limited_30",
+    seedCode,
+    generatedDays: 30,
+    storyArcs: getSelectedStoryArcKeys(seedCode),
+    stocks,
+    prices: stocks.flatMap((company) => (
+      getStockHistoryBySymbol(company.symbol, 30, seedCode)
+    )),
+    events: getThirtyDayMarketEventSeeds(seedCode),
+  };
+}
+
 export function getRelatedNewsBySymbol(
   symbol: string,
-  gameDay: number
+  gameDay: number,
+  marketSeed?: string | null
 ): MarketNews[] {
   const safeGameDay = normalizeGameDay(gameDay);
 
-  return getNewsUpToGameDay(safeGameDay).filter((news) =>
+  return getNewsUpToGameDay(safeGameDay, marketSeed).filter((news) =>
     news.relatedTickers.some(
       (ticker) => ticker.toLowerCase() === symbol.toLowerCase()
     )

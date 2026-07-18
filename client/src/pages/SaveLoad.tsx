@@ -32,11 +32,16 @@ type SaveSlot = {
   slot_name: string;
   game_day: number;
   game_mode: GameMode;
+  game_seed?: string | null;
   cash_balance: number;
   net_worth: number;
   holdings_snapshot: HoldingSnapshot[];
   created_at: string;
 };
+
+function isMissingSeedColumn(error: { message?: string } | null | undefined) {
+  return Boolean(error?.message?.toLowerCase().includes("game_seed"));
+}
 
 export default function SaveLoad() {
   const navigate = useNavigate();
@@ -88,15 +93,27 @@ export default function SaveLoad() {
       averageCost: h.averageCost,
     }));
 
-    const { error } = await supabase.from("save_slots").insert({
+    const savePayload = {
       user_id:           user.id,
       slot_name:         `Day ${trading.gameDay} Run`,
       game_day:          trading.gameDay,
       game_mode:         trading.gameMode,
+      game_seed:         trading.marketSeed,
       cash_balance:      trading.account.cash,
       net_worth:         netWorth,
       holdings_snapshot: holdingsSnapshot,
-    });
+    };
+
+    let { error } = await supabase.from("save_slots").insert(savePayload);
+
+    if (isMissingSeedColumn(error)) {
+      const legacyPayload: Omit<typeof savePayload, "game_seed"> & { game_seed?: string } = {
+        ...savePayload,
+      };
+      delete legacyPayload.game_seed;
+      const retry = await supabase.from("save_slots").insert(legacyPayload);
+      error = retry.error;
+    }
 
     if (error) {
       setMessage({ text: `Save failed: ${error.message}`, severity: "error" });
