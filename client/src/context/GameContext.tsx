@@ -21,6 +21,7 @@ import {
   TradingAccount,
 } from "../data/tradingState";
 import { supabase } from "../lib/supabase";
+import { syncGameState } from "../lib/api";
 import { useAuth } from "./AuthContext";
 
 const STARTING_CASH = 2_000;
@@ -948,18 +949,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const syncSessionValue = useCallback(async () => {
     if (!session || loading) return;
     const portfolioValue = getPortfolioValue(account, stocks);
-    const { error: valueError } = await supabase
-      .from("game_sessions")
-      .update({
-        portfolio_value: Number(portfolioValue.toFixed(2)),
-        net_worth: Number((account.cash + portfolioValue).toFixed(2)),
-      })
-      .eq("id", session.id);
+    const netWorth = account.cash + portfolioValue;
 
-    if (valueError) {
-      setError(valueError.message);
+    try {
+      await syncGameState({
+        sessionId: session.id,
+        portfolioValue,
+        netWorth,
+        gameMode,
+        day: gameDay,
+      });
+      setError(null);
+    } catch (syncError: any) {
+      setError(syncError?.message ?? "Could not sync session value.");
     }
-  }, [account, loading, session, stocks]);
+  }, [account, gameDay, gameMode, loading, session, stocks]);
 
   useEffect(() => {
     void syncSessionValue();

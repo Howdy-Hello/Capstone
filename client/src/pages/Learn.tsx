@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Box, Button, Chip, Container, Divider, Grid, LinearProgress, Stack, Tab, Tabs, Typography,
 } from "@mui/material";
@@ -360,7 +361,11 @@ function GuideTab() {
 
 /* ─── Page ───────────────────────────────────────────────── */
 export default function Learn() {
-  const [tab, setTab] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") === "guide" ? 1 : 0;
+  const setTab = (value: number) => {
+    setSearchParams(value === 1 ? { tab: "guide" } : {}, { replace: true });
+  };
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
       {/* Hero */}

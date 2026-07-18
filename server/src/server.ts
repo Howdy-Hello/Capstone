@@ -4,6 +4,7 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import { connectDB } from './db/db';
 import supabaseRoutes from './routes/supabaseRoutes';
+import gameRoutes from './routes/gameRoutes';
 
 dotenv.config({ path: './.env' });
 
@@ -12,6 +13,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use('/api', supabaseRoutes);
+app.use('/api', gameRoutes);
 
 app.get('/home', (req: Request, res: Response) => {
   res.send('StockPilot API');

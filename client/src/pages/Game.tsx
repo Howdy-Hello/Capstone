@@ -30,7 +30,7 @@ import {
 import { getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
 import { GameMode, useGame } from "../context/GameContext";
 import { useAchievements } from "../hooks/useAchievements";
-import { supabase } from "../lib/supabase";
+import { fetchLeaderboard } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
@@ -135,10 +135,14 @@ export default function Game() {
       await syncSessionValue();
       if (cancelled) return;
 
-      const { data, error } = await supabase.rpc("get_leaderboard", { p_limit: 50 });
-      if (cancelled || error || !data) return;
+      let rows: Array<{ user_id: string; best_net_worth: number | string; username: string | null; display_name: string | null }>;
+      try {
+        rows = await fetchLeaderboard(50);
+      } catch {
+        return;
+      }
+      if (cancelled) return;
 
-      const rows = data as Array<{ user_id: string; best_net_worth: number | string; username: string | null; display_name: string | null }>;
       setTopPlayers(rows.slice(0, 5).map((r, i) => ({
         rank: i + 1,
         username: r.username ?? r.display_name ?? "Anonymous",

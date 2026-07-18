@@ -13,7 +13,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import { Link as RouterLink } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { fetchLeaderboard } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { D, CARD, MONO, money } from "../theme/design";
@@ -85,11 +85,14 @@ export default function Leaderboard() {
     (async () => {
       await syncSessionValue();
       if (cancelled) return;
-      const { data, error: rpcError } = await supabase.rpc("get_leaderboard", { p_limit: 50 });
-      if (cancelled) return;
-      if (rpcError) { setError(rpcError.message); setLoading(false); return; }
-      setPlayers(buildRanked((data ?? []) as LeaderboardRow[]));
-      setLoading(false);
+      try {
+        const rows = await fetchLeaderboard(50);
+        if (cancelled) return;
+        setPlayers(buildRanked(rows as unknown as LeaderboardRow[]));
+      } catch (leaderboardError: any) {
+        if (!cancelled) setError(leaderboardError?.message ?? "Could not load leaderboard.");
+      }
+      if (!cancelled) setLoading(false);
     })();
 
     return () => { cancelled = true; };
