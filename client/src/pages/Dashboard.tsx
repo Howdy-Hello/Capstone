@@ -9,6 +9,7 @@ import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import { Link as RouterLink } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Bar, BarChart, CartesianGrid, Cell, Pie, PieChart,
   ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
@@ -20,6 +21,12 @@ import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { D, CARD, MONO, money, pct } from "../theme/design";
+
+// Framer Motion 11 predates React 19's stricter JSX return type.
+const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
+  initial?: boolean;
+  mode?: "sync" | "popLayout" | "wait";
+}>>;
 
 type TradeRecord = {
   id: string;
@@ -34,15 +41,19 @@ type TradeRecord = {
 
 const PIE_COLORS = [D.green, D.brand, D.amber, "#38BDF8", "#F87171", "#A78BFA"];
 
-function StatTile({ label, value, icon, up }: { label: string; value: string; icon: React.ReactNode; up?: boolean }) {
+function StatTile({ label, value, icon, up, index = 0 }: { label: string; value: string; icon: React.ReactNode; up?: boolean; index?: number }) {
+  const reduceMotion = useReducedMotion();
   const color = up === undefined ? D.brandText : up ? D.greenText : D.redText;
   const bg = up === undefined ? D.brandBg : up ? D.greenBg : D.redBg;
   return (
-    <Box sx={{ ...CARD, p: 2.5 }}>
+    <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: Math.min(index * 0.06, 0.24) }}
+      sx={{ ...CARD, p: 2.5 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
         <Box>
           <Typography sx={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 0.8, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{label.toUpperCase()}</Typography>
-          <Typography sx={{ fontSize: 22, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{value}</Typography>
+          <motion.div key={value} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
+            <Typography sx={{ fontSize: 22, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{value}</Typography>
+          </motion.div>
         </Box>
         <Box sx={{ width: 38, height: 38, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>
           {icon}
@@ -53,6 +64,7 @@ function StatTile({ label, value, icon, up }: { label: string; value: string; ic
 }
 
 export default function Dashboard() {
+  const reduceMotion = useReducedMotion();
   const trading = useGame();
   const { user, profile } = useAuth();
   const { gameDay, stocks, news } = trading;
@@ -129,23 +141,25 @@ export default function Dashboard() {
       {/* Header */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
-            <Box>
-              <Chip label={`DAY ${gameDay}`} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
-                {playerName}&apos;s Dashboard
-              </Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Live portfolio view for Game Day {gameDay} · {modeLabel}</Typography>
-            </Box>
-            <Box sx={{ ...CARD, p: 2.5, minWidth: 280 }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO }}>SESSION STATUS</Typography>
-                <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>DAY {gameDay}{trading.maxGameDay ? `/${trading.maxGameDay}` : ""}</Typography>
-              </Stack>
-              <LinearProgress variant={trading.maxGameDay ? "determinate" : "indeterminate"} value={trading.maxGameDay ? (gameDay / trading.maxGameDay) * 100 : undefined}
-                sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
-            </Box>
-          </Stack>
+          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
+              <Box>
+                <Chip label={`DAY ${gameDay}`} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+                <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
+                  {playerName}&apos;s Dashboard
+                </Typography>
+                <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Live portfolio view for Game Day {gameDay} · {modeLabel}</Typography>
+              </Box>
+              <Box sx={{ ...CARD, p: 2.5, minWidth: 280 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                  <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO }}>SESSION STATUS</Typography>
+                  <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>DAY {gameDay}{trading.maxGameDay ? `/${trading.maxGameDay}` : ""}</Typography>
+                </Stack>
+                <LinearProgress variant={trading.maxGameDay ? "determinate" : "indeterminate"} value={trading.maxGameDay ? (gameDay / trading.maxGameDay) * 100 : undefined}
+                  sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+              </Box>
+            </Stack>
+          </motion.div>
         </Container>
       </Box>
 
@@ -157,9 +171,9 @@ export default function Dashboard() {
             { label: "Portfolio",    value: money(portfolioValue),        icon: <PieChartIcon sx={{ fontSize: 20 }} />,            up: undefined },
             { label: "Net Worth",    value: money(netWorth),              icon: <AssessmentIcon sx={{ fontSize: 20 }} />,          up: returnPct >= 0 },
             { label: "Total Return", value: pct(returnPct, 2),            icon: returnPct >= 0 ? <TrendingUpIcon sx={{ fontSize: 20 }} /> : <TrendingDownIcon sx={{ fontSize: 20 }} />, up: returnPct >= 0 },
-          ].map((s) => (
+          ].map((s, i) => (
             <Grid item xs={12} sm={6} md={3} key={s.label}>
-              <StatTile {...s} />
+              <StatTile {...s} index={i} />
             </Grid>
           ))}
         </Grid>
@@ -173,10 +187,12 @@ export default function Dashboard() {
                   <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Holdings</Typography>
                   <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Marked to Day {gameDay} prices.</Typography>
                 </Box>
-                <Button component={RouterLink} to="/game" size="small" variant="contained"
-                  sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-                  Trade →
-                </Button>
+                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
+                  <Button component={RouterLink} to="/game" size="small" variant="contained"
+                    sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
+                    Trade →
+                  </Button>
+                </motion.div>
               </Stack>
               <Box sx={{ p: 2.5 }}>
                 {holdings.length === 0 ? (
@@ -186,11 +202,15 @@ export default function Dashboard() {
                   </Box>
                 ) : (
                   <Stack spacing={1.2}>
-                    {holdings.map((h) => {
+                    <MotionPresence mode="popLayout" initial={false}>
+                    {holdings.map((h, index) => {
                       const up = h.profitLoss >= 0;
                       const alloc = netWorth > 0 ? (h.marketValue / netWorth) * 100 : 0;
                       return (
-                        <Box key={h.symbol} sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                        <Box key={h.symbol} component={motion.div} layout={!reduceMotion}
+                          initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
+                          transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
+                          sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                           <Grid container spacing={1.5} alignItems="center">
                             <Grid item xs={12} md={4}>
                               <Stack direction="row" spacing={1.5} alignItems="center">
@@ -242,6 +262,7 @@ export default function Dashboard() {
                         </Box>
                       );
                     })}
+                    </MotionPresence>
                   </Stack>
                 )}
               </Box>
@@ -320,8 +341,12 @@ export default function Dashboard() {
                   <Typography sx={{ fontSize: 13, color: D.t3, py: 1 }}>No major news today. Prices still move from drift and volatility.</Typography>
                 ) : (
                   <Stack spacing={1.2}>
-                    {news.slice(0, 5).map((item) => (
-                        <Box key={item.newsId} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                    <MotionPresence mode="popLayout" initial={false}>
+                    {news.slice(0, 5).map((item, index) => (
+                        <Box key={item.newsId} component={motion.div} layout={!reduceMotion}
+                          initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
+                          transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
+                          sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                           <Stack direction="row" spacing={1} sx={{ mb: 0.8 }} flexWrap="wrap" useFlexGap>
                             <Chip size="small" label={item.importance}
                               sx={{ bgcolor: item.importance === "High" ? D.redBg : D.amberBg, color: item.importance === "High" ? D.redText : D.amber, border: `1px solid ${item.importance === "High" ? D.redBd : "rgba(245,158,11,0.3)"}`, fontWeight: 800, fontSize: 10 }} />
@@ -333,11 +358,14 @@ export default function Dashboard() {
                           <Typography sx={{ fontSize: 12.5, color: D.t3, lineHeight: 1.6 }}>{item.body}</Typography>
                         </Box>
                     ))}
+                    </MotionPresence>
                   </Stack>
                 )}
-                <Button fullWidth variant="outlined" component={RouterLink} to="/news" sx={{ mt: 2, color: D.brandText, borderColor: D.brandBd, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.brandBg } }}>
-                  Open News →
-                </Button>
+                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+                  <Button fullWidth variant="outlined" component={RouterLink} to="/news" sx={{ mt: 2, color: D.brandText, borderColor: D.brandBd, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.brandBg } }}>
+                    Open News →
+                  </Button>
+                </motion.div>
               </Box>
             </Box>
           </Grid>
@@ -403,11 +431,15 @@ export default function Dashboard() {
               </Box>
             ) : (
               <Stack spacing={1}>
-                {tradeHistory.map((t) => {
+                <MotionPresence mode="popLayout" initial={false}>
+                {tradeHistory.map((t, index) => {
                   const isBuy = t.trade_type === "buy";
                   const sym   = t.stocks?.symbol ?? "—";
                   return (
-                    <Box key={t.id} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                    <Box key={t.id} component={motion.div} layout={!reduceMotion}
+                      initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
+                      transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
+                      sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                       <Grid container spacing={1.5} alignItems="center">
                         <Grid item xs="auto">
                           <Chip size="small" label={isBuy ? "BUY" : "SELL"}
@@ -441,6 +473,7 @@ export default function Dashboard() {
                     </Box>
                   );
                 })}
+                </MotionPresence>
               </Stack>
             )}
           </Box>

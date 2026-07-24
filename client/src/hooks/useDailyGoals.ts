@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { getPortfolioValue } from "../data/tradingState";
+import { supabase } from "../lib/supabase";
 
 export type DailyGoal = {
   id: string;
@@ -103,9 +104,30 @@ export function useDailyGoals() {
   // sells down. Persisted per (user, day).
   const [completed, setCompleted] = useState<Set<string>>(new Set());
 
+  // Local cache loads instantly; Supabase is merged in once it resolves so
+  // progress follows the player across devices without blocking the UI.
   useEffect(() => {
     if (!user) { setCompleted(new Set()); return; }
-    setCompleted(loadCompleted(user.id, gameDay));
+    const local = loadCompleted(user.id, gameDay);
+    setCompleted(local);
+
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("user_daily_goal_completions")
+        .select("goal_id")
+        .eq("user_id", user.id)
+        .eq("game_day", gameDay);
+      if (cancelled || error || !data) return;
+      const merged = new Set(local);
+      data.forEach((row: { goal_id: string }) => merged.add(row.goal_id));
+      if (merged.size !== local.size) {
+        setCompleted(merged);
+        saveCompleted(user.id, gameDay, merged);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [user, gameDay]);
 
   const goals = useMemo<DailyGoal[]>(() => {
@@ -146,6 +168,16 @@ export function useDailyGoals() {
     newlyDone.forEach((g) => next.add(g.id));
     setCompleted(next);
     saveCompleted(user.id, gameDay, next);
+
+    // Best-effort sync — daily goals are non-critical to gameplay, so a
+    // failed write here shouldn't surface an error to the player.
+    void supabase
+      .from("user_daily_goal_completions")
+      .upsert(
+        newlyDone.map((g) => ({ user_id: user.id, game_day: gameDay, goal_id: g.id })),
+        { onConflict: "user_id,game_day,goal_id", ignoreDuplicates: true },
+      )
+      .then(() => {});
   }, [goals, completed, user, gameDay]);
 
   const completedCount = goals.filter((g) => g.done).length;

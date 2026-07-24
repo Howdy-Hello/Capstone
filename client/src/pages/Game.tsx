@@ -24,6 +24,9 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import FlagIcon from "@mui/icons-material/Flag";
+import SportsMmaIcon from "@mui/icons-material/SportsMma";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
@@ -34,6 +37,10 @@ import { getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingS
 import { GameMode, useGame } from "../context/GameContext";
 import { useAchievements } from "../hooks/useAchievements";
 import { useDailyGoals } from "../hooks/useDailyGoals";
+import { useStockAlerts } from "../hooks/useStockAlerts";
+import { useBills } from "../hooks/useBills";
+import { useMissions } from "../hooks/useMissions";
+import { useRivalTrader } from "../hooks/useRivalTrader";
 import { fetchLeaderboard } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
@@ -65,10 +72,14 @@ export default function Game() {
   const [topPlayers, setTopPlayers] = useState<MiniLeaderEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
   const trading = useGame();
-<<<<<<< HEAD
-  useAchievements();
   const dailyGoals = useDailyGoals();
-=======
+  useStockAlerts();
+  const bills = useBills();
+  const missions = useMissions();
+  const rival = useRivalTrader();
+  const [missionsHidden, setMissionsHidden] = useState(
+    () => localStorage.getItem("stockpilot-missions-hidden") === "1"
+  );
   const {
     achievementNotification,
     queuedNotificationCount,
@@ -77,7 +88,6 @@ export default function Game() {
     devUnlockAchievements,
     devClearAchievements,
   } = useAchievements();
->>>>>>> 0811f95 (feat: enhance game and leaderboard features with achievement unlock notifications and 30-day leaderboard)
   const {
     gameDay, gameMode, isGameComplete, maxGameDay, setGameDay,
     stocks, news: todayNews, syncSessionValue,
@@ -839,6 +849,46 @@ export default function Game() {
                 </Box>
               </Box>
 
+              {/* Beginner missions */}
+              {missions.loaded && !missionsHidden && missions.completedCount < missions.totalCount && (
+                <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <FlagIcon sx={{ fontSize: 18, color: D.greenText }} />
+                      <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Getting Started</Typography>
+                    </Stack>
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <Chip label={`${missions.completedCount}/${missions.totalCount}`} size="small"
+                        sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 900, fontSize: 10 }} />
+                      <IconButton size="small" title="Hide checklist"
+                        onClick={() => { localStorage.setItem("stockpilot-missions-hidden", "1"); setMissionsHidden(true); }}
+                        sx={{ color: D.t3, p: 0.4, "&:hover": { color: D.t1 } }}>
+                        <CloseIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </Stack>
+                  </Stack>
+                  <Box sx={{ p: 2.5 }}>
+                    <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 1.5 }}>A quick checklist to learn the ropes.</Typography>
+                    <Stack spacing={1.2}>
+                      {missions.missions.map((m) => (
+                        <Box key={m.id} sx={{ p: 1.6, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${m.done ? D.greenBd : D.border}` }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                            <Stack direction="row" spacing={0.8} alignItems="center">
+                              {m.done && <CheckCircleIcon sx={{ fontSize: 14, color: D.greenText }} />}
+                              <Typography sx={{ fontSize: 13, fontWeight: 800, color: m.done ? D.greenText : D.t1 }}>{m.title}</Typography>
+                            </Stack>
+                            <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: D.t3, fontFamily: MONO }}>+{m.rewardXp} XP</Typography>
+                          </Stack>
+                          <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 0.8 }}>{m.description}</Typography>
+                          <LinearProgress variant="determinate" value={m.progress}
+                            sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: m.done ? D.green : D.brand, borderRadius: 99 } }} />
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Box>
+                </Box>
+              )}
+
               {/* Daily goals */}
               <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
@@ -868,6 +918,52 @@ export default function Game() {
                     ))}
                   </Stack>
                 </Box>
+              </Box>
+
+              {/* Next bill */}
+              <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.8 }}>
+                  <ReceiptLongIcon sx={{ fontSize: 18, color: D.redText }} />
+                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Living Costs</Typography>
+                </Stack>
+                <Typography sx={{ fontSize: 13, color: D.t3, mb: 1.5 }}>
+                  Rent & expenses come due every {bills.billIntervalDays} days, scaled to your net worth.
+                </Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="center"
+                  sx={{ p: 1.6, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}` }}>
+                  <Typography sx={{ fontSize: 12.5, color: D.t2 }}>
+                    Next bill: Day {bills.nextBillDay}
+                  </Typography>
+                  <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.redText, fontFamily: MONO }}>
+                    ~{money(bills.nextBillAmount)}
+                  </Typography>
+                </Stack>
+              </Box>
+
+              {/* Rival trader */}
+              <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.8 }}>
+                  <SportsMmaIcon sx={{ fontSize: 18, color: "#F59E0B" }} />
+                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>{rival.rivalName}</Typography>
+                  <Chip label={rival.playerAhead ? "YOU LEAD" : "THEY LEAD"} size="small"
+                    sx={{ bgcolor: rival.playerAhead ? D.greenBg : D.redBg, color: rival.playerAhead ? D.greenText : D.redText, fontWeight: 900, fontSize: 9.5 }} />
+                </Stack>
+                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 1.5 }}>
+                  A rival trader running a fixed {rival.basket.length}-stock strategy since Day 1.
+                </Typography>
+                <Stack spacing={1}>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography sx={{ fontSize: 12, color: D.t3 }}>You</Typography>
+                    <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{money(rival.playerNetWorth)}</Typography>
+                  </Stack>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography sx={{ fontSize: 12, color: D.t3 }}>{rival.rivalName}</Typography>
+                    <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{money(rival.rivalNetWorth)}</Typography>
+                  </Stack>
+                  <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: rival.playerAhead ? D.greenText : D.redText, mt: 0.3 }}>
+                    {rival.playerAhead ? "+" : ""}{rival.gapPct.toFixed(1)}% vs rival
+                  </Typography>
+                </Stack>
               </Box>
 
               {/* Game loop */}

@@ -10,11 +10,18 @@ import {
   Tooltip as RTooltip, XAxis, YAxis,
 } from "recharts";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { Stock } from "../data/mockStocks";
 import { getSharesOwned } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
 import { CARD, D, MONO, money, pct } from "../theme/design";
+
+// Framer Motion 11 predates React 19's stricter JSX return type.
+const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
+  initial?: boolean;
+  mode?: "sync" | "popLayout" | "wait";
+}>>;
 
 type Metric = {
   label: string;
@@ -39,6 +46,7 @@ function metricTone(metric: Metric, side: "left" | "right") {
 }
 
 export default function CompareStocks() {
+  const reduceMotion = useReducedMotion();
   const trading = useGame();
   const { getHistory } = trading;
   const [params, setParams] = useSearchParams();
@@ -119,18 +127,22 @@ export default function CompareStocks() {
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
-            <Box>
-              <Chip label="STOCK COMPARISON" size="small"
-                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Compare Stocks</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Review price action, fundamentals, risk, and ownership without changing your portfolio.</Typography>
-            </Box>
-            <Button component={RouterLink} to="/game" variant="contained"
-              sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-              Back to Market
-            </Button>
-          </Stack>
+          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
+              <Box>
+                <Chip label="STOCK COMPARISON" size="small"
+                  sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+                <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Compare Stocks</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Review price action, fundamentals, risk, and ownership without changing your portfolio.</Typography>
+              </Box>
+              <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
+                <Button component={RouterLink} to="/game" variant="contained"
+                  sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
+                  Back to Market
+                </Button>
+              </motion.div>
+            </Stack>
+          </motion.div>
         </Container>
       </Box>
 
@@ -169,12 +181,16 @@ export default function CompareStocks() {
         {left && right && (
           <>
             <Grid container spacing={2} sx={{ mb: 3 }}>
-              {[left, right].map((stock) => {
+              <MotionPresence mode="popLayout" initial={false}>
+              {[left, right].map((stock, i) => {
                 const watched = trading.isWatchlisted(stock.symbol);
                 const up = stock.dayChangePercent >= 0;
                 return (
                   <Grid item xs={12} md={6} key={stock.symbol}>
-                    <Box sx={{ ...CARD, p: 2.5, height: "100%" }}>
+                    <Box component={motion.div} layout={!reduceMotion}
+                      initial={reduceMotion ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.97 }}
+                      transition={{ duration: 0.28, delay: Math.min(i * 0.06, 0.12), layout: { type: "spring", stiffness: 420, damping: 34 } }}
+                      sx={{ ...CARD, p: 2.5, height: "100%" }}>
                       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
                         <Box>
                           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
@@ -203,6 +219,7 @@ export default function CompareStocks() {
                   </Grid>
                 );
               })}
+              </MotionPresence>
             </Grid>
 
             <Box sx={{ ...CARD, p: 0, overflow: "hidden", mb: 3 }}>
@@ -232,19 +249,25 @@ export default function CompareStocks() {
               </Box>
               <Box sx={{ p: 2.5 }}>
                 <Stack spacing={1}>
-                  {metrics.map((metric) => (
-                    <Box key={metric.label} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                  {metrics.map((metric, i) => (
+                    <Box key={metric.label} component={motion.div}
+                      initial={reduceMotion ? undefined : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24, delay: Math.min(i * 0.025, 0.2) }}
+                      sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                       <Grid container spacing={1.5} alignItems="center">
                         <Grid item xs={12} md={4}>
                           <Typography sx={{ fontSize: 11, color: D.t3, fontWeight: 900, fontFamily: MONO }}>{metric.label.toUpperCase()}</Typography>
                         </Grid>
                         <Grid item xs={6} md={4}>
                           <Typography sx={{ fontSize: 13, color: D.t3, mb: 0.2 }}>{left.symbol}</Typography>
-                          <Typography sx={{ fontSize: 15, color: metricTone(metric, "left"), fontWeight: 900, fontFamily: MONO }}>{metric.left}</Typography>
+                          <motion.div key={metric.left} initial={reduceMotion ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+                            <Typography sx={{ fontSize: 15, color: metricTone(metric, "left"), fontWeight: 900, fontFamily: MONO }}>{metric.left}</Typography>
+                          </motion.div>
                         </Grid>
                         <Grid item xs={6} md={4}>
                           <Typography sx={{ fontSize: 13, color: D.t3, mb: 0.2 }}>{right.symbol}</Typography>
-                          <Typography sx={{ fontSize: 15, color: metricTone(metric, "right"), fontWeight: 900, fontFamily: MONO }}>{metric.right}</Typography>
+                          <motion.div key={metric.right} initial={reduceMotion ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+                            <Typography sx={{ fontSize: 15, color: metricTone(metric, "right"), fontWeight: 900, fontFamily: MONO }}>{metric.right}</Typography>
+                          </motion.div>
                         </Grid>
                       </Grid>
                     </Box>

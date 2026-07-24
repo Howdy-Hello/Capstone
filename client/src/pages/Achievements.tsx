@@ -16,8 +16,15 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import SavingsIcon from "@mui/icons-material/Savings";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { Link as RouterLink } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { D, CARD, MONO } from "../theme/design";
 import { useAchievements } from "../hooks/useAchievements";
+
+// Framer Motion 11 predates React 19's stricter JSX return type.
+const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
+  initial?: boolean;
+  mode?: "sync" | "popLayout" | "wait";
+}>>;
 
 const ICONS: Record<string, React.ReactNode> = {
   first_trade:     <TrendingUpIcon />,
@@ -36,6 +43,7 @@ const ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function Achievements() {
+  const reduceMotion = useReducedMotion();
   const {
     achievements, totalXP, loading, persistenceError, retryPersistence,
   } = useAchievements();
@@ -60,42 +68,50 @@ export default function Achievements() {
       {/* Hero */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
-            <Box>
-              <Chip label="ACHIEVEMENT SYSTEM" size="small"
-                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Milestones</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
-                Achievements reward strong trading habits and portfolio growth.
-              </Typography>
-            </Box>
-            <Box sx={{ ...CARD, p: 2.5, minWidth: 280 }}>
-              <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>COMPLETION</Typography>
-                <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>{completionPct}%</Typography>
-              </Stack>
-              <LinearProgress variant="determinate" value={completionPct}
-                sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
-              <Typography sx={{ fontSize: 11.5, color: D.t3, mt: 1 }}>{unlockedCount} of {totalCount} unlocked · {totalXP} XP earned</Typography>
-            </Box>
-          </Stack>
+          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
+              <Box>
+                <Chip label="ACHIEVEMENT SYSTEM" size="small"
+                  sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+                <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Milestones</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
+                  Achievements reward strong trading habits and portfolio growth.
+                </Typography>
+              </Box>
+              <Box sx={{ ...CARD, p: 2.5, minWidth: 280 }}>
+                <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>COMPLETION</Typography>
+                  <motion.div key={completionPct} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
+                    <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>{completionPct}%</Typography>
+                  </motion.div>
+                </Stack>
+                <LinearProgress variant="determinate" value={completionPct}
+                  sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+                <Typography sx={{ fontSize: 11.5, color: D.t3, mt: 1 }}>{unlockedCount} of {totalCount} unlocked · {totalXP} XP earned</Typography>
+              </Box>
+            </Stack>
+          </motion.div>
         </Container>
       </Box>
 
       <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-        {persistenceError && (
-          <Alert
-            severity="error"
-            action={
-              <Button color="inherit" size="small" onClick={() => void retryPersistence()}>
-                Retry
-              </Button>
-            }
-            sx={{ mb: 3 }}
-          >
-            {persistenceError}
-          </Alert>
-        )}
+        <MotionPresence initial={false}>
+          {persistenceError && (
+            <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.24 }}>
+              <Alert
+                severity="error"
+                action={
+                  <Button color="inherit" size="small" onClick={() => void retryPersistence()}>
+                    Retry
+                  </Button>
+                }
+                sx={{ mb: 3 }}
+              >
+                {persistenceError}
+              </Alert>
+            </motion.div>
+          )}
+        </MotionPresence>
 
         {/* Stats */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -104,16 +120,19 @@ export default function Achievements() {
             { label: "Locked",    val: (totalCount - unlockedCount).toString(), icon: <LockIcon sx={{ fontSize: 20 }} />,            up: false      },
             { label: "Total XP",  val: totalXP.toString(),                  icon: <LocalFireDepartmentIcon sx={{ fontSize: 20 }} />, up: true       },
             { label: "Next Goal", val: nextGoal?.title ?? "All done!",      icon: <PieChartIcon sx={{ fontSize: 20 }} />,            up: undefined  },
-          ].map((s) => {
+          ].map((s, i) => {
             const color = s.up === undefined ? D.brandText : s.up ? D.greenText : D.redText;
             const bg    = s.up === undefined ? D.brandBg   : s.up ? D.greenBg   : D.redBg;
             return (
               <Grid item xs={12} sm={6} md={3} key={s.label}>
-                <Box sx={{ ...CARD, p: 2.5 }}>
+                <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: Math.min(i * 0.06, 0.24) }}
+                  sx={{ ...CARD, p: 2.5 }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                     <Box>
                       <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
-                      <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                      <motion.div key={s.val} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
+                        <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                      </motion.div>
                     </Box>
                     <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
                   </Stack>
@@ -133,9 +152,12 @@ export default function Achievements() {
               </Box>
               <Box sx={{ p: 2.5 }}>
                 <Grid container spacing={2}>
-                  {achievements.map((a) => (
+                  {achievements.map((a, i) => (
                     <Grid item xs={12} sm={6} key={a.id}>
-                      <Box sx={{
+                      <Box component={motion.div} layout={!reduceMotion}
+                        initial={reduceMotion ? undefined : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.28, delay: Math.min(i * 0.03, 0.24), layout: { type: "spring", stiffness: 420, damping: 34 } }}
+                        sx={{
                         p: 2.5, borderRadius: 2, height: "100%",
                         bgcolor: a.unlocked ? D.greenBg : D.elevated,
                         border: `1px solid ${a.unlocked ? D.greenBd : D.border}`,
@@ -223,10 +245,12 @@ export default function Achievements() {
                         sx={{ height: 5, borderRadius: 99, bgcolor: D.border, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
                     </Box>
                   </Box>
-                  <Button fullWidth component={RouterLink} to="/game" variant="contained"
-                    sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-                    Continue Trading →
-                  </Button>
+                  <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+                    <Button fullWidth component={RouterLink} to="/game" variant="contained"
+                      sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
+                      Continue Trading →
+                    </Button>
+                  </motion.div>
                 </Box>
               )}
 

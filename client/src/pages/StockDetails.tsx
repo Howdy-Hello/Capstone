@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
 import {
   Box, Button, Chip, CircularProgress, Container, Divider, Grid, IconButton,
-  LinearProgress, Stack, TextField, Typography,
+  LinearProgress, MenuItem, Select, Stack, TextField, Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
+import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
 } from "recharts";
@@ -22,7 +26,22 @@ import StarBorderIcon from "@mui/icons-material/StarBorder";
 import { Stock, StockPriceHistory } from "../data/mockStocks";
 import { getSharesOwned } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
+import { AlertCondition, describeAlert, useStockAlerts } from "../hooks/useStockAlerts";
+import { useAdvisor } from "../hooks/useAdvisor";
 import { D, CARD, MONO, money, pct } from "../theme/design";
+
+// Framer Motion 11 predates React 19's stricter JSX return type.
+const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
+  initial?: boolean;
+  mode?: "sync" | "popLayout" | "wait";
+}>>;
+
+const ALERT_CONDITIONS: { value: AlertCondition; label: string }[] = [
+  { value: "price_above", label: "Price rises above" },
+  { value: "price_below", label: "Price falls below" },
+  { value: "pct_change_up", label: "Gains at least (today)" },
+  { value: "pct_change_down", label: "Drops at least (today)" },
+];
 
 type LocationState = { gameDay?: number };
 
@@ -33,12 +52,18 @@ function getRiskScore(r: Stock["riskLevel"]) {
 }
 
 export default function StockDetails() {
+  const reduceMotion = useReducedMotion();
   const { symbol } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const trading = useGame();
   const [tradeMsg, setTradeMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const { alertsForSymbol, createAlert, deleteAlert } = useStockAlerts();
+  const advisor = useAdvisor();
+  const [alertCondition, setAlertCondition] = useState<AlertCondition>("price_above");
+  const [alertThreshold, setAlertThreshold] = useState("");
+  const [creatingAlert, setCreatingAlert] = useState(false);
 
   const state = location.state as LocationState | null;
   const gameDay = state?.gameDay ?? trading.gameDay;
@@ -82,6 +107,8 @@ export default function StockDetails() {
   const latestHistory = history[history.length - 1];
   const sharesOwned = getSharesOwned(trading.account, stock.symbol);
   const watchlisted = trading.isWatchlisted(stock.symbol);
+  const symbolAlerts = alertsForSymbol.get(stock.symbol) ?? [];
+  const isPctCondition = alertCondition === "pct_change_up" || alertCondition === "pct_change_down";
   const compareSymbol =
     trading.watchlistStocks.find((item) => item.symbol !== stock.symbol)?.symbol
     ?? trading.stocks.find((item) => item.symbol !== stock.symbol)?.symbol
@@ -97,6 +124,14 @@ export default function StockDetails() {
     const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
     setTradeMsg({ ok, text: ok ? `Sold ${shares} of ${stock.symbol} for ${money(stock.currentPrice * quantity)}.` : `Not enough shares to sell.` });
   };
+  const handleCreateAlert = async () => {
+    const value = parseFloat(alertThreshold);
+    if (Number.isNaN(value) || value < 0) return;
+    setCreatingAlert(true);
+    const ok = await createAlert(stock.symbol, alertCondition, value);
+    setCreatingAlert(false);
+    if (ok) setAlertThreshold("");
+  };
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
@@ -109,34 +144,44 @@ export default function StockDetails() {
           </Button>
           <Grid container spacing={3} alignItems="center">
             <Grid item xs={12} md={7}>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
-                {[stock.symbol, `Day ${gameDay}`, `${stock.riskLevel} Risk`, stock.fundamentals.analystRating].map((label, i) => (
-                  <Chip key={i} label={label} size="small"
-                    sx={{ bgcolor: D.overlay, color: D.brandText, border: `1px solid ${D.border}`, fontWeight: 800, fontSize: 10.5, fontFamily: MONO }} />
-                ))}
-              </Stack>
-              <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>{stock.name}</Typography>
-              <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.7, maxWidth: 600 }}>{stock.description}</Typography>
-              <Button onClick={() => trading.toggleWatchlist(stock)} startIcon={watchlisted ? <StarIcon /> : <StarBorderIcon />}
-                sx={{ mt: 2, color: watchlisted ? D.amber : D.t2, border: `1px solid ${watchlisted ? D.amber : D.border}`, bgcolor: watchlisted ? D.amberBg : "transparent", fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.amber, borderColor: D.amber, bgcolor: D.amberBg } }}>
-                {watchlisted ? "Watching" : "Add to Watchlist"}
-              </Button>
-              <Button component={RouterLink} to={`/compare?left=${stock.symbol}&right=${compareSymbol}`}
-                sx={{ mt: 2, ml: 1, color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
-                Compare
-              </Button>
+              <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
+                  {[stock.symbol, `Day ${gameDay}`, `${stock.riskLevel} Risk`, stock.fundamentals.analystRating].map((label, i) => (
+                    <Chip key={i} label={label} size="small"
+                      sx={{ bgcolor: D.overlay, color: D.brandText, border: `1px solid ${D.border}`, fontWeight: 800, fontSize: 10.5, fontFamily: MONO }} />
+                  ))}
+                </Stack>
+                <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>{stock.name}</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.7, maxWidth: 600 }}>{stock.description}</Typography>
+                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} style={{ display: "inline-block", marginTop: 16 }}>
+                  <Button onClick={() => trading.toggleWatchlist(stock)} startIcon={watchlisted ? <StarIcon /> : <StarBorderIcon />}
+                    sx={{ color: watchlisted ? D.amber : D.t2, border: `1px solid ${watchlisted ? D.amber : D.border}`, bgcolor: watchlisted ? D.amberBg : "transparent", fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.amber, borderColor: D.amber, bgcolor: D.amberBg } }}>
+                    {watchlisted ? "Watching" : "Add to Watchlist"}
+                  </Button>
+                </motion.div>
+                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} style={{ display: "inline-block", marginTop: 16, marginLeft: 8 }}>
+                  <Button component={RouterLink} to={`/compare?left=${stock.symbol}&right=${compareSymbol}`}
+                    sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
+                    Compare
+                  </Button>
+                </motion.div>
+              </motion.div>
             </Grid>
             <Grid item xs={12} md={5}>
-              <Box sx={{ ...CARD, p: 3 }}>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>CURRENT PRICE</Typography>
-                <Typography sx={{ fontSize: 36, fontWeight: 950, color: D.t1, fontFamily: MONO, lineHeight: 1, mb: 1 }}>{money(stock.currentPrice)}</Typography>
-                <Chip size="small" icon={isUp ? <TrendingUpIcon sx={{ fontSize: 14 }} /> : <TrendingDownIcon sx={{ fontSize: 14 }} />}
-                  label={`${pct(stock.dayChangePercent)} Today`}
-                  sx={{ bgcolor: isUp ? D.greenBg : D.redBg, color: isUp ? D.greenText : D.redText, border: `1px solid ${isUp ? D.greenBd : D.redBd}`, fontWeight: 800, mb: 2 }} />
-                <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 0.8 }}>Risk Level: {stock.riskLevel}</Typography>
-                <LinearProgress variant="determinate" value={riskScore}
-                  sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: stock.riskLevel === "High" ? D.red : D.green, borderRadius: 99 } }} />
-              </Box>
+              <motion.div initial={reduceMotion ? undefined : { opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.1 }}>
+                <Box sx={{ ...CARD, p: 3 }}>
+                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>CURRENT PRICE</Typography>
+                  <motion.div key={stock.currentPrice} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
+                    <Typography sx={{ fontSize: 36, fontWeight: 950, color: D.t1, fontFamily: MONO, lineHeight: 1, mb: 1 }}>{money(stock.currentPrice)}</Typography>
+                  </motion.div>
+                  <Chip size="small" icon={isUp ? <TrendingUpIcon sx={{ fontSize: 14 }} /> : <TrendingDownIcon sx={{ fontSize: 14 }} />}
+                    label={`${pct(stock.dayChangePercent)} Today`}
+                    sx={{ bgcolor: isUp ? D.greenBg : D.redBg, color: isUp ? D.greenText : D.redText, border: `1px solid ${isUp ? D.greenBd : D.redBd}`, fontWeight: 800, mb: 2 }} />
+                  <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 0.8 }}>Risk Level: {stock.riskLevel}</Typography>
+                  <LinearProgress variant="determinate" value={riskScore}
+                    sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: stock.riskLevel === "High" ? D.red : D.green, borderRadius: 99 } }} />
+                </Box>
+              </motion.div>
             </Grid>
           </Grid>
         </Container>
@@ -150,16 +195,19 @@ export default function StockDetails() {
             { label: "P/E Ratio",       val: stock.fundamentals.peRatio.toFixed(1),                 icon: <AssessmentIcon sx={{ fontSize: 20 }} />,           up: true },
             { label: "Revenue Growth",  val: `+${stock.fundamentals.revenueGrowth.toFixed(1)}%`,    icon: <TrendingUpIcon sx={{ fontSize: 20 }} />,            up: true },
             { label: "Volume",          val: latestHistory ? latestHistory.volume.toLocaleString() : "-", icon: <QueryStatsIcon sx={{ fontSize: 20 }} />,      up: undefined },
-          ].map((s) => {
+          ].map((s, i) => {
             const color = s.up === undefined ? D.brandText : D.greenText;
             const bg    = s.up === undefined ? D.brandBg   : D.greenBg;
             return (
               <Grid item xs={12} sm={6} md={3} key={s.label}>
-                <Box sx={{ ...CARD, p: 2.5 }}>
+                <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: Math.min(i * 0.06, 0.24) }}
+                  sx={{ ...CARD, p: 2.5 }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                     <Box>
                       <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
-                      <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                      <motion.div key={s.val} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
+                        <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                      </motion.div>
                     </Box>
                     <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
                   </Stack>
@@ -354,24 +402,131 @@ export default function StockDetails() {
                   </Typography>
                 </Box>
 
-                {tradeMsg && (
-                  <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: tradeMsg.ok ? D.greenBg : D.redBg, border: `1px solid ${tradeMsg.ok ? D.greenBd : D.redBd}`, mb: 1.5 }}>
-                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: tradeMsg.ok ? D.greenText : D.redText }}>{tradeMsg.text}</Typography>
-                  </Box>
-                )}
+                <MotionPresence initial={false}>
+                  {tradeMsg && (
+                    <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 30 }}>
+                      <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: tradeMsg.ok ? D.greenBg : D.redBg, border: `1px solid ${tradeMsg.ok ? D.greenBd : D.redBd}`, mb: 1.5 }}>
+                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: tradeMsg.ok ? D.greenText : D.redText }}>{tradeMsg.text}</Typography>
+                      </Box>
+                    </motion.div>
+                  )}
+                </MotionPresence>
                 <Stack spacing={1}>
-                  <Button fullWidth variant="contained" onClick={handleBuy}
-                    disabled={trading.account.cash < stock.currentPrice * quantity}
-                    sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
-                    Buy {quantity} {quantity === 1 ? "share" : "shares"}
-                  </Button>
-                  <Button fullWidth variant="contained" disabled={sharesOwned < quantity} onClick={handleSell}
-                    sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
-                    Sell {quantity} {quantity === 1 ? "share" : "shares"}
-                  </Button>
+                  <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+                    <Button fullWidth variant="contained" onClick={handleBuy}
+                      disabled={trading.account.cash < stock.currentPrice * quantity}
+                      sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+                      Buy {quantity} {quantity === 1 ? "share" : "shares"}
+                    </Button>
+                  </motion.div>
+                  <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+                    <Button fullWidth variant="contained" disabled={sharesOwned < quantity} onClick={handleSell}
+                      sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+                      Sell {quantity} {quantity === 1 ? "share" : "shares"}
+                    </Button>
+                  </motion.div>
                   <Button fullWidth onClick={() => navigate("/game")}
                     sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
                     Back to Market
+                  </Button>
+                </Stack>
+              </Box>
+
+              {/* AI advisor */}
+              <Box sx={{ ...CARD, p: 3 }}>
+                <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <SmartToyIcon sx={{ fontSize: 18, color: D.brandText }} />
+                    <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Advisor</Typography>
+                  </Stack>
+                  <Chip label={`${money(advisor.cost)}/consult`} size="small"
+                    sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 800, fontSize: 10, fontFamily: MONO }} />
+                </Stack>
+                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2 }}>
+                  A rules-based read of {stock.symbol}'s momentum, fundamentals, and recent news.
+                </Typography>
+
+                {advisor.report && advisor.report.symbol === stock.symbol && (
+                  <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 1.5 }}>
+                    <Chip size="small" label={advisor.report.verdict}
+                      sx={{
+                        mb: 1, fontWeight: 900, fontSize: 10.5,
+                        bgcolor: advisor.report.verdict === "Bullish" ? D.greenBg : advisor.report.verdict === "Cautious" ? D.redBg : D.overlay,
+                        color: advisor.report.verdict === "Bullish" ? D.greenText : advisor.report.verdict === "Cautious" ? D.redText : D.t2,
+                      }} />
+                    <Typography sx={{ fontSize: 12.5, color: D.t1, fontWeight: 700, mb: 1 }}>{advisor.report.summary}</Typography>
+                    <Stack spacing={0.6}>
+                      {advisor.report.points.map((point, i) => (
+                        <Typography key={i} sx={{ fontSize: 11.5, color: D.t3, lineHeight: 1.5 }}>• {point}</Typography>
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
+
+                <Button fullWidth size="small"
+                  disabled={advisor.loading || !advisor.canAfford || advisor.isOnCooldown(stock.symbol)}
+                  onClick={() => advisor.consult(stock)}
+                  sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" }, "&.Mui-disabled": { color: D.t3, borderColor: D.border, bgcolor: D.overlay } }}>
+                  {advisor.isOnCooldown(stock.symbol)
+                    ? "Consulted today"
+                    : !advisor.canAfford
+                    ? "Not enough cash"
+                    : `Ask the Advisor (${money(advisor.cost)})`}
+                </Button>
+              </Box>
+
+              {/* Price alerts */}
+              <Box sx={{ ...CARD, p: 3 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                  <NotificationsActiveIcon sx={{ fontSize: 18, color: D.brandText }} />
+                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Price Alerts</Typography>
+                </Stack>
+                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2 }}>
+                  Get notified when {stock.symbol} crosses a threshold.
+                </Typography>
+
+                {symbolAlerts.length > 0 && (
+                  <Stack spacing={1} sx={{ mb: 2 }}>
+                    {symbolAlerts.map((alert) => (
+                      <Stack key={alert.id} direction="row" alignItems="center" justifyContent="space-between"
+                        sx={{ p: 1.4, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                        <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: D.t1 }}>{describeAlert(alert)}</Typography>
+                        <IconButton size="small" onClick={() => deleteAlert(alert.id)} sx={{ color: D.t3, "&:hover": { color: D.redText } }}>
+                          <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Stack>
+                    ))}
+                  </Stack>
+                )}
+
+                <Stack spacing={1}>
+                  <Select size="small" value={alertCondition} onChange={(e) => setAlertCondition(e.target.value as AlertCondition)}
+                    sx={{
+                      bgcolor: D.elevated, color: D.t1, borderRadius: 1.5, fontSize: 13,
+                      "& .MuiOutlinedInput-notchedOutline": { borderColor: D.border },
+                      "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: D.borderHi },
+                    }}>
+                    {ALERT_CONDITIONS.map((c) => (
+                      <MenuItem key={c.value} value={c.value} sx={{ fontSize: 13 }}>{c.label}</MenuItem>
+                    ))}
+                  </Select>
+                  <TextField
+                    size="small" type="number" value={alertThreshold}
+                    onChange={(e) => setAlertThreshold(e.target.value)}
+                    placeholder={isPctCondition ? "e.g. 5 (%)" : `e.g. ${stock.currentPrice.toFixed(2)}`}
+                    InputProps={{ startAdornment: isPctCondition ? undefined : <Typography sx={{ fontSize: 13, color: D.t3, mr: 0.5 }}>$</Typography> }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        bgcolor: D.elevated, color: D.t1, borderRadius: 1.5, fontSize: 13,
+                        "& fieldset": { borderColor: D.border },
+                        "&:hover fieldset": { borderColor: D.borderHi },
+                        "&.Mui-focused fieldset": { borderColor: D.brand },
+                      },
+                    }}
+                  />
+                  <Button fullWidth size="small" disabled={creatingAlert || !alertThreshold} onClick={handleCreateAlert}
+                    sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
+                    Set Alert
                   </Button>
                 </Stack>
               </Box>
@@ -388,13 +543,18 @@ export default function StockDetails() {
                   <Typography sx={{ fontSize: 13, color: D.t3 }}>No related news yet.</Typography>
                 ) : (
                   <Stack spacing={1.2}>
-                    {relatedNews.slice(-8).map((n) => (
-                        <Box key={n.newsId} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                    <MotionPresence mode="popLayout" initial={false}>
+                    {relatedNews.slice(-8).map((n, index) => (
+                        <Box key={n.newsId} component={motion.div} layout={!reduceMotion}
+                          initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
+                          transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
+                          sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                           <Chip size="small" label={n.importance} sx={{ bgcolor: n.importance === "High" ? D.redBg : D.amberBg, color: n.importance === "High" ? D.redText : D.amber, fontWeight: 800, fontSize: 10, mb: 0.8 }} />
                           <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1, mb: 0.3 }}>Day {n.gameDay}: {n.headline}</Typography>
                           <Typography sx={{ fontSize: 12, color: D.t3, lineHeight: 1.6 }}>{n.body}</Typography>
                         </Box>
                     ))}
+                    </MotionPresence>
                   </Stack>
                 )}
               </Box>

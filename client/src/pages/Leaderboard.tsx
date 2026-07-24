@@ -15,10 +15,17 @@ import ClearIcon from "@mui/icons-material/Clear";
 import TimerIcon from "@mui/icons-material/Timer";
 import AllInclusiveIcon from "@mui/icons-material/AllInclusive";
 import { Link as RouterLink } from "react-router-dom";
-import { fetchLeaderboard } from "../lib/api";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { D, CARD, MONO, money } from "../theme/design";
+
+// Framer Motion 11 predates React 19's stricter JSX return type.
+const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
+  initial?: boolean;
+  mode?: "sync" | "popLayout" | "wait";
+}>>;
 
 type LeaderboardRow = {
   run_id?: string;
@@ -72,6 +79,7 @@ function buildRanked(rows: LeaderboardRow[]): RankedPlayer[] {
 }
 
 export default function Leaderboard() {
+  const reduceMotion = useReducedMotion();
   const { user } = useAuth();
   const { syncSessionValue } = useGame();
   const [players, setPlayers]   = useState<RankedPlayer[]>([]);
@@ -91,24 +99,17 @@ export default function Leaderboard() {
     (async () => {
       await syncSessionValue();
       if (cancelled) return;
-<<<<<<< HEAD
       try {
-        const rows = await fetchLeaderboard(50);
+        const { data, error: rpcError } = category === "thirty_day"
+          ? await supabase.rpc("get_30_day_leaderboard", { p_limit: 50 })
+          : await supabase.rpc("get_leaderboard", { p_limit: 50 });
         if (cancelled) return;
-        setPlayers(buildRanked(rows as unknown as LeaderboardRow[]));
+        if (rpcError) { setError(rpcError.message); setLoading(false); return; }
+        setPlayers(buildRanked((data ?? []) as LeaderboardRow[]));
       } catch (leaderboardError: any) {
         if (!cancelled) setError(leaderboardError?.message ?? "Could not load leaderboard.");
       }
       if (!cancelled) setLoading(false);
-=======
-      const { data, error: rpcError } = category === "thirty_day"
-        ? await supabase.rpc("get_30_day_leaderboard", { p_limit: 50 })
-        : await supabase.rpc("get_leaderboard", { p_limit: 50 });
-      if (cancelled) return;
-      if (rpcError) { setError(rpcError.message); setLoading(false); return; }
-      setPlayers(buildRanked((data ?? []) as LeaderboardRow[]));
-      setLoading(false);
->>>>>>> 0811f95 (feat: enhance game and leaderboard features with achievement unlock notifications and 30-day leaderboard)
     })();
 
     return () => { cancelled = true; };
@@ -140,61 +141,57 @@ export default function Leaderboard() {
 
   const topThree     = sorted.slice(0, 3);
   const currentEntry = user ? sorted.find((p) => p.user_id === user.id) : undefined;
-<<<<<<< HEAD
-  // "Top Net Worth" is the maximum net worth regardless of the active sort.
-  const topNetWorth  = players.length
-    ? players.reduce((max, p) => Math.max(max, p.best_net_worth), -Infinity)
-    : null;
+  const isThirtyDay = category === "thirty_day";
+  const entryKey = (entry: RankedPlayer) => entry.run_id ?? entry.user_id;
   // Progress bars are normalized across the currently-sorted metric's range, so
   // they stay meaningful even when every value is negative (e.g. Return %).
   const metricValues = sorted.map((p) => (sortBy === "net_worth" ? p.best_net_worth : p.return_pct));
   const metricMax    = metricValues.length ? Math.max(...metricValues) : 0;
   const metricMin    = metricValues.length ? Math.min(...metricValues) : 0;
   const metricRange  = metricMax - metricMin;
-=======
-  const topValue     = sorted[0]
-    ? (sortBy === "net_worth" ? sorted[0].best_net_worth : sorted[0].return_pct)
-    : 1;
-  const isThirtyDay = category === "thirty_day";
-  const entryKey = (entry: RankedPlayer) => entry.run_id ?? entry.user_id;
->>>>>>> 0811f95 (feat: enhance game and leaderboard features with achievement unlock notifications and 30-day leaderboard)
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
-            <Box>
-              <Chip label="GLOBAL RANKINGS" size="small"
-                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Leaderboard</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
-                {isThirtyDay ? "Completed 30-day challenges ranked by final net worth." : "Global rankings across live trading runs."}
-              </Typography>
-            </Box>
-            <Box sx={{ ...CARD, p: 2.5, minWidth: 240 }}>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>YOUR RANK</Typography>
-              <Typography sx={{ fontSize: 36, fontWeight: 950, color: D.brandText, fontFamily: MONO, lineHeight: 1 }}>
-                {loading ? "—" : currentEntry ? `#${currentEntry.rank}` : "—"}
-              </Typography>
-              {currentEntry && (
-                <>
-                  <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>
-                    {money(currentEntry.best_net_worth)} {isThirtyDay ? "best 30-day finish" : "best run"}
+          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
+              <Box>
+                <Chip label="GLOBAL RANKINGS" size="small"
+                  sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+                <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Leaderboard</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
+                  {isThirtyDay ? "Completed 30-day challenges ranked by final net worth." : "Global rankings across live trading runs."}
+                </Typography>
+              </Box>
+              <Box sx={{ ...CARD, p: 2.5, minWidth: 240 }}>
+                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>YOUR RANK</Typography>
+                <motion.div key={loading ? "loading" : currentEntry?.rank ?? "none"} initial={reduceMotion ? false : { opacity: 0, y: 6, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 420, damping: 24 }}>
+                  <Typography sx={{ fontSize: 36, fontWeight: 950, color: D.brandText, fontFamily: MONO, lineHeight: 1 }}>
+                    {loading ? "—" : currentEntry ? `#${currentEntry.rank}` : "—"}
                   </Typography>
-                  <Tooltip title={TIER_TOOLTIPS[currentEntry.badge] ?? ""} placement="bottom" arrow>
-                    <Chip label={currentEntry.badge} size="small"
-                      sx={{ mt: 0.8, bgcolor: D.brandBg, color: currentEntry.tierColor, fontWeight: 800, fontSize: 10, cursor: "help" }} />
-                  </Tooltip>
-                </>
-              )}
-              <Button component={RouterLink} to="/game" size="small"
-                sx={{ mt: 1.2, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 700, fontSize: 12, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
-                Improve Rank →
-              </Button>
-            </Box>
-          </Stack>
+                </motion.div>
+                {currentEntry && (
+                  <>
+                    <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>
+                      {money(currentEntry.best_net_worth)} {isThirtyDay ? "best 30-day finish" : "best run"}
+                    </Typography>
+                    <Tooltip title={TIER_TOOLTIPS[currentEntry.badge] ?? ""} placement="bottom" arrow>
+                      <Chip label={currentEntry.badge} size="small"
+                        sx={{ mt: 0.8, bgcolor: D.brandBg, color: currentEntry.tierColor, fontWeight: 800, fontSize: 10, cursor: "help" }} />
+                    </Tooltip>
+                  </>
+                )}
+                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }} style={{ display: "inline-block", marginTop: 10 }}>
+                  <Button component={RouterLink} to="/game" size="small"
+                    sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 700, fontSize: 12, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
+                    Improve Rank →
+                  </Button>
+                </motion.div>
+              </Box>
+            </Stack>
+          </motion.div>
         </Container>
       </Box>
 
@@ -233,22 +230,20 @@ export default function Leaderboard() {
         {/* ── Stat tiles ───────────────────────────────────────────────────── */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
-<<<<<<< HEAD
-            { label: "Top Net Worth",  val: topNetWorth !== null ? money(topNetWorth) : "—",                                            icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />,           color: "#F59E0B",   bg: "rgba(245,158,11,0.1)" },
-            { label: "Your Best Run",  val: currentEntry ? money(currentEntry.best_net_worth) : "—",                                   icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />,   color: D.greenText, bg: D.greenBg },
-=======
             { label: isThirtyDay ? "Top 30-Day Finish" : "Top Net Worth", val: sorted[0] ? money(sorted[0].best_net_worth) : "—", icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />, color: "#F59E0B", bg: "rgba(245,158,11,0.1)" },
             { label: isThirtyDay ? "Your Best 30-Day" : "Your Best Run", val: currentEntry ? money(currentEntry.best_net_worth) : "—", icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, color: D.greenText, bg: D.greenBg },
->>>>>>> 0811f95 (feat: enhance game and leaderboard features with achievement unlock notifications and 30-day leaderboard)
             { label: "Your Return",    val: currentEntry ? `${currentEntry.return_pct >= 0 ? "+" : ""}${currentEntry.return_pct.toFixed(1)}%` : "—", icon: <TrendingUpIcon sx={{ fontSize: 20 }} />, color: D.greenText, bg: D.greenBg },
             { label: isThirtyDay ? "Completed Runs" : "Players Ranked", val: loading ? "—" : players.length.toString(), icon: <WorkspacePremiumIcon sx={{ fontSize: 20 }} />, color: D.brandText, bg: D.brandBg },
-          ].map((s) => (
+          ].map((s, i) => (
             <Grid item xs={12} sm={6} md={3} key={s.label}>
-              <Box sx={{ ...CARD, p: 2.5 }}>
+              <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: Math.min(i * 0.06, 0.24) }}
+                sx={{ ...CARD, p: 2.5 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                   <Box>
                     <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
-                    <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                    <motion.div key={s.val} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
+                      <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                    </motion.div>
                   </Box>
                   <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: s.bg, color: s.color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
                 </Stack>
@@ -334,8 +329,12 @@ export default function Leaderboard() {
 
                     {/* Top-3 detail cards */}
                     <Stack spacing={1.5}>
+                      <MotionPresence mode="popLayout" initial={false}>
                       {topThree.map((p) => (
-                        <Box key={entryKey(p)} sx={{ p: 2, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${p.user_id === user?.id ? D.brandBd : D.border}` }}>
+                        <Box key={entryKey(p)} component={motion.div} layout={!reduceMotion}
+                          initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
+                          transition={{ duration: 0.24, layout: { type: "spring", stiffness: 420, damping: 34 } }}
+                          sx={{ p: 2, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${p.user_id === user?.id ? D.brandBd : D.border}` }}>
                           <Stack direction="row" spacing={1.5} alignItems="center">
                             <Avatar src={p.avatar_url ?? undefined}
                               sx={{ bgcolor: MEDAL_COLORS[p.rank - 1] ?? D.brand, color: "#09090F", fontWeight: 900, width: 36, height: 36, fontSize: 15 }}>
@@ -353,6 +352,7 @@ export default function Leaderboard() {
                           </Stack>
                         </Box>
                       ))}
+                      </MotionPresence>
                     </Stack>
                   </>
                 )}
@@ -386,10 +386,12 @@ export default function Leaderboard() {
                       <ToggleButton value="net_worth">Net Worth</ToggleButton>
                       <ToggleButton value="return_pct">Return %</ToggleButton>
                     </ToggleButtonGroup>
-                    <IconButton size="small" title="Refresh leaderboard" aria-label="Refresh leaderboard" onClick={() => setRefreshKey((k) => k + 1)}
-                      sx={{ color: D.t2, border: `1px solid ${D.border}`, borderRadius: 1.5, p: 0.8, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
-                      <RefreshIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
+                    <motion.div whileHover={reduceMotion ? undefined : { rotate: 90 }} whileTap={reduceMotion ? undefined : { scale: 0.9 }} transition={{ duration: 0.2 }}>
+                      <IconButton size="small" title="Refresh leaderboard" aria-label="Refresh leaderboard" onClick={() => setRefreshKey((k) => k + 1)}
+                        sx={{ color: D.t2, border: `1px solid ${D.border}`, borderRadius: 1.5, p: 0.8, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
+                        <RefreshIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </motion.div>
                   </Stack>
                 </Stack>
 
@@ -433,13 +435,17 @@ export default function Leaderboard() {
                     </Box>
                   ) : (
                     <Stack spacing={1.2}>
-                      {filtered.map((p) => {
+                      <MotionPresence mode="popLayout" initial={false}>
+                      {filtered.map((p, index) => {
                         const isYou    = p.user_id === user?.id;
                         const val      = sortBy === "net_worth" ? p.best_net_worth : p.return_pct;
                         const progress = Math.max(0, Math.min(100, metricRange > 0 ? ((val - metricMin) / metricRange) * 100 : 100));
                         const rankBg   = p.rank === 1 ? "rgba(245,158,11,0.12)" : p.rank === 2 ? "rgba(148,163,184,0.12)" : p.rank === 3 ? "rgba(201,139,95,0.12)" : D.overlay;
                         return (
-                          <Box key={entryKey(p)} ref={isYou ? myRowRef : undefined} sx={{ p: 2, borderRadius: 2, bgcolor: isYou ? D.brandBg : D.elevated, border: `1px solid ${isYou ? D.brandBd : D.border}` }}>
+                          <Box key={entryKey(p)} ref={isYou ? myRowRef : undefined} component={motion.div} layout={!reduceMotion}
+                            initial={reduceMotion ? false : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
+                            transition={{ duration: 0.24, delay: Math.min(index * 0.02, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
+                            sx={{ p: 2, borderRadius: 2, bgcolor: isYou ? D.brandBg : D.elevated, border: `1px solid ${isYou ? D.brandBd : D.border}` }}>
                             <Grid container spacing={1.5} alignItems="center">
                               {/* Rank */}
                               <Grid item xs="auto">
@@ -498,6 +504,7 @@ export default function Leaderboard() {
                           </Box>
                         );
                       })}
+                      </MotionPresence>
                     </Stack>
                   )}
                 </Box>

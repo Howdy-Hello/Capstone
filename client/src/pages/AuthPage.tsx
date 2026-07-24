@@ -12,6 +12,7 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import GoogleIcon from "@mui/icons-material/Google";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { useAuthThrottle } from "../lib/authThrottle";
 import { D, MONO } from "../theme/design";
 
 type Mode = "login" | "signup" | "reset";
@@ -50,6 +51,9 @@ const AuthPage: React.FC = () => {
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
 
+  const throttleKey = `${mode === "reset" ? "login" : mode}:${email.trim().toLowerCase() || "anon"}`;
+  const throttle = useAuthThrottle(throttleKey);
+
   useEffect(() => {
     if (user) navigate("/dashboard", { replace: true });
   }, [user, navigate]);
@@ -83,6 +87,10 @@ const AuthPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
+    if ((mode === "login" || mode === "signup") && throttle.isLocked) {
+      setError(`Too many attempts. Try again in ${throttle.remainingSeconds}s.`);
+      return;
+    }
     const err = validate();
     if (err) { setError(err); return; }
     setSubmitting(true);
@@ -90,14 +98,20 @@ const AuthPage: React.FC = () => {
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
+          throttle.recordFailure();
           // Surface a resend option when the account exists but isn't confirmed.
           if (/confirm|verif/i.test(error.message)) setPendingEmail(email);
           throw error;
         }
+        throttle.recordSuccess();
         navigate("/dashboard", { replace: true });
       } else if (mode === "signup") {
         const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } });
-        if (error) throw error;
+        if (error) {
+          throttle.recordFailure();
+          throw error;
+        }
+        throttle.recordSuccess();
         if (data.session) {
           navigate("/dashboard", { replace: true });
         } else {
@@ -230,6 +244,16 @@ const AuthPage: React.FC = () => {
               <Typography sx={{ fontSize: 13.5, color: D.t2, mb: 3 }}>{headings[mode].sub}</Typography>
 
               {error && <Alert severity="error" sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{error}</Alert>}
+              {!error && (mode === "login" || mode === "signup") && throttle.isLocked && (
+                <Alert severity="warning" sx={{ mb: 2, bgcolor: D.amberBg, color: D.t1, border: `1px solid ${D.border}`, fontSize: 13 }}>
+                  Too many attempts. Try again in {throttle.remainingSeconds}s.
+                </Alert>
+              )}
+              {!error && (mode === "login" || mode === "signup") && !throttle.isLocked && throttle.attemptsLeft <= 2 && throttle.attemptsLeft > 0 && (
+                <Alert severity="warning" sx={{ mb: 2, bgcolor: D.amberBg, color: D.t1, border: `1px solid ${D.border}`, fontSize: 13 }}>
+                  {throttle.attemptsLeft} attempt{throttle.attemptsLeft === 1 ? "" : "s"} left before a short cooldown.
+                </Alert>
+              )}
               {successMsg && <Alert severity="success" sx={{ mb: 2, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 13 }}>{successMsg}</Alert>}
               {pendingEmail && (
                 <Button type="button" variant="text" size="small" disabled={resending} onClick={handleResendConfirmation}
@@ -274,9 +298,14 @@ const AuthPage: React.FC = () => {
                   </Box>
                 )}
 
-                <Button type="submit" variant="contained" size="large" disabled={submitting}
+                <Button type="submit" variant="contained" size="large"
+                  disabled={submitting || ((mode === "login" || mode === "signup") && throttle.isLocked)}
                   sx={{ bgcolor: D.brand, py: 1.4, borderRadius: 2, fontWeight: 900, fontSize: 14, textTransform: "none", boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, mt: 0.5 }}>
-                  {submitting ? "Please wait…" : mode === "login" ? "Log in" : mode === "signup" ? "Create account" : "Send reset link"}
+                  {submitting
+                    ? "Please wait…"
+                    : (mode === "login" || mode === "signup") && throttle.isLocked
+                      ? `Locked (${throttle.remainingSeconds}s)`
+                      : mode === "login" ? "Log in" : mode === "signup" ? "Create account" : "Send reset link"}
                 </Button>
 
                 <Divider sx={{ borderColor: D.border, my: 0.5 }} />

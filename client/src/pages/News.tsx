@@ -8,10 +8,17 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { Link as RouterLink, useLocation } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { getNewsCredibility, MarketNews, NewsCredibility } from "../data/mockStocks";
 import { useGame } from "../context/GameContext";
 import { D, CARD, MONO } from "../theme/design";
+
+// Framer Motion 11 predates React 19's stricter JSX return type.
+const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
+  initial?: boolean;
+  mode?: "sync" | "popLayout" | "wait";
+}>>;
 
 function credColorKeys(rating: NewsCredibility["rating"]): { fg: keyof typeof D; bg: keyof typeof D } {
   if (rating === "high") return { fg: "greenText", bg: "greenBg" };
@@ -27,13 +34,17 @@ const TONE_CONFIG = {
   Unclear:  { label: "Unclear",  icon: <HelpOutlineIcon sx={{ fontSize: 12 }} />,  bg: "amberBg",   color: "amber",      bd: ""         },
 } as const;
 
-function NewsCard({ news }: { news: MarketNews }) {
+function NewsCard({ news, index = 0 }: { news: MarketNews; index?: number }) {
+  const reduceMotion = useReducedMotion();
   const imp  = news.importance === "High";
   const tone = TONE_CONFIG[news.marketTone] ?? TONE_CONFIG.Unclear;
   const cred = getNewsCredibility(news);
   const credKeys = credColorKeys(cred.rating);
   return (
-    <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 2 }}>
+    <Box component={motion.div} layout={!reduceMotion}
+      initial={reduceMotion ? false : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
+      transition={{ duration: 0.24, delay: Math.min(index * 0.04, 0.28), layout: { type: "spring", stiffness: 420, damping: 34 } }}
+      sx={{ p: 2.5, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 2 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2} sx={{ mb: 1.2 }}>
         <Box sx={{ flex: 1 }}>
           <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO, mb: 0.4 }}>
@@ -80,6 +91,7 @@ function NewsCard({ news }: { news: MarketNews }) {
 }
 
 export default function News() {
+  const reduceMotion = useReducedMotion();
   const location = useLocation();
   const state = location.state as LocationState | null;
   const game = useGame();
@@ -93,17 +105,21 @@ export default function News() {
       {/* Hero */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
-            <Box>
-              <Chip label={`DAY ${gameDay} NEWS`} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Market Headlines</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Story headlines for Day {gameDay}. Later days can run without major news.</Typography>
-            </Box>
-            <Button component={RouterLink} to="/game" variant="contained"
-              sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, alignSelf: { xs: "flex-start", md: "center" } }}>
-              Trade the Market →
-            </Button>
-          </Stack>
+          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
+              <Box>
+                <Chip label={`DAY ${gameDay} NEWS`} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+                <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Market Headlines</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Story headlines for Day {gameDay}. Later days can run without major news.</Typography>
+              </Box>
+              <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }} style={{ alignSelf: "flex-start" }}>
+                <Button component={RouterLink} to="/game" variant="contained"
+                  sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, alignSelf: { xs: "flex-start", md: "center" } }}>
+                  Trade the Market →
+                </Button>
+              </motion.div>
+            </Stack>
+          </motion.div>
         </Container>
       </Box>
 
@@ -115,16 +131,19 @@ export default function News() {
             { label: "Stories",        val: marketNews.length.toString(), icon: <NewspaperIcon sx={{ fontSize: 20 }} />,      up: undefined },
             { label: "Tickers",        val: relatedTickerCount.toString(), icon: <NewspaperIcon sx={{ fontSize: 20 }} />,      up: undefined },
             { label: "High Priority",  val: highImportance.length.toString(), icon: <ReportProblemIcon sx={{ fontSize: 20 }} />, up: false },
-          ].map((s) => {
+          ].map((s, i) => {
             const color = s.up === undefined ? D.brandText : s.up ? D.greenText : D.redText;
             const bg    = s.up === undefined ? D.brandBg   : s.up ? D.greenBg   : D.redBg;
             return (
               <Grid item xs={6} sm={3} key={s.label}>
-                <Box sx={{ ...CARD, p: 2.5 }}>
+                <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: Math.min(i * 0.06, 0.24) }}
+                  sx={{ ...CARD, p: 2.5 }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                     <Box>
                       <Typography sx={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 0.8, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
-                      <Typography sx={{ fontSize: 24, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                      <motion.div key={s.val} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
+                        <Typography sx={{ fontSize: 24, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                      </motion.div>
                     </Box>
                     <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
                   </Stack>
@@ -149,7 +168,9 @@ export default function News() {
                     <Typography sx={{ fontSize: 13, color: D.t3 }}>Prices still move from drift, sector trends, and volatility.</Typography>
                   </Box>
                 ) : (
-                  marketNews.map((n) => <NewsCard key={n.newsId} news={n} />)
+                  <MotionPresence mode="popLayout" initial={false}>
+                    {marketNews.map((n, i) => <NewsCard key={n.newsId} news={n} index={i} />)}
+                  </MotionPresence>
                 )}
               </Box>
             </Box>
@@ -204,10 +225,12 @@ export default function News() {
               <Typography sx={{ fontWeight: 800, fontSize: 17, color: D.t1 }}>Think before you trade.</Typography>
               <Typography sx={{ fontSize: 13, color: D.t3 }}>Headlines create opportunity, but they also trick careless traders.</Typography>
             </Box>
-            <Button component={RouterLink} to="/game" variant="contained"
-              sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, boxShadow: "none", px: 3, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, flexShrink: 0 }}>
-              Open Simulator →
-            </Button>
+            <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
+              <Button component={RouterLink} to="/game" variant="contained"
+                sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, boxShadow: "none", px: 3, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, flexShrink: 0 }}>
+                Open Simulator →
+              </Button>
+            </motion.div>
           </Stack>
         </Box>
       </Container>

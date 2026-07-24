@@ -9,6 +9,7 @@ import { D } from "./theme/design";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
+import NotificationHost from "./components/NotificationHost";
 
 import Home from "./pages/Home";
 import AuthPage from "./pages/AuthPage";
@@ -82,6 +83,8 @@ function AppLayout() {
       <Box component="footer" sx={{ width: "100%", flexShrink: 0 }}>
         <Footer />
       </Box>
+
+      <NotificationHost />
     </Box>
   );
 }

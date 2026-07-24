@@ -11,10 +11,17 @@ import SaveIcon from "@mui/icons-material/Save";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useLocation, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import ThemeSettingsPanel from "../components/ThemeSettingsPanel";
 import { D, CARD, MONO } from "../theme/design";
+
+// Framer Motion 11 predates React 19's stricter JSX return type.
+const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
+  initial?: boolean;
+  mode?: "sync" | "popLayout" | "wait";
+}>>;
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const AVATAR_BUCKET = "avatars";
@@ -37,6 +44,7 @@ const fieldSx = {
 };
 
 export default function ProfilePage() {
+  const reduceMotion = useReducedMotion();
   const { user, profile, profileLoading, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -198,42 +206,45 @@ export default function ProfilePage() {
       {/* Hero */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
         <Container maxWidth="md" sx={{ py: { xs: 3, md: 4 } }}>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={3} alignItems={{ sm: "center" }}>
-            {/* Avatar */}
-            <Box sx={{ position: "relative", flexShrink: 0 }}>
-              <Avatar src={avatarUrl ?? undefined}
-                sx={{ width: 80, height: 80, bgcolor: D.elevated, border: `2px solid ${D.border}`, fontSize: 26, fontWeight: 950, color: D.brandText }}>
-                {!avatarUrl && initials}
-              </Avatar>
-              <Tooltip title="Change photo">
-                <IconButton onClick={() => fileRef.current?.click()} disabled={uploadingAvatar}
-                  sx={{ position: "absolute", bottom: -4, right: -4, width: 28, height: 28, bgcolor: D.brand, color: "#fff", "&:hover": { bgcolor: D.brandMid }, boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
-                  {uploadingAvatar ? <CircularProgress size={12} sx={{ color: "#fff" }} /> : <CameraAltIcon sx={{ fontSize: 14 }} />}
-                </IconButton>
-              </Tooltip>
-              <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
-            </Box>
+          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={3} alignItems={{ sm: "center" }}>
+              {/* Avatar */}
+              <Box sx={{ position: "relative", flexShrink: 0 }}>
+                <Avatar src={avatarUrl ?? undefined}
+                  sx={{ width: 80, height: 80, bgcolor: D.elevated, border: `2px solid ${D.border}`, fontSize: 26, fontWeight: 950, color: D.brandText }}>
+                  {!avatarUrl && initials}
+                </Avatar>
+                <Tooltip title="Change photo">
+                  <IconButton onClick={() => fileRef.current?.click()} disabled={uploadingAvatar}
+                    sx={{ position: "absolute", bottom: -4, right: -4, width: 28, height: 28, bgcolor: D.brand, color: "#fff", "&:hover": { bgcolor: D.brandMid }, boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
+                    {uploadingAvatar ? <CircularProgress size={12} sx={{ color: "#fff" }} /> : <CameraAltIcon sx={{ fontSize: 14 }} />}
+                  </IconButton>
+                </Tooltip>
+                <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
+              </Box>
 
-            <Box sx={{ flex: 1 }}>
-              <Chip label={isSettings ? "SETTINGS" : "PROFILE"} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography sx={{ fontWeight: 950, fontSize: { xs: 22, md: 26 }, color: D.t1, lineHeight: 1.1 }}>
-                {isSettings ? "Account Settings" : displayName || user.email?.split("@")[0] || "Your Profile"}
-              </Typography>
-              <Typography sx={{ fontSize: 13, color: D.t3, mt: 0.5 }}>{user.email}</Typography>
-            </Box>
+              <Box sx={{ flex: 1 }}>
+                <Chip label={isSettings ? "SETTINGS" : "PROFILE"} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+                <Typography sx={{ fontWeight: 950, fontSize: { xs: 22, md: 26 }, color: D.t1, lineHeight: 1.1 }}>
+                  {isSettings ? "Account Settings" : displayName || user.email?.split("@")[0] || "Your Profile"}
+                </Typography>
+                <Typography sx={{ fontSize: 13, color: D.t3, mt: 0.5 }}>{user.email}</Typography>
+              </Box>
 
-            <Button onClick={async () => { await signOut(); navigate("/"); }} startIcon={<LogoutIcon />}
-              sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 2, border: `1px solid ${D.border}`, px: 2, flexShrink: 0, fontSize: 13, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
-              Log out
-            </Button>
-          </Stack>
+              <Button onClick={async () => { await signOut(); navigate("/"); }} startIcon={<LogoutIcon />}
+                sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 2, border: `1px solid ${D.border}`, px: 2, flexShrink: 0, fontSize: 13, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
+                Log out
+              </Button>
+            </Stack>
+          </motion.div>
         </Container>
       </Box>
 
       <Container maxWidth="md" sx={{ py: { xs: 3, md: 4 } }}>
         <Stack spacing={3}>
           {/* Profile form */}
-          <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+          <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32 }}
+            sx={{ ...CARD, p: 0, overflow: "hidden" }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
               <EditIcon sx={{ color: D.brandText, fontSize: 18 }} />
               <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Profile Details</Typography>
@@ -241,9 +252,23 @@ export default function ProfilePage() {
             <Box sx={{ p: 3 }}>
               <Typography sx={{ fontSize: 13, color: D.t3, mb: 3 }}>Your name and bio are visible on the leaderboard and achievements pages.</Typography>
 
-              {saveErr && <Alert severity="error" onClose={() => setSaveErr(null)} sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{saveErr}</Alert>}
-              {saveMsg && <Alert severity="success" sx={{ mb: 2, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 13 }}>{saveMsg}</Alert>}
-              {avatarErr && <Alert severity="error" onClose={() => setAvatarErr(null)} sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{avatarErr}</Alert>}
+              <MotionPresence initial={false}>
+                {saveErr && (
+                  <motion.div key="saveErr" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
+                    <Alert severity="error" onClose={() => setSaveErr(null)} sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{saveErr}</Alert>
+                  </motion.div>
+                )}
+                {saveMsg && (
+                  <motion.div key="saveMsg" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
+                    <Alert severity="success" sx={{ mb: 2, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 13 }}>{saveMsg}</Alert>
+                  </motion.div>
+                )}
+                {avatarErr && (
+                  <motion.div key="avatarErr" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
+                    <Alert severity="error" onClose={() => setAvatarErr(null)} sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{avatarErr}</Alert>
+                  </motion.div>
+                )}
+              </MotionPresence>
 
               <Grid container spacing={2.5}>
                 <Grid item xs={12} sm={6}>
@@ -261,18 +286,23 @@ export default function ProfilePage() {
                 </Grid>
               </Grid>
 
-              <Button onClick={handleSave} disabled={saving} variant="contained"
-                startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon />}
-                sx={{ mt: 3, bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-                {saving ? "Saving…" : "Save Profile"}
-              </Button>
+              <motion.div whileHover={reduceMotion || saving ? undefined : { y: -2 }} whileTap={reduceMotion || saving ? undefined : { scale: 0.98 }} style={{ display: "inline-block", marginTop: 24 }}>
+                <Button onClick={handleSave} disabled={saving} variant="contained"
+                  startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon />}
+                  sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
+                  {saving ? "Saving…" : "Save Profile"}
+                </Button>
+              </motion.div>
             </Box>
           </Box>
 
-          <ThemeSettingsPanel />
+          <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.05 }}>
+            <ThemeSettingsPanel />
+          </Box>
 
           {/* Avatar management */}
-          <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+          <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.1 }}
+            sx={{ ...CARD, p: 0, overflow: "hidden" }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
               <CameraAltIcon sx={{ color: D.brandText, fontSize: 18 }} />
               <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Profile Picture</Typography>
@@ -302,7 +332,8 @@ export default function ProfilePage() {
           </Box>
 
           {/* Danger zone */}
-          <Box sx={{ bgcolor: D.surface, border: `1px solid ${D.redBd}`, borderRadius: 2, p: 0, overflow: "hidden" }}>
+          <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.15 }}
+            sx={{ bgcolor: D.surface, border: `1px solid ${D.redBd}`, borderRadius: 2, p: 0, overflow: "hidden" }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.redBd}` }}>
               <WarningAmberIcon sx={{ color: D.redText, fontSize: 18 }} />
               <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.redText }}>Danger Zone</Typography>

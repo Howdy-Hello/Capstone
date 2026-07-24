@@ -1745,6 +1745,97 @@ function getMarketDrift(gameDay: number, marketSeed?: string | null) {
   return longTermBias + cycle + randomMarketShock;
 }
 
+// Volatility clustering: a big move yesterday makes a big move today more
+// likely (real markets don't reset to calm the day after a shock). We
+// recompute yesterday's shock+event magnitude deterministically rather than
+// threading actual return history through the call chain.
+function getVolatilityClusterMultiplier(
+  company: StockCompany,
+  gameDay: number,
+  marketSeed?: string | null
+) {
+  if (gameDay <= STORY_DAYS + 1) return 1;
+
+  const priorShock = Math.abs(
+    seededRange(`shock-${company.symbol}-${gameDay - 1}`, -1, 1, marketSeed)
+  );
+  const priorEventImpact = Math.abs(getEventImpact(company, gameDay - 1, marketSeed));
+  const priorIntensity = clamp(priorShock + priorEventImpact / Math.max(company.volatility, 0.01), 0, 2);
+
+  return clamp(0.75 + priorIntensity * 0.5, 0.75, 1.75);
+}
+
+// Earnings calendar: each company reports on a fixed, staggered ~3-week cycle
+// (so the whole market doesn't report on the same day) with a real
+// beat/meet/miss distribution and a next-day "post-earnings drift" — a
+// smaller same-direction continuation, mirroring the real-world effect where
+// the market keeps digesting a surprise for a day or two after the print.
+const EARNINGS_CYCLE_DAYS = 21;
+
+function getEarningsOffset(company: StockCompany, marketSeed?: string | null) {
+  return Math.floor(seededRandom(`earnings-offset-${company.symbol}`, marketSeed) * EARNINGS_CYCLE_DAYS);
+}
+
+function isEarningsDay(company: StockCompany, gameDay: number, marketSeed?: string | null) {
+  if (gameDay <= STORY_DAYS) return false;
+  const offset = getEarningsOffset(company, marketSeed);
+  return (gameDay - STORY_DAYS - 1 - offset) % EARNINGS_CYCLE_DAYS === 0;
+}
+
+function generateEarningsEvent(
+  company: StockCompany,
+  gameDay: number,
+  marketSeed?: string | null
+): MarketNews {
+  const surpriseRoll = seededRandom(`earnings-surprise-${company.symbol}-${gameDay}`, marketSeed);
+  // Roughly mirrors real-world earnings-surprise rates: beats are most common,
+  // in-line prints are a real minority, misses are the tail risk.
+  const outcome: "beat" | "meet" | "miss" =
+    surpriseRoll < 0.58 ? "beat" : surpriseRoll < 0.75 ? "meet" : "miss";
+
+  const magnitude = seededRange(
+    `earnings-magnitude-${company.symbol}-${gameDay}`,
+    outcome === "meet" ? 0.005 : 0.05,
+    outcome === "meet" ? 0.02 : 0.11,
+    marketSeed
+  );
+  const actualImpact = outcome === "miss" ? -magnitude : magnitude;
+  const expectedImpact = actualImpact * seededRange(
+    `earnings-expected-${company.symbol}-${gameDay}`,
+    0.5,
+    0.9,
+    marketSeed
+  );
+
+  const headline = outcome === "beat"
+    ? `${company.name} tops quarterly earnings estimates`
+    : outcome === "miss"
+    ? `${company.name} misses quarterly earnings estimates`
+    : `${company.name} reports in-line quarterly results`;
+
+  const body = outcome === "beat"
+    ? "Quarterly results beat analyst expectations on both revenue and profit, with management pointing to strong underlying demand."
+    : outcome === "miss"
+    ? "Quarterly results fell short of analyst expectations, with management citing softer demand and margin pressure."
+    : "Quarterly results landed roughly in line with analyst expectations, with no major surprises on revenue or profit.";
+
+  return {
+    newsId: `news_earnings_${company.symbol.toLowerCase()}_${gameDay}`,
+    gameDay,
+    source: getNewsSource(company, { isRumor: false }, gameDay, marketSeed),
+    headline,
+    body,
+    importance: outcome === "meet" ? "Medium" : "High",
+    marketTone: actualImpact >= 0 ? "Bullish" : "Bearish",
+    relatedTickers: [company.symbol],
+    expectedImpact: round2(expectedImpact),
+    actualImpact: round2(actualImpact),
+    isAccurate: true,
+    isRumor: false,
+    category: "earnings",
+  };
+}
+
 function getHardcodedOpeningNewsForCompany(
   company: StockCompany,
   gameDay: number
@@ -1839,6 +1930,10 @@ function generateEventForCompany(
   const storyArcEvent = getStoryArcNewsForCompany(company, gameDay, marketSeed);
 
   if (storyArcEvent) return storyArcEvent;
+
+  if (isEarningsDay(company, gameDay, marketSeed)) {
+    return generateEarningsEvent(company, gameDay, marketSeed);
+  }
 
   const template = getEventTemplate(company, gameDay, marketSeed);
 
@@ -1960,16 +2055,24 @@ function generateNextPricePoint(
 
   const marketDrift = getMarketDrift(gameDay, marketSeed);
   const sectorDrift = getSectorDrift(company.sector, gameDay, marketSeed);
+  const clusterMultiplier = getVolatilityClusterMultiplier(company, gameDay, marketSeed);
   const randomShock =
-    seededRange(`shock-${company.symbol}-${gameDay}`, -1, 1, marketSeed) * company.volatility;
+    seededRange(`shock-${company.symbol}-${gameDay}`, -1, 1, marketSeed)
+    * company.volatility
+    * clusterMultiplier;
   const eventImpact = getEventImpact(company, gameDay, marketSeed);
+  // Post-earnings drift: the market keeps digesting yesterday's surprise today.
+  const postEarningsDrift = isEarningsDay(company, gameDay - 1, marketSeed)
+    ? getEventImpact(company, gameDay - 1, marketSeed) * 0.15
+    : 0;
 
   let dailyReturn =
     marketDrift +
     sectorDrift +
     company.trendBias +
     randomShock +
-    eventImpact;
+    eventImpact +
+    postEarningsDrift;
 
   dailyReturn = clamp(dailyReturn, -0.15, 0.15);
 
