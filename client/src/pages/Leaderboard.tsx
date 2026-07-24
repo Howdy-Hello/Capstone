@@ -15,7 +15,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import TimerIcon from "@mui/icons-material/Timer";
 import AllInclusiveIcon from "@mui/icons-material/AllInclusive";
 import { Link as RouterLink } from "react-router-dom";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { fetchLeaderboard } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
@@ -87,7 +87,7 @@ export default function Leaderboard() {
   const [error, setError]       = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sortBy, setSortBy]     = useState<"net_worth" | "return_pct">("net_worth");
-  const [category, setCategory] = useState<"overall" | "thirty_day">("overall");
+  const [category, setCategory] = useState<"infinite" | "thirty_day">("infinite");
   const [search, setSearch]     = useState("");
 
   useEffect(() => {
@@ -100,9 +100,16 @@ export default function Leaderboard() {
       await syncSessionValue();
       if (cancelled) return;
       try {
-        const { data, error: rpcError } = category === "thirty_day"
-          ? await supabase.rpc("get_30_day_leaderboard", { p_limit: 50 })
-          : await supabase.rpc("get_leaderboard", { p_limit: 50 });
+        const rows = category === "thirty_day"
+          ? await (async () => {
+              const { data, error: rpcError } = await supabase.rpc(
+                "get_30_day_leaderboard",
+                { p_limit: 50 }
+              );
+              if (rpcError) throw rpcError;
+              return data ?? [];
+            })()
+          : await fetchLeaderboard(50);
         if (cancelled) return;
         if (rpcError) { setError(rpcError.message); setLoading(false); return; }
         setPlayers(buildRanked((data ?? []) as LeaderboardRow[]));
@@ -141,57 +148,55 @@ export default function Leaderboard() {
 
   const topThree     = sorted.slice(0, 3);
   const currentEntry = user ? sorted.find((p) => p.user_id === user.id) : undefined;
-  const isThirtyDay = category === "thirty_day";
-  const entryKey = (entry: RankedPlayer) => entry.run_id ?? entry.user_id;
+  // "Top Net Worth" is the maximum net worth regardless of the active sort.
+  const topNetWorth  = players.length
+    ? players.reduce((max, p) => Math.max(max, p.best_net_worth), -Infinity)
+    : null;
   // Progress bars are normalized across the currently-sorted metric's range, so
   // they stay meaningful even when every value is negative (e.g. Return %).
   const metricValues = sorted.map((p) => (sortBy === "net_worth" ? p.best_net_worth : p.return_pct));
   const metricMax    = metricValues.length ? Math.max(...metricValues) : 0;
   const metricMin    = metricValues.length ? Math.min(...metricValues) : 0;
   const metricRange  = metricMax - metricMin;
+  const isThirtyDay = category === "thirty_day";
+  const entryKey = (entry: RankedPlayer) => entry.run_id ?? entry.user_id;
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
-              <Box>
-                <Chip label="GLOBAL RANKINGS" size="small"
-                  sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-                <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Leaderboard</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
-                  {isThirtyDay ? "Completed 30-day challenges ranked by final net worth." : "Global rankings across live trading runs."}
-                </Typography>
-              </Box>
-              <Box sx={{ ...CARD, p: 2.5, minWidth: 240 }}>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>YOUR RANK</Typography>
-                <motion.div key={loading ? "loading" : currentEntry?.rank ?? "none"} initial={reduceMotion ? false : { opacity: 0, y: 6, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 420, damping: 24 }}>
-                  <Typography sx={{ fontSize: 36, fontWeight: 950, color: D.brandText, fontFamily: MONO, lineHeight: 1 }}>
-                    {loading ? "—" : currentEntry ? `#${currentEntry.rank}` : "—"}
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
+            <Box>
+              <Chip label="GLOBAL RANKINGS" size="small"
+                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+              <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Leaderboard</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
+                {isThirtyDay ? "Completed 30-day challenges ranked by final net worth." : "Infinite runs ranked by each player's current net worth."}
+              </Typography>
+            </Box>
+            <Box sx={{ ...CARD, p: 2.5, minWidth: 240 }}>
+              <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>YOUR RANK</Typography>
+              <Typography sx={{ fontSize: 36, fontWeight: 950, color: D.brandText, fontFamily: MONO, lineHeight: 1 }}>
+                {loading ? "—" : currentEntry ? `#${currentEntry.rank}` : "—"}
+              </Typography>
+              {currentEntry && (
+                <>
+                  <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>
+                    {money(currentEntry.best_net_worth)} {isThirtyDay ? "best 30-day finish" : "current infinite net worth"}
                   </Typography>
-                </motion.div>
-                {currentEntry && (
-                  <>
-                    <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>
-                      {money(currentEntry.best_net_worth)} {isThirtyDay ? "best 30-day finish" : "best run"}
-                    </Typography>
-                    <Tooltip title={TIER_TOOLTIPS[currentEntry.badge] ?? ""} placement="bottom" arrow>
-                      <Chip label={currentEntry.badge} size="small"
-                        sx={{ mt: 0.8, bgcolor: D.brandBg, color: currentEntry.tierColor, fontWeight: 800, fontSize: 10, cursor: "help" }} />
-                    </Tooltip>
-                  </>
-                )}
-                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }} style={{ display: "inline-block", marginTop: 10 }}>
-                  <Button component={RouterLink} to="/game" size="small"
-                    sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 700, fontSize: 12, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
-                    Improve Rank →
-                  </Button>
-                </motion.div>
-              </Box>
-            </Stack>
-          </motion.div>
+                  <Tooltip title={TIER_TOOLTIPS[currentEntry.badge] ?? ""} placement="bottom" arrow>
+                    <Chip label={currentEntry.badge} size="small"
+                      sx={{ mt: 0.8, bgcolor: D.brandBg, color: currentEntry.tierColor, fontWeight: 800, fontSize: 10, cursor: "help" }} />
+                  </Tooltip>
+                </>
+              )}
+              <Button component={RouterLink} to="/game" size="small"
+                sx={{ mt: 1.2, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 700, fontSize: 12, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
+                Improve Rank →
+              </Button>
+            </Box>
+          </Stack>
         </Container>
       </Box>
 
@@ -223,15 +228,15 @@ export default function Leaderboard() {
             },
           }}
         >
-          <ToggleButton value="overall"><AllInclusiveIcon sx={{ fontSize: 17 }} />Overall</ToggleButton>
+          <ToggleButton value="infinite"><AllInclusiveIcon sx={{ fontSize: 17 }} />Infinite</ToggleButton>
           <ToggleButton value="thirty_day"><TimerIcon sx={{ fontSize: 17 }} />30-Day Runs</ToggleButton>
         </ToggleButtonGroup>
 
         {/* ── Stat tiles ───────────────────────────────────────────────────── */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
-            { label: isThirtyDay ? "Top 30-Day Finish" : "Top Net Worth", val: sorted[0] ? money(sorted[0].best_net_worth) : "—", icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />, color: "#F59E0B", bg: "rgba(245,158,11,0.1)" },
-            { label: isThirtyDay ? "Your Best 30-Day" : "Your Best Run", val: currentEntry ? money(currentEntry.best_net_worth) : "—", icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, color: D.greenText, bg: D.greenBg },
+            { label: isThirtyDay ? "Top 30-Day Finish" : "Net Worth", val: isThirtyDay ? (topNetWorth !== null ? money(topNetWorth) : "—") : (currentEntry ? money(currentEntry.best_net_worth) : "—"), icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, color: D.greenText, bg: D.greenBg },
+            { label: isThirtyDay ? "Your Best 30-Day" : "Rank", val: isThirtyDay ? (currentEntry ? money(currentEntry.best_net_worth) : "—") : (currentEntry ? `#${currentEntry.rank}` : "—"), icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />, color: "#F59E0B", bg: "rgba(245,158,11,0.1)" },
             { label: "Your Return",    val: currentEntry ? `${currentEntry.return_pct >= 0 ? "+" : ""}${currentEntry.return_pct.toFixed(1)}%` : "—", icon: <TrendingUpIcon sx={{ fontSize: 20 }} />, color: D.greenText, bg: D.greenBg },
             { label: isThirtyDay ? "Completed Runs" : "Players Ranked", val: loading ? "—" : players.length.toString(), icon: <WorkspacePremiumIcon sx={{ fontSize: 20 }} />, color: D.brandText, bg: D.brandBg },
           ].map((s, i) => (
@@ -272,7 +277,7 @@ export default function Leaderboard() {
                   {isThirtyDay ? "Best 30-Day Runs" : "Top Traders"}
                 </Typography>
                 <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>
-                  {isThirtyDay ? "The highest finishing values after Day 30." : "The strongest players right now."}
+                  {isThirtyDay ? "The highest finishing values after Day 30." : "The strongest current infinite portfolios."}
                 </Typography>
 
                 {topThree.length === 0 ? (
@@ -369,7 +374,7 @@ export default function Leaderboard() {
                       {isThirtyDay ? "30-Day Run Rankings" : "Full Leaderboard"}
                     </Typography>
                     <Typography sx={{ fontSize: 12.5, color: D.t3 }}>
-                      {isThirtyDay ? "Every completed challenge is ranked by its Day-30 finish." : "Best performance per player across all runs."}
+                      {isThirtyDay ? "Every completed challenge is ranked by its Day-30 finish." : "Each player's latest infinite run ranked by current net worth."}
                     </Typography>
                   </Box>
                   <Stack direction="row" spacing={1} alignItems="center">

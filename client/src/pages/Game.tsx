@@ -72,14 +72,6 @@ export default function Game() {
   const [topPlayers, setTopPlayers] = useState<MiniLeaderEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
   const trading = useGame();
-  const dailyGoals = useDailyGoals();
-  useStockAlerts();
-  const bills = useBills();
-  const missions = useMissions();
-  const rival = useRivalTrader();
-  const [missionsHidden, setMissionsHidden] = useState(
-    () => localStorage.getItem("stockpilot-missions-hidden") === "1"
-  );
   const {
     achievementNotification,
     queuedNotificationCount,
@@ -88,6 +80,7 @@ export default function Game() {
     devUnlockAchievements,
     devClearAchievements,
   } = useAchievements();
+  const dailyGoals = useDailyGoals();
   const {
     gameDay, gameMode, isGameComplete, maxGameDay, setGameDay,
     stocks, news: todayNews, syncSessionValue,
