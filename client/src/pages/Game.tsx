@@ -65,10 +65,6 @@ export default function Game() {
   const [topPlayers, setTopPlayers] = useState<MiniLeaderEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
   const trading = useGame();
-<<<<<<< HEAD
-  useAchievements();
-  const dailyGoals = useDailyGoals();
-=======
   const {
     achievementNotification,
     queuedNotificationCount,
@@ -77,7 +73,7 @@ export default function Game() {
     devUnlockAchievements,
     devClearAchievements,
   } = useAchievements();
->>>>>>> 0811f95 (feat: enhance game and leaderboard features with achievement unlock notifications and 30-day leaderboard)
+  const dailyGoals = useDailyGoals();
   const {
     gameDay, gameMode, isGameComplete, maxGameDay, setGameDay,
     stocks, news: todayNews, syncSessionValue,
