@@ -26,6 +26,7 @@ const nav = [
   { to: "/dashboard",   label: "Dashboard",   icon: <DashboardOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/game",        label: "Game",         icon: <SportsEsportsOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/leaderboard", label: "Leaderboard",  icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/achievements", label: "Achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/learn",       label: "Learn",        icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/news",        label: "News",         icon: <ArticleOutlinedIcon sx={{ fontSize: 17 }} /> },
 ];

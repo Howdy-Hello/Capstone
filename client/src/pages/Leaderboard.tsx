@@ -12,6 +12,8 @@ import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
+import TimerIcon from "@mui/icons-material/Timer";
+import AllInclusiveIcon from "@mui/icons-material/AllInclusive";
 import { Link as RouterLink } from "react-router-dom";
 import { fetchLeaderboard } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
@@ -19,12 +21,14 @@ import { useGame } from "../context/GameContext";
 import { D, CARD, MONO, money } from "../theme/design";
 
 type LeaderboardRow = {
+  run_id?: string;
   user_id: string;
   best_net_worth: number;
   return_pct: number;
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  completed_at?: string;
 };
 
 type RankedPlayer = LeaderboardRow & {
@@ -75,16 +79,19 @@ export default function Leaderboard() {
   const [error, setError]       = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sortBy, setSortBy]     = useState<"net_worth" | "return_pct">("net_worth");
+  const [category, setCategory] = useState<"overall" | "thirty_day">("overall");
   const [search, setSearch]     = useState("");
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setPlayers([]);
 
     (async () => {
       await syncSessionValue();
       if (cancelled) return;
+<<<<<<< HEAD
       try {
         const rows = await fetchLeaderboard(50);
         if (cancelled) return;
@@ -93,10 +100,19 @@ export default function Leaderboard() {
         if (!cancelled) setError(leaderboardError?.message ?? "Could not load leaderboard.");
       }
       if (!cancelled) setLoading(false);
+=======
+      const { data, error: rpcError } = category === "thirty_day"
+        ? await supabase.rpc("get_30_day_leaderboard", { p_limit: 50 })
+        : await supabase.rpc("get_leaderboard", { p_limit: 50 });
+      if (cancelled) return;
+      if (rpcError) { setError(rpcError.message); setLoading(false); return; }
+      setPlayers(buildRanked((data ?? []) as LeaderboardRow[]));
+      setLoading(false);
+>>>>>>> 0811f95 (feat: enhance game and leaderboard features with achievement unlock notifications and 30-day leaderboard)
     })();
 
     return () => { cancelled = true; };
-  }, [refreshKey, syncSessionValue]);
+  }, [category, refreshKey, syncSessionValue]);
 
   const sorted = useMemo(() => {
     const base = sortBy === "return_pct"
@@ -124,6 +140,7 @@ export default function Leaderboard() {
 
   const topThree     = sorted.slice(0, 3);
   const currentEntry = user ? sorted.find((p) => p.user_id === user.id) : undefined;
+<<<<<<< HEAD
   // "Top Net Worth" is the maximum net worth regardless of the active sort.
   const topNetWorth  = players.length
     ? players.reduce((max, p) => Math.max(max, p.best_net_worth), -Infinity)
@@ -134,6 +151,13 @@ export default function Leaderboard() {
   const metricMax    = metricValues.length ? Math.max(...metricValues) : 0;
   const metricMin    = metricValues.length ? Math.min(...metricValues) : 0;
   const metricRange  = metricMax - metricMin;
+=======
+  const topValue     = sorted[0]
+    ? (sortBy === "net_worth" ? sorted[0].best_net_worth : sorted[0].return_pct)
+    : 1;
+  const isThirtyDay = category === "thirty_day";
+  const entryKey = (entry: RankedPlayer) => entry.run_id ?? entry.user_id;
+>>>>>>> 0811f95 (feat: enhance game and leaderboard features with achievement unlock notifications and 30-day leaderboard)
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
@@ -145,7 +169,9 @@ export default function Leaderboard() {
               <Chip label="GLOBAL RANKINGS" size="small"
                 sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
               <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Leaderboard</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Global rankings across live trading runs.</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
+                {isThirtyDay ? "Completed 30-day challenges ranked by final net worth." : "Global rankings across live trading runs."}
+              </Typography>
             </Box>
             <Box sx={{ ...CARD, p: 2.5, minWidth: 240 }}>
               <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>YOUR RANK</Typography>
@@ -154,7 +180,9 @@ export default function Leaderboard() {
               </Typography>
               {currentEntry && (
                 <>
-                  <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>{money(currentEntry.best_net_worth)} best run</Typography>
+                  <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>
+                    {money(currentEntry.best_net_worth)} {isThirtyDay ? "best 30-day finish" : "best run"}
+                  </Typography>
                   <Tooltip title={TIER_TOOLTIPS[currentEntry.badge] ?? ""} placement="bottom" arrow>
                     <Chip label={currentEntry.badge} size="small"
                       sx={{ mt: 0.8, bgcolor: D.brandBg, color: currentEntry.tierColor, fontWeight: 800, fontSize: 10, cursor: "help" }} />
@@ -171,13 +199,49 @@ export default function Leaderboard() {
       </Box>
 
       <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
+        <ToggleButtonGroup
+          value={category}
+          exclusive
+          onChange={(_, value) => {
+            if (!value) return;
+            setCategory(value);
+            setSearch("");
+          }}
+          sx={{
+            mb: 3,
+            "& .MuiToggleButton-root": {
+              color: D.t2,
+              borderColor: D.border,
+              px: 2.2,
+              py: 1,
+              gap: 0.8,
+              fontWeight: 800,
+              fontSize: 12.5,
+              textTransform: "none",
+              "&.Mui-selected": {
+                color: D.brandText,
+                bgcolor: D.brandBg,
+                borderColor: D.brandBd,
+              },
+            },
+          }}
+        >
+          <ToggleButton value="overall"><AllInclusiveIcon sx={{ fontSize: 17 }} />Overall</ToggleButton>
+          <ToggleButton value="thirty_day"><TimerIcon sx={{ fontSize: 17 }} />30-Day Runs</ToggleButton>
+        </ToggleButtonGroup>
+
         {/* ── Stat tiles ───────────────────────────────────────────────────── */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
+<<<<<<< HEAD
             { label: "Top Net Worth",  val: topNetWorth !== null ? money(topNetWorth) : "—",                                            icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />,           color: "#F59E0B",   bg: "rgba(245,158,11,0.1)" },
             { label: "Your Best Run",  val: currentEntry ? money(currentEntry.best_net_worth) : "—",                                   icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />,   color: D.greenText, bg: D.greenBg },
+=======
+            { label: isThirtyDay ? "Top 30-Day Finish" : "Top Net Worth", val: sorted[0] ? money(sorted[0].best_net_worth) : "—", icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />, color: "#F59E0B", bg: "rgba(245,158,11,0.1)" },
+            { label: isThirtyDay ? "Your Best 30-Day" : "Your Best Run", val: currentEntry ? money(currentEntry.best_net_worth) : "—", icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, color: D.greenText, bg: D.greenBg },
+>>>>>>> 0811f95 (feat: enhance game and leaderboard features with achievement unlock notifications and 30-day leaderboard)
             { label: "Your Return",    val: currentEntry ? `${currentEntry.return_pct >= 0 ? "+" : ""}${currentEntry.return_pct.toFixed(1)}%` : "—", icon: <TrendingUpIcon sx={{ fontSize: 20 }} />, color: D.greenText, bg: D.greenBg },
-            { label: "Players Ranked", val: loading ? "—" : players.length.toString(),                                                  icon: <WorkspacePremiumIcon sx={{ fontSize: 20 }} />,      color: D.brandText, bg: D.brandBg },
+            { label: isThirtyDay ? "Completed Runs" : "Players Ranked", val: loading ? "—" : players.length.toString(), icon: <WorkspacePremiumIcon sx={{ fontSize: 20 }} />, color: D.brandText, bg: D.brandBg },
           ].map((s) => (
             <Grid item xs={12} sm={6} md={3} key={s.label}>
               <Box sx={{ ...CARD, p: 2.5 }}>
@@ -209,8 +273,12 @@ export default function Leaderboard() {
             {/* ── Podium + top 3 ─────────────────────────────────────────── */}
             <Grid item xs={12} md={4}>
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3, height: "100%" }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 0.5 }}>Top Traders</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>The strongest players right now.</Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 0.5 }}>
+                  {isThirtyDay ? "Best 30-Day Runs" : "Top Traders"}
+                </Typography>
+                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>
+                  {isThirtyDay ? "The highest finishing values after Day 30." : "The strongest players right now."}
+                </Typography>
 
                 {topThree.length === 0 ? (
                   <Typography sx={{ fontSize: 13, color: D.t3 }}>No ranked runs yet. Be the first!</Typography>
@@ -224,7 +292,7 @@ export default function Leaderboard() {
                         const podiumHeights = [130, 90, 70];
                         const isYou = p.user_id === user?.id;
                         return (
-                          <Box key={p.user_id} sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                          <Box key={entryKey(p)} sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
                             <Avatar src={p.avatar_url ?? undefined}
                               sx={{
                                 width: idx === 0 ? 52 : 40,
@@ -267,7 +335,7 @@ export default function Leaderboard() {
                     {/* Top-3 detail cards */}
                     <Stack spacing={1.5}>
                       {topThree.map((p) => (
-                        <Box key={p.user_id} sx={{ p: 2, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${p.user_id === user?.id ? D.brandBd : D.border}` }}>
+                        <Box key={entryKey(p)} sx={{ p: 2, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${p.user_id === user?.id ? D.brandBd : D.border}` }}>
                           <Stack direction="row" spacing={1.5} alignItems="center">
                             <Avatar src={p.avatar_url ?? undefined}
                               sx={{ bgcolor: MEDAL_COLORS[p.rank - 1] ?? D.brand, color: "#09090F", fontWeight: 900, width: 36, height: 36, fontSize: 15 }}>
@@ -297,8 +365,12 @@ export default function Leaderboard() {
                 {/* Header + controls */}
                 <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                   <Box>
-                    <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Full Leaderboard</Typography>
-                    <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Best performance per player across all runs.</Typography>
+                    <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>
+                      {isThirtyDay ? "30-Day Run Rankings" : "Full Leaderboard"}
+                    </Typography>
+                    <Typography sx={{ fontSize: 12.5, color: D.t3 }}>
+                      {isThirtyDay ? "Every completed challenge is ranked by its Day-30 finish." : "Best performance per player across all runs."}
+                    </Typography>
                   </Box>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <ToggleButtonGroup
@@ -367,7 +439,7 @@ export default function Leaderboard() {
                         const progress = Math.max(0, Math.min(100, metricRange > 0 ? ((val - metricMin) / metricRange) * 100 : 100));
                         const rankBg   = p.rank === 1 ? "rgba(245,158,11,0.12)" : p.rank === 2 ? "rgba(148,163,184,0.12)" : p.rank === 3 ? "rgba(201,139,95,0.12)" : D.overlay;
                         return (
-                          <Box key={p.user_id} ref={isYou ? myRowRef : undefined} sx={{ p: 2, borderRadius: 2, bgcolor: isYou ? D.brandBg : D.elevated, border: `1px solid ${isYou ? D.brandBd : D.border}` }}>
+                          <Box key={entryKey(p)} ref={isYou ? myRowRef : undefined} sx={{ p: 2, borderRadius: 2, bgcolor: isYou ? D.brandBg : D.elevated, border: `1px solid ${isYou ? D.brandBd : D.border}` }}>
                             <Grid container spacing={1.5} alignItems="center">
                               {/* Rank */}
                               <Grid item xs="auto">
@@ -390,6 +462,11 @@ export default function Leaderboard() {
                                       <Chip label={p.badge} size="small"
                                         sx={{ height: 16, bgcolor: "transparent", color: p.tierColor, fontWeight: 800, fontSize: 9.5, cursor: "help", "& .MuiChip-label": { px: 0.8 } }} />
                                     </Tooltip>
+                                    {isThirtyDay && p.completed_at && (
+                                      <Typography sx={{ fontSize: 10, color: D.t3 }}>
+                                        Finished {new Date(p.completed_at).toLocaleDateString()}
+                                      </Typography>
+                                    )}
                                   </Box>
                                 </Stack>
                               </Grid>

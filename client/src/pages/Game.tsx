@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Avatar, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
   CircularProgress, Divider, Grid, IconButton, LinearProgress, Stack, TextField, Typography,
@@ -23,7 +23,9 @@ import TimerIcon from "@mui/icons-material/Timer";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
+import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import {
   getNewsCredibility, getOpeningStoryDays, STORY_DAYS, Stock,
@@ -38,10 +40,16 @@ import { D, CARD, MONO, money, pct } from "../theme/design";
 
 const DEV_CONSOLE_ENABLED = process.env.NODE_ENV !== "production";
 const BRIEFING_DISMISSED_KEY = "stockpilot-hide-opening-briefing";
+// Framer Motion 11 predates React 19's stricter JSX return type.
+const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
+  initial?: boolean;
+  mode?: "sync" | "popLayout" | "wait";
+}>>;
 
 type MiniLeaderEntry = { rank: number; username: string; net_worth: number; user_id: string };
 
 export default function Game() {
+  const reduceMotion = useReducedMotion();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [briefingOpen, setBriefingOpen] = useState(false);
@@ -51,14 +59,25 @@ export default function Game() {
   const [tradeDialog, setTradeDialog] = useState<{ stock: Stock; mode: "buy" | "sell" } | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedSector = searchParams.get("sector") ?? "All";
-  const setSelectedSector = (sector: string) => {
+  const setSelectedSector = useCallback((sector: string) => {
     setSearchParams(sector === "All" ? {} : { sector }, { replace: true });
-  };
+  }, [setSearchParams]);
   const [topPlayers, setTopPlayers] = useState<MiniLeaderEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
   const trading = useGame();
+<<<<<<< HEAD
   useAchievements();
   const dailyGoals = useDailyGoals();
+=======
+  const {
+    achievementNotification,
+    queuedNotificationCount,
+    dismissAchievementNotification,
+    achievementIds,
+    devUnlockAchievements,
+    devClearAchievements,
+  } = useAchievements();
+>>>>>>> 0811f95 (feat: enhance game and leaderboard features with achievement unlock notifications and 30-day leaderboard)
   const {
     gameDay, gameMode, isGameComplete, maxGameDay, setGameDay,
     stocks, news: todayNews, syncSessionValue,
@@ -113,7 +132,7 @@ export default function Game() {
 
   useEffect(() => {
     if (!sectors.includes(selectedSector)) setSelectedSector("All");
-  }, [selectedSector, sectors]);
+  }, [selectedSector, sectors, setSelectedSector]);
 
   useEffect(() => {
     if (trading.loading || autoBriefingChecked.current) return;
@@ -166,6 +185,12 @@ export default function Game() {
     const t = setTimeout(() => setTradeMessage(""), 3500);
     return () => clearTimeout(t);
   }, [tradeMessage]);
+
+  useEffect(() => {
+    if (!achievementNotification) return;
+    const timeout = window.setTimeout(dismissAchievementNotification, 4000);
+    return () => window.clearTimeout(timeout);
+  }, [achievementNotification, dismissAchievementNotification]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -240,13 +265,70 @@ export default function Game() {
     setTradeDialog(null);
   };
 
-  const runConsoleCommand = (rawCommand: string) => {
+  const runConsoleCommand = async (rawCommand: string) => {
     const command = rawCommand.trim();
     const tokens = command.split(/\s+/);
     const [name = "", arg1 = "", arg2 = ""] = tokens;
     const action = name.toLowerCase();
 
     if (!command) return "";
+
+    const normalizeAchievementId = (value: string) =>
+      value.trim().toLowerCase().replace(/-/g, "_");
+
+    if (action === "achievements" && !arg1) {
+      return `Achievement IDs: ${achievementIds.join(", ")}.`;
+    }
+
+    if (action === "achieve" || action === "achievement" || action === "achievements") {
+      const operation = arg1.toLowerCase();
+
+      if (["all", "gather", "unlockall"].includes(operation)) {
+        return (await devUnlockAchievements("all")).message;
+      }
+      if (["clear", "remove", "delete"].includes(operation)) {
+        if (!arg2) return "Usage: achievement clear <id|all>.";
+        return (await devClearAchievements(
+          arg2.toLowerCase() === "all" ? "all" : normalizeAchievementId(arg2)
+        )).message;
+      }
+      if (["unlock", "add"].includes(operation)) {
+        if (!arg2) return "Usage: achievement unlock <id|all>.";
+        return (await devUnlockAchievements(
+          arg2.toLowerCase() === "all" ? "all" : normalizeAchievementId(arg2)
+        )).message;
+      }
+      if (operation) {
+        return (await devUnlockAchievements(normalizeAchievementId(operation))).message;
+      }
+      return `Achievement IDs: ${achievementIds.join(", ")}.`;
+    }
+
+    if (
+      action === "gather"
+      && arg1.toLowerCase() === "all"
+      && ["achievement", "achievements"].includes(arg2.toLowerCase())
+    ) {
+      return (await devUnlockAchievements("all")).message;
+    }
+
+    if (
+      action === "clear"
+      && ["achievement", "achievements"].includes(arg1.toLowerCase())
+    ) {
+      if (!arg2) return "Usage: clear achievement <id|all>.";
+      return (await devClearAchievements(
+        arg2.toLowerCase() === "all" ? "all" : normalizeAchievementId(arg2)
+      )).message;
+    }
+
+    if (
+      action === "clear"
+      && arg1.toLowerCase() === "all"
+      && ["achievement", "achievements"].includes(arg2.toLowerCase())
+    ) {
+      return (await devClearAchievements("all")).message;
+    }
 
     if (
       action === "seed"
@@ -382,6 +464,11 @@ export default function Game() {
           onRun={runConsoleCommand}
         />
       )}
+      <AchievementUnlockToast
+        achievement={achievementNotification}
+        queuedCount={queuedNotificationCount}
+        onClose={dismissAchievementNotification}
+      />
 
       {/* Hero */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
@@ -389,8 +476,10 @@ export default function Game() {
           <Grid container spacing={3} alignItems="center">
             <Grid item xs={12} md={7}>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.2 }}>
-                <Chip label={`DAY ${gameDay}${maxGameDay ? ` / ${maxGameDay}` : ""}`} size="small"
-                  sx={{ bgcolor: gameDay <= STORY_DAYS ? D.redBg : D.brandBg, color: gameDay <= STORY_DAYS ? D.redText : D.brandText, border: `1px solid ${gameDay <= STORY_DAYS ? D.redBd : D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
+                <motion.div key={gameDay} initial={reduceMotion ? false : { opacity: 0, y: -8, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 420, damping: 24 }}>
+                  <Chip label={`DAY ${gameDay}${maxGameDay ? ` / ${maxGameDay}` : ""}`} size="small"
+                    sx={{ bgcolor: gameDay <= STORY_DAYS ? D.redBg : D.brandBg, color: gameDay <= STORY_DAYS ? D.redText : D.brandText, border: `1px solid ${gameDay <= STORY_DAYS ? D.redBd : D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
+                </motion.div>
                 <Chip icon={gameMode === "limited_30" ? <TimerIcon sx={{ fontSize: 14 }} /> : <AllInclusiveIcon sx={{ fontSize: 14 }} />}
                   label={modeLabel} size="small"
                   sx={{ bgcolor: D.elevated, color: D.t2, border: `1px solid ${D.border}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
@@ -400,11 +489,13 @@ export default function Game() {
                 {modeDescription}
               </Typography>
               <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
-                <Button onClick={handleNextDay} variant="contained" disabled={isGameComplete}
-                  title={isGameComplete ? undefined : "Advance to next day (→)"}
-                  sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
-                  {isGameComplete ? "Run Complete" : "Next Day →"}
-                </Button>
+                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
+                  <Button onClick={handleNextDay} variant="contained" disabled={isGameComplete}
+                    title={isGameComplete ? undefined : "Advance to next day (→)"}
+                    sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "0 8px 24px rgba(124,58,237,0.24)" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+                    {isGameComplete ? "Run Complete" : "Next Day →"}
+                  </Button>
+                </motion.div>
                 <Button onClick={() => handleNewRun("infinite")} startIcon={<AllInclusiveIcon />}
                   sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
                   Infinite
@@ -424,9 +515,11 @@ export default function Game() {
             <Grid item xs={12} md={5}>
               <Box sx={{ ...CARD, p: 3 }}>
                 <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 1 }}>MARKET STATUS</Typography>
-                <Typography sx={{ fontSize: 32, fontWeight: 950, color: marketSummary.averageMove >= 0 ? D.greenText : D.redText, fontFamily: MONO, lineHeight: 1, mb: 1 }}>
-                  {pct(marketSummary.averageMove)}
-                </Typography>
+                <motion.div key={`market-${gameDay}`} initial={reduceMotion ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32 }}>
+                  <Typography sx={{ fontSize: 32, fontWeight: 950, color: marketSummary.averageMove >= 0 ? D.greenText : D.redText, fontFamily: MONO, lineHeight: 1, mb: 1 }}>
+                    {pct(marketSummary.averageMove)}
+                  </Typography>
+                </motion.div>
                 <Chip size="small" icon={marketSummary.averageMove >= 0 ? <TrendingUpIcon sx={{ fontSize: 14 }} /> : <TrendingDownIcon sx={{ fontSize: 14 }} />}
                   label={marketSummary.averageMove >= 0 ? "Positive Day" : "Negative Day"}
                   sx={{ bgcolor: marketSummary.averageMove >= 0 ? D.greenBg : D.redBg, color: marketSummary.averageMove >= 0 ? D.greenText : D.redText, border: `1px solid ${marketSummary.averageMove >= 0 ? D.greenBd : D.redBd}`, fontWeight: 800, mb: 2 }} />
@@ -460,11 +553,13 @@ export default function Game() {
             { label: "Net Worth", val: money(netWorth),              icon: <NewspaperIcon sx={{ fontSize: 20 }} />,           up: netWorth >= 2000 },
           ].map((s) => (
             <Grid item xs={12} sm={6} md={3} key={s.label}>
-              <Box sx={{ ...CARD, p: 2.5 }}>
+              <Box sx={{ ...CARD, p: 2.5, transition: "transform 180ms ease, border-color 180ms ease", "&:hover": { transform: reduceMotion ? "none" : "translateY(-3px)", borderColor: D.borderHi } }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                   <Box>
                     <Typography sx={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 0.8, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
-                    <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                    <motion.div key={s.val} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
+                      <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                    </motion.div>
                   </Box>
                   <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: s.up ? D.greenBg : D.redBg, color: s.up ? D.greenText : D.redText, display: "grid", placeItems: "center", flexShrink: 0 }}>
                     {s.icon}
@@ -476,14 +571,18 @@ export default function Game() {
         </Grid>
 
         {/* Trade message */}
-        {tradeMessage && (() => {
-          const ok = tradeMessage.startsWith("Bought") || tradeMessage.startsWith("Sold");
-          return (
-            <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: ok ? D.greenBg : D.redBg, border: `1px solid ${ok ? D.greenBd : D.redBd}` }}>
-              <Typography sx={{ fontSize: 13.5, fontWeight: 800, color: ok ? D.greenText : D.redText }}>{tradeMessage}</Typography>
-            </Box>
-          );
-        })()}
+        <MotionPresence initial={false}>
+          {tradeMessage && (() => {
+            const ok = tradeMessage.startsWith("Bought") || tradeMessage.startsWith("Sold");
+            return (
+              <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }} transition={{ type: "spring", stiffness: 420, damping: 30 }}>
+                <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: ok ? D.greenBg : D.redBg, border: `1px solid ${ok ? D.greenBd : D.redBd}`, boxShadow: `0 8px 28px ${ok ? D.greenBg : D.redBg}` }}>
+                  <Typography sx={{ fontSize: 13.5, fontWeight: 800, color: ok ? D.greenText : D.redText }}>{tradeMessage}</Typography>
+                </Box>
+              </motion.div>
+            );
+          })()}
+        </MotionPresence>
 
         {isGameComplete && (
           <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.greenBg, border: `1px solid ${D.greenBd}`, mb: 2.5 }}>
@@ -600,16 +699,19 @@ export default function Game() {
                     <Typography sx={{ fontSize: 13, color: D.t3 }}>No stocks match this sector.</Typography>
                   </Box>
                 ) : (
-                  filteredStocks.map((stock) => (
-                    <StockRow key={stock.stockId} stock={stock} gameDay={gameDay}
-                      sharesOwned={getSharesOwned(trading.account, stock.symbol)}
-                      watchlisted={trading.isWatchlisted(stock.symbol)}
-                      onToggleWatchlist={() => trading.toggleWatchlist(stock)}
-                      onBuy={() => handleBuyStock(stock)}
-                      onSell={() => handleSellStock(stock)}
-                      onOpen={() => navigate(`/stocks/${stock.symbol}`, { state: { gameDay } })}
-                    />
-                  ))
+                  <MotionPresence mode="popLayout" initial={false}>
+                    {filteredStocks.map((stock, index) => (
+                      <StockRow key={stock.stockId} stock={stock} gameDay={gameDay}
+                        animationIndex={index}
+                        sharesOwned={getSharesOwned(trading.account, stock.symbol)}
+                        watchlisted={trading.isWatchlisted(stock.symbol)}
+                        onToggleWatchlist={() => trading.toggleWatchlist(stock)}
+                        onBuy={() => handleBuyStock(stock)}
+                        onSell={() => handleSellStock(stock)}
+                        onOpen={() => navigate(`/stocks/${stock.symbol}`, { state: { gameDay } })}
+                      />
+                    ))}
+                  </MotionPresence>
                 )}
               </Box>
             </Box>
@@ -857,13 +959,90 @@ export default function Game() {
   );
 }
 
+function AchievementUnlockToast({ achievement, queuedCount, onClose }: {
+  achievement: ReturnType<typeof useAchievements>["achievementNotification"];
+  queuedCount: number;
+  onClose: () => void;
+}) {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <MotionPresence mode="wait">
+      {achievement && (
+        <Box
+          component={motion.aside}
+          key={achievement.id}
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 80, scale: 0.96 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 60, scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+          role="status"
+          aria-live="polite"
+          sx={{
+            position: "fixed",
+            zIndex: 1500,
+            top: { xs: 74, md: 82 },
+            right: { xs: 12, md: 24 },
+            width: { xs: "calc(100% - 24px)", sm: 380 },
+            overflow: "hidden",
+            borderRadius: 2.5,
+            bgcolor: D.elevated,
+            border: `1px solid ${D.brandBd}`,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.48), 0 0 28px rgba(124,58,237,0.16)",
+          }}
+        >
+          <Box sx={{ height: 3, bgcolor: D.brand }} />
+          <Stack direction="row" spacing={1.6} alignItems="flex-start" sx={{ p: 2 }}>
+            <Box sx={{
+              width: 44, height: 44, borderRadius: 2, flexShrink: 0,
+              display: "grid", placeItems: "center",
+              color: D.brandText, bgcolor: D.brandBg,
+              border: `1px solid ${D.brandBd}`,
+            }}>
+              <WorkspacePremiumIcon />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: 10, fontWeight: 950, letterSpacing: 1.1, color: D.brandText, fontFamily: MONO }}>
+                ACHIEVEMENT UNLOCKED
+              </Typography>
+              <Typography sx={{ mt: 0.35, fontSize: 16, fontWeight: 950, color: D.t1 }}>
+                {achievement.title}
+              </Typography>
+              <Typography sx={{ mt: 0.35, fontSize: 12.5, lineHeight: 1.5, color: D.t2 }}>
+                {achievement.description}
+              </Typography>
+              <Chip
+                size="small"
+                label={achievement.reward}
+                sx={{ mt: 1.1, height: 23, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, fontSize: 10.5, fontWeight: 900 }}
+              />
+              <Typography sx={{ mt: 0.8, fontSize: 10.5, color: D.t3 }}>
+                {achievement.achievedByPercent.toFixed(1)}% of players unlocked this
+              </Typography>
+              {queuedCount > 1 && (
+                <Typography component="span" sx={{ ml: 1, fontSize: 10.5, color: D.t3 }}>
+                  +{queuedCount - 1} more
+                </Typography>
+              )}
+            </Box>
+            <IconButton size="small" aria-label="Dismiss achievement notification" onClick={onClose} sx={{ mt: -0.5, mr: -0.5, color: D.t3, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
+              <CloseIcon sx={{ fontSize: 17 }} />
+            </IconButton>
+          </Stack>
+        </Box>
+      )}
+    </MotionPresence>
+  );
+}
+
 function CommandConsole({ open, onClose, onRun }: {
   open: boolean;
   onClose: () => void;
-  onRun: (command: string) => string;
+  onRun: (command: string) => string | Promise<string>;
 }) {
   const [command, setCommand] = useState("");
   const [history, setHistory] = useState<string[]>(["session active"]);
+  const [running, setRunning] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -876,13 +1055,21 @@ function CommandConsole({ open, onClose, onRun }: {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  const submitCommand = () => {
+  const submitCommand = async () => {
     const trimmed = command.trim();
-    if (!trimmed) return;
+    if (!trimmed || running) return;
 
-    const output = onRun(trimmed);
-    setHistory((current) => [`> ${trimmed}`, output, ...current].slice(0, 8));
     setCommand("");
+    setRunning(true);
+    try {
+      const output = await onRun(trimmed);
+      setHistory((current) => [`> ${trimmed}`, output, ...current].slice(0, 8));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Command failed.";
+      setHistory((current) => [`> ${trimmed}`, message, ...current].slice(0, 8));
+    } finally {
+      setRunning(false);
+    }
   };
 
   if (!open) return null;
@@ -916,13 +1103,14 @@ function CommandConsole({ open, onClose, onRun }: {
           autoFocus
           fullWidth
           size="small"
+          disabled={running}
           value={command}
-          placeholder=""
+          placeholder={running ? "Running…" : ""}
           onChange={(event) => setCommand(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
-              submitCommand();
+              void submitCommand();
             }
           }}
           inputProps={{ sx: { fontFamily: MONO, fontSize: 13 } }}
@@ -951,20 +1139,22 @@ function CommandConsole({ open, onClose, onRun }: {
   );
 }
 
-function StockRow({ stock, gameDay, sharesOwned, watchlisted, onBuy, onSell, onToggleWatchlist, onOpen }: {
-  stock: Stock; gameDay: number; sharesOwned: number; watchlisted: boolean; onBuy: () => void; onSell: () => void; onToggleWatchlist: () => void; onOpen: () => void;
+function StockRow({ stock, gameDay, animationIndex, sharesOwned, watchlisted, onBuy, onSell, onToggleWatchlist, onOpen }: {
+  stock: Stock; gameDay: number; animationIndex: number; sharesOwned: number; watchlisted: boolean; onBuy: () => void; onSell: () => void; onToggleWatchlist: () => void; onOpen: () => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const up = stock.dayChangePercent >= 0;
   return (
-    <Box onClick={onOpen} role="button" tabIndex={0}
+    <Box component={motion.div} layout={!reduceMotion} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }} transition={{ duration: 0.22, delay: Math.min(animationIndex * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
+      onClick={onOpen} role="button" tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       sx={{
         display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr auto", md: "1.4fr 0.9fr auto" },
         gap: 2, alignItems: "center", p: 2, mb: 1.2, borderRadius: 2,
         bgcolor: D.elevated, border: `1px solid ${D.border}`,
         cursor: "pointer", outline: "none",
-        transition: "border-color 160ms, background-color 160ms",
-        "&:hover": { borderColor: D.borderHi, bgcolor: D.overlay },
+        transition: "border-color 160ms, background-color 160ms, transform 160ms",
+        "&:hover": { borderColor: D.borderHi, bgcolor: D.overlay, transform: reduceMotion ? "none" : "translateX(3px)" },
         "&:focus-visible": { boxShadow: `0 0 0 2px ${D.brand}` },
       }}
     >
@@ -988,7 +1178,11 @@ function StockRow({ stock, gameDay, sharesOwned, watchlisted, onBuy, onSell, onT
               "&:hover": { color: D.amber, borderColor: D.amber, bgcolor: D.amberBg },
             }}
           >
-            {watchlisted ? <StarIcon sx={{ fontSize: 17 }} /> : <StarBorderIcon sx={{ fontSize: 17 }} />}
+            <MotionPresence mode="wait" initial={false}>
+              <motion.span key={watchlisted ? "watched" : "unwatched"} initial={reduceMotion ? false : { scale: 0.4, rotate: -25 }} animate={{ scale: 1, rotate: 0 }} exit={reduceMotion ? undefined : { scale: 0.4, rotate: 25 }} transition={{ type: "spring", stiffness: 520, damping: 22 }} style={{ display: "grid" }}>
+                {watchlisted ? <StarIcon sx={{ fontSize: 17 }} /> : <StarBorderIcon sx={{ fontSize: 17 }} />}
+              </motion.span>
+            </MotionPresence>
           </IconButton>
           <Box sx={{ width: 38, height: 38, borderRadius: 2, bgcolor: up ? D.greenBg : D.redBg, color: up ? D.greenText : D.redText, display: "grid", placeItems: "center", flexShrink: 0 }}>
             <ShowChartIcon sx={{ fontSize: 18 }} />
@@ -1030,6 +1224,7 @@ function TradeDialog({ stock, mode, cash, sharesOwned, onClose, onConfirm }: {
   onClose: () => void;
   onConfirm: (quantity: number) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const maxQty = mode === "buy"
     ? Math.max(1, Math.floor(cash / stock.currentPrice))
     : Math.max(0, sharesOwned);
@@ -1121,9 +1316,11 @@ function TradeDialog({ stock, mode, cash, sharesOwned, onClose, onConfirm }: {
               <Typography sx={{ fontSize: 13, color: D.t2, fontWeight: 700 }}>
                 {isBuy ? "Total cost" : "Total proceeds"}
               </Typography>
-              <Typography sx={{ fontSize: 18, fontWeight: 950, color: isBuy ? D.greenText : D.redText, fontFamily: MONO }}>
-                {money(total)}
-              </Typography>
+              <motion.div key={total} initial={reduceMotion ? false : { opacity: 0, scale: 0.9, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 500, damping: 28 }}>
+                <Typography sx={{ fontSize: 18, fontWeight: 950, color: isBuy ? D.greenText : D.redText, fontFamily: MONO }}>
+                  {money(total)}
+                </Typography>
+              </motion.div>
             </Stack>
             {isBuy && (
               <Typography sx={{ fontSize: 11.5, color: D.t3, mt: 0.5 }}>

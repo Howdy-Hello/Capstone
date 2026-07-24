@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Box, Button, Chip, CircularProgress, Container, Grid, LinearProgress, Stack, Typography,
+  Alert, Box, Button, Chip, CircularProgress, Container, Grid, LinearProgress, Stack, Typography,
 } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import LockIcon from "@mui/icons-material/Lock";
@@ -10,6 +10,11 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import PieChartIcon from "@mui/icons-material/PieChart";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import ShieldIcon from "@mui/icons-material/Shield";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import BusinessIcon from "@mui/icons-material/Business";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import SavingsIcon from "@mui/icons-material/Savings";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { Link as RouterLink } from "react-router-dom";
 import { D, CARD, MONO } from "../theme/design";
 import { useAchievements } from "../hooks/useAchievements";
@@ -18,13 +23,22 @@ const ICONS: Record<string, React.ReactNode> = {
   first_trade:     <TrendingUpIcon />,
   smart_investor:  <AccountBalanceWalletIcon />,
   risk_taker:      <PieChartIcon />,
+  active_trader:   <SwapHorizIcon />,
+  diversified:     <PieChartIcon />,
+  sector_scout:    <BusinessIcon />,
+  watchlist_builder: <VisibilityIcon />,
+  cash_builder:    <SavingsIcon />,
+  market_regular:  <CalendarMonthIcon />,
+  closing_bell:    <EmojiEventsIcon />,
   cash_discipline: <ShieldIcon />,
   market_master:   <EmojiEventsIcon />,
   hot_streak:      <LocalFireDepartmentIcon />,
 };
 
 export default function Achievements() {
-  const { achievements, totalXP, loading } = useAchievements();
+  const {
+    achievements, totalXP, loading, persistenceError, retryPersistence,
+  } = useAchievements();
 
   const unlockedCount  = achievements.filter((a) => a.unlocked).length;
   const totalCount     = achievements.length;
@@ -69,6 +83,20 @@ export default function Achievements() {
       </Box>
 
       <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
+        {persistenceError && (
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" size="small" onClick={() => void retryPersistence()}>
+                Retry
+              </Button>
+            }
+            sx={{ mb: 3 }}
+          >
+            {persistenceError}
+          </Alert>
+        )}
+
         {/* Stats */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
@@ -155,6 +183,9 @@ export default function Achievements() {
                                 </Typography>
                               )}
                             </Typography>
+                            <Typography sx={{ mt: 0.6, fontSize: 10.5, color: D.t3 }}>
+                              {a.achievedByPercent.toFixed(1)}% of players unlocked this
+                            </Typography>
                           </Box>
                         </Stack>
                       </Box>
@@ -205,10 +236,11 @@ export default function Achievements() {
                 <Stack spacing={1}>
                   {[
                     "Buy your first stock to start progress.",
-                    "Diversify across 3+ companies.",
+                    "Trade regularly and diversify across companies and sectors.",
+                    "Track interesting companies on your watchlist.",
                     "Grow net worth above $15,000 then $50,000.",
                     "Keep enough cash to survive market drops.",
-                    "Advance game days to build streak records.",
+                    "Advance game days to build streak and progress records.",
                   ].map((tip) => (
                     <Stack key={tip} direction="row" spacing={1} alignItems="flex-start">
                       <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: D.brandText, mt: 0.8, flexShrink: 0 }} />

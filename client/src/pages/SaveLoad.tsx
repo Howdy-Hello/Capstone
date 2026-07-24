@@ -16,7 +16,7 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { GameMode, useGame } from "../context/GameContext";
-import { getNetWorth, getPortfolioValue } from "../data/tradingState";
+import { getNetWorth } from "../data/tradingState";
 import { D, CARD, MONO, money } from "../theme/design";
 
 const MAX_SLOTS = 4;
