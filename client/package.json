@@ -17,11 +17,14 @@
     "react-router-dom": "^7.1.1",
     "react-scripts": "5.0.1",
     "recharts": "^2.12.7",
+    "serve": "^14.2.6",
     "web-vitals": "^4.2.4"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build && node -e \"const fs=require('fs'); fs.rmSync('../docs',{recursive:true,force:true}); fs.mkdirSync('../docs',{recursive:true}); fs.cpSync('build','../docs',{recursive:true});\"",
+    "build:railway": "react-scripts build",
+    "start:railway": "serve --single --listen $PORT build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
