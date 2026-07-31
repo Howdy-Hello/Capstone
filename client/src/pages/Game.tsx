@@ -34,11 +34,11 @@ import {
   getNewsCredibility, getOpeningStoryDays, STORY_DAYS, Stock,
 } from "../data/mockStocks";
 import { getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
-import { GameMode, useGame } from "../context/GameContext";
+import { getPlayerLevel } from "../data/levelSystem";
+import { GameMode, useGame, WEEKLY_BILL_TOTAL } from "../context/GameContext";
 import { useAchievements } from "../hooks/useAchievements";
 import { useDailyGoals } from "../hooks/useDailyGoals";
 import { useStockAlerts } from "../hooks/useStockAlerts";
-import { useBills } from "../hooks/useBills";
 import { useMissions } from "../hooks/useMissions";
 import { useRivalTrader } from "../hooks/useRivalTrader";
 import { fetchLeaderboard } from "../lib/api";
@@ -77,10 +77,18 @@ export default function Game() {
     queuedNotificationCount,
     dismissAchievementNotification,
     achievementIds,
+    totalXP,
     devUnlockAchievements,
     devClearAchievements,
   } = useAchievements();
   const dailyGoals = useDailyGoals();
+  const missions = useMissions();
+  const rival = useRivalTrader();
+  useStockAlerts();
+  const [missionsHidden, setMissionsHidden] = useState(
+    () => localStorage.getItem("stockpilot-missions-hidden") === "1"
+  );
+  const playerLevel = useMemo(() => getPlayerLevel(totalXP), [totalXP]);
   const {
     gameDay, gameMode, isGameComplete, maxGameDay, setGameDay,
     stocks, news: todayNews, syncSessionValue,
@@ -99,6 +107,12 @@ export default function Game() {
   const openingStories = useMemo(() => getOpeningStoryDays(), []);
   const portfolioValue = useMemo(() => getPortfolioValue(trading.account, stocks), [trading.account, stocks]);
   const netWorth = useMemo(() => getNetWorth(trading.account, stocks), [trading.account, stocks]);
+  const nextBillDay = (Math.floor(gameDay / 7) + 1) * 7;
+  const bills = {
+    billIntervalDays: 7,
+    nextBillDay,
+    nextBillAmount: WEEKLY_BILL_TOTAL,
+  };
   const portfolioPnL = useMemo(() =>
     trading.account.holdings.reduce((sum, h) => {
       const live = stocks.find((s) => s.symbol === h.symbol);
@@ -486,6 +500,9 @@ export default function Game() {
                 <Chip icon={gameMode === "limited_30" ? <TimerIcon sx={{ fontSize: 14 }} /> : <AllInclusiveIcon sx={{ fontSize: 14 }} />}
                   label={modeLabel} size="small"
                   sx={{ bgcolor: D.elevated, color: D.t2, border: `1px solid ${D.border}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
+                <Chip icon={<WorkspacePremiumIcon sx={{ fontSize: 14 }} />}
+                  label={`LEVEL ${playerLevel.level}`} size="small"
+                  sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
               </Stack>
               <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>Stock Market Simulator</Typography>
               <Typography sx={{ fontSize: 13, color: D.t2, mb: 2.5 }}>
@@ -574,6 +591,46 @@ export default function Game() {
         </Grid>
 
         {/* Trade message */}
+        <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.amberBg, border: "1px solid rgba(245,158,11,0.24)" }}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1}>
+            <Stack direction="row" spacing={1.2} alignItems="center">
+              <ReceiptLongIcon sx={{ color: D.amber, fontSize: 20 }} />
+              <Box>
+                <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1 }}>Weekly living expenses</Typography>
+                <Typography sx={{ fontSize: 12.5, color: D.t2 }}>Rent $200 · Food $100 · Utilities $50</Typography>
+              </Box>
+            </Stack>
+            <Typography sx={{ color: D.amber, fontFamily: MONO, fontWeight: 900, fontSize: 12 }}>
+              {money(WEEKLY_BILL_TOTAL)} DUE DAY {nextBillDay}
+            </Typography>
+          </Stack>
+        </Box>
+
+        <MotionPresence initial={false}>
+          {trading.latestBill && (
+            <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
+                <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1}>
+                  <Box>
+                    <Typography sx={{ fontSize: 14, fontWeight: 900, color: D.redText }}>
+                      Bills paid: −{money(trading.latestBill.paid)}
+                    </Typography>
+                    <Typography sx={{ fontSize: 12.5, color: D.t2 }}>
+                      {trading.latestBill.cycles > 1 ? `${trading.latestBill.cycles} weekly cycles were due. ` : ""}
+                      {trading.latestBill.shortfall > 0
+                        ? `${money(trading.latestBill.shortfall)} could not be covered because your cash ran out.`
+                        : "Rent, food, and utilities were deducted from your cash."}
+                    </Typography>
+                  </Box>
+                  <IconButton onClick={trading.clearLatestBill} size="small" sx={{ color: D.t3 }} aria-label="Dismiss bill notice">
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              </Box>
+            </motion.div>
+          )}
+        </MotionPresence>
+
         <MotionPresence initial={false}>
           {tradeMessage && (() => {
             const ok = tradeMessage.startsWith("Bought") || tradeMessage.startsWith("Sold");
@@ -883,6 +940,26 @@ export default function Game() {
               )}
 
               {/* Daily goals */}
+              <Box sx={{ ...CARD, p: 2.5 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.2 }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <WorkspacePremiumIcon sx={{ color: D.brandText, fontSize: 20 }} />
+                    <Box>
+                      <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>PLAYER LEVEL</Typography>
+                      <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>Level {playerLevel.level}</Typography>
+                    </Box>
+                  </Stack>
+                  <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>
+                    {playerLevel.xpIntoLevel}/{playerLevel.xpForNextLevel} XP
+                  </Typography>
+                </Stack>
+                <LinearProgress variant="determinate" value={playerLevel.progress}
+                  sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+                <Typography sx={{ fontSize: 11, color: D.t3, mt: 1 }}>
+                  {playerLevel.xpForNextLevel - playerLevel.xpIntoLevel} XP until Level {playerLevel.level + 1} · {totalXP} total XP
+                </Typography>
+              </Box>
+
               <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                   <Stack direction="row" spacing={1} alignItems="center">

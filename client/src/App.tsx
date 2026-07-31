@@ -24,6 +24,7 @@ import SaveLoad from "./pages/SaveLoad";
 import StockDetails from "./pages/StockDetails";
 import CompareStocks from "./pages/CompareStocks";
 import Profile from "./pages/Profile";
+import Level from "./pages/Level";
 
 const NotFound: React.FC = () => (
   <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 2, px: 2, textAlign: "center" }}>
@@ -75,6 +76,7 @@ function AppLayout() {
           <Route path="/compare" element={<ProtectedRoute><CompareStocks /></ProtectedRoute>} />
           <Route path="/stocks/:symbol" element={<ProtectedRoute><StockDetails /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/level" element={<ProtectedRoute><Level /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -3,7 +3,6 @@ import {
   Alert, Box, Button, Chip, CircularProgress, Container, Grid, LinearProgress, Stack, Typography,
 } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import LockIcon from "@mui/icons-material/Lock";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
@@ -19,6 +18,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { D, CARD, MONO } from "../theme/design";
 import { useAchievements } from "../hooks/useAchievements";
+import { getPlayerLevel } from "../data/levelSystem";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -51,6 +51,7 @@ export default function Achievements() {
   const unlockedCount  = achievements.filter((a) => a.unlocked).length;
   const totalCount     = achievements.length;
   const completionPct  = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
+  const playerLevel    = getPlayerLevel(totalXP);
   const nextGoal       = [...achievements]
     .filter((a) => !a.unlocked)
     .sort((a, b) => b.progress - a.progress)[0];
@@ -88,6 +89,12 @@ export default function Achievements() {
                 <LinearProgress variant="determinate" value={completionPct}
                   sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
                 <Typography sx={{ fontSize: 11.5, color: D.t3, mt: 1 }}>{unlockedCount} of {totalCount} unlocked · {totalXP} XP earned</Typography>
+                <Stack direction="row" justifyContent="space-between" sx={{ mt: 1.5, mb: 0.6 }}>
+                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>LEVEL {playerLevel.level}</Typography>
+                  <Typography sx={{ fontSize: 10.5, color: D.t3, fontFamily: MONO }}>{playerLevel.xpIntoLevel}/{playerLevel.xpForNextLevel} XP</Typography>
+                </Stack>
+                <LinearProgress variant="determinate" value={playerLevel.progress}
+                  sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.green, borderRadius: 99 } }} />
               </Box>
             </Stack>
           </motion.div>
@@ -117,7 +124,7 @@ export default function Achievements() {
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
             { label: "Unlocked",  val: unlockedCount.toString(),            icon: <CheckCircleIcon sx={{ fontSize: 20 }} />,         up: true       },
-            { label: "Locked",    val: (totalCount - unlockedCount).toString(), icon: <LockIcon sx={{ fontSize: 20 }} />,            up: false      },
+            { label: "Level",     val: playerLevel.level.toString(),            icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />,   up: undefined  },
             { label: "Total XP",  val: totalXP.toString(),                  icon: <LocalFireDepartmentIcon sx={{ fontSize: 20 }} />, up: true       },
             { label: "Next Goal", val: nextGoal?.title ?? "All done!",      icon: <PieChartIcon sx={{ fontSize: 20 }} />,            up: undefined  },
           ].map((s, i) => {

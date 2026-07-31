@@ -28,7 +28,16 @@ const STARTING_CASH = 2_000;
 const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
 const GAME_SEED_STORAGE_KEY = "stockpilot-market-seed";
 export const LIMITED_GAME_DAYS = 30;
+export const WEEKLY_BILL_TOTAL = 350;
 export type GameMode = "infinite" | "limited_30";
+
+export type BillCharge = {
+  cycles: number;
+  total: number;
+  paid: number;
+  shortfall: number;
+  day: number;
+};
 
 function gameDayStorageKey(sessionId: string) {
   return `${GAME_DAY_STORAGE_KEY}:${sessionId}`;
@@ -123,6 +132,8 @@ type GameContextValue = {
   watchlistStocks: Stock[];
   gameDay: number;
   setGameDay: (day: number | ((current: number) => number)) => Promise<void>;
+  latestBill: BillCharge | null;
+  clearLatestBill: () => void;
   gameMode: GameMode;
   marketSeed: string;
   storyArcs: string[];
@@ -403,6 +414,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [latestBill, setLatestBill] = useState<BillCharge | null>(null);
   const gameDayRef = useRef(gameDay);
 
   useEffect(() => {
@@ -682,22 +694,45 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const requested = typeof day === "function" ? day(gameDayRef.current) : day;
     const next = clampGameDayForMode(requested, gameMode);
 
-    gameDayRef.current = next;
-    setGameDayState(next);
-    localStorage.setItem(GAME_DAY_STORAGE_KEY, next.toString());
+    if (!session) {
+      gameDayRef.current = next;
+      setGameDayState(next);
+      localStorage.setItem(GAME_DAY_STORAGE_KEY, next.toString());
+      return;
+    }
 
-    if (!session) return;
-
-    localStorage.setItem(gameDayStorageKey(session.id), next.toString());
-
-    const { error: dayError } = await supabase
-      .from("game_sessions")
-      .update({ current_day: next, game_mode: gameMode })
-      .eq("id", session.id);
+    const { data, error: dayError } = await supabase.rpc("advance_game_day", {
+      target_session_id: session.id,
+      target_game_day: next,
+      target_game_mode: gameMode,
+    });
 
     if (dayError) {
       setError(dayError.message);
     } else {
+      const result = data as {
+        day: number;
+        cash: number | string;
+        cycles_charged: number;
+        bill_total: number | string;
+        amount_paid: number | string;
+        shortfall: number | string;
+      };
+      const appliedDay = Number(result.day);
+      gameDayRef.current = appliedDay;
+      setGameDayState(appliedDay);
+      setAccount((current) => ({ ...current, cash: asNumber(result.cash) }));
+      localStorage.setItem(GAME_DAY_STORAGE_KEY, appliedDay.toString());
+      localStorage.setItem(gameDayStorageKey(session.id), appliedDay.toString());
+      if (result.cycles_charged > 0) {
+        setLatestBill({
+          cycles: result.cycles_charged,
+          total: asNumber(result.bill_total),
+          paid: asNumber(result.amount_paid),
+          shortfall: asNumber(result.shortfall),
+          day: appliedDay,
+        });
+      }
       setError(null);
     }
   }, [gameMode, session]);
@@ -827,6 +862,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setMarketSeed(nextSeed);
     setAccount(defaultAccount);
     setGameDayState(1);
+    setLatestBill(null);
     setError(null);
   }, [gameMode, marketSeed, user]);
 
@@ -1020,6 +1056,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     watchlistStocks,
     gameDay,
     setGameDay,
+    latestBill,
+    clearLatestBill: () => setLatestBill(null),
     gameMode,
     marketSeed,
     storyArcs,
@@ -1040,7 +1078,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     getStock, loading, loadOrCreateSession, news, resetAccount, sellStock,
     marketSeed, setCash, setGameDay, setHolding, session, stocks, storyArcs, syncSessionValue,
     maxGameDay, isGameComplete, isWatchlisted, removeFromWatchlist,
-    toggleWatchlist, watchlistStocks, watchlistSymbols,
+    latestBill, toggleWatchlist, watchlistStocks, watchlistSymbols,
   ]);
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
