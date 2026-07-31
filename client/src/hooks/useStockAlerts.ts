@@ -6,7 +6,9 @@ import { supabase } from "../lib/supabase";
 import { pushNotification } from "../lib/notifications";
 import { money, pct } from "../theme/design";
 
-export type AlertCondition = "price_above" | "price_below" | "pct_change_up" | "pct_change_down";
+export type AlertCondition =
+  | "price_above" | "price_below" | "pct_change_up" | "pct_change_down"
+  | "new_all_time_high" | "new_all_time_low";
 
 export type StockAlert = {
   id: string;
@@ -22,13 +24,19 @@ export function describeAlert(alert: Pick<StockAlert, "condition" | "threshold">
     case "price_below": return `Price below ${money(alert.threshold)}`;
     case "pct_change_up": return `Up ${alert.threshold}%+ today`;
     case "pct_change_down": return `Down ${alert.threshold}%+ today`;
+    case "new_all_time_high": return "New all-time high";
+    case "new_all_time_low": return "New all-time low";
     default: return "";
   }
 }
 
+function isExtremeCondition(condition: AlertCondition) {
+  return condition === "new_all_time_high" || condition === "new_all_time_low";
+}
+
 export function useStockAlerts() {
   const { user } = useAuth();
-  const { stocks, gameDay } = useGame();
+  const { stocks, gameDay, getHistory } = useGame();
   const [alerts, setAlerts] = useState<StockAlert[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -55,9 +63,10 @@ export function useStockAlerts() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   const createAlert = useCallback(async (symbol: string, condition: AlertCondition, threshold: number) => {
-    if (!user || !Number.isFinite(threshold) || threshold < 0) return false;
+    const normalizedThreshold = isExtremeCondition(condition) ? 0 : threshold;
+    if (!user || !Number.isFinite(normalizedThreshold) || normalizedThreshold < 0) return false;
     const { error } = await supabase.from("user_stock_alerts").insert({
-      user_id: user.id, symbol, condition, threshold,
+      user_id: user.id, symbol, condition, threshold: normalizedThreshold,
     });
     if (error) return false;
     await refresh();
@@ -84,6 +93,18 @@ export function useStockAlerts() {
         case "price_below": return stock.currentPrice <= alert.threshold;
         case "pct_change_up": return stock.dayChangePercent >= alert.threshold;
         case "pct_change_down": return stock.dayChangePercent <= -Math.abs(alert.threshold);
+        case "new_all_time_high": {
+          const history = getHistory(alert.symbol);
+          const priorHigh = Math.max(0, ...history.slice(0, -1).map((h) => h.highPrice));
+          return stock.currentPrice > priorHigh;
+        }
+        case "new_all_time_low": {
+          const history = getHistory(alert.symbol);
+          const priorPoints = history.slice(0, -1);
+          if (priorPoints.length === 0) return false;
+          const priorLow = Math.min(...priorPoints.map((h) => h.lowPrice));
+          return stock.currentPrice < priorLow;
+        }
         default: return false;
       }
     });
@@ -111,7 +132,7 @@ export function useStockAlerts() {
       .then(() => {});
     // gameDay is included so the check re-runs on day advance even if the
     // `stocks` array reference happens to be memoized identically.
-  }, [alerts, stocks, gameDay, user]);
+  }, [alerts, stocks, gameDay, user, getHistory]);
 
   const alertsForSymbol = useMemo(() => {
     const map = new Map<string, StockAlert[]>();

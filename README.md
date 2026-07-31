@@ -48,13 +48,17 @@ cd ../server && npm install
 ```
 REACT_APP_SUPABASE_URL=https://your-project-ref.supabase.co
 REACT_APP_SUPABASE_PUBLISHABLE_KEY=your-anon-or-publishable-key
+REACT_APP_API_URL=http://localhost:5000
 ```
 
 **server/.env**
 ```
 PORT=5000
+CLIENT_ORIGIN=http://localhost:3000
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_ANON_KEY=your-anon-or-publishable-key
+ADMIN_API_SECRET=replace-with-a-long-random-secret
 ```
 
 ### 4. Supabase setup
@@ -128,6 +132,15 @@ App available at `http://localhost:3000`
 ---
 
 ## Progress Checklist
+
+### Current Status
+- [x] Supabase cloud saves, leaderboard, achievements, daily goals, beginner missions, and stock alerts are implemented.
+- [x] Express validation and API/account rate limiting are implemented.
+- [x] Client/server deployment config files are present.
+- [x] CI build/test workflow is present.
+- [ ] Email confirmation still must be enabled in the Supabase dashboard.
+- [ ] Live client and server deployment URLs still need to be confirmed.
+- [ ] User levels, in-game email, and expanded stock alert history remain future work.
 
 ### ✅ Done
 - [x] React + TypeScript client scaffolded

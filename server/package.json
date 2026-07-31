@@ -6,7 +6,7 @@
     "start": "node dist/server.js",
     "build": "tsc",
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "ts-node --transpile-only src/tests/run.ts"
   },
   "keywords": [],
   "author": "",

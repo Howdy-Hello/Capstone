@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { trackEvent } from "./analytics";
 
 // Lightweight global pub-sub for cross-feature toast notifications (stock
 // alerts, missions, bills, rival trader). Achievements keep their own
@@ -15,10 +16,31 @@ export type AppNotification = {
   title: string;
   description?: string;
   durationMs?: number;
+  createdAt?: string;
 };
 
+const HISTORY_KEY = "stockpilot-notification-history";
+const MAX_HISTORY = 80;
 let queue: AppNotification[] = [];
+let history = loadHistory();
 const listeners = new Set<() => void>();
+
+function loadHistory(): AppNotification[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) as AppNotification[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistHistory() {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+  } catch {
+    /* notification history is helpful, not critical */
+  }
+}
 
 function emit() {
   listeners.forEach((listener) => listener());
@@ -27,12 +49,23 @@ function emit() {
 export function pushNotification(notification: Omit<AppNotification, "id"> & { id?: string }) {
   const id = notification.id ?? `${notification.kind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   if (queue.some((n) => n.id === id)) return; // de-dupe re-fires of the same event
-  queue = [...queue, { ...notification, id }];
+  const createdAt = notification.createdAt ?? new Date().toISOString();
+  const next = { ...notification, id, createdAt };
+  queue = [...queue, next];
+  history = [next, ...history.filter((n) => n.id !== id)].slice(0, MAX_HISTORY);
+  persistHistory();
+  trackEvent("notification_pushed", { kind: next.kind, title: next.title });
   emit();
 }
 
 export function dismissNotification(id: string) {
   queue = queue.filter((n) => n.id !== id);
+  emit();
+}
+
+export function clearNotificationHistory() {
+  history = [];
+  persistHistory();
   emit();
 }
 
@@ -45,6 +78,14 @@ function getSnapshot() {
   return queue;
 }
 
+function getHistorySnapshot() {
+  return history;
+}
+
 export function useNotificationQueue() {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+export function useNotificationHistory() {
+  return useSyncExternalStore(subscribe, getHistorySnapshot, getHistorySnapshot);
 }

@@ -6,6 +6,7 @@ import { connectDB } from './db/db';
 import supabaseRoutes from './routes/supabaseRoutes';
 import gameRoutes from './routes/gameRoutes';
 import { rateLimit } from './middleware/rateLimit';
+import { getServerEnvIssues } from './lib/env';
 
 dotenv.config({ path: './.env' });
 
@@ -34,6 +35,15 @@ app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 300, bucket: 'global'
 
 app.use('/api', supabaseRoutes);
 app.use('/api', gameRoutes);
+
+app.get('/api/health/config', (_req: Request, res: Response) => {
+  const issues = getServerEnvIssues();
+  const safeIssues = issues.map(({ key, message }) => ({ key, message }));
+  res.status(issues.some((issue) => issue.key === 'SUPABASE_URL') ? 503 : 200).json({
+    status: issues.length === 0 ? 'ok' : 'warning',
+    issues: safeIssues,
+  });
+});
 
 app.get('/home', (req: Request, res: Response) => {
   res.send('StockPilot API');

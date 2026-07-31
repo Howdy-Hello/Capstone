@@ -5,6 +5,7 @@ import {
   RequestHandler,
   Response as ExpressResponse,
 } from 'express';
+import { assertServerEnv } from './env';
 
 // Local re-implementation of the "withSupabase" helper. The previously-imported
 // "@supabase/server" package does not exist, so the API server could not start.
@@ -18,13 +19,9 @@ const anonKey =
   process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 const adminSecret = process.env.ADMIN_API_SECRET;
 
-if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error(
-    'SUPABASE_URL and a Supabase service role key (SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY) must be set in .env'
-  );
-}
+assertServerEnv();
 
-const supabaseAdmin: SupabaseClient = createClient(supabaseUrl, serviceRoleKey, {
+const supabaseAdmin: SupabaseClient = createClient(supabaseUrl as string, serviceRoleKey as string, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 

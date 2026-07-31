@@ -15,6 +15,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import TimerIcon from "@mui/icons-material/Timer";
 import AllInclusiveIcon from "@mui/icons-material/AllInclusive";
 import { Link as RouterLink } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { fetchLeaderboard } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -111,8 +112,7 @@ export default function Leaderboard() {
             })()
           : await fetchLeaderboard(50);
         if (cancelled) return;
-        if (rpcError) { setError(rpcError.message); setLoading(false); return; }
-        setPlayers(buildRanked((data ?? []) as LeaderboardRow[]));
+        setPlayers(buildRanked(rows as LeaderboardRow[]));
       } catch (leaderboardError: any) {
         if (!cancelled) setError(leaderboardError?.message ?? "Could not load leaderboard.");
       }

@@ -1,10 +1,11 @@
 import React from "react";
 import {
-  AppBar, Avatar, Box, Button, Divider, Drawer,
+  AppBar, Avatar, Badge, Box, Button, Divider, Drawer,
   IconButton, List, ListItemButton, ListItemIcon,
   ListItemText, Menu, MenuItem, Stack, Toolbar, Typography,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import CloseIcon from "@mui/icons-material/Close";
 import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
@@ -18,8 +19,10 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useUnreadInboxCount } from "../lib/inbox";
 import { D } from "../theme/design";
 
 const nav = [
@@ -29,6 +32,7 @@ const nav = [
   { to: "/achievements", label: "Achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/learn",       label: "Learn",        icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/news",        label: "News",         icon: <ArticleOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/inbox",       label: "Inbox",        icon: <MailOutlineIcon sx={{ fontSize: 17 }} /> },
 ];
 
 const accountMenu = [
@@ -37,6 +41,7 @@ const accountMenu = [
   { label: "Dashboard",     to: "/dashboard",    icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Achievements",  to: "/achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Save & Load",   to: "/save-load",    icon: <SaveOutlinedIcon sx={{ fontSize: 16 }} /> },
+  { label: "Notifications", to: "/notifications", icon: <NotificationsNoneOutlinedIcon sx={{ fontSize: 16 }} /> },
 ];
 
 const Header: React.FC = () => {
@@ -45,6 +50,7 @@ const Header: React.FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
+  const unreadCount = useUnreadInboxCount();
 
   const isActive = (to: string) => pathname === to || (to !== "/" && pathname.startsWith(to));
 
@@ -105,7 +111,11 @@ const Header: React.FC = () => {
                     transition: "all 140ms",
                   }}
                 >
-                  {label}
+                  {to === "/inbox" && unreadCount > 0 ? (
+                    <Badge badgeContent={unreadCount} color="error" sx={{ "& .MuiBadge-badge": { fontSize: 9, height: 15, minWidth: 15 } }}>
+                      {label}
+                    </Badge>
+                  ) : label}
                 </Button>
               );
             })}

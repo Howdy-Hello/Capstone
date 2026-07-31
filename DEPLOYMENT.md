@@ -17,8 +17,9 @@ supabase db push
 ```
 
 …or open **Supabase → SQL Editor** and run each file in `supabase/migrations/`
-in filename order (they're timestamp-ordered). The newest,
-`202607190001_persistent_leaderboard.sql`, creates the leaderboard table.
+in filename order (they're timestamp-ordered). Make sure the `20260724...`
+migrations are included; they add daily goals, stock alerts, and beginner
+mission completion tables.
 
 ### Enable email confirmation (optional)
 **Supabase → Authentication → Providers → Email → "Confirm email" = ON.**
@@ -81,8 +82,9 @@ vars above.
 ## 4. Wire them together
 - Set the client's `REACT_APP_API_URL` to the server URL and redeploy the client.
 - Set the server's `CLIENT_ORIGIN` to the client URL (CORS allowlist).
-- Verify: `GET https://<api>/api/leaderboard` returns JSON; the leaderboard page
-  loads and updates after a trade.
+- Verify: `GET https://<api>/api/health` returns JSON.
+- Verify: `GET https://<api>/api/health/config` returns `status: "ok"` or only non-blocking warnings.
+- Verify: `GET https://<api>/api/leaderboard` returns JSON; the leaderboard page loads and updates after a trade.
 
 If the server is down or unset, the client automatically falls back to calling
 Supabase directly — nothing breaks, you just lose the server-side write path.

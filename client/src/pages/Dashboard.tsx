@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Box, Button, Chip, CircularProgress, Container, Divider, Grid, LinearProgress, Stack, Typography,
+  Alert, Box, Button, Chip, CircularProgress, Container, Divider, FormControl, Grid,
+  LinearProgress, MenuItem, Select, Stack, Typography,
 } from "@mui/material";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import AssessmentIcon from "@mui/icons-material/Assessment";
@@ -16,9 +17,11 @@ import {
 } from "recharts";
 
 import { Stock } from "../data/mockStocks";
+import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import { getNetWorth, getPortfolioValue } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
+import { useLevel } from "../hooks/useLevel";
 import { supabase } from "../lib/supabase";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
@@ -71,6 +74,8 @@ export default function Dashboard() {
   const modeLabel = trading.gameMode === "limited_30" ? "30-day challenge" : "infinite session";
   const [tradeHistory, setTradeHistory] = useState<TradeRecord[]>([]);
   const [tradeHistoryLoading, setTradeHistoryLoading] = useState(true);
+  const [tradeHistoryError, setTradeHistoryError] = useState<string | null>(null);
+  const [tradeTypeFilter, setTradeTypeFilter] = useState<"all" | "buy" | "sell">("all");
 
   const playerName =
     profile?.display_name
@@ -79,6 +84,7 @@ export default function Dashboard() {
     || "Trader";
   const portfolioValue = useMemo(() => getPortfolioValue(trading.account, stocks), [trading.account, stocks]);
   const netWorth = useMemo(() => getNetWorth(trading.account, stocks), [trading.account, stocks]);
+  const level = useLevel();
 
   useEffect(() => {
     if (!user) return;
@@ -90,9 +96,16 @@ export default function Dashboard() {
       .eq("user_id", user.id)
       .order("executed_at", { ascending: false })
       .limit(20)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (cancelled) return;
+        if (error) {
+          setTradeHistoryError(error.message);
+          setTradeHistory([]);
+          setTradeHistoryLoading(false);
+          return;
+        }
         setTradeHistory((data ?? []) as unknown as TradeRecord[]);
+        setTradeHistoryError(null);
         setTradeHistoryLoading(false);
       });
     return () => { cancelled = true; };
@@ -127,6 +140,26 @@ export default function Dashboard() {
 
   const movers = useMemo(() => [...stocks].sort((a, b) => Math.abs(b.dayChangePercent) - Math.abs(a.dayChangePercent)).slice(0, 8), [stocks]);
   const returnPct = ((netWorth - 2000) / 2000) * 100;
+  const portfolioAnalytics = useMemo(() => {
+    const sorted = [...holdings].sort((a, b) => b.marketValue - a.marketValue);
+    const largest = sorted[0] ?? null;
+    const best = holdings.length ? [...holdings].sort((a, b) => b.profitLossPercent - a.profitLossPercent)[0] : null;
+    const worst = holdings.length ? [...holdings].sort((a, b) => a.profitLossPercent - b.profitLossPercent)[0] : null;
+    const cashPercent = netWorth > 0 ? (trading.account.cash / netWorth) * 100 : 0;
+    const concentrationPercent = largest && netWorth > 0 ? (largest.marketValue / netWorth) * 100 : 0;
+    return { largest, best, worst, cashPercent, concentrationPercent };
+  }, [holdings, netWorth, trading.account.cash]);
+  const filteredTradeHistory = useMemo(() => (
+    tradeTypeFilter === "all"
+      ? tradeHistory
+      : tradeHistory.filter((trade) => trade.trade_type === tradeTypeFilter)
+  ), [tradeHistory, tradeTypeFilter]);
+  const tradeInsights = useMemo(() => {
+    const buys = tradeHistory.filter((trade) => trade.trade_type === "buy");
+    const sells = tradeHistory.filter((trade) => trade.trade_type === "sell");
+    const volume = tradeHistory.reduce((sum, trade) => sum + Number(trade.total_amount), 0);
+    return { buys: buys.length, sells: sells.length, volume };
+  }, [tradeHistory]);
 
   if (trading.loading) {
     return (
@@ -150,20 +183,39 @@ export default function Dashboard() {
                 </Typography>
                 <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Live portfolio view for Game Day {gameDay} · {modeLabel}</Typography>
               </Box>
-              <Box sx={{ ...CARD, p: 2.5, minWidth: 280 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                  <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO }}>SESSION STATUS</Typography>
-                  <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>DAY {gameDay}{trading.maxGameDay ? `/${trading.maxGameDay}` : ""}</Typography>
-                </Stack>
-                <LinearProgress variant={trading.maxGameDay ? "determinate" : "indeterminate"} value={trading.maxGameDay ? (gameDay / trading.maxGameDay) * 100 : undefined}
-                  sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
-              </Box>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                <Box sx={{ ...CARD, p: 2.5, minWidth: 200 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                    <Stack direction="row" spacing={0.6} alignItems="center">
+                      <MilitaryTechIcon sx={{ fontSize: 15, color: D.brandText }} />
+                      <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO }}>LEVEL {level.level}</Typography>
+                    </Stack>
+                    <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>{level.xpIntoLevel}/{level.xpForNextLevel} XP</Typography>
+                  </Stack>
+                  <LinearProgress variant="determinate" value={level.progressPercent}
+                    sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+                </Box>
+                <Box sx={{ ...CARD, p: 2.5, minWidth: 200 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                    <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO }}>SESSION STATUS</Typography>
+                    <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>DAY {gameDay}{trading.maxGameDay ? `/${trading.maxGameDay}` : ""}</Typography>
+                  </Stack>
+                  <LinearProgress variant={trading.maxGameDay ? "determinate" : "indeterminate"} value={trading.maxGameDay ? (gameDay / trading.maxGameDay) * 100 : undefined}
+                    sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+                </Box>
+              </Stack>
             </Stack>
           </motion.div>
         </Container>
       </Box>
 
       <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
+        {trading.error && (
+          <Alert severity="warning" sx={{ mb: 2.5, bgcolor: D.amberBg, color: D.t1, border: `1px solid ${D.border}`, fontSize: 13 }}>
+            {trading.error}
+          </Alert>
+        )}
+
         {/* Stat tiles */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
@@ -409,17 +461,56 @@ export default function Dashboard() {
           </Grid>
         </Grid>
 
-        {/* ── Trade History ─────────────────────────────────────────────── */}
         <Box sx={{ ...CARD, p: 0, overflow: "hidden", mt: 3 }}>
           <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-            <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Trade History</Typography>
-            <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Your last 20 executed buys and sells.</Typography>
+            <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio Analytics</Typography>
+            <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Quick risk and behavior readouts from your current positions.</Typography>
           </Box>
+          <Grid container spacing={0} sx={{ "& > .MuiGrid-item": { borderRight: { md: `1px solid ${D.border}` }, borderBottom: { xs: `1px solid ${D.border}`, md: 0 } } }}>
+            {[
+              { label: "Cash Reserve", value: `${portfolioAnalytics.cashPercent.toFixed(1)}%`, detail: money(trading.account.cash) },
+              { label: "Largest Position", value: portfolioAnalytics.largest?.symbol ?? "None", detail: portfolioAnalytics.largest ? `${portfolioAnalytics.concentrationPercent.toFixed(1)}% of net worth` : "No holdings yet" },
+              { label: "Best Holding", value: portfolioAnalytics.best?.symbol ?? "None", detail: portfolioAnalytics.best ? pct(portfolioAnalytics.best.profitLossPercent, 1) : "No holdings yet" },
+              { label: "Weakest Holding", value: portfolioAnalytics.worst?.symbol ?? "None", detail: portfolioAnalytics.worst ? pct(portfolioAnalytics.worst.profitLossPercent, 1) : "No holdings yet" },
+            ].map((item) => (
+              <Grid item xs={12} sm={6} md={3} key={item.label}>
+                <Box sx={{ p: 2.5 }}>
+                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{item.label.toUpperCase()}</Typography>
+                  <Typography sx={{ fontSize: 18, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{item.value}</Typography>
+                  <Typography sx={{ fontSize: 12.5, color: D.t3, mt: 0.3 }}>{item.detail}</Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+
+        {/* Trade History */}
+        <Box sx={{ ...CARD, p: 0, overflow: "hidden", mt: 3 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+            <Box>
+              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Trade History</Typography>
+              <Typography sx={{ fontSize: 12.5, color: D.t3 }}>
+                {tradeInsights.buys} buys, {tradeInsights.sells} sells, {money(tradeInsights.volume)} total volume.
+              </Typography>
+            </Box>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <Select value={tradeTypeFilter} onChange={(event) => setTradeTypeFilter(event.target.value as typeof tradeTypeFilter)}
+                sx={{ color: D.t1, bgcolor: D.elevated, borderRadius: 1.5, fontSize: 13, "& fieldset": { borderColor: D.border }, "& .MuiSvgIcon-root": { color: D.t3 } }}>
+                <MenuItem value="all">All trades</MenuItem>
+                <MenuItem value="buy">Buys only</MenuItem>
+                <MenuItem value="sell">Sells only</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
           <Box sx={{ p: 2.5 }}>
             {tradeHistoryLoading ? (
               <Box sx={{ display: "grid", placeItems: "center", py: 4 }}>
                 <CircularProgress sx={{ color: D.brandText }} />
               </Box>
+            ) : tradeHistoryError ? (
+              <Alert severity="error" sx={{ bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>
+                Could not load trade history: {tradeHistoryError}
+              </Alert>
             ) : tradeHistory.length === 0 ? (
               <Box sx={{ p: 3, borderRadius: 2, bgcolor: D.elevated, border: `1px dashed ${D.borderHi}`, textAlign: "center" }}>
                 <Typography sx={{ fontWeight: 800, fontSize: 15, color: D.t1, mb: 0.5 }}>No trades yet.</Typography>
@@ -432,7 +523,7 @@ export default function Dashboard() {
             ) : (
               <Stack spacing={1}>
                 <MotionPresence mode="popLayout" initial={false}>
-                {tradeHistory.map((t, index) => {
+                {filteredTradeHistory.map((t, index) => {
                   const isBuy = t.trade_type === "buy";
                   const sym   = t.stocks?.symbol ?? "—";
                   return (
@@ -474,6 +565,9 @@ export default function Dashboard() {
                   );
                 })}
                 </MotionPresence>
+                {filteredTradeHistory.length === 0 && (
+                  <Typography sx={{ fontSize: 13, color: D.t3, py: 1 }}>No trades match this filter.</Typography>
+                )}
               </Stack>
             )}
           </Box>

@@ -17,6 +17,7 @@ import {
 } from "../data/mockStocks";
 import {
   getPortfolioValue,
+  getSlippageAdjustedPrice,
   PortfolioHolding,
   TradingAccount,
 } from "../data/tradingState";
@@ -111,6 +112,9 @@ type GameContextValue = {
   account: TradingAccount;
   buyStock: (stock: Stock, quantity?: number) => Promise<boolean>;
   sellStock: (stock: Stock, quantity?: number) => Promise<boolean>;
+  getTradeQuote: (stock: Stock, tradeType: "buy" | "sell", quantity?: number) => {
+    basePrice: number; effectivePrice: number; slippage: number; total: number;
+  };
   resetAccount: (mode?: GameMode) => Promise<void>;
   setCash: (cash: number) => Promise<void>;
   addCash: (amount: number) => Promise<void>;
@@ -702,13 +706,33 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   }, [gameMode, session]);
 
+  const getTradeQuote = useCallback((
+    stock: Stock,
+    tradeType: "buy" | "sell",
+    quantity = 1
+  ) => {
+    const netWorth = account.cash + getPortfolioValue(account, stocks);
+    const tradeValue = stock.currentPrice * quantity;
+    const effectivePrice = getSlippageAdjustedPrice(stock.currentPrice, tradeType, tradeValue, netWorth);
+    const slippage = stock.currentPrice > 0 ? (effectivePrice - stock.currentPrice) / stock.currentPrice : 0;
+    return {
+      basePrice: stock.currentPrice,
+      effectivePrice,
+      slippage: Math.abs(slippage),
+      total: effectivePrice * quantity,
+    };
+  }, [account, stocks]);
+
   const executeTrade = useCallback(async (
     stock: Stock,
     tradeType: "buy" | "sell",
     quantity = 1
   ) => {
     if (!session || !user) return false;
-    if (tradeType === "buy" && account.cash < stock.currentPrice * quantity) return false;
+
+    const quote = getTradeQuote(stock, tradeType, quantity);
+
+    if (tradeType === "buy" && account.cash < quote.total) return false;
     if (tradeType === "sell") {
       const holding = account.holdings.find((h) => h.symbol === stock.symbol);
       if (!holding || holding.shares < quantity) return false;
@@ -718,7 +742,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       target_session_id: session.id,
       target_symbol: stock.symbol,
       target_trade_type: tradeType,
-      target_price: stock.currentPrice,
+      target_price: quote.effectivePrice,
       target_game_day: gameDay,
       target_quantity: quantity,
     });
@@ -771,7 +795,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     setError(null);
     return true;
-  }, [account.cash, account.holdings, gameDay, session, user]);
+  }, [account.cash, account.holdings, gameDay, getTradeQuote, session, user]);
 
   const buyStock = useCallback(
     (stock: Stock, quantity = 1) => executeTrade(stock, "buy", quantity),
@@ -1008,6 +1032,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     account,
     buyStock,
     sellStock,
+    getTradeQuote,
     resetAccount,
     setCash,
     addCash,
@@ -1037,7 +1062,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     syncSessionValue,
   }), [
     account, addCash, addToWatchlist, buyStock, error, gameDay, gameMode, getHistory, getRelatedNews,
-    getStock, loading, loadOrCreateSession, news, resetAccount, sellStock,
+    getStock, getTradeQuote, loading, loadOrCreateSession, news, resetAccount, sellStock,
     marketSeed, setCash, setGameDay, setHolding, session, stocks, storyArcs, syncSessionValue,
     maxGameDay, isGameComplete, isWatchlisted, removeFromWatchlist,
     toggleWatchlist, watchlistStocks, watchlistSymbols,

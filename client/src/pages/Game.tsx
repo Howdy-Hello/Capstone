@@ -27,6 +27,7 @@ import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import FlagIcon from "@mui/icons-material/Flag";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
+import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
@@ -37,11 +38,12 @@ import { getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingS
 import { GameMode, useGame } from "../context/GameContext";
 import { useAchievements } from "../hooks/useAchievements";
 import { useDailyGoals } from "../hooks/useDailyGoals";
-import { useStockAlerts } from "../hooks/useStockAlerts";
 import { useBills } from "../hooks/useBills";
 import { useMissions } from "../hooks/useMissions";
 import { useRivalTrader } from "../hooks/useRivalTrader";
+import { useLevel } from "../hooks/useLevel";
 import { fetchLeaderboard } from "../lib/api";
+import { addInboxMessage } from "../lib/inbox";
 import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
@@ -81,6 +83,13 @@ export default function Game() {
     devClearAchievements,
   } = useAchievements();
   const dailyGoals = useDailyGoals();
+  const missions = useMissions();
+  const bills = useBills();
+  const rival = useRivalTrader();
+  const level = useLevel();
+  const [missionsHidden, setMissionsHidden] = useState(
+    () => localStorage.getItem("stockpilot-missions-hidden") === "1"
+  );
   const {
     gameDay, gameMode, isGameComplete, maxGameDay, setGameDay,
     stocks, news: todayNews, syncSessionValue,
@@ -195,6 +204,21 @@ export default function Game() {
     return () => window.clearTimeout(timeout);
   }, [achievementNotification, dismissAchievementNotification]);
 
+  // Once per day, drop the day's top headline into the inbox as a market
+  // flavor email — a persistent record of "why did the market do that"
+  // alongside the mission/bill/rival/achievement messages.
+  useEffect(() => {
+    if (!user || todayNews.length === 0) return;
+    const top = [...todayNews].sort((a, b) => (a.importance === b.importance ? 0 : a.importance === "High" ? -1 : 1))[0];
+    addInboxMessage(user.id, {
+      id: `news-digest-${user.id}-day-${gameDay}`,
+      from: top.source || "Market Wire",
+      subject: `Day ${gameDay} market wrap: ${top.headline}`,
+      body: `${top.body}\n\n${todayNews.length > 1 ? `${todayNews.length - 1} more stor${todayNews.length - 1 === 1 ? "y" : "ies"} moved the market today — check the News page.` : ""}`,
+      category: "system",
+    });
+  }, [todayNews, gameDay, user]);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -254,10 +278,11 @@ export default function Game() {
   const handleSellStock = (stock: Stock) => setTradeDialog({ stock, mode: "sell" });
 
   const handleTradeConfirm = async (stock: Stock, mode: "buy" | "sell", quantity: number) => {
+    const quote = trading.getTradeQuote(stock, mode, quantity);
     const fn = mode === "buy" ? trading.buyStock : trading.sellStock;
     const ok = await fn(stock, quantity);
     const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
-    const total = money(stock.currentPrice * quantity);
+    const total = money(quote.total);
     setTradeMessage(
       ok
         ? `${mode === "buy" ? "Bought" : "Sold"} ${shares} of ${stock.symbol} for ${total}.`
@@ -456,6 +481,7 @@ export default function Game() {
           mode={tradeDialog.mode}
           cash={trading.account.cash}
           sharesOwned={getSharesOwned(trading.account, tradeDialog.stock.symbol)}
+          getQuote={(qty) => trading.getTradeQuote(tradeDialog.stock, tradeDialog.mode, qty)}
           onClose={() => setTradeDialog(null)}
           onConfirm={(qty) => handleTradeConfirm(tradeDialog.stock, tradeDialog.mode, qty)}
         />
@@ -486,6 +512,9 @@ export default function Game() {
                 <Chip icon={gameMode === "limited_30" ? <TimerIcon sx={{ fontSize: 14 }} /> : <AllInclusiveIcon sx={{ fontSize: 14 }} />}
                   label={modeLabel} size="small"
                   sx={{ bgcolor: D.elevated, color: D.t2, border: `1px solid ${D.border}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
+                <Chip icon={<MilitaryTechIcon sx={{ fontSize: 14 }} />}
+                  label={`LEVEL ${level.level} · ${level.progressPercent}%`} size="small"
+                  sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
               </Stack>
               <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>Stock Market Simulator</Typography>
               <Typography sx={{ fontSize: 13, color: D.t2, mb: 2.5 }}>
@@ -1305,11 +1334,12 @@ function StockRow({ stock, gameDay, animationIndex, sharesOwned, watchlisted, on
   );
 }
 
-function TradeDialog({ stock, mode, cash, sharesOwned, onClose, onConfirm }: {
+function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConfirm }: {
   stock: Stock;
   mode: "buy" | "sell";
   cash: number;
   sharesOwned: number;
+  getQuote: (quantity: number) => { basePrice: number; effectivePrice: number; slippage: number; total: number };
   onClose: () => void;
   onConfirm: (quantity: number) => void;
 }) {
@@ -1319,7 +1349,9 @@ function TradeDialog({ stock, mode, cash, sharesOwned, onClose, onConfirm }: {
     : Math.max(0, sharesOwned);
   const [quantity, setQuantity] = useState(1);
   const qty = Math.min(Math.max(1, quantity), maxQty);
-  const total = qty * stock.currentPrice;
+  const quote = getQuote(qty);
+  const total = quote.total;
+  const hasSlippage = quote.slippage > 0.001;
   const canConfirm = mode === "buy" ? cash >= total : sharesOwned >= qty;
   const isBuy = mode === "buy";
 
@@ -1417,6 +1449,15 @@ function TradeDialog({ stock, mode, cash, sharesOwned, onClose, onConfirm }: {
               </Typography>
             )}
           </Box>
+
+          {hasSlippage && (
+            <Box sx={{ p: 1.6, borderRadius: 2, bgcolor: D.amberBg, border: `1px solid ${D.amber}` }}>
+              <Typography sx={{ fontSize: 12, color: D.amber, fontWeight: 700 }}>
+                This trade is large relative to your net worth, so it's getting a {(quote.slippage * 100).toFixed(1)}% worse fill
+                ({money(quote.effectivePrice)}/share instead of {money(quote.basePrice)}). Split it into smaller trades to avoid the penalty.
+              </Typography>
+            </Box>
+          )}
         </Stack>
       </DialogContent>
 

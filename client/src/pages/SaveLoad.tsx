@@ -67,7 +67,12 @@ export default function SaveLoad() {
 
   // Load slots from Supabase
   const fetchSlots = async () => {
-    if (!user) return;
+    if (!user) {
+      setSlots([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const { data, error } = await supabase
       .from("save_slots")
       .select("*")
@@ -95,6 +100,7 @@ export default function SaveLoad() {
     }
 
     setSaving(true);
+    setMessage(null);
     const holdingsSnapshot: HoldingSnapshot[] = trading.account.holdings.map((h) => ({
       symbol:      h.symbol,
       shares:      h.shares,
@@ -123,13 +129,16 @@ export default function SaveLoad() {
       error = retry.error;
     }
 
-    if (error) {
-      setMessage({ text: `Save failed: ${error.message}`, severity: "error" });
-    } else {
-      setMessage({ text: "Game saved to cloud.", severity: "success" });
-      await fetchSlots();
+    try {
+      if (error) {
+        setMessage({ text: `Save failed: ${error.message}`, severity: "error" });
+      } else {
+        setMessage({ text: "Game saved to cloud.", severity: "success" });
+        await fetchSlots();
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const loadSlot = async (slot: SaveSlot) => {
@@ -139,19 +148,21 @@ export default function SaveLoad() {
     }
     setLoadingSlot(slot.id);
 
-    const { error } = await supabase.rpc("restore_save_slot", { p_slot_id: slot.id });
+    try {
+      const { error } = await supabase.rpc("restore_save_slot", { p_slot_id: slot.id });
 
-    if (error) {
-      setMessage({ text: `Load failed: ${error.message}`, severity: "error" });
+      if (error) {
+        setMessage({ text: `Load failed: ${error.message}`, severity: "error" });
+        return;
+      }
+
+      await trading.setGameDay(slot.game_day);
+      await trading.reloadSession();
+      setMessage({ text: `Loaded "${slot.slot_name}". Resuming from Day ${slot.game_day}.`, severity: "success" });
+      setTimeout(() => navigate("/game"), 800);
+    } finally {
       setLoadingSlot(null);
-      return;
     }
-
-    await trading.setGameDay(slot.game_day);
-    await trading.reloadSession();
-    setMessage({ text: `Loaded "${slot.slot_name}". Resuming from Day ${slot.game_day}.`, severity: "success" });
-    setLoadingSlot(null);
-    setTimeout(() => navigate("/game"), 800);
   };
 
   const deleteSlot = async (slot: SaveSlot) => {

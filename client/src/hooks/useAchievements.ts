@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { getPortfolioValue } from "../data/tradingState";
+import { addInboxMessage } from "../lib/inbox";
 
 export type ComputedAchievement = {
   id: string;
@@ -334,6 +335,14 @@ export function useAchievements() {
     }
 
     const [, latestRates] = await Promise.all([refreshUnlocks(), refreshUnlockRates()]);
+    items.forEach((item) => {
+      addInboxMessage(user.id, {
+        from: "Achievements Desk",
+        subject: `Achievement unlocked: ${item.title}`,
+        body: `${item.description} Reward: ${item.reward}.`,
+        category: "achievement",
+      });
+    });
     setNotificationQueue((current) => {
       const queuedIds = new Set(current.map((achievement) => achievement.id));
       return [

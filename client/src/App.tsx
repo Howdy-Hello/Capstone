@@ -1,9 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate, Link as RouterLink } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, Link as RouterLink, useLocation } from "react-router-dom";
 import { Box, Button, CssBaseline, Typography } from "@mui/material";
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { GameProvider } from "./context/GameContext";
 import { ThemeProvider, useThemeSettings } from "./context/ThemeContext";
+import { setInboxUser } from "./lib/inbox";
 import { D } from "./theme/design";
 
 import Header from "./components/Header";
@@ -24,6 +26,9 @@ import SaveLoad from "./pages/SaveLoad";
 import StockDetails from "./pages/StockDetails";
 import CompareStocks from "./pages/CompareStocks";
 import Profile from "./pages/Profile";
+import Inbox from "./pages/Inbox";
+import Notifications from "./pages/Notifications";
+import { trackEvent } from "./lib/analytics";
 
 const NotFound: React.FC = () => (
   <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 2, px: 2, textAlign: "center" }}>
@@ -44,8 +49,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+function InboxSync() {
+  const { user } = useAuth();
+  useEffect(() => {
+    setInboxUser(user?.id ?? null);
+  }, [user]);
+  return null;
+}
+
 function AppLayout() {
   useThemeSettings();
+  const location = useLocation();
+
+  useEffect(() => {
+    trackEvent("page_view", { path: location.pathname });
+  }, [location.pathname]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", width: "100%", m: 0, p: 0, bgcolor: D.bg }}>
@@ -76,6 +94,8 @@ function AppLayout() {
           <Route path="/stocks/:symbol" element={<ProtectedRoute><StockDetails /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Box>
@@ -96,6 +116,7 @@ export default function App() {
       <ScrollToTop />
       <ThemeProvider>
         <AuthProvider>
+          <InboxSync />
           <GameProvider>
             <AppLayout />
           </GameProvider>

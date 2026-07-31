@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { supabase } from "../lib/supabase";
 import { pushNotification } from "../lib/notifications";
+import { addInboxMessage } from "../lib/inbox";
 
 export type Mission = {
   id: string;
@@ -139,6 +140,12 @@ export function useMissions() {
             kind: "mission",
             title: `Mission complete: ${m.title}`,
             description: `+${m.rewardXp} XP — ${m.description}`,
+          });
+          addInboxMessage(user.id, {
+            from: "Onboarding Coach",
+            subject: `Mission complete: ${m.title}`,
+            body: `${m.description} You earned +${m.rewardXp} XP.`,
+            category: "mission",
           });
         });
       }

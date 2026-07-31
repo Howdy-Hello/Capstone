@@ -41,7 +41,13 @@ const ALERT_CONDITIONS: { value: AlertCondition; label: string }[] = [
   { value: "price_below", label: "Price falls below" },
   { value: "pct_change_up", label: "Gains at least (today)" },
   { value: "pct_change_down", label: "Drops at least (today)" },
+  { value: "new_all_time_high", label: "Hits a new all-time high" },
+  { value: "new_all_time_low", label: "Hits a new all-time low" },
 ];
+
+function needsThreshold(condition: AlertCondition) {
+  return condition !== "new_all_time_high" && condition !== "new_all_time_low";
+}
 
 type LocationState = { gameDay?: number };
 
@@ -107,6 +113,8 @@ export default function StockDetails() {
   const latestHistory = history[history.length - 1];
   const sharesOwned = getSharesOwned(trading.account, stock.symbol);
   const watchlisted = trading.isWatchlisted(stock.symbol);
+  const buyQuote = trading.getTradeQuote(stock, "buy", quantity);
+  const sellQuote = trading.getTradeQuote(stock, "sell", quantity);
   const symbolAlerts = alertsForSymbol.get(stock.symbol) ?? [];
   const isPctCondition = alertCondition === "pct_change_up" || alertCondition === "pct_change_down";
   const compareSymbol =
@@ -115,17 +123,19 @@ export default function StockDetails() {
     ?? stock.symbol;
 
   const handleBuy = async () => {
+    const quote = trading.getTradeQuote(stock, "buy", quantity);
     const ok = await trading.buyStock(stock, quantity);
     const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
-    setTradeMsg({ ok, text: ok ? `Bought ${shares} of ${stock.symbol} for ${money(stock.currentPrice * quantity)}.` : `Not enough cash to buy ${shares} of ${stock.symbol}.` });
+    setTradeMsg({ ok, text: ok ? `Bought ${shares} of ${stock.symbol} for ${money(quote.total)}.` : `Not enough cash to buy ${shares} of ${stock.symbol}.` });
   };
   const handleSell = async () => {
+    const quote = trading.getTradeQuote(stock, "sell", quantity);
     const ok = await trading.sellStock(stock, quantity);
     const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
-    setTradeMsg({ ok, text: ok ? `Sold ${shares} of ${stock.symbol} for ${money(stock.currentPrice * quantity)}.` : `Not enough shares to sell.` });
+    setTradeMsg({ ok, text: ok ? `Sold ${shares} of ${stock.symbol} for ${money(quote.total)}.` : `Not enough shares to sell.` });
   };
   const handleCreateAlert = async () => {
-    const value = parseFloat(alertThreshold);
+    const value = needsThreshold(alertCondition) ? parseFloat(alertThreshold) : 0;
     if (Number.isNaN(value) || value < 0) return;
     setCreatingAlert(true);
     const ok = await createAlert(stock.symbol, alertCondition, value);
@@ -392,14 +402,19 @@ export default function StockDetails() {
                       Max
                     </Button>
                     <Typography sx={{ fontSize: 13, color: D.t3, fontFamily: MONO }}>
-                      = {money(stock.currentPrice * quantity)}
+                      = {money(buyQuote.total)}
                     </Typography>
                   </Stack>
                   <Typography sx={{ fontSize: 11, color: D.t3, mt: 0.5, fontFamily: MONO }}>
-                    Cash after: <Box component="span" sx={{ color: trading.account.cash - stock.currentPrice * quantity >= 0 ? D.greenText : D.redText, fontWeight: 700 }}>
-                      {money(Math.max(0, trading.account.cash - stock.currentPrice * quantity))}
+                    Cash after: <Box component="span" sx={{ color: trading.account.cash - buyQuote.total >= 0 ? D.greenText : D.redText, fontWeight: 700 }}>
+                      {money(Math.max(0, trading.account.cash - buyQuote.total))}
                     </Box>
                   </Typography>
+                  {(buyQuote.slippage > 0.001 || sellQuote.slippage > 0.001) && (
+                    <Typography sx={{ fontSize: 11, color: D.amber, mt: 0.8 }}>
+                      This quantity is large relative to your net worth — buys cost more and sells return less per share until you trade smaller.
+                    </Typography>
+                  )}
                 </Box>
 
                 <MotionPresence initial={false}>
@@ -414,7 +429,7 @@ export default function StockDetails() {
                 <Stack spacing={1}>
                   <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
                     <Button fullWidth variant="contained" onClick={handleBuy}
-                      disabled={trading.account.cash < stock.currentPrice * quantity}
+                      disabled={trading.account.cash < buyQuote.total}
                       sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Buy {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>
@@ -510,21 +525,27 @@ export default function StockDetails() {
                       <MenuItem key={c.value} value={c.value} sx={{ fontSize: 13 }}>{c.label}</MenuItem>
                     ))}
                   </Select>
-                  <TextField
-                    size="small" type="number" value={alertThreshold}
-                    onChange={(e) => setAlertThreshold(e.target.value)}
-                    placeholder={isPctCondition ? "e.g. 5 (%)" : `e.g. ${stock.currentPrice.toFixed(2)}`}
-                    InputProps={{ startAdornment: isPctCondition ? undefined : <Typography sx={{ fontSize: 13, color: D.t3, mr: 0.5 }}>$</Typography> }}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        bgcolor: D.elevated, color: D.t1, borderRadius: 1.5, fontSize: 13,
-                        "& fieldset": { borderColor: D.border },
-                        "&:hover fieldset": { borderColor: D.borderHi },
-                        "&.Mui-focused fieldset": { borderColor: D.brand },
-                      },
-                    }}
-                  />
-                  <Button fullWidth size="small" disabled={creatingAlert || !alertThreshold} onClick={handleCreateAlert}
+                  {needsThreshold(alertCondition) ? (
+                    <TextField
+                      size="small" type="number" value={alertThreshold}
+                      onChange={(e) => setAlertThreshold(e.target.value)}
+                      placeholder={isPctCondition ? "e.g. 5 (%)" : `e.g. ${stock.currentPrice.toFixed(2)}`}
+                      InputProps={{ startAdornment: isPctCondition ? undefined : <Typography sx={{ fontSize: 13, color: D.t3, mr: 0.5 }}>$</Typography> }}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          bgcolor: D.elevated, color: D.t1, borderRadius: 1.5, fontSize: 13,
+                          "& fieldset": { borderColor: D.border },
+                          "&:hover fieldset": { borderColor: D.borderHi },
+                          "&.Mui-focused fieldset": { borderColor: D.brand },
+                        },
+                      }}
+                    />
+                  ) : (
+                    <Typography sx={{ fontSize: 12, color: D.t3, fontStyle: "italic" }}>
+                      No threshold needed — triggers the moment {stock.symbol} breaks its recorded high/low.
+                    </Typography>
+                  )}
+                  <Button fullWidth size="small" disabled={creatingAlert || (needsThreshold(alertCondition) && !alertThreshold)} onClick={handleCreateAlert}
                     sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
                     Set Alert
                   </Button>

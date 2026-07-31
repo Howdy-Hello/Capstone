@@ -5,6 +5,7 @@ import { useGame } from "../context/GameContext";
 import { getPortfolioValue } from "../data/tradingState";
 import { STORY_DAYS } from "../data/mockStocks";
 import { pushNotification } from "../lib/notifications";
+import { addInboxMessage } from "../lib/inbox";
 import { money } from "../theme/design";
 
 // Every 7 days, rent/living costs come due — light pressure against just
@@ -59,6 +60,14 @@ export function useBills() {
         description: shortfall
           ? `${money(bill)} in rent & expenses billed — your cash couldn't fully cover it.`
           : `${money(bill)} in rent & expenses billed from your account.`,
+      });
+      addInboxMessage(user.id, {
+        from: "City Living Co.",
+        subject: `Invoice — Day ${gameDay} rent & expenses`,
+        body: shortfall
+          ? `Your account was billed ${money(bill)}. Heads up — your cash balance couldn't fully cover it.`
+          : `Your account was billed ${money(bill)} for rent and living expenses this cycle.`,
+        category: "bill",
       });
     });
   }, [user, sessionId, gameDay, account, stocks, addCash]);

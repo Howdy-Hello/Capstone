@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
 
+import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { getPortfolioValue } from "../data/tradingState";
 import { getStockBySymbolForGameDay, mockStockCompanies, StockCompany } from "../data/mockStocks";
 import { pushNotification } from "../lib/notifications";
+import { addInboxMessage } from "../lib/inbox";
 import { money } from "../theme/design";
 
 // A fictional AI rival: a deterministic buy-and-hold basket seeded off the
@@ -54,6 +56,7 @@ function pickName(marketSeed: string) {
 }
 
 export function useRivalTrader() {
+  const { user } = useAuth();
   const { account, stocks, gameDay, marketSeed } = useGame();
 
   const basket = useMemo(() => pickBasket(marketSeed, RIVAL_BASKET_SIZE), [marketSeed]);
@@ -90,9 +93,17 @@ export function useRivalTrader() {
         title: rivalName,
         description: `${rivalName} ${line} (${money(rivalNetWorth)} vs your ${money(playerNetWorth)})`,
       });
+      if (user) {
+        addInboxMessage(user.id, {
+          from: rivalName,
+          subject: playerAhead ? "You just fell behind me" : "I just took the lead",
+          body: `${rivalName} ${line} (${money(rivalNetWorth)} vs your ${money(playerNetWorth)})`,
+          category: "rival",
+        });
+      }
     }
     prevAheadRef.current = playerAhead;
-  }, [playerAhead, gameDay, rivalName, rivalNetWorth, playerNetWorth]);
+  }, [playerAhead, gameDay, rivalName, rivalNetWorth, playerNetWorth, user]);
 
   return { rivalName, rivalNetWorth, playerNetWorth, playerAhead, gapPct, basket };
 }

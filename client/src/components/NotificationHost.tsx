@@ -47,7 +47,7 @@ function ToastItem({ notification }: { notification: AppNotification }) {
       transition={{ duration: 0.2 }}
     >
       <Box sx={{
-        width: 320, p: 1.75, borderRadius: 2,
+        width: { xs: "calc(100vw - 32px)", sm: 320 }, p: 1.75, borderRadius: 2,
         bgcolor: D.elevated, border: `1px solid ${D.border}`,
         boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
       }}>
@@ -89,7 +89,7 @@ export default function NotificationHost() {
 
   return (
     <Box sx={{
-      position: "fixed", bottom: 16, right: 16, zIndex: 1400,
+      position: "fixed", bottom: 16, right: 16, left: { xs: 16, sm: "auto" }, zIndex: 1400,
       display: "flex", flexDirection: "column-reverse", gap: 1,
       pointerEvents: "none",
     }}>
