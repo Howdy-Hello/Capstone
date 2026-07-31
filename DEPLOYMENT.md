@@ -73,9 +73,20 @@ Blueprint deploy — `render.yaml` (repo root) sets rootDir=`server`, build, sta
 and the env var slots. New → Blueprint → pick the repo → fill in the env values.
 
 ### Railway
-New Project → Deploy from repo → set **Root Directory: `server`**. Railway builds
-via `npm run build` and starts via the `Procfile` (`web: npm start`). Add the env
-vars above.
+Recommended setup:
+1. New Project -> Deploy from repo.
+2. Leave **Root Directory** empty or `/`.
+3. Set **Config File Path** to `/railway.json`.
+4. Add the env vars above.
+
+This repo's root `railway.json` runs `cd server && npm ci && npm run build`,
+then starts with `cd server && npm start`. This avoids Railway/Railpack looking
+for a nested `/server` directory after it has already unpacked a subdirectory.
+
+Alternate setup:
+If you set **Root Directory** to `/server`, set **Config File Path** to
+`/server/railway.json` and do not override the build/start commands in the
+dashboard.
 
 ---
 
