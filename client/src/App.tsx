@@ -29,6 +29,7 @@ import Profile from "./pages/Profile";
 import Inbox from "./pages/Inbox";
 import Notifications from "./pages/Notifications";
 import { trackEvent } from "./lib/analytics";
+import Level from "./pages/Level";
 
 const NotFound: React.FC = () => (
   <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 2, px: 2, textAlign: "center" }}>
@@ -93,6 +94,7 @@ function AppLayout() {
           <Route path="/compare" element={<ProtectedRoute><CompareStocks /></ProtectedRoute>} />
           <Route path="/stocks/:symbol" element={<ProtectedRoute><StockDetails /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/level" element={<ProtectedRoute><Level /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />

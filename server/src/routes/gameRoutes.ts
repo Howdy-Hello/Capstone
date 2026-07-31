@@ -40,7 +40,7 @@ router.get('/leaderboard', supabaseHandler({ auth: 'none' }, async (req, ctx) =>
 }));
 
 // POST /api/leaderboard/submit  { netWorth, gameMode?, day? }
-// Records the caller's best score via the SECURITY DEFINER RPC (auth-enforced).
+// Infinite mode records current net worth; 30-day mode retains the best finish.
 router.post('/leaderboard/submit', writeLimiter, validateBody({
   netWorth: { type: 'number', required: true, min: 0, max: 1_000_000_000_000 },
   gameMode: { type: 'string', enum: MODES },

@@ -21,6 +21,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { D, CARD, MONO, money } from "../theme/design";
+import { getPlayerLevel } from "../data/levelSystem";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -36,6 +37,7 @@ type LeaderboardRow = {
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  total_xp: number | string;
   completed_at?: string;
 };
 
@@ -44,6 +46,7 @@ type RankedPlayer = LeaderboardRow & {
   displayUsername: string;
   badge: string;
   tierColor: string;
+  level: number;
 };
 
 const MEDAL_COLORS = ["#F59E0B", "#94A3B8", "#C98B5F"];
@@ -71,10 +74,12 @@ function buildRanked(rows: LeaderboardRow[]): RankedPlayer[] {
       ...row,
       best_net_worth: Number(row.best_net_worth),
       return_pct:     Number(row.return_pct),
+      total_xp:       Number(row.total_xp ?? 0),
       rank:           i + 1,
       displayUsername: row.username ?? row.display_name ?? "Anonymous",
       badge:           tier.label,
       tierColor:       tier.color,
+      level:           getPlayerLevel(Number(row.total_xp ?? 0)).level,
     };
   });
 }
@@ -112,7 +117,7 @@ export default function Leaderboard() {
             })()
           : await fetchLeaderboard(50);
         if (cancelled) return;
-        setPlayers(buildRanked(rows as LeaderboardRow[]));
+        setPlayers(buildRanked(rows as unknown as LeaderboardRow[]));
       } catch (leaderboardError: any) {
         if (!cancelled) setError(leaderboardError?.message ?? "Could not load leaderboard.");
       }
@@ -183,7 +188,7 @@ export default function Leaderboard() {
               {currentEntry && (
                 <>
                   <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>
-                    {money(currentEntry.best_net_worth)} {isThirtyDay ? "best 30-day finish" : "current infinite net worth"}
+                    LV {currentEntry.level} · {money(currentEntry.best_net_worth)} {isThirtyDay ? "best 30-day finish" : "current infinite net worth"}
                   </Typography>
                   <Tooltip title={TIER_TOOLTIPS[currentEntry.badge] ?? ""} placement="bottom" arrow>
                     <Chip label={currentEntry.badge} size="small"
@@ -309,6 +314,7 @@ export default function Leaderboard() {
                             <Typography sx={{ fontSize: 11, fontWeight: 900, color: isYou ? D.brandText : D.t1, textAlign: "center", mb: 0.3, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {p.displayUsername}
                             </Typography>
+                            <Typography sx={{ fontSize: 9.5, fontWeight: 900, color: D.brandText, fontFamily: MONO, mb: 0.3 }}>LV {p.level}</Typography>
                             <Typography sx={{ fontSize: 10, color: D.t3, fontFamily: MONO, textAlign: "center", mb: 0.8 }}>
                               {sortBy === "net_worth" ? money(p.best_net_worth) : `${p.return_pct >= 0 ? "+" : ""}${p.return_pct.toFixed(1)}%`}
                             </Typography>
@@ -349,6 +355,7 @@ export default function Leaderboard() {
                               <Typography sx={{ fontWeight: 900, fontSize: 14, color: p.user_id === user?.id ? D.brandText : D.t1 }} noWrap>
                                 {p.displayUsername}{p.user_id === user?.id ? " (You)" : ""}
                               </Typography>
+                              <Typography sx={{ fontSize: 10, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>LV {p.level}</Typography>
                               <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>
                                 {sortBy === "net_worth" ? money(p.best_net_worth) : `${p.return_pct >= 0 ? "+" : ""}${p.return_pct.toFixed(1)}%`}
                               </Typography>
@@ -468,6 +475,9 @@ export default function Leaderboard() {
                                   <Box sx={{ minWidth: 0 }}>
                                     <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: isYou ? D.brandText : D.t1, lineHeight: 1.2 }} noWrap>
                                       {p.displayUsername}{isYou ? " (You)" : ""}
+                                    </Typography>
+                                    <Typography sx={{ fontSize: 9.5, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>
+                                      LV {p.level}
                                     </Typography>
                                     <Tooltip title={TIER_TOOLTIPS[p.badge] ?? ""} placement="top" arrow>
                                       <Chip label={p.badge} size="small"

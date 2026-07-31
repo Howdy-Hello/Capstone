@@ -13,6 +13,7 @@ export type LeaderboardRow = {
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  total_xp: number | string;
 };
 
 export type GameMode = "infinite" | "limited_30";
@@ -50,7 +51,7 @@ export async function fetchLeaderboard(limit = 50): Promise<LeaderboardRow[]> {
   return (data ?? []) as LeaderboardRow[];
 }
 
-/** Record the caller's best net worth. Best-effort — never throws. */
+/** Record a score update. Infinite mode stores current net worth; 30-day keeps a best finish. */
 export async function submitLeaderboardScore(params: {
   netWorth: number;
   gameMode?: GameMode;

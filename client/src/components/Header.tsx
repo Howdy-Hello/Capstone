@@ -1,8 +1,8 @@
 import React from "react";
 import {
-  AppBar, Avatar, Badge, Box, Button, Divider, Drawer,
+  Alert, AppBar, Avatar, Badge, Box, Button, Divider, Drawer,
   IconButton, List, ListItemButton, ListItemIcon,
-  ListItemText, Menu, MenuItem, Stack, Toolbar, Typography,
+  ListItemText, LinearProgress, Menu, MenuItem, Snackbar, Stack, Toolbar, Typography,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
@@ -24,6 +24,10 @@ import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useUnreadInboxCount } from "../lib/inbox";
 import { D } from "../theme/design";
+import { useAchievements } from "../hooks/useAchievements";
+import { getPlayerLevel } from "../data/levelSystem";
+import { useGame } from "../context/GameContext";
+import { supabase } from "../lib/supabase";
 
 const nav = [
   { to: "/dashboard",   label: "Dashboard",   icon: <DashboardOutlinedIcon sx={{ fontSize: 17 }} /> },
@@ -38,6 +42,7 @@ const nav = [
 const accountMenu = [
   { label: "Settings",      to: "/settings",     icon: <SettingsOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "My Profile",    to: "/profile",      icon: <AccountCircleOutlinedIcon sx={{ fontSize: 16 }} /> },
+  { label: "My Level",      to: "/level",        icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Dashboard",     to: "/dashboard",    icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Achievements",  to: "/achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Save & Load",   to: "/save-load",    icon: <SaveOutlinedIcon sx={{ fontSize: 16 }} /> },
@@ -51,6 +56,33 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const unreadCount = useUnreadInboxCount();
+  const { totalXP } = useAchievements();
+  const { gameMode, sessionId, reloadSession } = useGame();
+  const playerLevel = React.useMemo(() => getPlayerLevel(totalXP), [totalXP]);
+  const [levelReward, setLevelReward] = React.useState<{ level: number; amount: number } | null>(null);
+  const processedXpRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    if (!user || !sessionId || processedXpRef.current === totalXP) return;
+    processedXpRef.current = totalXP;
+
+    void (async () => {
+      const { data, error } = await supabase.rpc("process_level_cash_rewards", {
+        target_session_id: sessionId,
+      });
+      if (error) {
+        processedXpRef.current = null;
+        return;
+      }
+
+      const result = data as { level: number; cash_reward: number | string; game_mode: string };
+      const amount = Number(result.cash_reward);
+      if (result.game_mode === "infinite" && amount > 0) {
+        await reloadSession();
+        setLevelReward({ level: Number(result.level), amount });
+      }
+    })();
+  }, [gameMode, reloadSession, sessionId, totalXP, user]);
 
   const isActive = (to: string) => pathname === to || (to !== "/" && pathname.startsWith(to));
 
@@ -77,6 +109,12 @@ const Header: React.FC = () => {
 
   return (
     <>
+      <Snackbar open={Boolean(levelReward)} autoHideDuration={6000} onClose={() => setLevelReward(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}>
+        <Alert severity="success" variant="filled" onClose={() => setLevelReward(null)} sx={{ fontWeight: 800 }}>
+          Level up! You reached LV {levelReward?.level} and earned ${levelReward?.amount.toLocaleString()} for your Endless run.
+        </Alert>
+      </Snackbar>
       <AppBar position="sticky" elevation={0} sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}`, zIndex: 1200 }}>
         <Toolbar sx={{ minHeight: 58, px: { xs: 2, md: 3 }, gap: 2 }}>
 
@@ -135,7 +173,14 @@ const Header: React.FC = () => {
                   <Avatar src={avatarUrl ?? undefined} sx={{ width: 26, height: 26, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}`, fontSize: 11, fontWeight: 900, color: D.brandText }}>
                     {!avatarUrl && initials}
                   </Avatar>
-                  {profileName}
+                  <Box sx={{ minWidth: 76, textAlign: "left" }}>
+                    <Stack direction="row" spacing={0.7} alignItems="center">
+                      <Typography sx={{ color: "inherit", fontWeight: 700, fontSize: 13 }} noWrap>{profileName}</Typography>
+                      <Typography sx={{ color: D.brandText, fontWeight: 900, fontSize: 9.5, whiteSpace: "nowrap" }}>LV {playerLevel.level}</Typography>
+                    </Stack>
+                    <LinearProgress variant="determinate" value={playerLevel.progress}
+                      sx={{ mt: 0.35, width: "100%", height: 3, borderRadius: 99, bgcolor: D.border, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+                  </Box>
                 </Button>
 
                 <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}
@@ -144,8 +189,17 @@ const Header: React.FC = () => {
                   anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
                 >
                   <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${D.border}` }}>
-                    <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1 }}>{profileName}</Typography>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1 }}>{profileName}</Typography>
+                      <Typography sx={{ fontWeight: 900, fontSize: 10, color: D.brandText }}>LV {playerLevel.level}</Typography>
+                    </Stack>
                     <Typography sx={{ fontSize: 11, color: D.t3 }}>{menuHandle}</Typography>
+                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 1, mb: 0.45 }}>
+                      <Typography sx={{ fontSize: 9.5, color: D.t3 }}>{playerLevel.xpIntoLevel}/{playerLevel.xpForNextLevel} XP</Typography>
+                      <Typography sx={{ fontSize: 9.5, color: D.t3 }}>Next: LV {playerLevel.level + 1}</Typography>
+                    </Stack>
+                    <LinearProgress variant="determinate" value={playerLevel.progress}
+                      sx={{ height: 4, borderRadius: 99, bgcolor: D.border, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
                   </Box>
                   {accountMenu.map((item) => (
                     <MenuItem key={item.to} onClick={() => { setMenuAnchor(null); navigate(item.to); }}
@@ -215,9 +269,17 @@ const Header: React.FC = () => {
                   <Avatar src={avatarUrl ?? undefined} sx={{ width: 28, height: 28, bgcolor: D.brandBg, fontSize: 11, fontWeight: 900, color: D.brandText }}>
                     {!avatarUrl && initials}
                   </Avatar>
-                  <Box>
-                    <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1 }}>{profileName}</Typography>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1 }} noWrap>{profileName}</Typography>
+                      <Typography sx={{ fontSize: 9.5, fontWeight: 900, color: D.brandText }}>LV {playerLevel.level}</Typography>
+                    </Stack>
                     <Typography sx={{ fontSize: 10, color: D.t3 }}>{menuHandle}</Typography>
+                    <LinearProgress variant="determinate" value={playerLevel.progress}
+                      sx={{ mt: 0.7, height: 3, borderRadius: 99, bgcolor: D.border, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+                    <Typography sx={{ mt: 0.35, fontSize: 9, color: D.t3 }}>
+                      {playerLevel.xpIntoLevel}/{playerLevel.xpForNextLevel} XP to LV {playerLevel.level + 1}
+                    </Typography>
                   </Box>
                 </Stack>
               </Box>
