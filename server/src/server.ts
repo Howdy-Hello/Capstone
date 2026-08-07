@@ -12,6 +12,8 @@ dotenv.config({ path: './.env' });
 
 const app = express();
 
+let dbStatus: 'pending' | 'ok' | 'error' = 'pending';
+
 // Behind a hosting proxy (Render/Railway) so req.ip reflects the real client.
 app.set('trust proxy', 1);
 
@@ -29,6 +31,14 @@ app.use(
   })
 );
 app.use(bodyParser.json());
+
+// Liveness probe. Registered before the rate limiter and before any route that
+// touches Supabase, so the platform healthcheck reflects "process is up" and is
+// never rejected by the global cap. Readiness/config detail lives at
+// /api/health/config. This shadows the /health route in supabaseRoutes.
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok', db: dbStatus });
+});
 
 // Global request cap per IP across the API.
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 300, bucket: 'global' }));
@@ -51,14 +61,19 @@ app.get('/home', (req: Request, res: Response) => {
 
 const PORT = process.env.PORT || 5000;
 
-connectDB()
-  .then(() => {
-    console.log('Database connection established, starting the server...');
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+// Bind first, verify the database after. A Supabase outage or a missing
+// credential should surface as a running server reporting db: "error" — not as
+// a container that never binds and fails its healthcheck with no explanation.
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+
+  connectDB()
+    .then(() => {
+      dbStatus = 'ok';
+      console.log('Database connection established.');
+    })
+    .catch((err) => {
+      dbStatus = 'error';
+      console.error('Database connection check failed. API routes needing Supabase will fail:', err);
     });
-  })
-  .catch((err) => {
-    console.error('Failed to connect to the database. Exiting...', err);
-    process.exit(1);
-  });
+});

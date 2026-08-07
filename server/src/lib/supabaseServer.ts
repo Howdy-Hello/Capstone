@@ -5,7 +5,7 @@ import {
   RequestHandler,
   Response as ExpressResponse,
 } from 'express';
-import { assertServerEnv } from './env';
+import { getServerEnvIssues } from './env';
 
 // Local re-implementation of the "withSupabase" helper. The previously-imported
 // "@supabase/server" package does not exist, so the API server could not start.
@@ -19,11 +19,34 @@ const anonKey =
   process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 const adminSecret = process.env.ADMIN_API_SECRET;
 
-assertServerEnv();
+// Report config problems loudly, but never throw during module evaluation —
+// that would crash the process before the HTTP server binds and turn a fixable
+// misconfiguration into an unexplained "container never became healthy".
+const envIssues = getServerEnvIssues();
+for (const issue of envIssues) {
+  console.error(`[env] ${issue.key}: ${issue.message}`);
+}
 
-const supabaseAdmin: SupabaseClient = createClient(supabaseUrl as string, serviceRoleKey as string, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+const isConfigured = Boolean(supabaseUrl && serviceRoleKey);
+
+// When credentials are absent, hand out a client that throws on first *use*.
+// Requests then fail individually with a clear message while /api/health stays
+// up to report the cause.
+function unconfiguredClient(): SupabaseClient {
+  return new Proxy({} as SupabaseClient, {
+    get() {
+      throw new Error(
+        'Supabase is not configured: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY).'
+      );
+    },
+  });
+}
+
+const supabaseAdmin: SupabaseClient = isConfigured
+  ? createClient(supabaseUrl as string, serviceRoleKey as string, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  : unconfiguredClient();
 
 export type AuthMode = 'none' | 'user' | 'secret';
 
