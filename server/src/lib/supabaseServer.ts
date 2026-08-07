@@ -123,8 +123,9 @@ async function buildContext(
 }
 
 function toFetchRequest(req: ExpressRequest): Request {
-  const origin = `${req.protocol}://${req.get('host')}`;
-  const url = new URL(req.originalUrl, origin);
+  // Handlers only read the path and query string, so build the URL against a
+  // fixed base rather than the client-controlled Host header.
+  const url = new URL(req.originalUrl, 'http://localhost');
   const headers = new Headers();
 
   for (const [key, value] of Object.entries(req.headers)) {

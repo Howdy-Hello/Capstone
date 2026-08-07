@@ -18,8 +18,15 @@ export function rateLimit(options: RateLimitOptions) {
   const { windowMs, max, message = 'Too many requests, please try again later.', bucket = '' } = options;
   const hits = new Map<string, Bucket>();
 
+  // Sweep on a time interval rather than on map size. A size threshold degrades
+  // badly: once that many entries are simultaneously live, the map never shrinks
+  // below it and every single request pays for a full scan.
+  const SWEEP_INTERVAL_MS = Math.max(windowMs, 60_000);
+  let nextSweepAt = 0;
+
   function sweep(now: number) {
-    if (hits.size < 10000) return;
+    if (now < nextSweepAt) return;
+    nextSweepAt = now + SWEEP_INTERVAL_MS;
     for (const [key, entry] of hits) {
       if (entry.resetAt <= now) hits.delete(key);
     }

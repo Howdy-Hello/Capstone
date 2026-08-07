@@ -80,7 +80,8 @@ async function testRateLimit() {
 }
 
 async function testEnvValidation() {
-  const original = { ...process.env };
+  const KEYS = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY"];
+  const original = new Map(KEYS.map((key) => [key, process.env[key]]));
   try {
     delete process.env.SUPABASE_URL;
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -94,14 +95,34 @@ async function testEnvValidation() {
     const fixed = getServerEnvIssues();
     assert.ok(!fixed.some((issue) => issue.key === "SUPABASE_URL"));
   } finally {
-    process.env = original;
+    // Restore per-key: reassigning process.env wholesale replaces the special
+    // host object that propagates changes to the environment.
+    for (const [key, value] of original) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
   }
+}
+
+async function testLeaderboardLimit() {
+  const { resolveLeaderboardLimit } = await import("../routes/gameRoutes");
+
+  // Regression: an absent ?limit must fall back to the default, not clamp to 1.
+  assert.equal(resolveLeaderboardLimit(null), 50);
+  assert.equal(resolveLeaderboardLimit(""), 50);
+  assert.equal(resolveLeaderboardLimit("abc"), 50);
+  assert.equal(resolveLeaderboardLimit("10"), 10);
+  assert.equal(resolveLeaderboardLimit("0"), 1);
+  assert.equal(resolveLeaderboardLimit("-5"), 1);
+  assert.equal(resolveLeaderboardLimit("9999"), 100);
+  assert.equal(resolveLeaderboardLimit("7.9"), 7);
 }
 
 async function main() {
   await testValidateBody();
   await testRateLimit();
   await testEnvValidation();
+  await testLeaderboardLimit();
   console.log("Server tests passed.");
 }
 

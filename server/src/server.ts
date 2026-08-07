@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
@@ -24,9 +24,20 @@ const allowedOrigins = (process.env.CLIENT_ORIGIN ?? '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction && allowedOrigins.length === 0) {
+  console.error(
+    '[cors] CLIENT_ORIGIN is not set in production. Cross-origin browser requests will be rejected.'
+  );
+}
+
 app.use(
   cors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    // Fail closed in production: reflecting an arbitrary origin alongside
+    // credentials would let any site call the API on a user's behalf. Only dev
+    // (CLIENT_ORIGIN unset, NODE_ENV not production) gets the permissive echo.
+    origin: allowedOrigins.length > 0 ? allowedOrigins : !isProduction,
     credentials: true,
   })
 );
@@ -46,17 +57,38 @@ app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 300, bucket: 'global'
 app.use('/api', supabaseRoutes);
 app.use('/api', gameRoutes);
 
-app.get('/api/health/config', (_req: Request, res: Response) => {
+app.get('/api/health/config', (req: Request, res: Response) => {
   const issues = getServerEnvIssues();
-  const safeIssues = issues.map(({ key, message }) => ({ key, message }));
-  res.status(issues.some((issue) => issue.key === 'SUPABASE_URL') ? 503 : 200).json({
+  const status = issues.some((issue) => issue.key === 'SUPABASE_URL') ? 503 : 200;
+
+  // Which env keys are missing is reconnaissance for an unauthenticated caller.
+  // Once ADMIN_API_SECRET is configured, the detail requires it; without it the
+  // endpoint still reports healthy/unhealthy so the platform probe stays useful.
+  const adminSecret = process.env.ADMIN_API_SECRET;
+  const authorized = !adminSecret || req.get('x-admin-secret') === adminSecret;
+
+  res.status(status).json({
     status: issues.length === 0 ? 'ok' : 'warning',
-    issues: safeIssues,
+    issueCount: issues.length,
+    ...(authorized ? { issues: issues.map(({ key, message }) => ({ key, message })) } : {}),
   });
 });
 
 app.get('/home', (req: Request, res: Response) => {
   res.send('StockPilot API');
+});
+
+app.use('/api', (_req: Request, res: Response) => {
+  res.status(404).json({ message: 'Not found.' });
+});
+
+// Terminal error handler. Express's default would serialize the stack trace to
+// the client whenever NODE_ENV is not exactly "production" — which nothing here
+// guarantees — so always log server-side and return an opaque body.
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Unhandled request error:', err);
+  if (res.headersSent) return;
+  res.status(500).json({ message: 'Internal server error.' });
 });
 
 const PORT = process.env.PORT || 5000;

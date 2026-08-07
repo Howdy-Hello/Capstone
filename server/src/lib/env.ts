@@ -54,16 +54,7 @@ export function getServerEnvIssues(): EnvIssue[] {
   return issues;
 }
 
-export function assertServerEnv() {
-  const blockingIssues = getServerEnvIssues().filter((issue) => (
-    issue.key !== ANON_KEYS.join(" or ")
-  ));
-
-  if (blockingIssues.length === 0) return;
-
-  const formatted = blockingIssues
-    .map((issue) => `${issue.key}: ${issue.message}`)
-    .join("\n");
-
-  throw new Error(`Invalid server environment:\n${formatted}`);
-}
+// Deliberately no assertServerEnv()/throwing variant here. Config problems must
+// be reported by a running server (see /api/health/config), never raised during
+// module evaluation — that kills the process before it binds a port and turns a
+// one-line misconfiguration into an unexplained failed deploy.
