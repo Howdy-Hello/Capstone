@@ -188,8 +188,18 @@ function relatedSymbol(
   return relation?.symbol;
 }
 
+// market_events has no tone column, so tone is derived the same way the seeded
+// market data pairs them: the sign of the *expected* impact. Deriving from the
+// actual impact instead would leak how rumors and inaccurate reports resolve.
+function toneFromImpact(expectedImpact: number): MarketNews["marketTone"] {
+  if (expectedImpact > 0) return "Bullish";
+  if (expectedImpact < 0) return "Bearish";
+  return "Unclear";
+}
+
 function mapDatabaseEvent(row: DatabaseEvent): MarketNews {
   const impacts = row.event_stock_impacts ?? [];
+  const expectedImpact = impacts[0] ? asNumber(impacts[0].expected_impact) : 0;
 
   return {
     newsId: row.event_key,
@@ -198,11 +208,11 @@ function mapDatabaseEvent(row: DatabaseEvent): MarketNews {
     headline: row.headline,
     body: row.body,
     importance: row.importance,
-    marketTone: "Unclear",
+    marketTone: toneFromImpact(expectedImpact),
     relatedTickers: impacts
       .map((impact) => relatedSymbol(impact.stocks))
       .filter((symbol): symbol is string => Boolean(symbol)),
-    expectedImpact: impacts[0] ? asNumber(impacts[0].expected_impact) : 0,
+    expectedImpact,
     actualImpact: impacts[0] ? asNumber(impacts[0].actual_impact) : 0,
     isAccurate: row.is_accurate,
     isRumor: row.is_rumor,

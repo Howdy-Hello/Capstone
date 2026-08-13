@@ -96,7 +96,9 @@ export function useRivalTrader() {
       if (user) {
         addInboxMessage(user.id, {
           from: rivalName,
-          subject: playerAhead ? "You just fell behind me" : "I just took the lead",
+          // The sender is the rival, so the subject is written from their side:
+          // playerAhead means the rival lost the lead.
+          subject: playerAhead ? "I just fell behind you" : "I just took the lead",
           body: `${rivalName} ${line} (${money(rivalNetWorth)} vs your ${money(playerNetWorth)})`,
           category: "rival",
         });

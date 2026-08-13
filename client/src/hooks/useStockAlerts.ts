@@ -95,7 +95,11 @@ export function useStockAlerts() {
         case "pct_change_down": return stock.dayChangePercent <= -Math.abs(alert.threshold);
         case "new_all_time_high": {
           const history = getHistory(alert.symbol);
-          const priorHigh = Math.max(0, ...history.slice(0, -1).map((h) => h.highPrice));
+          const priorPoints = history.slice(0, -1);
+          // With no prior days there is no high to beat. Seeding the max with 0
+          // instead would make any positive price an "all-time high" on day 1.
+          if (priorPoints.length === 0) return false;
+          const priorHigh = Math.max(...priorPoints.map((h) => h.highPrice));
           return stock.currentPrice > priorHigh;
         }
         case "new_all_time_low": {
