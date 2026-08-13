@@ -29,6 +29,10 @@ const STARTING_CASH = 2_000;
 const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
 const GAME_SEED_STORAGE_KEY = "stockpilot-market-seed";
 export const LIMITED_GAME_DAYS = 30;
+// Ceiling for infinite mode. Each day past the last stored price point is
+// generated in a loop per stock, so an out-of-range day (corrupted or
+// hand-edited localStorage) would otherwise lock up the tab.
+export const MAX_GAME_DAY = 10_000;
 export const WEEKLY_BILL_TOTAL = 350;
 export type GameMode = "infinite" | "limited_30";
 
@@ -178,7 +182,7 @@ function clampGameDayForMode(day: number, mode: GameMode) {
   const normalized = normalizeGameDay(day);
   return mode === "limited_30"
     ? Math.min(LIMITED_GAME_DAYS, normalized)
-    : normalized;
+    : Math.min(MAX_GAME_DAY, normalized);
 }
 
 function relatedSymbol(
@@ -561,16 +565,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     const holdings = await loadHoldings(activeSession.id);
     const activeMode = normalizeGameMode(activeSession.game_mode);
+    // Only session-scoped keys are consulted. The unscoped GAME_*_STORAGE_KEY
+    // entries are shared by every account on this browser, so falling back to
+    // them handed a new player the previous player's day and market seed --
+    // and in limited_30 a day past 30 clamps to 30, ending a fresh game on
+    // arrival. They are still written below for backwards compatibility, but
+    // never read back as a source of progress.
     const storedSessionSeed = localStorage.getItem(marketSeedStorageKey(activeSession.id));
-    const storedLegacySeed = localStorage.getItem(GAME_SEED_STORAGE_KEY);
     const activeSeed = normalizeMarketSeed(
       activeMode === "limited_30"
-        ? activeSession.game_seed ?? storedSessionSeed ?? storedLegacySeed ?? generateMarketSeedCode()
-        : activeSession.game_seed ?? storedSessionSeed ?? storedLegacySeed
+        ? activeSession.game_seed ?? storedSessionSeed ?? generateMarketSeedCode()
+        : activeSession.game_seed ?? storedSessionSeed
     );
     const storedSessionDay = Number(localStorage.getItem(gameDayStorageKey(activeSession.id)));
-    const storedLegacyDay = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
-    const savedDay = clampGameDayForMode(storedSessionDay || storedLegacyDay || 1, activeMode);
+    const savedDay = clampGameDayForMode(storedSessionDay || 1, activeMode);
     const rawDatabaseDay = normalizeGameDay(activeSession.current_day);
     const databaseDay = clampGameDayForMode(rawDatabaseDay, activeMode);
     const currentDay = databaseDay === 1 && savedDay > 1 ? savedDay : databaseDay;

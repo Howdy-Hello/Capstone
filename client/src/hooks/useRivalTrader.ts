@@ -63,8 +63,12 @@ export function useRivalTrader() {
   const rivalName = useMemo(() => pickName(marketSeed), [marketSeed]);
 
   const rivalNetWorth = useMemo(() => {
+    // An empty basket or a zero-priced company would divide to Infinity and
+    // render the rival's net worth as NaN. Hold the cash instead.
+    if (basket.length === 0) return RIVAL_STARTING_CASH;
     const perStock = RIVAL_STARTING_CASH / basket.length;
     return basket.reduce((sum, company) => {
+      if (company.startingPrice <= 0) return sum + perStock;
       const stock = getStockBySymbolForGameDay(company.symbol, gameDay, marketSeed);
       const currentPrice = stock?.currentPrice ?? company.startingPrice;
       const shares = perStock / company.startingPrice;
@@ -84,10 +88,16 @@ export function useRivalTrader() {
       prevAheadRef.current = playerAhead;
       return;
     }
-    if (prevAheadRef.current !== playerAhead && lastTauntDayRef.current !== gameDay) {
+    if (prevAheadRef.current !== playerAhead) {
+      // Already taunted today: leave prevAheadRef untouched so the crossover is
+      // reported on the next day advance. Updating it here would mark the change
+      // as handled and drop the taunt entirely.
+      if (lastTauntDayRef.current === gameDay) return;
       lastTauntDayRef.current = gameDay;
       const pool = playerAhead ? TAUNTS_BEHIND : TAUNTS_AHEAD;
-      const line = pool[Math.floor(Math.random() * pool.length)];
+      // Seeded, not Math.random: every player on this seed faces the same rival
+      // saying the same thing, which is the premise documented at the top.
+      const line = pool[hash(`${marketSeed}:taunt:${gameDay}`) % pool.length];
       pushNotification({
         kind: "rival",
         title: rivalName,
@@ -105,7 +115,7 @@ export function useRivalTrader() {
       }
     }
     prevAheadRef.current = playerAhead;
-  }, [playerAhead, gameDay, rivalName, rivalNetWorth, playerNetWorth, user]);
+  }, [playerAhead, gameDay, rivalName, rivalNetWorth, playerNetWorth, marketSeed, user]);
 
   return { rivalName, rivalNetWorth, playerNetWorth, playerAhead, gapPct, basket };
 }

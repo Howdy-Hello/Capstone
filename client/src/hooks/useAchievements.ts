@@ -233,7 +233,15 @@ export function useAchievements() {
       return;
     }
 
-    if (gameDay <= prevDayRef.current) return;
+    // A backwards jump means a new game started under a mounted hook. Re-baseline
+    // rather than early-returning: leaving the ref at the old game's final day
+    // would swallow every advance of the new run (a 30-day game never gets past
+    // day 30, so the streak achievements would be dead for its entire length).
+    if (gameDay < prevDayRef.current) {
+      prevDayRef.current = gameDay;
+      return;
+    }
+    if (gameDay === prevDayRef.current) return;
     prevDayRef.current = gameDay;
     if (gameDay <= streak.lastCheckedDay) return;
 
@@ -396,6 +404,8 @@ export function useAchievements() {
   const resetStreakForNewGame = useCallback(() => {
     if (!user) return;
     const fresh = DEFAULT_STREAK;
+    // Re-baseline the day tracker too, so the new game's first advance counts.
+    prevDayRef.current = 0;
     setStreak(fresh);
     persistStreak(user.id, fresh);
   }, [user]);
