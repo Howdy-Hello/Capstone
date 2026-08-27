@@ -25,16 +25,33 @@ export type AppNotification = {
 // legacy unscoped key is still read once for the first signed-in user so an
 // existing player does not lose their history on upgrade.
 const HISTORY_KEY = "stockpilot-notification-history";
+const SEEN_KEY = "stockpilot-notification-seen-at";
 const MAX_HISTORY = 80;
 
 function historyKey(userId: string | null) {
   return userId ? `${HISTORY_KEY}-${userId}` : HISTORY_KEY;
 }
 
+function seenKey(userId: string | null) {
+  return userId ? `${SEEN_KEY}-${userId}` : SEEN_KEY;
+}
+
 let currentUserId: string | null = null;
 let queue: AppNotification[] = [];
 let history = loadHistory(null);
+// Notifications have no per-item read flag, so "unread" is everything pushed
+// since the last time the list was opened. A timestamp is enough and stays
+// correct no matter how many arrive while the page is closed.
+let seenAt = loadSeenAt(null);
 const listeners = new Set<() => void>();
+
+function loadSeenAt(userId: string | null): string {
+  try {
+    return localStorage.getItem(seenKey(userId)) ?? "";
+  } catch {
+    return "";
+  }
+}
 
 function readKey(key: string): AppNotification[] {
   try {
@@ -61,11 +78,50 @@ function loadHistory(userId: string | null): AppNotification[] {
 }
 
 /** Point the store at a user (or null on sign-out). Mirrors setInboxUser. */
+/** Called when the notifications list is opened. */
+export function markNotificationsSeen() {
+  const newest = history[0]?.createdAt;
+  // Stamp from the newest item rather than "now", so a notification pushed in
+  // the same tick as the visit is not silently swallowed.
+  const next = newest ?? new Date().toISOString();
+  if (next === seenAt) return;
+  seenAt = next;
+  try {
+    localStorage.setItem(seenKey(currentUserId), seenAt);
+  } catch {
+    /* the badge is a convenience, not critical state */
+  }
+  emit();
+}
+
+function getUnseenCount() {
+  if (!seenAt) return history.length;
+  return history.filter((n) => (n.createdAt ?? "") > seenAt).length;
+}
+
+let unseenSnapshot = 0;
+function getUnseenSnapshot() {
+  // useSyncExternalStore compares snapshots by identity, and a number is a
+  // primitive, so recomputing per call is safe as long as it is stable.
+  unseenSnapshot = getUnseenCount();
+  return unseenSnapshot;
+}
+
+/** Count of notifications pushed since the list was last opened. */
+export function useUnseenNotificationCount() {
+  return useSyncExternalStore(getUnseenSubscribe, getUnseenSnapshot, getUnseenSnapshot);
+}
+
+function getUnseenSubscribe(listener: () => void) {
+  return subscribe(listener);
+}
+
 export function setNotificationUser(userId: string | null) {
   if (userId === currentUserId) return;
   currentUserId = userId;
   queue = [];
   history = loadHistory(userId);
+  seenAt = loadSeenAt(userId);
   emit();
 }
 
@@ -101,6 +157,9 @@ export function dismissNotification(id: string) {
 export function clearNotificationHistory() {
   history = [];
   persistHistory();
+  // Nothing left to be unread about.
+  seenAt = new Date().toISOString();
+  try { localStorage.setItem(seenKey(currentUserId), seenAt); } catch { /* ignore */ }
   emit();
 }
 

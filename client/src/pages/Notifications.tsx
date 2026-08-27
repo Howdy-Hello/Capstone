@@ -5,7 +5,7 @@ import {
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import InsightsIcon from "@mui/icons-material/Insights";
-import { clearNotificationHistory, useNotificationHistory } from "../lib/notifications";
+import { clearNotificationHistory, markNotificationsSeen, useNotificationHistory } from "../lib/notifications";
 import { clearAnalyticsEvents, useAnalyticsEvents } from "../lib/analytics";
 import { D, CARD, MONO } from "../theme/design";
 
@@ -16,6 +16,13 @@ function timeLabel(value?: string) {
 
 export default function Notifications() {
   const notifications = useNotificationHistory();
+
+  // Opening the list is what clears the header badge. Runs on every visit, not
+  // just the first mount, so returning to the page after new arrivals clears
+  // them too; markNotificationsSeen is a no-op when nothing has changed.
+  React.useEffect(() => {
+    markNotificationsSeen();
+  }, [notifications]);
   const analytics = useAnalyticsEvents();
 
   return (

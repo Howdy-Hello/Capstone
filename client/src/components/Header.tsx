@@ -2,7 +2,7 @@ import React from "react";
 import {
   Alert, AppBar, Avatar, Badge, Box, Button, Divider, Drawer,
   IconButton, List, ListItemButton, ListItemIcon,
-  ListItemText, LinearProgress, Menu, MenuItem, Snackbar, Stack, Toolbar, Typography,
+  ListItemText, LinearProgress, Menu, MenuItem, Snackbar, Stack, Toolbar, Tooltip, Typography,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
@@ -23,6 +23,7 @@ import SportsMmaOutlinedIcon from "@mui/icons-material/SportsMmaOutlined";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useUnreadInboxCount } from "../lib/inbox";
+import { useUnseenNotificationCount } from "../lib/notifications";
 import { D } from "../theme/design";
 import { useAchievements } from "../hooks/useAchievements";
 import { getPlayerLevel } from "../data/levelSystem";
@@ -46,7 +47,6 @@ const accountMenu = [
   { label: "Dashboard",     to: "/dashboard",    icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Achievements",  to: "/achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Save & Load",   to: "/save-load",    icon: <SaveOutlinedIcon sx={{ fontSize: 16 }} /> },
-  { label: "Notifications", to: "/notifications", icon: <NotificationsNoneOutlinedIcon sx={{ fontSize: 16 }} /> },
 ];
 
 const Header: React.FC = () => {
@@ -56,6 +56,7 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const unreadCount = useUnreadInboxCount();
+  const unseenNotifications = useUnseenNotificationCount();
   const { totalXP, confirmedXP } = useAchievements();
   const { gameMode, sessionId, reloadSession } = useGame();
   const playerLevel = React.useMemo(() => getPlayerLevel(totalXP), [totalXP]);
@@ -168,6 +169,29 @@ const Header: React.FC = () => {
           <Stack direction="row" spacing={1} alignItems="center" sx={{ display: { xs: "none", md: "flex" } }}>
             {user ? (
               <>
+                <Tooltip title={unseenNotifications > 0 ? `${unseenNotifications} new notification${unseenNotifications === 1 ? "" : "s"}` : "Notifications"}>
+                  <IconButton
+                    component={RouterLink}
+                    to="/notifications"
+                    aria-label={unseenNotifications > 0 ? `Notifications, ${unseenNotifications} new` : "Notifications"}
+                    sx={{
+                      color: isActive("/notifications") ? D.brandText : D.t2,
+                      bgcolor: isActive("/notifications") ? D.brandBg : "transparent",
+                      borderRadius: 1.5,
+                      "&:hover": { color: D.t1, bgcolor: D.overlay },
+                    }}
+                  >
+                    <Badge
+                      badgeContent={unseenNotifications}
+                      color="error"
+                      max={99}
+                      sx={{ "& .MuiBadge-badge": { fontSize: 9, height: 15, minWidth: 15 } }}
+                    >
+                      <NotificationsNoneOutlinedIcon sx={{ fontSize: 20 }} />
+                    </Badge>
+                  </IconButton>
+                </Tooltip>
+
                 <Button
                   onClick={(e) => setMenuAnchor(e.currentTarget)}
                   endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 16 }} />}
@@ -286,6 +310,20 @@ const Header: React.FC = () => {
                   </Box>
                 </Stack>
               </Box>
+              <Button
+                component={RouterLink}
+                to="/notifications"
+                onClick={() => setDrawerOpen(false)}
+                startIcon={<NotificationsNoneOutlinedIcon sx={{ fontSize: 16 }} />}
+                fullWidth
+                sx={{ color: D.t2, fontWeight: 700, fontSize: 13, textTransform: "none", justifyContent: "flex-start", px: 1.5, borderRadius: 1.5, "&:hover": { color: D.t1, bgcolor: D.overlay } }}
+              >
+                <Box component="span" sx={{ flex: 1, textAlign: "left" }}>Notifications</Box>
+                {unseenNotifications > 0 && (
+                  <Badge badgeContent={unseenNotifications} color="error" max={99}
+                    sx={{ mr: 1.5, "& .MuiBadge-badge": { position: "static", transform: "none", fontSize: 9, height: 15, minWidth: 15 } }} />
+                )}
+              </Button>
               {accountMenu.map((item) => (
                 <Button key={item.to} component={RouterLink} to={item.to} onClick={() => setDrawerOpen(false)}
                   startIcon={item.icon} fullWidth
