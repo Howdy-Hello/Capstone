@@ -64,8 +64,11 @@ export const DEFAULT_COLORS: DesignColors = {
   // Text scale
   t1:  '#F1F5F9',
   t2:  '#94A3B8',
-  t3:  '#475569',
-  t4:  '#1E293B',
+  // Both muted text colors retain at least WCAG AA contrast on the darkest
+  // application surfaces. Keep borders separate when a lower-contrast visual
+  // treatment is needed.
+  t3:  '#718096',
+  t4:  '#6F7C8F',
 };
 
 export const D: DesignColors = { ...DEFAULT_COLORS };

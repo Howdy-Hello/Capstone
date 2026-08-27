@@ -15,6 +15,7 @@ import NotificationHost from "./components/NotificationHost";
 
 import Home from "./pages/Home";
 import AuthPage from "./pages/AuthPage";
+import AuthCallback from "./pages/AuthCallback";
 import UpdatePassword from "./pages/UpdatePassword";
 import Dashboard from "./pages/Dashboard";
 import Game from "./pages/Game";
@@ -77,6 +78,7 @@ function AppLayout() {
           {/* Public */}
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/update-password" element={<UpdatePassword />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/news" element={<News />} />

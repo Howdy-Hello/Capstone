@@ -416,7 +416,7 @@ export default function Leaderboard() {
                       startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 16, color: D.t3 }} /></InputAdornment>,
                       endAdornment: search ? (
                         <InputAdornment position="end">
-                          <IconButton size="small" onClick={() => setSearch("")} sx={{ color: D.t3 }}>
+                          <IconButton size="small" aria-label="Clear player search" onClick={() => setSearch("")} sx={{ color: D.t3 }}>
                             <ClearIcon sx={{ fontSize: 14 }} />
                           </IconButton>
                         </InputAdornment>

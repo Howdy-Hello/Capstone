@@ -32,7 +32,7 @@ export default function ThemeSettingsPanel() {
           <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Appearance Settings</Typography>
         </Stack>
         <Tooltip title="Reset theme">
-          <IconButton onClick={resetTheme} sx={{ color: D.t3, p: 0.7, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
+          <IconButton aria-label="Reset theme" onClick={resetTheme} sx={{ color: D.t3, p: 0.7, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
             <RestartAltIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Tooltip>

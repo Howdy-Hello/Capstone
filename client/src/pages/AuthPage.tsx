@@ -13,17 +13,11 @@ import GoogleIcon from "@mui/icons-material/Google";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useAuthThrottle } from "../lib/authThrottle";
+import { AuthMode, resolveAuthMode } from "../lib/routing";
 import { D, MONO } from "../theme/design";
 
-type Mode = "login" | "signup" | "reset";
-
-function useQuery() {
-  const { search } = useLocation();
-  return useMemo(() => new URLSearchParams(search), [search]);
-}
-
 const PERKS = [
-  "Trade 21 real-world stocks risk-free",
+  "Trade 21 fictional stocks in a realistic market",
   "Start with $2,000 in simulated capital",
   "Open-ended market simulation",
   "Compete on a global leaderboard",
@@ -32,21 +26,19 @@ const PERKS = [
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
-  const qs = useQuery();
+  const location = useLocation();
+  const qs = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const { user } = useAuth();
 
   const requestedMode = qs.get("mode");
-  const initialMode: Mode =
-    requestedMode === "signup" || requestedMode === "reset"
-      ? requestedMode
-      : "login";
-  const [mode, setMode] = useState<Mode>(initialMode);
+  const oauthError = qs.get("oauth_error");
+  const mode = resolveAuthMode(requestedMode);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(oauthError);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
@@ -58,12 +50,16 @@ const AuthPage: React.FC = () => {
     if (user) navigate("/dashboard", { replace: true });
   }, [user, navigate]);
 
+  const setMode = (nextMode: AuthMode) => {
+    const params = new URLSearchParams(location.search);
+    params.set("mode", nextMode);
+    const search = `?${params.toString()}`;
+    navigate({ pathname: location.pathname, search }, { replace: true });
+  };
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    params.set("mode", mode);
-    window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
-    setError(null);
-  }, [mode]);
+    setError(oauthError);
+  }, [mode, oauthError]);
 
   // Show the "password updated" message once on arrival, without clobbering a
   // success message set by a mode switch (e.g. the post-signup "Account created").
@@ -142,7 +138,10 @@ const AuthPage: React.FC = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            prompt: "select_account",
+          },
         },
       });
 
@@ -169,7 +168,7 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  const headings: Record<Mode, { title: string; sub: string }> = {
+  const headings: Record<AuthMode, { title: string; sub: string }> = {
     login:  { title: "Welcome back",          sub: "Log in to your trading desk." },
     signup: { title: "Create your account",   sub: "Set up your simulated portfolio in seconds." },
     reset:  { title: "Reset password",        sub: "We'll send a reset link to your inbox." },
@@ -232,7 +231,7 @@ const AuthPage: React.FC = () => {
               sx={{ flex: 1, p: { xs: 3, sm: 4.5 }, bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: { xs: 3, md: "0 16px 16px 0" }, display: "flex", flexDirection: "column" }}>
 
               <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3.5 }}>
-                <IconButton onClick={() => navigate("/")} size="small" sx={{ color: D.t3, p: 0.6, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
+                <IconButton aria-label="Back to home" onClick={() => navigate("/")} size="small" sx={{ color: D.t3, p: 0.6, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
                   <ArrowBackIosNewIcon sx={{ fontSize: 14 }} />
                 </IconButton>
                 <Typography sx={{ fontSize: 12, color: D.t3 }}>Back to home</Typography>
@@ -281,7 +280,7 @@ const AuthPage: React.FC = () => {
                     autoComplete={mode === "login" ? "current-password" : "new-password"} required sx={field}
                     InputProps={{ endAdornment: (
                       <InputAdornment position="end">
-                        <IconButton onClick={() => setShowPw((s) => !s)} edge="end" sx={{ color: D.t3 }}>
+                        <IconButton aria-label={showPw ? "Hide password" : "Show password"} onClick={() => setShowPw((s) => !s)} edge="end" sx={{ color: D.t3 }}>
                           {showPw ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
                         </IconButton>
                       </InputAdornment>

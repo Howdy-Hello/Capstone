@@ -215,7 +215,7 @@ export default function ProfilePage() {
                   {!avatarUrl && initials}
                 </Avatar>
                 <Tooltip title="Change photo">
-                  <IconButton onClick={() => fileRef.current?.click()} disabled={uploadingAvatar}
+                  <IconButton aria-label="Change profile photo" onClick={() => fileRef.current?.click()} disabled={uploadingAvatar}
                     sx={{ position: "absolute", bottom: -4, right: -4, width: 28, height: 28, bgcolor: D.brand, color: "#fff", "&:hover": { bgcolor: D.brandMid }, boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
                     {uploadingAvatar ? <CircularProgress size={12} sx={{ color: "#fff" }} /> : <CameraAltIcon sx={{ fontSize: 14 }} />}
                   </IconButton>

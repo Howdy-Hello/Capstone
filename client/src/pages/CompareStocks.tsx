@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   Box, Button, Chip, CircularProgress, Container, Grid, MenuItem,
   Stack, TextField, Typography,
@@ -12,9 +12,9 @@ import {
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-import { Stock } from "../data/mockStocks";
 import { getSharesOwned } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
+import { resolveComparisonSymbols } from "../lib/routing";
 import { CARD, D, MONO, money, pct } from "../theme/design";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
@@ -32,10 +32,6 @@ type Metric = {
   preference?: "higher" | "lower";
 };
 
-function firstDifferent(stocks: Stock[], symbol?: string) {
-  return stocks.find((stock) => stock.symbol !== symbol)?.symbol ?? stocks[0]?.symbol ?? "";
-}
-
 function metricTone(metric: Metric, side: "left" | "right") {
   if (!metric.preference || metric.leftRaw === undefined || metric.rightRaw === undefined) return D.t1;
   if (metric.leftRaw === metric.rightRaw) return D.t1;
@@ -50,28 +46,30 @@ export default function CompareStocks() {
   const trading = useGame();
   const { getHistory } = trading;
   const [params, setParams] = useSearchParams();
-  const [leftSymbol, setLeftSymbol] = useState(params.get("left") ?? "");
-  const [rightSymbol, setRightSymbol] = useState(params.get("right") ?? "");
+  const requestedLeft = params.get("left");
+  const requestedRight = params.get("right");
+  const resolved = useMemo(
+    () => resolveComparisonSymbols(trading.stocks, trading.watchlistStocks, requestedLeft, requestedRight),
+    [requestedLeft, requestedRight, trading.stocks, trading.watchlistStocks],
+  );
+  const leftSymbol = resolved.left;
+  const rightSymbol = resolved.right;
 
   useEffect(() => {
     if (trading.loading || trading.stocks.length === 0) return;
-
-    const resolvedLeft =
-      leftSymbol || trading.watchlistStocks[0]?.symbol || trading.stocks[0]?.symbol || "";
-    setLeftSymbol(resolvedLeft);
-    setRightSymbol((current) =>
-      current
-      || trading.watchlistStocks.find((stock) => stock.symbol !== resolvedLeft)?.symbol
-      || firstDifferent(trading.stocks, resolvedLeft)
-    );
-  }, [leftSymbol, trading.loading, trading.stocks, trading.watchlistStocks]);
-
-  useEffect(() => {
+    if (requestedLeft === leftSymbol && requestedRight === rightSymbol) return;
     const next = new URLSearchParams();
     if (leftSymbol) next.set("left", leftSymbol);
     if (rightSymbol) next.set("right", rightSymbol);
     setParams(next, { replace: true });
-  }, [leftSymbol, rightSymbol, setParams]);
+  }, [leftSymbol, requestedLeft, requestedRight, rightSymbol, setParams, trading.loading, trading.stocks.length]);
+
+  const selectStock = (side: "left" | "right", symbol: string) => {
+    const next = new URLSearchParams();
+    next.set("left", side === "left" ? symbol : leftSymbol);
+    next.set("right", side === "right" ? symbol : rightSymbol);
+    setParams(next);
+  };
 
   const left = trading.getStock(leftSymbol);
   const right = trading.getStock(rightSymbol);
@@ -150,7 +148,7 @@ export default function CompareStocks() {
         <Box sx={{ ...CARD, p: 2.5, mb: 3 }}>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={5}>
-              <TextField select fullWidth size="small" label="First stock" value={leftSymbol} onChange={(event) => setLeftSymbol(event.target.value)}
+              <TextField select fullWidth size="small" label="First stock" value={leftSymbol} onChange={(event) => selectStock("left", event.target.value)}
                 InputLabelProps={{ sx: { color: D.t3 } }}
                 sx={{ "& .MuiOutlinedInput-root": { bgcolor: D.elevated, color: D.t1, borderRadius: 1.5, "& fieldset": { borderColor: D.border }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand } } }}>
                 {trading.stocks.map((stock) => (
@@ -162,7 +160,7 @@ export default function CompareStocks() {
               <CompareArrowsIcon sx={{ color: D.brandText, fontSize: 26 }} />
             </Grid>
             <Grid item xs={12} md={5}>
-              <TextField select fullWidth size="small" label="Second stock" value={rightSymbol} onChange={(event) => setRightSymbol(event.target.value)}
+              <TextField select fullWidth size="small" label="Second stock" value={rightSymbol} onChange={(event) => selectStock("right", event.target.value)}
                 InputLabelProps={{ sx: { color: D.t3 } }}
                 sx={{ "& .MuiOutlinedInput-root": { bgcolor: D.elevated, color: D.t1, borderRadius: 1.5, "& fieldset": { borderColor: D.border }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand } } }}>
                 {trading.stocks.map((stock) => (

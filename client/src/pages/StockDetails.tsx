@@ -368,7 +368,7 @@ export default function StockDetails() {
                 <Box sx={{ mb: 2 }}>
                   <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 1 }}>QUANTITY</Typography>
                   <Stack direction="row" alignItems="center" spacing={1.5}>
-                    <IconButton size="small" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1}
+                    <IconButton size="small" aria-label="Decrease share quantity" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1}
                       sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, color: D.t2, borderRadius: 1.5,
                         "&:hover": { bgcolor: D.overlay, color: D.t1 }, "&.Mui-disabled": { color: D.t3 } }}>
                       <RemoveIcon sx={{ fontSize: 16 }} />
@@ -391,7 +391,7 @@ export default function StockDetails() {
                         },
                       }}
                     />
-                    <IconButton size="small" onClick={() => setQuantity((q) => q + 1)}
+                    <IconButton size="small" aria-label="Increase share quantity" onClick={() => setQuantity((q) => q + 1)}
                       sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, color: D.t2, borderRadius: 1.5,
                         "&:hover": { bgcolor: D.overlay, color: D.t1 } }}>
                       <AddIcon sx={{ fontSize: 16 }} />
@@ -506,7 +506,7 @@ export default function StockDetails() {
                       <Stack key={alert.id} direction="row" alignItems="center" justifyContent="space-between"
                         sx={{ p: 1.4, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                         <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: D.t1 }}>{describeAlert(alert)}</Typography>
-                        <IconButton size="small" onClick={() => deleteAlert(alert.id)} sx={{ color: D.t3, "&:hover": { color: D.redText } }}>
+                        <IconButton size="small" aria-label={`Delete ${describeAlert(alert)} alert`} onClick={() => deleteAlert(alert.id)} sx={{ color: D.t3, "&:hover": { color: D.redText } }}>
                           <DeleteOutlineIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </Stack>

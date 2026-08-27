@@ -931,7 +931,7 @@ export default function Game() {
                     <Stack direction="row" spacing={0.5} alignItems="center">
                       <Chip label={`${missions.completedCount}/${missions.totalCount}`} size="small"
                         sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 900, fontSize: 10 }} />
-                      <IconButton size="small" title="Hide checklist"
+                      <IconButton size="small" title="Hide checklist" aria-label="Hide beginner checklist"
                         onClick={() => { localStorage.setItem("stockpilot-missions-hidden", "1"); setMissionsHidden(true); }}
                         sx={{ color: D.t3, p: 0.4, "&:hover": { color: D.t1 } }}>
                         <CloseIcon sx={{ fontSize: 14 }} />
@@ -1280,7 +1280,7 @@ function CommandConsole({ open, onClose, onRun }: {
           <CodeIcon sx={{ fontSize: 17, color: D.brandText }} />
           <Typography sx={{ fontWeight: 900, fontSize: 12, color: D.t2, fontFamily: MONO }}>dev</Typography>
         </Stack>
-        <IconButton size="small" onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}>
+        <IconButton size="small" aria-label="Close developer console" onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}>
           <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </Stack>
@@ -1437,7 +1437,7 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
             </Typography>
             <Typography sx={{ fontSize: 12.5, color: D.t3 }}>{stock.name}</Typography>
           </Box>
-          <IconButton size="small" onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}>
+          <IconButton size="small" aria-label="Close trade dialog" onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}>
             <CloseIcon sx={{ fontSize: 17 }} />
           </IconButton>
         </Stack>
@@ -1466,7 +1466,7 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
           <Box>
             <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 1.2 }}>QUANTITY</Typography>
             <Stack direction="row" alignItems="center" spacing={1.5}>
-              <IconButton size="small" onClick={() => adjust(-1)} disabled={qty <= 1}
+              <IconButton size="small" aria-label="Decrease share quantity" onClick={() => adjust(-1)} disabled={qty <= 1}
                 sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, color: D.t2, borderRadius: 1.5,
                   "&:hover": { bgcolor: D.overlay, color: D.t1 }, "&.Mui-disabled": { color: D.t3 } }}>
                 <RemoveIcon sx={{ fontSize: 16 }} />
@@ -1489,7 +1489,7 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
                   },
                 }}
               />
-              <IconButton size="small" onClick={() => adjust(1)} disabled={qty >= maxQty}
+              <IconButton size="small" aria-label="Increase share quantity" onClick={() => adjust(1)} disabled={qty >= maxQty}
                 sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, color: D.t2, borderRadius: 1.5,
                   "&:hover": { bgcolor: D.overlay, color: D.t1 }, "&.Mui-disabled": { color: D.t3 } }}>
                 <AddIcon sx={{ fontSize: 16 }} />
@@ -1567,7 +1567,7 @@ function OpeningBriefingDialog({ open, onClose, onDontShowAgain, stories }: {
             </Stack>
             <Typography sx={{ fontSize: 13, color: D.t3 }}>Days 1–3 are scripted to teach how news affects prices.</Typography>
           </Box>
-          <IconButton onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}><CloseIcon /></IconButton>
+          <IconButton aria-label="Close market briefing" onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}><CloseIcon /></IconButton>
         </Stack>
       </DialogTitle>
 

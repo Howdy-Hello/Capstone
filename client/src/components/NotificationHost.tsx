@@ -71,7 +71,7 @@ function ToastItem({ notification }: { notification: AppNotification }) {
               </Typography>
             )}
           </Box>
-          <IconButton size="small" onClick={() => dismissNotification(notification.id)}
+          <IconButton size="small" aria-label={`Dismiss ${notification.title}`} onClick={() => dismissNotification(notification.id)}
             sx={{ color: D.t3, p: 0.3, "&:hover": { color: D.t1 } }}>
             <CloseIcon sx={{ fontSize: 14 }} />
           </IconButton>

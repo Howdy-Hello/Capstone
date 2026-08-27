@@ -127,7 +127,7 @@ export default function UpdatePassword() {
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword((shown) => !shown)} edge="end" sx={{ color: D.t3 }}>
+                    <IconButton aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((shown) => !shown)} edge="end" sx={{ color: D.t3 }}>
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>

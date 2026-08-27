@@ -337,7 +337,7 @@ export default function SaveLoad() {
                                     Load
                                   </Button>
                                 </motion.div>
-                                <IconButton size="small" onClick={() => setDeleteConfirm(slot)}
+                                <IconButton size="small" aria-label={`Delete ${slot.slot_name}`} onClick={() => setDeleteConfirm(slot)}
                                   sx={{ color: D.t3, border: `1px solid ${D.border}`, borderRadius: 1.5, "&:hover": { color: D.redText, borderColor: D.redBd, bgcolor: D.redBg } }}>
                                   <DeleteIcon sx={{ fontSize: 16 }} />
                                 </IconButton>
@@ -398,7 +398,7 @@ export default function SaveLoad() {
         <DialogTitle sx={{ bgcolor: D.elevated, borderBottom: `1px solid ${D.border}`, p: 2.5 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Delete Save?</Typography>
-            <IconButton size="small" onClick={() => setDeleteConfirm(null)} sx={{ color: D.t3 }}>
+            <IconButton size="small" aria-label="Close delete confirmation" onClick={() => setDeleteConfirm(null)} sx={{ color: D.t3 }}>
               <CloseIcon sx={{ fontSize: 17 }} />
             </IconButton>
           </Stack>

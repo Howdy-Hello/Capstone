@@ -11,10 +11,10 @@ import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
 const STOCKS = [
-  { sym: "NVDA", name: "Nvidia",    price: 892.14, change: 3.21 },
-  { sym: "AAPL", name: "Apple",     price: 189.30, change: -0.84 },
-  { sym: "MSFT", name: "Microsoft", price: 415.56, change: 1.07 },
-  { sym: "TSLA", name: "Tesla",     price: 246.80, change: -2.45 },
+  { sym: "CAI", name: "Closed Ai",        price: 112.14, change: 3.21 },
+  { sym: "GVE", name: "GreenVolt Energy", price: 79.30,  change: -0.84 },
+  { sym: "MCH", name: "MediCore Health",  price: 101.56, change: 1.07 },
+  { sym: "URB", name: "UrbanBank",        price: 52.80,  change: -2.45 },
 ];
 
 const FEATURES = [

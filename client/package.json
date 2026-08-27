@@ -8,7 +8,6 @@
     "@mui/icons-material": "^6.4.0",
     "@mui/material": "^6.4.0",
     "@supabase/supabase-js": "^2.108.2",
-    "axios": "^1.7.9",
     "cra-template": "1.2.0",
     "framer-motion": "^11.0.8",
     "react": "^19.0.0",
