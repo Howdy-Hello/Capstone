@@ -347,9 +347,9 @@ function GuideTab() {
                 sx={{ bgcolor: D.brand, fontWeight: 900, textTransform: "none", borderRadius: 1.5, px: 3, whiteSpace: "nowrap", boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
                 Open Simulator
               </Button>
-              <Button component={RouterLink} to="/news"
+              <Button component={RouterLink} to="/inbox"
                 sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, px: 3, whiteSpace: "nowrap", "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
-                Read News
+                Read Inbox
               </Button>
             </Stack>
           </Stack>

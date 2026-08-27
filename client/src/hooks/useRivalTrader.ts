@@ -15,7 +15,53 @@ import { money } from "../theme/design";
 // price data, matching how the rest of mockStocks.ts is purely computed
 // rather than stateful.
 const RIVAL_BASKET_SIZE = 5;
-const RIVAL_STARTING_CASH = 2000;
+export const RIVAL_STARTING_CASH = 2000;
+
+export type RivalPosition = {
+  company: StockCompany;
+  /** Price the rival is treated as having bought at. */
+  basis: number;
+  price: number;
+  shares: number;
+  value: number;
+  returnPct: number;
+  /** Share of the rival's current net worth this position accounts for. */
+  weightPct: number;
+};
+
+/**
+ * Value the rival's equal-weight basket against a price lookup.
+ *
+ * Pure so the page and the hook agree, and so the maths can be tested without
+ * standing up a provider. `priceOf` returning undefined means the stock has no
+ * quote for the day being valued, in which case that slice is held as cash --
+ * the same fallback the net-worth figure has always used.
+ */
+export function valueRivalBasket(
+  basket: StockCompany[],
+  basisOf: (company: StockCompany) => number,
+  priceOf: (company: StockCompany) => number | undefined,
+  startingCash = RIVAL_STARTING_CASH
+): { total: number; positions: RivalPosition[] } {
+  if (basket.length === 0) return { total: startingCash, positions: [] };
+  const perStock = startingCash / basket.length;
+
+  const raw = basket.map((company) => {
+    const basis = basisOf(company);
+    if (!(basis > 0)) {
+      return { company, basis: 0, price: 0, shares: 0, value: perStock, returnPct: 0 };
+    }
+    const price = priceOf(company) ?? basis;
+    const shares = perStock / basis;
+    return { company, basis, price, shares, value: shares * price, returnPct: (price / basis - 1) * 100 };
+  });
+
+  const total = raw.reduce((sum, p) => sum + p.value, 0);
+  return {
+    total,
+    positions: raw.map((p) => ({ ...p, weightPct: total > 0 ? (p.value / total) * 100 : 0 })),
+  };
+}
 
 const RIVAL_NAMES = [
   "Vexa Quant", "Byte Capital", "Nomo Trading", "Ada Systematic",
@@ -57,33 +103,47 @@ function pickName(marketSeed: string) {
 
 export function useRivalTrader() {
   const { user } = useAuth();
-  const { account, stocks, gameDay, marketSeed, loading, sessionId } = useGame();
+  const { account, stocks, gameDay, marketSeed, loading, sessionId, getHistory } = useGame();
 
   const basket = useMemo(() => pickBasket(marketSeed, RIVAL_BASKET_SIZE), [marketSeed]);
   const rivalName = useMemo(() => pickName(marketSeed), [marketSeed]);
 
-  const rivalNetWorth = useMemo(() => {
-    // An empty basket or a zero-priced company would divide to Infinity and
-    // render the rival's net worth as NaN. Hold the cash instead.
-    if (basket.length === 0) return RIVAL_STARTING_CASH;
-    const perStock = RIVAL_STARTING_CASH / basket.length;
-    return basket.reduce((sum, company) => {
-      // Price the rival from the same market the player trades, not from
-      // mockStocks' generator. In limited_30 `stocks` IS getStocksForGameDay,
-      // so this is the identical series and nothing changes; in infinite mode
-      // the player's prices come from the database plus GameContext's
-      // continuation generator, which mockStocks does not reproduce -- the two
-      // series drifted far enough apart that the head-to-head number, the gap
-      // percentage and the taunts all described a market nobody was playing.
-      const live = stocks.find((item) => item.symbol === company.symbol);
-      // Cost basis has to come from the same engine as the price, or the
-      // rival's return is measured against a baseline from the other market.
-      const basis = live?.startingPrice ?? company.startingPrice;
-      if (basis <= 0) return sum + perStock;
-      const currentPrice = live?.currentPrice ?? basis;
-      return sum + (perStock / basis) * currentPrice;
-    }, 0);
-  }, [basket, stocks]);
+  // Priced from the same market the player trades, not mockStocks' generator.
+  // In limited_30 `stocks` IS getStocksForGameDay, so this is the identical
+  // series; in infinite mode the player's prices come from the database plus
+  // GameContext's continuation generator, which mockStocks does not reproduce.
+  // The cost basis has to come from that same engine or the rival's return is
+  // measured against a baseline from the other market.
+  const { total: rivalNetWorth, positions } = useMemo(() => valueRivalBasket(
+    basket,
+    (company) => stocks.find((item) => item.symbol === company.symbol)?.startingPrice ?? company.startingPrice,
+    (company) => stocks.find((item) => item.symbol === company.symbol)?.currentPrice
+  ), [basket, stocks]);
+
+  // The rival is a buy-and-hold basket, so its value on any past day is fully
+  // determined by that day's closes -- no stored history needed.
+  const equityCurve = useMemo(() => {
+    if (basket.length === 0 || gameDay < 1) return [];
+    const closesBySymbol = new Map(
+      basket.map((company) => [
+        company.symbol,
+        new Map(getHistory(company.symbol).map((point) => [point.gameDay, point.closePrice])),
+      ])
+    );
+    const basisOf = (company: StockCompany) =>
+      stocks.find((item) => item.symbol === company.symbol)?.startingPrice ?? company.startingPrice;
+
+    const days: { day: number; rival: number }[] = [];
+    for (let day = 1; day <= gameDay; day += 1) {
+      const { total } = valueRivalBasket(
+        basket,
+        basisOf,
+        (company) => closesBySymbol.get(company.symbol)?.get(day)
+      );
+      days.push({ day, rival: Number(total.toFixed(2)) });
+    }
+    return days;
+  }, [basket, stocks, getHistory, gameDay]);
 
   const playerNetWorth = account.cash + getPortfolioValue(account, stocks);
   const playerAhead = playerNetWorth >= rivalNetWorth;
@@ -137,5 +197,5 @@ export function useRivalTrader() {
     prevAheadRef.current = playerAhead;
   }, [playerAhead, gameDay, rivalName, rivalNetWorth, playerNetWorth, marketSeed, loading, sessionId, stocks.length, user]);
 
-  return { rivalName, rivalNetWorth, playerNetWorth, playerAhead, gapPct, basket };
+  return { rivalName, rivalNetWorth, playerNetWorth, playerAhead, gapPct, basket, positions, equityCurve };
 }

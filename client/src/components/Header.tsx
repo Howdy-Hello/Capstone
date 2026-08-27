@@ -19,6 +19,7 @@ import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import SportsMmaOutlinedIcon from "@mui/icons-material/SportsMmaOutlined";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useUnreadInboxCount } from "../lib/inbox";
@@ -41,6 +42,7 @@ const accountMenu = [
   { label: "Settings",      to: "/settings",     icon: <SettingsOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "My Profile",    to: "/profile",      icon: <AccountCircleOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "My Level",      to: "/level",        icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 16 }} /> },
+  { label: "Rival Trader",  to: "/rival",        icon: <SportsMmaOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Dashboard",     to: "/dashboard",    icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Achievements",  to: "/achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Save & Load",   to: "/save-load",    icon: <SaveOutlinedIcon sx={{ fontSize: 16 }} /> },

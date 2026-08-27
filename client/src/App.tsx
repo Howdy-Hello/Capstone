@@ -23,6 +23,7 @@ import Dashboard from "./pages/Dashboard";
 import Game from "./pages/Game";
 import Learn from "./pages/Learn";
 import Leaderboard from "./pages/Leaderboard";
+import Rival from "./pages/Rival";
 import Achievements from "./pages/Achievements";
 import SaveLoad from "./pages/SaveLoad";
 import StockDetails from "./pages/StockDetails";
@@ -95,6 +96,7 @@ function AppLayout() {
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/game" element={<ProtectedRoute><Game /></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+          <Route path="/rival" element={<ProtectedRoute><Rival /></ProtectedRoute>} />
           <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
           <Route path="/save-load" element={<ProtectedRoute><SaveLoad /></ProtectedRoute>} />
           <Route path="/compare" element={<ProtectedRoute><CompareStocks /></ProtectedRoute>} />

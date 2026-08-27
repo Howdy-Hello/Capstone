@@ -564,7 +564,7 @@ export default function Guide() {
                 <Button
                   variant="outlined"
                   component={RouterLink}
-                  to="/news"
+                  to="/inbox"
                   sx={{
                     borderColor: BRAND.navy,
                     color: BRAND.navy,

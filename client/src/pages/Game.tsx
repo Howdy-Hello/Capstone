@@ -8,6 +8,7 @@ import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ShieldIcon from "@mui/icons-material/Shield";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import StorefrontIcon from "@mui/icons-material/Storefront";
@@ -1054,6 +1055,10 @@ export default function Game() {
                   <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: rival.playerAhead ? D.greenText : D.redText, mt: 0.3 }}>
                     {rival.playerAhead ? "+" : ""}{rival.gapPct.toFixed(1)}% vs rival
                   </Typography>
+                  <Button component={RouterLink} to="/rival" size="small" endIcon={<ChevronRightIcon sx={{ fontSize: 16 }} />}
+                    sx={{ alignSelf: "flex-start", px: 0, mt: 0.5, color: D.brandText, fontWeight: 800, fontSize: 12, textTransform: "none", "&:hover": { bgcolor: "transparent", color: D.t1 } }}>
+                    See their basket
+                  </Button>
                 </Stack>
               </Box>
 
@@ -1069,9 +1074,9 @@ export default function Game() {
                     </Stack>
                   ))}
                 </Stack>
-                <Button fullWidth component={RouterLink} to="/news" state={{ gameDay }} startIcon={<NewspaperIcon />}
+                <Button fullWidth component={RouterLink} to="/inbox" startIcon={<NewspaperIcon />}
                   sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
-                  Open News Page
+                  Open Inbox &amp; News
                 </Button>
               </Box>
 
