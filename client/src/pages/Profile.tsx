@@ -15,7 +15,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import ThemeSettingsPanel from "../components/ThemeSettingsPanel";
-import { D, CARD, MONO } from "../theme/design";
+import { D, MONO } from "../theme/design";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -29,19 +29,36 @@ const API_BASE_URL = process.env.REACT_APP_API_URL ?? "http://localhost:5000";
 
 function getAvatarPath(userId: string) { return `${userId}/avatar`; }
 
-const fieldSx = {
+// A function, not a module-scope object. `applyDesignColors` mutates the shared
+// `D` singleton when the theme changes, so an object built at import time froze
+// these inputs at the dark palette: on any light theme the fields rendered as
+// near-black boxes with labels that all but disappeared against them.
+const fieldSx = () => ({
   "& .MuiOutlinedInput-root": {
     bgcolor: D.elevated,
-    borderRadius: 1.5,
+    borderRadius: 2,
+    transition: "border-color .15s ease, background-color .15s ease",
     "& fieldset": { borderColor: D.border },
     "&:hover fieldset": { borderColor: D.borderHi },
-    "&.Mui-focused fieldset": { borderColor: D.brand },
+    "&.Mui-focused fieldset": { borderColor: D.brand, borderWidth: 2 },
     "& input, & textarea": { color: D.t1, fontSize: 14 },
-    "&.Mui-disabled": { "& input, & textarea": { color: D.t3, WebkitTextFillColor: D.t3 } },
+    "&.Mui-disabled": {
+      bgcolor: D.overlay,
+      "& input, & textarea": { color: D.t3, WebkitTextFillColor: D.t3 },
+      "& fieldset": { borderColor: D.border },
+    },
   },
   "& .MuiInputLabel-root": { color: D.t3, fontSize: 13.5, "&.Mui-focused": { color: D.brandText } },
-  "& .MuiFormHelperText-root": { color: D.t3 },
-};
+  "& .MuiFormHelperText-root": { color: D.t3, marginLeft: 0, marginTop: 0.75, fontSize: 11.5 },
+});
+
+// Shared shell for the page's cards.
+const sectionSx = (accent?: string) => ({
+  bgcolor: D.surface,
+  border: `1px solid ${accent ?? D.border}`,
+  borderRadius: 3,
+  overflow: "hidden" as const,
+});
 
 export default function ProfilePage() {
   const reduceMotion = useReducedMotion();
@@ -198,180 +215,226 @@ export default function ProfilePage() {
     );
   }
 
+  // Save is pointless until something actually changed, and an always-enabled
+  // button gives no signal about unsaved work.
+  const isDirty =
+    displayName !== (profile?.display_name ?? "")
+    || username !== (profile?.username ?? "")
+    || bio !== (profile?.bio ?? "");
+
+  const memberSince = user.created_at
+    ? new Date(user.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" })
+    : null;
+
   const initials = (displayName || user.email || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
   const isSettings = pathname === "/settings";
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
-      {/* Hero */}
+      <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
+
+      {/* Page heading */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
-        <Container maxWidth="md" sx={{ py: { xs: 3, md: 4 } }}>
-          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={3} alignItems={{ sm: "center" }}>
-              {/* Avatar */}
-              <Box sx={{ position: "relative", flexShrink: 0 }}>
-                <Avatar src={avatarUrl ?? undefined}
-                  sx={{ width: 80, height: 80, bgcolor: D.elevated, border: `2px solid ${D.border}`, fontSize: 26, fontWeight: 950, color: D.brandText }}>
-                  {!avatarUrl && initials}
-                </Avatar>
-                <Tooltip title="Change photo">
-                  <IconButton aria-label="Change profile photo" onClick={() => fileRef.current?.click()} disabled={uploadingAvatar}
-                    sx={{ position: "absolute", bottom: -4, right: -4, width: 28, height: 28, bgcolor: D.brand, color: "#fff", "&:hover": { bgcolor: D.brandMid }, boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
-                    {uploadingAvatar ? <CircularProgress size={12} sx={{ color: "#fff" }} /> : <CameraAltIcon sx={{ fontSize: 14 }} />}
-                  </IconButton>
-                </Tooltip>
-                <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
-              </Box>
-
-              <Box sx={{ flex: 1 }}>
-                <Chip label={isSettings ? "SETTINGS" : "PROFILE"} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-                <Typography sx={{ fontWeight: 950, fontSize: { xs: 22, md: 26 }, color: D.t1, lineHeight: 1.1 }}>
-                  {isSettings ? "Account Settings" : displayName || user.email?.split("@")[0] || "Your Profile"}
-                </Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3, mt: 0.5 }}>{user.email}</Typography>
-              </Box>
-
-              <Button onClick={async () => { await signOut(); navigate("/"); }} startIcon={<LogoutIcon />}
-                sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 2, border: `1px solid ${D.border}`, px: 2, flexShrink: 0, fontSize: 13, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
-                Log out
-              </Button>
-            </Stack>
-          </motion.div>
+        <Container maxWidth="lg" sx={{ py: { xs: 2.5, md: 3 } }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+            <Box>
+              <Chip label={isSettings ? "SETTINGS" : "PROFILE"} size="small"
+                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+              <Typography sx={{ fontWeight: 950, fontSize: { xs: 22, md: 26 }, color: D.t1, lineHeight: 1.1 }}>
+                {isSettings ? "Account Settings" : "Your Profile"}
+              </Typography>
+            </Box>
+            <Button onClick={async () => { await signOut(); navigate("/"); }} startIcon={<LogoutIcon />}
+              sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 2, border: `1px solid ${D.border}`, px: 2, flexShrink: 0, fontSize: 13, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
+              Log out
+            </Button>
+          </Stack>
         </Container>
       </Box>
 
-      <Container maxWidth="md" sx={{ py: { xs: 3, md: 4 } }}>
-        <Stack spacing={3}>
-          {/* Profile form */}
-          <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32 }}
-            sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-              <EditIcon sx={{ color: D.brandText, fontSize: 18 }} />
-              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Profile Details</Typography>
-            </Stack>
-            <Box sx={{ p: 3 }}>
-              <Typography sx={{ fontSize: 13, color: D.t3, mb: 3 }}>Your name and bio are visible on the leaderboard and achievements pages.</Typography>
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
+        <MotionPresence initial={false}>
+          {saveErr && (
+            <motion.div key="saveErr" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
+              <Alert severity="error" onClose={() => setSaveErr(null)} sx={{ mb: 2.5, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{saveErr}</Alert>
+            </motion.div>
+          )}
+          {saveMsg && (
+            <motion.div key="saveMsg" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
+              <Alert severity="success" sx={{ mb: 2.5, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 13 }}>{saveMsg}</Alert>
+            </motion.div>
+          )}
+          {avatarErr && (
+            <motion.div key="avatarErr" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
+              <Alert severity="error" onClose={() => setAvatarErr(null)} sx={{ mb: 2.5, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{avatarErr}</Alert>
+            </motion.div>
+          )}
+        </MotionPresence>
 
-              <MotionPresence initial={false}>
-                {saveErr && (
-                  <motion.div key="saveErr" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
-                    <Alert severity="error" onClose={() => setSaveErr(null)} sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{saveErr}</Alert>
-                  </motion.div>
+        <Grid container spacing={3} alignItems="flex-start">
+          {/* Identity rail */}
+          <Grid item xs={12} md={4}>
+            <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32 }}
+              sx={{ ...sectionSx(), position: { md: "sticky" }, top: { md: 88 } }}>
+              <Box sx={{ p: 3, textAlign: "center" }}>
+                <Box sx={{ position: "relative", width: 104, mx: "auto", mb: 2 }}>
+                  <Avatar src={avatarUrl ?? undefined}
+                    sx={{ width: 104, height: 104, bgcolor: D.elevated, border: `3px solid ${D.brandBd}`, fontSize: 34, fontWeight: 950, color: D.brandText }}>
+                    {!avatarUrl && (initials || <AccountCircleIcon sx={{ fontSize: 52, color: D.t3 }} />)}
+                  </Avatar>
+                  <Tooltip title={avatarUrl ? "Change photo" : "Upload photo"}>
+                    <IconButton aria-label="Change profile photo" onClick={() => fileRef.current?.click()} disabled={uploadingAvatar}
+                      sx={{ position: "absolute", bottom: 0, right: 0, width: 32, height: 32, bgcolor: D.brand, color: "#fff", border: `2px solid ${D.surface}`, "&:hover": { bgcolor: D.brandMid } }}>
+                      {uploadingAvatar ? <CircularProgress size={13} sx={{ color: "#fff" }} /> : <CameraAltIcon sx={{ fontSize: 15 }} />}
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+
+                <Typography sx={{ fontWeight: 950, fontSize: 18, color: D.t1, lineHeight: 1.2 }} noWrap>
+                  {displayName || user.email?.split("@")[0] || "Trader"}
+                </Typography>
+                {username && (
+                  <Typography sx={{ fontSize: 13, color: D.brandText, fontFamily: MONO, mt: 0.25 }} noWrap>@{username}</Typography>
                 )}
-                {saveMsg && (
-                  <motion.div key="saveMsg" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
-                    <Alert severity="success" sx={{ mb: 2, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 13 }}>{saveMsg}</Alert>
-                  </motion.div>
+                <Typography sx={{ fontSize: 12.5, color: D.t3, mt: 0.75, wordBreak: "break-all" }}>{user.email}</Typography>
+
+                {memberSince && (
+                  <Typography sx={{ fontSize: 11, color: D.t4, mt: 1.5, fontFamily: MONO, letterSpacing: 0.5 }}>
+                    MEMBER SINCE {memberSince.toUpperCase()}
+                  </Typography>
                 )}
-                {avatarErr && (
-                  <motion.div key="avatarErr" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
-                    <Alert severity="error" onClose={() => setAvatarErr(null)} sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{avatarErr}</Alert>
-                  </motion.div>
-                )}
-              </MotionPresence>
+              </Box>
 
-              <Grid container spacing={2.5}>
-                <Grid item xs={12} sm={6}>
-                  <TextField label="Display Name" fullWidth value={displayName} onChange={(e) => setDisplayName(e.target.value)} inputProps={{ maxLength: 50 }} helperText={`${displayName.length}/50`} required sx={fieldSx} />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField label="Username" fullWidth value={username} onChange={(e) => setUsername(e.target.value)} inputProps={{ maxLength: 24 }} helperText="Letters, numbers, underscores. Optional." sx={fieldSx}
-                    InputProps={{ startAdornment: <Typography sx={{ mr: 0.5, color: D.t3, fontSize: 14 }}>@</Typography> }} />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField label="Email" fullWidth value={user.email ?? ""} disabled helperText="Email is managed through your account credentials." sx={fieldSx} />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField label="Bio" fullWidth multiline minRows={3} value={bio} onChange={(e) => setBio(e.target.value)} inputProps={{ maxLength: 280 }} helperText={`${bio.length}/280 · Share your trading style.`} sx={fieldSx} />
-                </Grid>
-              </Grid>
+              <Divider sx={{ borderColor: D.border }} />
 
-              <motion.div whileHover={reduceMotion || saving ? undefined : { y: -2 }} whileTap={reduceMotion || saving ? undefined : { scale: 0.98 }} style={{ display: "inline-block", marginTop: 24 }}>
-                <Button onClick={handleSave} disabled={saving} variant="contained"
-                  startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon />}
-                  sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-                  {saving ? "Saving…" : "Save Profile"}
-                </Button>
-              </motion.div>
-            </Box>
-          </Box>
-
-          <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.05 }}>
-            <ThemeSettingsPanel />
-          </Box>
-
-          {/* Avatar management */}
-          <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.1 }}
-            sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-              <CameraAltIcon sx={{ color: D.brandText, fontSize: 18 }} />
-              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Profile Picture</Typography>
-            </Stack>
-            <Box sx={{ p: 3 }}>
-              <Typography sx={{ fontSize: 13, color: D.t3, mb: 2.5 }}>JPEG, PNG, or WebP · Max 2 MB</Typography>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
-                <Avatar src={avatarUrl ?? undefined} sx={{ width: 68, height: 68, bgcolor: D.elevated, border: `1px solid ${D.border}`, fontSize: 20, fontWeight: 900, color: D.brandText }}>
-                  {!avatarUrl && <AccountCircleIcon sx={{ fontSize: 36, color: D.t3 }} />}
-                </Avatar>
-                <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
-                  <Button variant="outlined" startIcon={uploadingAvatar ? <CircularProgress size={13} /> : <CameraAltIcon />}
+              <Box sx={{ p: 2.5 }}>
+                <Typography sx={{ fontSize: 11, color: D.t3, mb: 1.5, fontFamily: MONO, letterSpacing: 0.5 }}>
+                  PHOTO · JPEG, PNG, WEBP · MAX 2 MB
+                </Typography>
+                <Stack spacing={1}>
+                  <Button fullWidth variant="outlined" startIcon={uploadingAvatar ? <CircularProgress size={13} /> : <CameraAltIcon />}
                     onClick={() => fileRef.current?.click()} disabled={uploadingAvatar}
-                    sx={{ color: D.t2, borderColor: D.border, fontWeight: 700, textTransform: "none", borderRadius: 1.5, fontSize: 13, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
-                    {uploadingAvatar ? "Uploading…" : avatarUrl ? "Change Photo" : "Upload Photo"}
+                    sx={{ color: D.t2, borderColor: D.border, fontWeight: 700, textTransform: "none", borderRadius: 2, fontSize: 13, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
+                    {uploadingAvatar ? "Uploading…" : avatarUrl ? "Change photo" : "Upload photo"}
                   </Button>
                   {avatarUrl && (
-                    <Button startIcon={deletingAvatar ? <CircularProgress size={13} /> : <DeleteOutlineIcon />}
+                    <Button fullWidth startIcon={deletingAvatar ? <CircularProgress size={13} /> : <DeleteOutlineIcon />}
                       onClick={handleAvatarDelete} disabled={deletingAvatar}
-                      sx={{ color: D.redText, border: `1px solid ${D.redBd}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, fontSize: 13, "&:hover": { bgcolor: D.redBg } }}>
-                      {deletingAvatar ? "Removing…" : "Remove Photo"}
+                      sx={{ color: D.redText, border: `1px solid ${D.redBd}`, fontWeight: 700, textTransform: "none", borderRadius: 2, fontSize: 13, "&:hover": { bgcolor: D.redBg } }}>
+                      {deletingAvatar ? "Removing…" : "Remove photo"}
                     </Button>
                   )}
                 </Stack>
-              </Stack>
+              </Box>
             </Box>
-          </Box>
+          </Grid>
 
-          {/* Danger zone */}
-          <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.15 }}
-            sx={{ bgcolor: D.surface, border: `1px solid ${D.redBd}`, borderRadius: 2, p: 0, overflow: "hidden" }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.redBd}` }}>
-              <WarningAmberIcon sx={{ color: D.redText, fontSize: 18 }} />
-              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.redText }}>Danger Zone</Typography>
-            </Stack>
-            <Box sx={{ p: 3 }}>
-              <Typography sx={{ fontSize: 13, color: D.t3, mb: 2.5 }}>
-                Deleting your account permanently removes your login, profile,
-                avatar, game sessions, holdings, and trade history.
-              </Typography>
-              <Divider sx={{ borderColor: D.redBd, mb: 2.5 }} />
-              {!confirmDelete ? (
-                <Button startIcon={<DeleteOutlineIcon />} onClick={() => setConfirmDelete(true)}
-                  sx={{ color: D.redText, border: `1px solid ${D.redBd}`, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.redBg } }}>
-                  Delete Account
-                </Button>
-              ) : (
-                <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.redText, mb: 0.5 }}>Are you absolutely sure?</Typography>
-                  <Typography sx={{ fontSize: 13, color: D.t2, mb: 2 }}>
-                    This cannot be undone. All account and simulator data will
-                    be deleted immediately.
+          {/* Content column */}
+          <Grid item xs={12} md={8}>
+            <Stack spacing={3}>
+              {/* Profile details */}
+              <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.05 }}
+                sx={sectionSx()}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.25, borderBottom: `1px solid ${D.border}` }}>
+                  <EditIcon sx={{ color: D.brandText, fontSize: 18 }} />
+                  <Typography sx={{ fontWeight: 900, fontSize: 15.5, color: D.t1, flex: 1 }}>Profile details</Typography>
+                  <MotionPresence initial={false}>
+                    {isDirty && (
+                      <motion.div key="dirty" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+                        <Chip label="UNSAVED" size="small"
+                          sx={{ bgcolor: D.amberBg, color: D.amber, fontWeight: 900, fontSize: 9.5, fontFamily: MONO, letterSpacing: 0.5, height: 20 }} />
+                      </motion.div>
+                    )}
+                  </MotionPresence>
+                </Stack>
+
+                <Box sx={{ p: 3 }}>
+                  <Typography sx={{ fontSize: 13, color: D.t3, mb: 3 }}>
+                    Your name and bio are visible on the leaderboard and achievements pages.
                   </Typography>
-                  <Stack direction="row" spacing={1.2}>
-                    <Button variant="contained" onClick={handleDeleteAccount} disabled={deletingAccount}
-                      startIcon={deletingAccount ? <CircularProgress size={13} sx={{ color: "#fff" }} /> : <DeleteOutlineIcon />}
-                      sx={{ bgcolor: D.red, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" } }}>
-                      {deletingAccount ? "Deleting…" : "Yes, delete my account"}
-                    </Button>
-                    <Button onClick={() => setConfirmDelete(false)}
-                      sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
-                      Cancel
-                    </Button>
+
+                  <Grid container spacing={2.5}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField label="Display name" fullWidth value={displayName} onChange={(e) => setDisplayName(e.target.value)}
+                        inputProps={{ maxLength: 50 }} helperText={`${displayName.length}/50`} required sx={fieldSx()} />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField label="Username" fullWidth value={username} onChange={(e) => setUsername(e.target.value)}
+                        inputProps={{ maxLength: 24 }} helperText="Letters, numbers, underscores. Optional." sx={fieldSx()}
+                        InputProps={{ startAdornment: <Typography sx={{ mr: 0.5, color: D.t3, fontSize: 14 }}>@</Typography> }} />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField label="Email" fullWidth value={user.email ?? ""} disabled
+                        helperText="Email is managed through your account credentials." sx={fieldSx()} />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField label="Bio" fullWidth multiline minRows={3} value={bio} onChange={(e) => setBio(e.target.value)}
+                        inputProps={{ maxLength: 280 }} helperText={`${bio.length}/280 · Share your trading style.`} sx={fieldSx()} />
+                    </Grid>
+                  </Grid>
+
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 3 }}>
+                    <motion.div whileHover={reduceMotion || saving || !isDirty ? undefined : { y: -2 }} whileTap={reduceMotion || saving || !isDirty ? undefined : { scale: 0.98 }} style={{ display: "inline-block" }}>
+                      <Button onClick={handleSave} disabled={saving || !isDirty} variant="contained"
+                        startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon />}
+                        sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 2, boxShadow: "none", px: 2.5, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t4 } }}>
+                        {saving ? "Saving…" : "Save changes"}
+                      </Button>
+                    </motion.div>
+                    {isDirty && !saving && (
+                      <Typography sx={{ fontSize: 12.5, color: D.t3 }}>You have unsaved changes.</Typography>
+                    )}
                   </Stack>
                 </Box>
-              )}
-            </Box>
-          </Box>
-        </Stack>
+              </Box>
+
+              {/* Appearance */}
+              <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.1 }}>
+                <ThemeSettingsPanel />
+              </Box>
+
+              {/* Danger zone */}
+              <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.15 }}
+                sx={sectionSx(D.redBd)}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.25, borderBottom: `1px solid ${D.redBd}`, bgcolor: D.redBg }}>
+                  <WarningAmberIcon sx={{ color: D.redText, fontSize: 18 }} />
+                  <Typography sx={{ fontWeight: 900, fontSize: 15.5, color: D.redText }}>Danger zone</Typography>
+                </Stack>
+                <Box sx={{ p: 3 }}>
+                  <Typography sx={{ fontSize: 13, color: D.t3, mb: 2.5 }}>
+                    Deleting your account permanently removes your login, profile,
+                    avatar, game sessions, holdings, and trade history.
+                  </Typography>
+                  {!confirmDelete ? (
+                    <Button startIcon={<DeleteOutlineIcon />} onClick={() => setConfirmDelete(true)}
+                      sx={{ color: D.redText, border: `1px solid ${D.redBd}`, fontWeight: 800, textTransform: "none", borderRadius: 2, "&:hover": { bgcolor: D.redBg } }}>
+                      Delete account
+                    </Button>
+                  ) : (
+                    <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
+                      <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.redText, mb: 0.5 }}>Are you absolutely sure?</Typography>
+                      <Typography sx={{ fontSize: 13, color: D.t2, mb: 2 }}>
+                        This cannot be undone. All account and simulator data will
+                        be deleted immediately.
+                      </Typography>
+                      <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
+                        <Button variant="contained" onClick={handleDeleteAccount} disabled={deletingAccount}
+                          startIcon={deletingAccount ? <CircularProgress size={13} sx={{ color: "#fff" }} /> : <DeleteOutlineIcon />}
+                          sx={{ bgcolor: D.red, fontWeight: 800, textTransform: "none", borderRadius: 2, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" } }}>
+                          {deletingAccount ? "Deleting…" : "Yes, delete my account"}
+                        </Button>
+                        <Button onClick={() => setConfirmDelete(false)}
+                          sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 2, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
+                          Cancel
+                        </Button>
+                      </Stack>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            </Stack>
+          </Grid>
+        </Grid>
       </Container>
     </Box>
   );

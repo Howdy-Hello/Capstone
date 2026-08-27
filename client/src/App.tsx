@@ -22,7 +22,6 @@ import UpdatePassword from "./pages/UpdatePassword";
 import Dashboard from "./pages/Dashboard";
 import Game from "./pages/Game";
 import Learn from "./pages/Learn";
-import News from "./pages/News";
 import Leaderboard from "./pages/Leaderboard";
 import Achievements from "./pages/Achievements";
 import SaveLoad from "./pages/SaveLoad";
@@ -86,7 +85,7 @@ function AppLayout() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/update-password" element={<UpdatePassword />} />
           <Route path="/learn" element={<Learn />} />
-          <Route path="/news" element={<News />} />
+          <Route path="/news" element={<Navigate to="/inbox" replace />} />
 
           {/* Legacy redirects */}
           <Route path="/tutorial" element={<Navigate to="/learn" replace />} />

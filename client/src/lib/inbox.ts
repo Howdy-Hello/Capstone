@@ -22,10 +22,37 @@ const MAX_MESSAGES = 200;
 
 let currentUserId: string | null = null;
 let messages: InboxMessage[] = [];
+// Market news is generated from the game seed rather than stored, so it cannot
+// carry a `read` flag of its own. Read state lives here instead, keyed by the
+// story's stable newsId, so the inbox can show news beside real messages.
+let readNews: ReadonlySet<string> = new Set();
 const listeners = new Set<() => void>();
 
 function storageKey(userId: string) {
   return `stockpilot-inbox-${userId}`;
+}
+
+function readNewsKey(userId: string) {
+  return `stockpilot-inbox-read-news-${userId}`;
+}
+
+function loadReadNews(userId: string): ReadonlySet<string> {
+  try {
+    const raw = localStorage.getItem(readNewsKey(userId));
+    if (raw) return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    /* ignore malformed local state */
+  }
+  return new Set();
+}
+
+function persistReadNews() {
+  if (!currentUserId) return;
+  try {
+    localStorage.setItem(readNewsKey(currentUserId), JSON.stringify([...readNews]));
+  } catch {
+    /* ignore storage quota errors */
+  }
 }
 
 function load(userId: string): InboxMessage[] {
@@ -55,7 +82,41 @@ export function setInboxUser(userId: string | null) {
   if (userId === currentUserId) return;
   currentUserId = userId;
   messages = userId ? load(userId) : [];
+  readNews = userId ? loadReadNews(userId) : new Set();
   emit();
+}
+
+/** Mark one generated news story as read. */
+export function markNewsRead(newsId: string) {
+  if (readNews.has(newsId)) return;
+  const next = new Set(readNews);
+  next.add(newsId);
+  readNews = next;
+  persistReadNews();
+  emit();
+}
+
+/** Mark a batch of news stories as read (used by "mark all read"). */
+export function markNewsReadBatch(newsIds: string[]) {
+  const missing = newsIds.filter((id) => !readNews.has(id));
+  if (missing.length === 0) return;
+  const next = new Set(readNews);
+  missing.forEach((id) => next.add(id));
+  readNews = next;
+  persistReadNews();
+  emit();
+}
+
+function getReadNewsSnapshot() {
+  return readNews;
+}
+
+/**
+ * Referentially stable between changes, which useSyncExternalStore requires --
+ * returning a fresh Set each call would loop forever.
+ */
+export function useReadNewsIds() {
+  return useSyncExternalStore(subscribe, getReadNewsSnapshot, getReadNewsSnapshot);
 }
 
 export function addInboxMessage(

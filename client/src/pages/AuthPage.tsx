@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Alert, Box, Button, Container, Divider, Grid, IconButton,
+  Alert, Box, Button, Checkbox, Container, Divider, FormControlLabel, Grid, IconButton,
   InputAdornment, Link, Stack, TextField, Typography,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -10,7 +10,7 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import GoogleIcon from "@mui/icons-material/Google";
-import { supabase } from "../lib/supabase";
+import { supabase, isRememberMeEnabled, setRememberMe } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useAuthThrottle } from "../lib/authThrottle";
 import { AuthMode, resolveAuthMode } from "../lib/routing";
@@ -37,6 +37,7 @@ const AuthPage: React.FC = () => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [rememberMe, setRememberMeState] = useState(isRememberMeEnabled);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(oauthError);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -92,6 +93,7 @@ const AuthPage: React.FC = () => {
     setSubmitting(true);
     try {
       if (mode === "login") {
+        setRememberMe(rememberMe);
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
           throttle.recordFailure();
@@ -289,7 +291,28 @@ const AuthPage: React.FC = () => {
                 )}
 
                 {mode === "login" && (
-                  <Box sx={{ textAlign: "right", mt: -1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mt: -1 }}>
+                    <FormControlLabel
+                      control={(
+                        <Checkbox
+                          checked={rememberMe}
+                          onChange={(e) => {
+                            setRememberMeState(e.target.checked);
+                            // Written straight away, not on submit: the auth
+                            // client persists the new session through the
+                            // storage adapter the moment sign-in resolves, so
+                            // the preference has to already point at the right
+                            // store. Google sign-in navigates away entirely and
+                            // never reaches a submit handler at all.
+                            setRememberMe(e.target.checked);
+                          }}
+                          size="small"
+                          sx={{ color: D.t3, p: 0.6, "&.Mui-checked": { color: D.brandText } }}
+                        />
+                      )}
+                      label={<Typography sx={{ fontSize: 12.5, color: D.t3 }}>Keep me signed in</Typography>}
+                      sx={{ ml: -0.5, mr: 0 }}
+                    />
                     <Link component="button" type="button" underline="hover" onClick={() => setMode("reset")}
                       sx={{ fontSize: 12.5, color: D.t3, "&:hover": { color: D.brandText } }}>
                       Forgot password?

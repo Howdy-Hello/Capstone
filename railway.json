@@ -4,8 +4,8 @@
     "builder": "RAILPACK",
     "buildCommand": "cd server && npm ci && npm run build",
     "watchPatterns": [
-      "/server/**",
-      "/railway.json"
+      "server/**",
+      "railway.json"
     ]
   },
   "deploy": {

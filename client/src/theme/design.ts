@@ -36,9 +36,10 @@ export const DEFAULT_COLORS: DesignColors = {
   elevated:  '#131723',
   overlay:   '#1A1F2E',
 
-  // Borders
-  border:    '#1C2436',
-  borderHi:  '#263044',
+  // Borders. Deliberately low-contrast, but not invisible: the previous
+  // #1C2436 measured 1.15:1 against the elevated surface it divides.
+  border:    '#252F45',
+  borderHi:  '#38455F',
 
   // Data colors (semantic only — never use for brand)
   green:     '#22C55E',
@@ -61,13 +62,15 @@ export const DEFAULT_COLORS: DesignColors = {
   brandBd:   'rgba(124,58,237,0.3)',
   brandText: '#A78BFA',
 
-  // Text scale
+  // Text scale. Verified by theme/contrast.test.ts against every surface of
+  // every dark preset: t1 12.15:1, t2 8.96:1, t3 5.19:1 (all clear WCAG AA
+  // 4.5:1) and t4 3.14:1, which is held to the 3:1 bar because it is only used
+  // for de-emphasised micro-labels. t3 previously sat at #718096 and measured
+  // as low as 3.31:1 on the elevated/overlay surfaces -- under AA on every
+  // dark theme.
   t1:  '#F1F5F9',
-  t2:  '#94A3B8',
-  // Both muted text colors retain at least WCAG AA contrast on the darkest
-  // application surfaces. Keep borders separate when a lower-contrast visual
-  // treatment is needed.
-  t3:  '#718096',
+  t2:  '#CBD5E1',
+  t3:  '#94A3B8',
   t4:  '#6F7C8F',
 };
 

@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
@@ -95,21 +95,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     void refreshProfile();
   }, [refreshProfile]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setProfile(null);
-  };
+  }, []);
+
+  // Identity-stable across token refreshes.
+  //
+  // auth-js registers a visibilitychange listener and refreshes the session
+  // every time the tab regains focus, which fires onAuthStateChange with a
+  // brand-new session object. Handing `session.user` straight to consumers gave
+  // them a new object reference each time, and 33 dependency arrays across the
+  // hooks key off `user`. The worst of them is GameContext's loadOrCreateSession:
+  // a new identity re-ran the load effect, which sets loading = true and refetches
+  // every stock, event and price row -- so simply switching tabs and coming back
+  // made the whole app flash through its loading state and "reload".
+  //
+  // Keyed on the id: a refreshed token keeps the same user object, while a real
+  // sign-in/sign-out still produces a new one. Consumers that need the rotating
+  // access token read `session` instead, which is unmemoised on purpose.
+  const userId = session?.user.id ?? null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const user = useMemo(() => session?.user ?? null, [userId]);
+
+  const value = useMemo(() => ({
+    user,
+    session,
+    profile,
+    loading,
+    profileLoading,
+    refreshProfile,
+    signOut,
+  }), [user, session, profile, loading, profileLoading, refreshProfile, signOut]);
 
   return (
-    <AuthContext.Provider value={{
-      user: session?.user ?? null,
-      session,
-      profile,
-      loading,
-      profileLoading,
-      refreshProfile,
-      signOut,
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

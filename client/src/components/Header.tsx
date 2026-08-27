@@ -11,7 +11,6 @@ import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import SportsEsportsOutlinedIcon from "@mui/icons-material/SportsEsportsOutlined";
 import AutoStoriesOutlinedIcon from "@mui/icons-material/AutoStoriesOutlined";
-import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
@@ -35,7 +34,6 @@ const nav = [
   { to: "/leaderboard", label: "Leaderboard",  icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/achievements", label: "Achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/learn",       label: "Learn",        icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
-  { to: "/news",        label: "News",         icon: <ArticleOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/inbox",       label: "Inbox",        icon: <MailOutlineIcon sx={{ fontSize: 17 }} /> },
 ];
 

@@ -51,38 +51,14 @@ export async function fetchLeaderboard(limit = 50): Promise<LeaderboardRow[]> {
   return (data ?? []) as LeaderboardRow[];
 }
 
-/** Record a score update. Infinite mode stores current net worth; 30-day keeps a best finish. */
-export async function submitLeaderboardScore(params: {
-  netWorth: number;
-  gameMode?: GameMode;
-  day?: number | null;
-}): Promise<void> {
-  const payload = {
-    netWorth: params.netWorth,
-    gameMode: params.gameMode ?? "infinite",
-    day: params.day ?? null,
-  };
-  try {
-    await authedFetch("/api/leaderboard/submit", { method: "POST", body: JSON.stringify(payload) });
-    return;
-  } catch {
-    /* fall through to direct RPC */
-  }
-  try {
-    await supabase.rpc("record_leaderboard_score", {
-      p_net_worth: payload.netWorth,
-      p_game_mode: payload.gameMode,
-      p_day: payload.day,
-    });
-  } catch {
-    /* leaderboard is non-critical to gameplay — swallow */
-  }
-}
-
 /**
- * Persist a session's value and record the leaderboard score. Server first;
- * on failure, writes directly to Supabase so the app works without the server.
- * Throws only if the direct-fallback session write itself fails.
+ * Persist a session's value. Server first; on failure, writes directly to
+ * Supabase so the app works without the server. Throws only if the direct
+ * fallback write itself fails.
+ *
+ * This is the only path onto either leaderboard: get_leaderboard reads the
+ * newest infinite session's net_worth and get_30_day_leaderboard reads
+ * limited_30 sessions on day 30, both straight from game_sessions.
  */
 export async function syncGameState(params: {
   sessionId: string;
@@ -113,10 +89,4 @@ export async function syncGameState(params: {
     })
     .eq("id", params.sessionId);
   if (error) throw error;
-
-  await submitLeaderboardScore({
-    netWorth: params.netWorth,
-    gameMode: params.gameMode,
-    day: params.day,
-  });
 }

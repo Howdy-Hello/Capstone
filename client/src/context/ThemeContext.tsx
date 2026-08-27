@@ -73,15 +73,88 @@ const makePalette = (
     brandMid: mix(brand, "#000000", light ? 0.08 : 0.16),
     brandBg: rgba(brand, light ? 0.1 : 0.12),
     brandBd: rgba(brand, light ? 0.28 : 0.34),
-    brandText: light ? mix(brand, "#000000", 0.18) : mix(brand, "#FFFFFF", 0.38),
+    brandText: light ? mix(brand, "#000000", 0.28) : mix(brand, "#FFFFFF", 0.38),
     t1: light ? "#0F172A" : DEFAULT_COLORS.t1,
     t2: light ? "#334155" : DEFAULT_COLORS.t2,
-    t3: light ? "#64748B" : DEFAULT_COLORS.t3,
-    t4: light ? "#94A3B8" : DEFAULT_COLORS.t4,
+    t3: light ? "#475569" : DEFAULT_COLORS.t3,
+    t4: light ? "#64748B" : DEFAULT_COLORS.t4,
+
+    // Semantic colours have to be re-derived for light mode. Spreading
+    // DEFAULT_COLORS above carries the dark-theme values through, and those are
+    // tuned for near-black backgrounds: on the light presets greenText (#4ADE80)
+    // measured 1.67:1 and redText (#F87171) 2.64:1 against the page -- i.e. the
+    // profit and loss figures, the single most important numbers in the app,
+    // were all but invisible. The values below clear AA 4.5:1 for text and the
+    // 3:1 non-text bar for the solid bar/dot fills, on every light surface.
+    ...(light ? {
+      green:     "#059669",
+      greenBd:   "rgba(5,150,105,0.32)",
+      greenText: "#065F46",
+      red:       "#DC2626",
+      redBd:     "rgba(220,38,38,0.32)",
+      redText:   "#B91C1C",
+      amber:     "#92400E",
+      amberBg:   "rgba(146,64,14,0.12)",
+    } : {}),
   };
 };
 
-const themePresets: ThemePreset[] = [
+// Every token here clears WCAG AAA (>= 7:1) against the white background,
+// including the faintest tier: t4 measures 7.73:1, where the ordinary light
+// presets put t4 at 2.56:1 (an outright failure) and t3 at 4.76:1. The
+// semantic colours are darkened well past their dark-theme values for the same
+// reason -- #22C55E green is unreadable on white.
+const HIGH_CONTRAST_LIGHT: DesignColors = {
+  bg:        "#FFFFFF",
+  surface:   "#FFFFFF",
+  elevated:  "#F4F4F5",
+  overlay:   "#E4E4E7",
+
+  border:    "#3F3F46",
+  borderHi:  "#18181B",
+
+  green:     "#046C3B",
+  greenBg:   "rgba(4,108,59,0.12)",
+  greenBd:   "rgba(4,108,59,0.50)",
+  greenText: "#04562F",
+
+  red:       "#B3261E",
+  redBg:     "rgba(179,38,30,0.12)",
+  redBd:     "rgba(179,38,30,0.50)",
+  redText:   "#8C1D18",
+
+  amber:     "#8A5300",
+  amberBg:   "rgba(138,83,0,0.14)",
+
+  brand:     "#4C1D95",
+  brandMid:  "#3B1478",
+  brandBg:   "rgba(76,29,149,0.12)",
+  brandBd:   "rgba(76,29,149,0.50)",
+  brandText: "#3B1478",
+
+  t1:        "#000000",
+  t2:        "#1F1F23",
+  t3:        "#3F3F46",
+  t4:        "#52525B",
+};
+
+export const SYSTEM_THEME_ID = "system";
+const SYSTEM_DARK_ID = "apex";
+const SYSTEM_LIGHT_ID = "daybreak";
+const DARK_QUERY = "(prefers-color-scheme: dark)";
+
+function prefersDark() {
+  try {
+    return typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia(DARK_QUERY).matches
+      // No matchMedia (old browser, jsdom): fall back to the dark-first design.
+      : true;
+  } catch {
+    return true;
+  }
+}
+
+export const themePresets: ThemePreset[] = [
   {
     id: "apex",
     name: "Apex Violet",
@@ -157,7 +230,26 @@ const themePresets: ThemePreset[] = [
       brand: "#E11D48",
     }, "light"),
   },
+  {
+    id: "contrast",
+    name: "High Contrast",
+    colors: HIGH_CONTRAST_LIGHT,
+  },
+  {
+    // Not a palette of its own: it tracks the OS light/dark setting and follows
+    // it live. `colors` is only the swatch shown in the picker.
+    id: SYSTEM_THEME_ID,
+    name: "Match System",
+    colors: prefersDark() ? DEFAULT_COLORS : makePalette({
+      bg: "#F6F8FC", surface: "#FFFFFF", elevated: "#EEF2F9", brand: "#2563EB",
+    }, "light"),
+  },
 ];
+
+function systemPalette(): DesignColors {
+  const id = prefersDark() ? SYSTEM_DARK_ID : SYSTEM_LIGHT_ID;
+  return themePresets.find((item) => item.id === id)?.colors ?? DEFAULT_COLORS;
+}
 
 const defaultCustomInput: CustomThemeInput = {
   bg: DEFAULT_COLORS.bg,
@@ -198,6 +290,17 @@ function readStoredTheme(): StoredTheme {
     if (!raw) return fallback;
 
     const saved = JSON.parse(raw) as { selectedThemeId?: string; customInput?: CustomThemeInput };
+
+    // Resolved from the OS at read time, never from whatever was stored: the
+    // user may have flipped their system setting since the last visit.
+    if (saved.selectedThemeId === SYSTEM_THEME_ID) {
+      return {
+        selectedThemeId: SYSTEM_THEME_ID,
+        customInput: defaultCustomInput,
+        palette: systemPalette(),
+      };
+    }
+
     const preset = themePresets.find((item) => item.id === saved.selectedThemeId);
     if (preset) {
       return { selectedThemeId: preset.id, customInput: defaultCustomInput, palette: preset.colors };
@@ -239,11 +342,36 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [customInput, selectedThemeId]);
 
   const applyPreset = React.useCallback((id: string) => {
+    if (id === SYSTEM_THEME_ID) {
+      setSelectedThemeId(SYSTEM_THEME_ID);
+      setActivePalette(systemPalette());
+      return;
+    }
     const preset = themePresets.find((item) => item.id === id);
     if (!preset) return;
     setSelectedThemeId(preset.id);
     setActivePalette(preset.colors);
   }, [setActivePalette]);
+
+  // Follow the OS setting live while "Match System" is selected, so flipping
+  // the system theme repaints the app without a reload.
+  React.useEffect(() => {
+    if (selectedThemeId !== SYSTEM_THEME_ID) return;
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+
+    const query = window.matchMedia(DARK_QUERY);
+    const onChange = () => setActivePalette(systemPalette());
+    onChange();
+
+    // addEventListener on MediaQueryList is unsupported on older Safari, which
+    // only has the deprecated addListener.
+    if (typeof query.addEventListener === "function") {
+      query.addEventListener("change", onChange);
+      return () => query.removeEventListener("change", onChange);
+    }
+    query.addListener(onChange);
+    return () => query.removeListener(onChange);
+  }, [selectedThemeId, setActivePalette]);
 
   const updateCustomInput = React.useCallback((next: Partial<CustomThemeInput>) => {
     setCustomInput((current) => ({ ...current, ...next }));

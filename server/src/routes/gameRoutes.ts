@@ -16,10 +16,6 @@ const writeLimiter = rateLimit({
 
 const MODES = ['infinite', 'limited_30'] as const;
 
-function normalizeMode(value: unknown): 'infinite' | 'limited_30' {
-  return value === 'limited_30' ? 'limited_30' : 'infinite';
-}
-
 export const DEFAULT_LEADERBOARD_LIMIT = 50;
 export const MAX_LEADERBOARD_LIMIT = 100;
 
@@ -33,11 +29,6 @@ export function resolveLeaderboardLimit(raw: string | null): number {
   return Math.min(Math.max(1, Math.floor(requested)), MAX_LEADERBOARD_LIMIT);
 }
 
-function normalizeDay(value: unknown): number | null {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.floor(n) : null;
-}
-
 // GET /api/leaderboard?limit=50 — public ranked board from the persistent table.
 router.get('/leaderboard', supabaseHandler({ auth: 'none' }, async (req, ctx) => {
   const limit = resolveLeaderboardLimit(new URL(req.url).searchParams.get('limit'));
@@ -48,33 +39,14 @@ router.get('/leaderboard', supabaseHandler({ auth: 'none' }, async (req, ctx) =>
   return Response.json({ leaderboard: data ?? [] });
 }));
 
-// POST /api/leaderboard/submit  { netWorth, gameMode?, day? }
-// Infinite mode records current net worth; 30-day mode retains the best finish.
-router.post('/leaderboard/submit', writeLimiter, validateBody({
-  netWorth: { type: 'number', required: true, min: 0, max: 1_000_000_000_000 },
-  gameMode: { type: 'string', enum: MODES },
-  day: { type: 'integer', min: 1 },
-}), supabaseHandler({ auth: 'user' }, async (req, ctx) => {
-  const body = await req.json().catch(() => ({}));
-  const netWorth = Number(body?.netWorth);
-
-  if (!Number.isFinite(netWorth)) {
-    return Response.json({ message: 'netWorth must be a finite number.' }, { status: 400 });
-  }
-
-  const { data, error } = await ctx.supabase.rpc('record_leaderboard_score', {
-    p_net_worth: netWorth,
-    p_game_mode: normalizeMode(body?.gameMode),
-    p_day: normalizeDay(body?.day),
-  });
-
-  if (error) return supabaseErrorResponse('POST /leaderboard/submit', error);
-  return Response.json({ entry: data });
-}));
-
 // POST /api/game/sync  { sessionId, portfolioValue, netWorth, gameMode?, day? }
-// Persists a session's value to game_sessions (under the caller's RLS) and
-// records the leaderboard score in one round-trip.
+// Persists a session's value to game_sessions under the caller's RLS. That row
+// IS the leaderboard: get_leaderboard reads the newest infinite session's
+// net_worth and get_30_day_leaderboard reads limited_30 sessions on day 30.
+//
+// The old /leaderboard/submit route and its record_leaderboard_score call were
+// removed with the leaderboard_entries table they wrote to -- nothing had read
+// that table since the boards moved onto game_sessions.
 router.post('/game/sync', writeLimiter, validateBody({
   sessionId: { type: 'string', required: true, min: 1, max: 64 },
   portfolioValue: { type: 'number', required: true, min: 0, max: 1_000_000_000_000 },
@@ -120,17 +92,7 @@ router.post('/game/sync', writeLimiter, validateBody({
     );
   }
 
-  const { data: entry, error: scoreError } = await ctx.supabase.rpc('record_leaderboard_score', {
-    p_net_worth: netWorth,
-    p_game_mode: normalizeMode(body?.gameMode),
-    p_day: normalizeDay(body?.day),
-  });
-
-  if (scoreError) {
-    return supabaseErrorResponse('POST /game/sync (score)', scoreError);
-  }
-
-  return Response.json({ ok: true, entry });
+  return Response.json({ ok: true });
 }));
 
 export default router;

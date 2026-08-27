@@ -1,155 +1,462 @@
-import React, { useState } from "react";
-import { Box, Button, Chip, Container, Stack, Typography } from "@mui/material";
-import MarkEmailReadIcon from "@mui/icons-material/MarkEmailRead";
-import MailOutlineIcon from "@mui/icons-material/MailOutline";
-import DraftsOutlinedIcon from "@mui/icons-material/DraftsOutlined";
-import FlagIcon from "@mui/icons-material/Flag";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import SportsMmaIcon from "@mui/icons-material/SportsMma";
-import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
-import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
-import InfoIcon from "@mui/icons-material/Info";
+import React, { useMemo, useState } from "react";
+import {
+  Badge, Box, Button, Chip, Container, Divider, IconButton, InputAdornment,
+  Stack, TextField, Tooltip, Typography,
+} from "@mui/material";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Link as RouterLink } from "react-router-dom";
 
-import { InboxCategory, InboxMessage, markAllRead, markMessageRead, useInboxMessages } from "../lib/inbox";
-import { D, CARD, MONO } from "../theme/design";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import FlagIcon from "@mui/icons-material/Flag";
+import InboxIcon from "@mui/icons-material/Inbox";
+import InfoIcon from "@mui/icons-material/Info";
+import MarkEmailReadIcon from "@mui/icons-material/MarkEmailRead";
+import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
+import NewspaperIcon from "@mui/icons-material/Newspaper";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import SearchIcon from "@mui/icons-material/Search";
+import SportsMmaIcon from "@mui/icons-material/SportsMma";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 
-const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{ initial?: boolean; mode?: "sync" | "popLayout" | "wait" }>>;
+import {
+  InboxCategory, InboxMessage, markAllRead, markMessageRead,
+  markNewsRead, markNewsReadBatch, useInboxMessages, useReadNewsIds,
+} from "../lib/inbox";
+import { useGame } from "../context/GameContext";
+import { MarketNews } from "../data/mockStocks";
+import { D, MONO } from "../theme/design";
 
-// Icons and labels are theme-independent, so they stay at module scope.
-const CATEGORY_META: Record<InboxCategory, { icon: React.ReactNode; label: string }> = {
-  mission:     { icon: <FlagIcon sx={{ fontSize: 16 }} />,              label: "Mission" },
-  bill:        { icon: <ReceiptLongIcon sx={{ fontSize: 16 }} />,       label: "Billing" },
-  rival:       { icon: <SportsMmaIcon sx={{ fontSize: 16 }} />,         label: "Rival" },
-  achievement: { icon: <WorkspacePremiumIcon sx={{ fontSize: 16 }} />,  label: "Achievement" },
-  level:       { icon: <MilitaryTechIcon sx={{ fontSize: 16 }} />,      label: "Level Up" },
-  system:      { icon: <InfoIcon sx={{ fontSize: 16 }} />,              label: "System" },
+const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
+  initial?: boolean; mode?: "sync" | "popLayout" | "wait";
+}>>;
+
+// News and in-game mail are two different sources with two different read
+// stores, so the list works off one shape that either can be mapped into.
+type MailFolder = InboxCategory | "news";
+type MailItem = {
+  id: string;
+  folder: MailFolder;
+  from: string;
+  subject: string;
+  preview: string;
+  body: string;
+  read: boolean;
+  /** Real timestamp for messages; absent for seeded news, which only has a day. */
+  sentAt: string | null;
+  gameDay: number | null;
+  news: MarketNews | null;
 };
 
-// Read during render: `applyDesignColors` mutates the shared `D` singleton when
-// the theme changes, so a module-scope capture freezes the colours at whatever
-// `D` held at import time -- before ThemeProvider hydrates.
-function categoryColors(category: InboxCategory): { color: string; bg: string } {
-  switch (category) {
+const FOLDERS: { id: MailFolder | "all"; label: string; icon: React.ReactNode }[] = [
+  { id: "all",         label: "All mail",    icon: <InboxIcon sx={{ fontSize: 17 }} /> },
+  { id: "news",        label: "Market news", icon: <NewspaperIcon sx={{ fontSize: 17 }} /> },
+  { id: "mission",     label: "Missions",    icon: <FlagIcon sx={{ fontSize: 17 }} /> },
+  { id: "achievement", label: "Achievements",icon: <WorkspacePremiumIcon sx={{ fontSize: 17 }} /> },
+  { id: "rival",       label: "Rival",       icon: <SportsMmaIcon sx={{ fontSize: 17 }} /> },
+  { id: "bill",        label: "Billing",     icon: <ReceiptLongIcon sx={{ fontSize: 17 }} /> },
+  { id: "level",       label: "Level ups",   icon: <MilitaryTechIcon sx={{ fontSize: 17 }} /> },
+  { id: "system",      label: "System",      icon: <InfoIcon sx={{ fontSize: 17 }} /> },
+];
+
+// Read during render: applyDesignColors mutates the shared D singleton on a
+// theme change, so a module-scope colour map would freeze at the import-time
+// palette (which is what used to keep these chips dark on a light theme).
+function folderColors(folder: MailFolder): { color: string; bg: string } {
+  switch (folder) {
+    case "news":        return { color: D.brandText, bg: D.brandBg };
     case "mission":     return { color: D.greenText, bg: D.greenBg };
     case "bill":        return { color: D.redText,   bg: D.redBg };
-    case "rival":       return { color: "#F59E0B",   bg: "rgba(245,158,11,0.1)" };
+    case "rival":       return { color: D.amber,     bg: D.amberBg };
     case "achievement": return { color: D.brandText, bg: D.brandBg };
     case "level":       return { color: D.brandText, bg: D.brandBg };
     default:            return { color: D.t2,        bg: D.overlay };
   }
 }
 
-function formatTimestamp(iso: string) {
-  const date = new Date(iso);
-  return date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+function folderIcon(folder: MailFolder) {
+  return FOLDERS.find((f) => f.id === folder)?.icon ?? <InfoIcon sx={{ fontSize: 17 }} />;
 }
 
-function MessageRow({ message, expanded, onToggle }: { message: InboxMessage; expanded: boolean; onToggle: () => void }) {
-  const meta = { ...CATEGORY_META[message.category], ...categoryColors(message.category) };
-  return (
-    <Box
-      component={motion.div}
-      layout
-      onClick={onToggle}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } }}
-      sx={{
-        p: 2, borderRadius: 2, bgcolor: message.read ? D.elevated : D.overlay,
-        border: `1px solid ${message.read ? D.border : D.brandBd}`,
-        cursor: "pointer", transition: "border-color 140ms, background-color 140ms",
-        "&:hover": { borderColor: D.borderHi },
-      }}
-    >
-      <Stack direction="row" spacing={1.5} alignItems="flex-start">
-        <Box sx={{ width: 34, height: 34, borderRadius: 1.5, bgcolor: meta.bg, color: meta.color, display: "grid", placeItems: "center", flexShrink: 0 }}>
-          {meta.icon}
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-            <Typography sx={{ fontSize: 12, fontWeight: 800, color: meta.color, fontFamily: MONO }}>{message.from}</Typography>
-            <Typography sx={{ fontSize: 10.5, color: D.t3, fontFamily: MONO, flexShrink: 0 }}>{formatTimestamp(message.createdAt)}</Typography>
-          </Stack>
-          <Typography sx={{ fontSize: 13.5, fontWeight: message.read ? 700 : 900, color: D.t1, mt: 0.3 }}>
-            {!message.read && (
-              <Box component="span" sx={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", bgcolor: D.brandText, mr: 1 }} />
-            )}
-            {message.subject}
-          </Typography>
-          <MotionPresence initial={false}>
-            {expanded && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} style={{ overflow: "hidden" }}>
-                <Typography sx={{ fontSize: 12.5, color: D.t2, lineHeight: 1.6, mt: 1 }}>{message.body}</Typography>
-              </motion.div>
-            )}
-          </MotionPresence>
-        </Box>
-      </Stack>
-    </Box>
-  );
+function folderLabel(folder: MailFolder) {
+  return FOLDERS.find((f) => f.id === folder)?.label ?? "System";
+}
+
+function toneMeta(tone: MarketNews["marketTone"]) {
+  if (tone === "Bullish") return { label: "Bullish", icon: <TrendingUpIcon sx={{ fontSize: 12 }} />, color: D.greenText, bg: D.greenBg };
+  if (tone === "Bearish") return { label: "Bearish", icon: <TrendingDownIcon sx={{ fontSize: 12 }} />, color: D.redText, bg: D.redBg };
+  return { label: "Unclear", icon: <HelpOutlineIcon sx={{ fontSize: 12 }} />, color: D.amber, bg: D.amberBg };
+}
+
+function timeLabel(item: MailItem) {
+  if (item.sentAt) {
+    return new Date(item.sentAt).toLocaleString(undefined, {
+      month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    });
+  }
+  return item.gameDay !== null ? `Day ${item.gameDay}` : "";
+}
+
+function messageToMail(message: InboxMessage): MailItem {
+  return {
+    id: `msg:${message.id}`,
+    folder: message.category,
+    from: message.from,
+    subject: message.subject,
+    preview: message.body,
+    body: message.body,
+    read: message.read,
+    sentAt: message.createdAt,
+    gameDay: null,
+    news: null,
+  };
+}
+
+function newsToMail(news: MarketNews, read: boolean): MailItem {
+  return {
+    id: `news:${news.newsId}`,
+    folder: "news",
+    from: news.source,
+    subject: news.headline,
+    preview: news.body,
+    body: news.body,
+    read,
+    sentAt: null,
+    gameDay: news.gameDay,
+    news,
+  };
 }
 
 export default function Inbox() {
   const reduceMotion = useReducedMotion();
   const messages = useInboxMessages();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const unreadCount = messages.filter((m) => !m.read).length;
+  const readNewsIds = useReadNewsIds();
+  const { newsHistory } = useGame();
 
-  const handleToggle = (message: InboxMessage) => {
-    const nextId = expandedId === message.id ? null : message.id;
-    setExpandedId(nextId);
-    if (!message.read) markMessageRead(message.id);
-  };
+  const [folder, setFolder] = useState<MailFolder | "all">("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  // One merged, newest-first feed. Messages carry real timestamps and news only
+  // a game day, so they are ordered within their own kind and news is
+  // interleaved by day beneath the most recent messages.
+  const allMail = useMemo<MailItem[]>(() => {
+    const mail = messages.map(messageToMail);
+    const news = newsHistory.map((n) => newsToMail(n, readNewsIds.has(n.newsId)));
+    return [
+      ...mail.sort((a, b) => (b.sentAt ?? "").localeCompare(a.sentAt ?? "")),
+      ...news.sort((a, b) => (b.gameDay ?? 0) - (a.gameDay ?? 0)),
+    ];
+  }, [messages, newsHistory, readNewsIds]);
+
+  const unreadByFolder = useMemo(() => {
+    const counts = new Map<MailFolder | "all", number>();
+    for (const item of allMail) {
+      if (item.read) continue;
+      counts.set("all", (counts.get("all") ?? 0) + 1);
+      counts.set(item.folder, (counts.get(item.folder) ?? 0) + 1);
+    }
+    return counts;
+  }, [allMail]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return allMail.filter((item) => {
+      if (folder !== "all" && item.folder !== folder) return false;
+      if (!q) return true;
+      return (
+        item.subject.toLowerCase().includes(q)
+        || item.from.toLowerCase().includes(q)
+        || item.body.toLowerCase().includes(q)
+      );
+    });
+  }, [allMail, folder, query]);
+
+  const selected = useMemo(
+    () => visible.find((item) => item.id === selectedId) ?? null,
+    [visible, selectedId]
+  );
+
+  function openItem(item: MailItem) {
+    setSelectedId(item.id);
+    if (item.read) return;
+    if (item.news) markNewsRead(item.news.newsId);
+    else markMessageRead(item.id.replace(/^msg:/, ""));
+  }
+
+  function markEverythingRead() {
+    markAllRead();
+    markNewsReadBatch(newsHistory.map((n) => n.newsId));
+  }
+
+  const totalUnread = unreadByFolder.get("all") ?? 0;
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
+      {/* Toolbar */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
-        <Container maxWidth="md" sx={{ py: { xs: 3, md: 4 } }}>
-          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5}>
-              <Box>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                  <DraftsOutlinedIcon sx={{ color: D.brandText, fontSize: 22 }} />
-                  <Typography sx={{ fontSize: { xs: 22, md: 26 }, fontWeight: 950, color: D.t1, letterSpacing: -0.6 }}>Inbox</Typography>
-                  {unreadCount > 0 && (
-                    <Chip label={unreadCount} size="small" sx={{ bgcolor: D.brand, color: "#fff", fontWeight: 900, fontSize: 11 }} />
-                  )}
-                </Stack>
-                <Typography sx={{ fontSize: 13, color: D.t2 }}>
-                  Messages from missions, rent, your rival, achievements, and level-ups.
-                </Typography>
-              </Box>
-              {unreadCount > 0 && (
-                <Button onClick={() => markAllRead()} startIcon={<MarkEmailReadIcon />}
-                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 2, md: 2.5 } }}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
+            <Box sx={{ flex: 1 }}>
+              <Chip label="INBOX" size="small"
+                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 0.75 }} />
+              <Typography sx={{ fontWeight: 950, fontSize: { xs: 21, md: 25 }, color: D.t1, lineHeight: 1.1 }}>
+                Mail &amp; Market News
+              </Typography>
+              <Typography sx={{ fontSize: 13, color: D.t3, mt: 0.5 }}>
+                {totalUnread > 0 ? `${totalUnread} unread` : "You're all caught up."}
+                {" · "}Headlines, missions, achievements and rival chatter in one place.
+              </Typography>
+            </Box>
+
+            <Stack direction="row" spacing={1.2} alignItems="center">
+              <TextField
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search mail"
+                size="small"
+                inputProps={{ "aria-label": "Search mail" }}
+                sx={{
+                  minWidth: { xs: "100%", md: 240 },
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: D.elevated, borderRadius: 2,
+                    "& fieldset": { borderColor: D.border },
+                    "&:hover fieldset": { borderColor: D.borderHi },
+                    "&.Mui-focused fieldset": { borderColor: D.brand },
+                    "& input": { color: D.t1, fontSize: 13.5 },
+                  },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ fontSize: 17, color: D.t3 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              {totalUnread > 0 && (
+                <Button onClick={markEverythingRead} startIcon={<MarkEmailReadIcon />}
+                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 2, fontSize: 13, whiteSpace: "nowrap", "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
                   Mark all read
                 </Button>
               )}
             </Stack>
-          </motion.div>
+          </Stack>
         </Container>
       </Box>
 
-      <Container maxWidth="md" sx={{ py: 3 }}>
-        {messages.length === 0 ? (
-          <Box sx={{ ...CARD, p: 5, textAlign: "center" }}>
-            <MailOutlineIcon sx={{ fontSize: 40, color: D.t3, mb: 1.5 }} />
-            <Typography sx={{ fontWeight: 800, fontSize: 15, color: D.t2, mb: 0.5 }}>No messages yet</Typography>
-            <Typography sx={{ fontSize: 13, color: D.t3 }}>
-              Complete missions, pay bills, and unlock achievements — updates will show up here.
-            </Typography>
+      <Container maxWidth="xl" sx={{ py: { xs: 2.5, md: 3 } }}>
+        <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start", flexDirection: { xs: "column", md: "row" } }}>
+          {/* Folder rail */}
+          <Box sx={{ width: { xs: "100%", md: 210 }, flexShrink: 0 }}>
+            <Stack
+              direction={{ xs: "row", md: "column" }}
+              spacing={0.5}
+              sx={{ overflowX: { xs: "auto", md: "visible" }, pb: { xs: 1, md: 0 } }}
+            >
+              {FOLDERS.map((f) => {
+                const count = unreadByFolder.get(f.id) ?? 0;
+                const active = folder === f.id;
+                return (
+                  <Button
+                    key={f.id}
+                    onClick={() => { setFolder(f.id); setSelectedId(null); }}
+                    startIcon={f.icon}
+                    aria-current={active ? "true" : undefined}
+                    sx={{
+                      justifyContent: { xs: "center", md: "flex-start" },
+                      flexShrink: 0,
+                      gap: 0.5,
+                      px: 1.5, py: 1,
+                      borderRadius: 2,
+                      textTransform: "none",
+                      fontWeight: active ? 900 : 700,
+                      fontSize: 13,
+                      color: active ? D.brandText : D.t2,
+                      bgcolor: active ? D.brandBg : "transparent",
+                      "&:hover": { bgcolor: active ? D.brandBg : D.overlay, color: active ? D.brandText : D.t1 },
+                    }}
+                  >
+                    <Box component="span" sx={{ flex: 1, textAlign: "left", whiteSpace: "nowrap" }}>{f.label}</Box>
+                    {count > 0 && (
+                      <Badge badgeContent={count} color="error"
+                        sx={{ mr: 1, "& .MuiBadge-badge": { position: "static", transform: "none", fontSize: 9.5, height: 16, minWidth: 16 } }} />
+                    )}
+                  </Button>
+                );
+              })}
+            </Stack>
           </Box>
-        ) : (
-          <Stack spacing={1.2}>
-            <MotionPresence initial={false}>
-              {messages.map((message) => (
-                <MessageRow key={message.id} message={message} expanded={expandedId === message.id}
-                  onToggle={() => handleToggle(message)} />
-              ))}
-            </MotionPresence>
-          </Stack>
-        )}
+
+          {/* List + reading pane */}
+          <Box sx={{ flex: 1, minWidth: 0, width: "100%", display: "flex", gap: 3, alignItems: "flex-start" }}>
+            {/* List: hidden on small screens while a message is open */}
+            <Box sx={{
+              flex: 1, minWidth: 0,
+              display: { xs: selected ? "none" : "block", lg: "block" },
+              maxWidth: { lg: selected ? 420 : "none" },
+            }}>
+              <Box sx={{ bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden" }}>
+                {visible.length === 0 ? (
+                  <Box sx={{ p: 6, textAlign: "center" }}>
+                    <InboxIcon sx={{ fontSize: 40, color: D.t4, mb: 1.5 }} />
+                    <Typography sx={{ fontWeight: 800, color: D.t2, mb: 0.5 }}>
+                      {query ? "No mail matches that search." : "Nothing here yet."}
+                    </Typography>
+                    <Typography sx={{ fontSize: 13, color: D.t3 }}>
+                      {query
+                        ? "Try a different word, or clear the search."
+                        : "Play a few days and headlines, missions and rival messages will land here."}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <MotionPresence initial={false}>
+                    {visible.map((item, index) => {
+                      const meta = folderColors(item.folder);
+                      const active = item.id === selectedId;
+                      return (
+                        <Box
+                          key={item.id}
+                          component={motion.div}
+                          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, delay: Math.min(index * 0.015, 0.2) }}
+                          onClick={() => openItem(item)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e: React.KeyboardEvent) => {
+                            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openItem(item); }
+                          }}
+                          sx={{
+                            display: "flex", gap: 1.5, alignItems: "flex-start",
+                            px: 2, py: 1.5,
+                            cursor: "pointer",
+                            borderBottom: `1px solid ${D.border}`,
+                            borderLeft: `3px solid ${active ? D.brand : "transparent"}`,
+                            bgcolor: active ? D.overlay : item.read ? "transparent" : D.elevated,
+                            transition: "background-color .12s ease",
+                            "&:hover": { bgcolor: D.overlay },
+                            "&:last-of-type": { borderBottom: "none" },
+                          }}
+                        >
+                          <Box sx={{
+                            mt: 0.25, width: 30, height: 30, borderRadius: 1.5, flexShrink: 0,
+                            display: "grid", placeItems: "center",
+                            bgcolor: meta.bg, color: meta.color,
+                          }}>
+                            {folderIcon(item.folder)}
+                          </Box>
+
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Stack direction="row" spacing={1} alignItems="baseline">
+                              <Typography noWrap sx={{ fontSize: 12.5, fontWeight: item.read ? 700 : 900, color: item.read ? D.t2 : D.t1, flex: 1 }}>
+                                {item.from}
+                              </Typography>
+                              <Typography sx={{ fontSize: 10.5, color: D.t3, fontFamily: MONO, flexShrink: 0 }}>
+                                {timeLabel(item)}
+                              </Typography>
+                            </Stack>
+                            <Typography noWrap sx={{ fontSize: 13.5, fontWeight: item.read ? 600 : 900, color: item.read ? D.t2 : D.t1, mt: 0.15 }}>
+                              {item.subject}
+                            </Typography>
+                            <Typography noWrap sx={{ fontSize: 12, color: D.t3, mt: 0.15 }}>
+                              {item.preview}
+                            </Typography>
+                          </Box>
+
+                          {!item.read && (
+                            <Box sx={{ mt: 1, width: 8, height: 8, borderRadius: "50%", bgcolor: D.brand, flexShrink: 0 }} />
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </MotionPresence>
+                )}
+              </Box>
+            </Box>
+
+            {/* Reading pane */}
+            {selected && (
+              <Box
+                component={motion.div}
+                initial={reduceMotion ? false : { opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                sx={{
+                  flex: 1, minWidth: 0, width: "100%",
+                  position: { lg: "sticky" }, top: { lg: 88 },
+                  bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden",
+                }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${D.border}` }}>
+                  <Tooltip title="Back to list">
+                    <IconButton onClick={() => setSelectedId(null)} aria-label="Back to mail list" size="small" sx={{ color: D.t3, "&:hover": { color: D.t1 } }}>
+                      <ArrowBackIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Chip
+                    size="small"
+                    label={folderLabel(selected.folder)}
+                    sx={{ bgcolor: folderColors(selected.folder).bg, color: folderColors(selected.folder).color, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 0.5 }}
+                  />
+                  <Box sx={{ flex: 1 }} />
+                  <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>{timeLabel(selected)}</Typography>
+                </Stack>
+
+                <Box sx={{ p: { xs: 2.5, md: 3 } }}>
+                  <Typography sx={{ fontWeight: 950, fontSize: 19, color: D.t1, lineHeight: 1.35, mb: 1 }}>
+                    {selected.subject}
+                  </Typography>
+                  <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>
+                    From <Box component="span" sx={{ color: D.t2, fontWeight: 700 }}>{selected.from}</Box>
+                    {selected.gameDay !== null && ` · Day ${selected.gameDay}`}
+                  </Typography>
+
+                  {selected.news && (
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }}>
+                      <Chip size="small" icon={toneMeta(selected.news.marketTone).icon}
+                        label={toneMeta(selected.news.marketTone).label}
+                        sx={{ bgcolor: toneMeta(selected.news.marketTone).bg, color: toneMeta(selected.news.marketTone).color, fontWeight: 800, fontSize: 10.5, "& .MuiChip-icon": { color: "inherit" } }} />
+                      <Chip size="small" label={selected.news.importance === "High" ? "High impact" : "Normal impact"}
+                        sx={{ bgcolor: selected.news.importance === "High" ? D.redBg : D.overlay, color: selected.news.importance === "High" ? D.redText : D.t3, fontWeight: 800, fontSize: 10.5 }} />
+                      {selected.news.isRumor && (
+                        <Chip size="small" label="Unconfirmed"
+                          sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 800, fontSize: 10.5 }} />
+                      )}
+                    </Stack>
+                  )}
+
+                  <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.85, whiteSpace: "pre-wrap" }}>
+                    {selected.body}
+                  </Typography>
+
+                  {selected.news && selected.news.relatedTickers.length > 0 && (
+                    <>
+                      <Divider sx={{ borderColor: D.border, my: 2.5 }} />
+                      <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO, letterSpacing: 0.5, mb: 1 }}>
+                        RELATED HOLDINGS
+                      </Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {selected.news.relatedTickers.map((ticker) => (
+                          <Chip
+                            key={ticker}
+                            component={RouterLink}
+                            to={`/stocks/${ticker}`}
+                            clickable
+                            size="small"
+                            label={ticker}
+                            sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, fontSize: 11, fontFamily: MONO, textDecoration: "none" }}
+                          />
+                        ))}
+                      </Stack>
+                    </>
+                  )}
+                </Box>
+              </Box>
+            )}
+          </Box>
+        </Box>
       </Container>
     </Box>
   );

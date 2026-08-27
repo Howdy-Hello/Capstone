@@ -5,6 +5,7 @@ import React, {
 import {
   generateMarketSeedCode,
   getNewsForGameDay,
+  getNewsUpToGameDay,
   getRelatedNewsBySymbol,
   getSelectedStoryArcKeys,
   getStockHistoryBySymbol,
@@ -151,6 +152,7 @@ type GameContextValue = {
   isGameComplete: boolean;
   stocks: Stock[];
   news: MarketNews[];
+  newsHistory: MarketNews[];
   getStock: (symbol: string) => Stock | undefined;
   getHistory: (symbol: string) => StockPriceHistory[];
   getRelatedNews: (symbol: string) => MarketNews[];
@@ -669,6 +671,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       .map(mapDatabaseEvent);
   }, [databaseEvents, gameDay, gameMode, marketSeed]);
 
+  // Every story the player could have seen so far, newest first. The inbox
+  // renders news as mail alongside the in-game messages, and a mailbox holding
+  // only today's headlines would read as broken.
+  const newsHistory = useMemo(() => {
+    const all = gameMode === "limited_30"
+      ? getNewsUpToGameDay(gameDay, marketSeed)
+      : databaseEvents
+          .filter((event) => event.game_day <= gameDay)
+          .map(mapDatabaseEvent);
+    return [...all].sort((a, b) => b.gameDay - a.gameDay);
+  }, [databaseEvents, gameDay, gameMode, marketSeed]);
+
   const getHistory = useCallback((symbol: string) => {
     if (gameMode === "limited_30") {
       return getStockHistoryBySymbol(symbol, gameDay, marketSeed);
@@ -1103,6 +1117,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     isGameComplete,
     stocks,
     news,
+    newsHistory,
     getStock,
     getHistory,
     getRelatedNews,
@@ -1113,7 +1128,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     syncSessionValue,
   }), [
     account, addCash, addToWatchlist, buyStock, error, gameDay, gameMode, getHistory, getRelatedNews,
-    getStock, getTradeQuote, loading, loadOrCreateSession, news, resetAccount, sellStock,
+    getStock, getTradeQuote, loading, loadOrCreateSession, news, newsHistory, resetAccount, sellStock,
     marketSeed, setCash, setGameDay, setHolding, session, stocks, storyArcs, syncSessionValue,
     maxGameDay, isGameComplete, isWatchlisted, removeFromWatchlist,
     latestBill, toggleWatchlist, watchlistStocks, watchlistSymbols,
