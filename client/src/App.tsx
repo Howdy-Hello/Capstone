@@ -6,6 +6,8 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { GameProvider } from "./context/GameContext";
 import { ThemeProvider, useThemeSettings } from "./context/ThemeContext";
 import { setInboxUser } from "./lib/inbox";
+import { setNotificationUser } from "./lib/notifications";
+import { setAnalyticsUser } from "./lib/analytics";
 import { D } from "./theme/design";
 
 import Header from "./components/Header";
@@ -54,7 +56,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 function InboxSync() {
   const { user } = useAuth();
   useEffect(() => {
-    setInboxUser(user?.id ?? null);
+    const userId = user?.id ?? null;
+    setInboxUser(userId);
+    setNotificationUser(userId);
+    setAnalyticsUser(userId);
   }, [user]);
   return null;
 }

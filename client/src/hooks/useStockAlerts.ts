@@ -120,6 +120,7 @@ export function useStockAlerts() {
     triggered.forEach((alert) => {
       const stock = bySymbol.get(alert.symbol);
       pushNotification({
+        id: `alert-${alert.id}`,
         kind: "alert",
         title: `${alert.symbol} alert triggered`,
         description: stock

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { getPortfolioValue } from "../data/tradingState";
-import { getStockBySymbolForGameDay, mockStockCompanies, StockCompany } from "../data/mockStocks";
+import { mockStockCompanies, StockCompany } from "../data/mockStocks";
 import { pushNotification } from "../lib/notifications";
 import { addInboxMessage } from "../lib/inbox";
 import { money } from "../theme/design";
@@ -57,7 +57,7 @@ function pickName(marketSeed: string) {
 
 export function useRivalTrader() {
   const { user } = useAuth();
-  const { account, stocks, gameDay, marketSeed } = useGame();
+  const { account, stocks, gameDay, marketSeed, loading, sessionId } = useGame();
 
   const basket = useMemo(() => pickBasket(marketSeed, RIVAL_BASKET_SIZE), [marketSeed]);
   const rivalName = useMemo(() => pickName(marketSeed), [marketSeed]);
@@ -68,13 +68,22 @@ export function useRivalTrader() {
     if (basket.length === 0) return RIVAL_STARTING_CASH;
     const perStock = RIVAL_STARTING_CASH / basket.length;
     return basket.reduce((sum, company) => {
-      if (company.startingPrice <= 0) return sum + perStock;
-      const stock = getStockBySymbolForGameDay(company.symbol, gameDay, marketSeed);
-      const currentPrice = stock?.currentPrice ?? company.startingPrice;
-      const shares = perStock / company.startingPrice;
-      return sum + shares * currentPrice;
+      // Price the rival from the same market the player trades, not from
+      // mockStocks' generator. In limited_30 `stocks` IS getStocksForGameDay,
+      // so this is the identical series and nothing changes; in infinite mode
+      // the player's prices come from the database plus GameContext's
+      // continuation generator, which mockStocks does not reproduce -- the two
+      // series drifted far enough apart that the head-to-head number, the gap
+      // percentage and the taunts all described a market nobody was playing.
+      const live = stocks.find((item) => item.symbol === company.symbol);
+      // Cost basis has to come from the same engine as the price, or the
+      // rival's return is measured against a baseline from the other market.
+      const basis = live?.startingPrice ?? company.startingPrice;
+      if (basis <= 0) return sum + perStock;
+      const currentPrice = live?.currentPrice ?? basis;
+      return sum + (perStock / basis) * currentPrice;
     }, 0);
-  }, [basket, gameDay, marketSeed]);
+  }, [basket, stocks]);
 
   const playerNetWorth = account.cash + getPortfolioValue(account, stocks);
   const playerAhead = playerNetWorth >= rivalNetWorth;
@@ -84,6 +93,15 @@ export function useRivalTrader() {
   const lastTauntDayRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Do not baseline against a half-loaded game. Before loadOrCreateSession
+    // resolves, `account` is still the $2,000 default and `stocks` is empty, so
+    // the first comparison is meaningless; when the real cash and holdings
+    // land, playerAhead flips and the effect reports it as a genuine crossover,
+    // firing a toast and a permanent inbox email on every single mount.
+    // `loading` alone is not enough -- the provider briefly reports false while
+    // `user` is still null, and a child effect runs before the parent's -- so
+    // wait for a real session and a populated market too.
+    if (loading || !sessionId || stocks.length === 0) return;
     if (prevAheadRef.current === null) {
       prevAheadRef.current = playerAhead;
       return;
@@ -99,12 +117,14 @@ export function useRivalTrader() {
       // saying the same thing, which is the premise documented at the top.
       const line = pool[hash(`${marketSeed}:taunt:${gameDay}`) % pool.length];
       pushNotification({
+        id: `rival-${gameDay}`,
         kind: "rival",
         title: rivalName,
         description: `${rivalName} ${line} (${money(rivalNetWorth)} vs your ${money(playerNetWorth)})`,
       });
       if (user) {
         addInboxMessage(user.id, {
+          id: `rival-${gameDay}`,
           from: rivalName,
           // The sender is the rival, so the subject is written from their side:
           // playerAhead means the rival lost the lead.
@@ -115,7 +135,7 @@ export function useRivalTrader() {
       }
     }
     prevAheadRef.current = playerAhead;
-  }, [playerAhead, gameDay, rivalName, rivalNetWorth, playerNetWorth, marketSeed, user]);
+  }, [playerAhead, gameDay, rivalName, rivalNetWorth, playerNetWorth, marketSeed, loading, sessionId, stocks.length, user]);
 
   return { rivalName, rivalNetWorth, playerNetWorth, playerAhead, gapPct, basket };
 }

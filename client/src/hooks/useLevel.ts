@@ -2,25 +2,26 @@ import { useEffect, useRef } from "react";
 
 import { useAuth } from "../context/AuthContext";
 import { useAchievements } from "./useAchievements";
-import { useMissions } from "./useMissions";
-import { useDailyGoals } from "./useDailyGoals";
+import { getPlayerLevel } from "../data/levelSystem";
 import { addInboxMessage } from "../lib/inbox";
 
-// A player level derived from XP already tracked by achievements, missions,
-// and today's daily goals — no separate XP ledger. Achievements/missions are
-// persisted forever in Supabase, so their XP only ever grows; daily goals
-// only contribute the current day's total since historical days aren't
-// re-queried, which keeps this cheap while still reflecting real progress.
-function xpForLevel(level: number) {
-  return Math.round(100 * Math.pow(Math.max(0, level - 1), 1.5));
-}
-
-function levelFromXp(totalXp: number) {
-  let level = 1;
-  while (xpForLevel(level + 1) <= totalXp) level += 1;
-  return level;
-}
-
+// The player level, derived from the SAME curve and the SAME XP base as
+// everything else that shows a level.
+//
+// This hook used to carry a private `100 * (level - 1) ^ 1.5` curve and add
+// mission and daily-goal XP on top of achievement XP, while Header.tsx,
+// Level.tsx, the Achievements page, the Leaderboard badge and Game.tsx's
+// progression card all used getPlayerLevel()'s Fibonacci curve over achievement
+// XP alone. The two disagreed on screen at the same time (Game.tsx rendered
+// both at once) and only getPlayerLevel matches the server's
+// player_level_from_xp, which is what pays the level cash reward -- so this
+// hook was emailing "You've reached Level 14" for a level the server would
+// never pay out.
+//
+// Achievement XP is the base because that is what the server's player_total_xp
+// counts. Widening the server side to include missions and daily goals instead
+// would retroactively jump every existing player's level and make
+// process_level_cash_rewards pay a lump sum for levels they never played.
 function levelStorageKey(userId: string) {
   return `stockpilot-last-level-${userId}`;
 }
@@ -28,20 +29,10 @@ function levelStorageKey(userId: string) {
 export function useLevel() {
   const { user } = useAuth();
   const { totalXP: achievementXp } = useAchievements();
-  const { missions } = useMissions();
-  const dailyGoals = useDailyGoals();
 
-  const missionXp = missions.filter((m) => m.done).reduce((sum, m) => sum + m.rewardXp, 0);
-  const totalXp = achievementXp + missionXp + dailyGoals.totalXp;
-
-  const level = levelFromXp(totalXp);
-  const currentLevelFloor = xpForLevel(level);
-  const nextLevelFloor = xpForLevel(level + 1);
-  const xpIntoLevel = totalXp - currentLevelFloor;
-  const xpForNextLevel = nextLevelFloor - currentLevelFloor;
-  const progressPercent = xpForNextLevel > 0
-    ? Math.min(100, Math.round((xpIntoLevel / xpForNextLevel) * 100))
-    : 100;
+  const player = getPlayerLevel(achievementXp);
+  const { level, totalXp, xpIntoLevel, xpForNextLevel } = player;
+  const progressPercent = player.progress;
 
   const lastNotifiedRef = useRef<number | null>(null);
 
@@ -61,13 +52,17 @@ export function useLevel() {
       lastNotifiedRef.current = level;
       localStorage.setItem(key, String(level));
       addInboxMessage(user.id, {
+        id: `level-${level}`,
         from: "StockPilot HQ",
         subject: `You've reached Level ${level}`,
-        body: `Nice work — your trading, missions, and goals pushed you from Level ${previous} to Level ${level}. ${xpForNextLevel} XP to go until Level ${level + 1}.`,
+        // xpForNextLevel is the SIZE of the level band, not the remainder --
+        // reporting it directly overstated the gap by however much of the band
+        // the player had already earned.
+        body: `Nice work — your achievements pushed you from Level ${previous} to Level ${level}. ${Math.max(0, xpForNextLevel - xpIntoLevel)} XP to go until Level ${level + 1}.`,
         category: "level",
       });
     }
-  }, [level, user, xpForNextLevel]);
+  }, [level, user, xpForNextLevel, xpIntoLevel]);
 
   return { level, totalXp, xpIntoLevel, xpForNextLevel, progressPercent };
 }

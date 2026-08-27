@@ -48,6 +48,31 @@ const supabaseAdmin: SupabaseClient = isConfigured
     })
   : unconfiguredClient();
 
+/**
+ * Turn a Supabase/Postgres error into a client-safe response.
+ *
+ * Returning `error.message` verbatim leaked schema details, RLS policy names
+ * and constraint names to any caller, and reported caller-input faults (a
+ * malformed uuid, a failed check constraint) as 500. The full error still goes
+ * to the server log, where it belongs.
+ */
+export function supabaseErrorResponse(
+  context: string,
+  error: { message?: string; code?: string } | null | undefined
+): Response {
+  console.error(`[${context}] Supabase error:`, error);
+
+  // Postgres class 22 (data exception) and 23 (integrity constraint violation)
+  // mean the caller sent something invalid, not that the server broke.
+  const code = error?.code ?? '';
+  const callerFault = code.startsWith('22') || code.startsWith('23');
+
+  return Response.json(
+    { message: callerFault ? 'Request could not be processed.' : 'Internal server error.' },
+    { status: callerFault ? 400 : 500 }
+  );
+}
+
 export type AuthMode = 'none' | 'user' | 'secret';
 
 export interface WithSupabaseConfig {

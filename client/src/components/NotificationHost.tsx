@@ -17,18 +17,35 @@ const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{ ini
 const MAX_VISIBLE = 4;
 const DEFAULT_DURATION_MS = 5000;
 
-const KIND_META: Record<NotificationKind, { color: string; bg: string; label: string; icon: React.ReactNode }> = {
-  alert:   { color: D.brandText, bg: D.brandBg, label: "PRICE ALERT", icon: <NotificationsActiveIcon sx={{ fontSize: 16 }} /> },
-  mission: { color: D.greenText, bg: D.greenBg, label: "MISSION",     icon: <FlagIcon sx={{ fontSize: 16 }} /> },
-  bill:    { color: D.redText,   bg: D.redBg,   label: "BILL DUE",    icon: <ReceiptLongIcon sx={{ fontSize: 16 }} /> },
-  rival:   { color: "#F59E0B",   bg: "rgba(245,158,11,0.1)", label: "RIVAL TRADER", icon: <SportsMmaIcon sx={{ fontSize: 16 }} /> },
-  advisor: { color: D.brandText, bg: D.brandBg, label: "ADVISOR",     icon: <SmartToyIcon sx={{ fontSize: 16 }} /> },
-  info:    { color: D.t2,        bg: D.overlay, label: "NOTICE",      icon: <InfoIcon sx={{ fontSize: 16 }} /> },
+// Labels and icons are theme-independent, so they stay at module scope.
+const KIND_META: Record<NotificationKind, { label: string; icon: React.ReactNode }> = {
+  alert:   { label: "PRICE ALERT",   icon: <NotificationsActiveIcon sx={{ fontSize: 16 }} /> },
+  mission: { label: "MISSION",       icon: <FlagIcon sx={{ fontSize: 16 }} /> },
+  bill:    { label: "BILL DUE",      icon: <ReceiptLongIcon sx={{ fontSize: 16 }} /> },
+  rival:   { label: "RIVAL TRADER",  icon: <SportsMmaIcon sx={{ fontSize: 16 }} /> },
+  advisor: { label: "ADVISOR",       icon: <SmartToyIcon sx={{ fontSize: 16 }} /> },
+  info:    { label: "NOTICE",        icon: <InfoIcon sx={{ fontSize: 16 }} /> },
 };
+
+// Colours must be read during render. `applyDesignColors` mutates the shared
+// `D` singleton when the player picks a theme, but a module-scope object
+// captures whatever `D` held at import time -- before ThemeProvider hydrates --
+// so these chips kept their dark-theme colours forever, on every reload, no
+// matter which theme was selected.
+function kindColors(kind: NotificationKind): { color: string; bg: string } {
+  switch (kind) {
+    case "alert":   return { color: D.brandText, bg: D.brandBg };
+    case "mission": return { color: D.greenText, bg: D.greenBg };
+    case "bill":    return { color: D.redText,   bg: D.redBg };
+    case "rival":   return { color: "#F59E0B",   bg: "rgba(245,158,11,0.1)" };
+    case "advisor": return { color: D.brandText, bg: D.brandBg };
+    default:        return { color: D.t2,        bg: D.overlay };
+  }
+}
 
 function ToastItem({ notification }: { notification: AppNotification }) {
   const reduceMotion = useReducedMotion();
-  const meta = KIND_META[notification.kind];
+  const meta = { ...KIND_META[notification.kind], ...kindColors(notification.kind) };
 
   useEffect(() => {
     const timeout = window.setTimeout(

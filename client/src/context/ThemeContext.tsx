@@ -168,39 +168,71 @@ const defaultCustomInput: CustomThemeInput = {
 
 const ThemeContext = React.createContext<ThemeContextValue | undefined>(undefined);
 
+type StoredTheme = {
+  selectedThemeId: string;
+  customInput: CustomThemeInput;
+  palette: DesignColors;
+};
+
+// Read synchronously so the stored theme IS the initial state.
+//
+// This used to be a load effect paired with a persist effect. Both run on mount
+// in declaration order, so persist wrote the initial "apex" state back to
+// localStorage before load's setState had rendered. In production the next
+// render re-persisted the real value and it self-healed; under StrictMode React
+// runs load, persist, cleanup, load again with no render in between, so the
+// second load read back the "apex" persist had just written and the player's
+// saved theme was reset on every reload. Gating persist behind a "hydrated" ref
+// does not fix it -- persist still runs after load in the same flush, while the
+// loaded state is still uncommitted. Hydrating in the initializer removes the
+// window entirely: there is nothing to race.
+function readStoredTheme(): StoredTheme {
+  const fallback: StoredTheme = {
+    selectedThemeId: themePresets[0].id,
+    customInput: defaultCustomInput,
+    palette: DEFAULT_COLORS,
+  };
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return fallback;
+
+    const saved = JSON.parse(raw) as { selectedThemeId?: string; customInput?: CustomThemeInput };
+    const preset = themePresets.find((item) => item.id === saved.selectedThemeId);
+    if (preset) {
+      return { selectedThemeId: preset.id, customInput: defaultCustomInput, palette: preset.colors };
+    }
+
+    if (saved.selectedThemeId === "custom" && saved.customInput) {
+      return {
+        selectedThemeId: "custom",
+        customInput: saved.customInput,
+        palette: makePalette(saved.customInput),
+      };
+    }
+  } catch {
+    try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  }
+
+  return fallback;
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [selectedThemeId, setSelectedThemeId] = React.useState(themePresets[0].id);
-  const [customInput, setCustomInput] = React.useState(defaultCustomInput);
-  const [palette, setPalette] = React.useState<DesignColors>(DEFAULT_COLORS);
+  const [stored] = React.useState(readStoredTheme);
+  const [selectedThemeId, setSelectedThemeId] = React.useState(stored.selectedThemeId);
+  const [customInput, setCustomInput] = React.useState(stored.customInput);
+  const [palette, setPalette] = React.useState<DesignColors>(stored.palette);
 
   const setActivePalette = React.useCallback((colors: DesignColors) => {
     applyDesignColors(colors);
     setPalette(colors);
   }, []);
 
+  // Push the hydrated palette into the shared `D` singleton. Idempotent, so a
+  // StrictMode double-invoke is harmless.
   React.useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-
-      const saved = JSON.parse(raw) as { selectedThemeId?: string; customInput?: CustomThemeInput; palette?: DesignColors };
-      const preset = themePresets.find((item) => item.id === saved.selectedThemeId);
-      if (preset) {
-        setSelectedThemeId(preset.id);
-        setActivePalette(preset.colors);
-        return;
-      }
-
-      if (saved.selectedThemeId === "custom" && saved.customInput) {
-        const customPalette = makePalette(saved.customInput);
-        setSelectedThemeId("custom");
-        setCustomInput(saved.customInput);
-        setActivePalette(customPalette);
-      }
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-  }, [setActivePalette]);
+    applyDesignColors(stored.palette);
+  }, [stored.palette]);
 
   React.useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ selectedThemeId, customInput }));

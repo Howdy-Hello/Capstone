@@ -34,7 +34,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   getNewsCredibility, getOpeningStoryDays, STORY_DAYS, Stock,
 } from "../data/mockStocks";
-import { getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
+import { getMaxAffordableQuantity, getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
 import { getPlayerLevel } from "../data/levelSystem";
 import { GameMode, useGame, WEEKLY_BILL_TOTAL } from "../context/GameContext";
 import { useAchievements } from "../hooks/useAchievements";
@@ -1413,10 +1413,25 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
   onConfirm: (quantity: number) => void;
 }) {
   const reduceMotion = useReducedMotion();
-  const maxQty = mode === "buy"
-    ? Math.max(1, Math.floor(cash / stock.currentPrice))
-    : Math.max(0, sharesOwned);
+  // Max has to be priced *with* slippage. Spending the whole cash balance is
+  // ~100% of net worth, far past SLIPPAGE_THRESHOLD, so floor(cash / price)
+  // always costs more than the cash on hand -- Max set a quantity whose total
+  // exceeded the balance and the confirm button rendered permanently disabled.
+  // getQuote's total is non-decreasing in quantity, so binary-search the
+  // largest affordable one instead of dividing at the base price.
+  const maxQty = useMemo(() => {
+    if (mode !== "buy") return Math.max(0, sharesOwned);
+    // Clamp to 1 so the stepper stays usable; canConfirm still blocks the buy.
+    return Math.max(
+      1,
+      getMaxAffordableQuantity(cash, stock.currentPrice, (q) => getQuote(q).total)
+    );
+  }, [cash, getQuote, mode, sharesOwned, stock.currentPrice]);
   const [quantity, setQuantity] = useState(1);
+  // onConfirm resolves the trade RPC before closing the dialog, so without this
+  // the confirm button stays live for the whole round trip and a double-click
+  // sends two execute_trade calls, spending twice what the dialog showed.
+  const [submitting, setSubmitting] = useState(false);
   const qty = Math.min(Math.max(1, quantity), maxQty);
   const quote = getQuote(qty);
   const total = quote.total;
@@ -1535,7 +1550,12 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
           sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
           Cancel
         </Button>
-        <Button variant="contained" disabled={!canConfirm} onClick={() => onConfirm(qty)}
+        <Button variant="contained" disabled={!canConfirm || submitting}
+          onClick={() => {
+            if (submitting) return;
+            setSubmitting(true);
+            onConfirm(qty);
+          }}
           sx={{
             bgcolor: isBuy ? D.green : D.red, color: "#fff", fontWeight: 800, textTransform: "none",
             borderRadius: 1.5, boxShadow: "none", px: 3,

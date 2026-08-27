@@ -45,6 +45,44 @@ export function getTradeSlippage(tradeValue: number, netWorth: number) {
   return Math.min(MAX_SLIPPAGE, (ratio - SLIPPAGE_THRESHOLD) * SLIPPAGE_SLOPE);
 }
 
+/**
+ * Largest quantity whose slippage-adjusted total still fits in `cash`.
+ *
+ * Dividing cash by the base price does not work: spending the whole balance is
+ * ~100% of net worth, far past SLIPPAGE_THRESHOLD, so `floor(cash / price)`
+ * always costs more than the cash on hand and a "Max" button built on it
+ * produces a quantity the player cannot actually buy.
+ *
+ * `totalFor` is the caller's quote function; its total is non-decreasing in
+ * quantity (effectivePrice is non-decreasing and quantity rises), so the
+ * largest affordable quantity can be found by binary search. Returns 0 when not
+ * even one share is affordable -- callers that need a usable stepper should
+ * clamp to 1 and let their own affordability check disable the confirm action.
+ */
+export function getMaxAffordableQuantity(
+  cash: number,
+  basePrice: number,
+  totalFor: (quantity: number) => number
+) {
+  if (!(cash > 0) || !(basePrice > 0)) return 0;
+  const ceiling = Math.floor(cash / basePrice);
+  if (ceiling < 1) return 0;
+
+  let low = 1;
+  let high = ceiling;
+  let best = 0;
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    if (totalFor(mid) <= cash) {
+      best = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return best;
+}
+
 export function getSlippageAdjustedPrice(
   basePrice: number,
   tradeType: "buy" | "sell",

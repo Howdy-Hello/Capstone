@@ -51,7 +51,7 @@ const DEFS = [
 
 type AchievementId = typeof DEFS[number]["id"];
 
-type StreakState = {
+export type StreakState = {
   cashDisciplineStreak: number;
   hotStreakDays: number;
   prevNetWorth: number;
@@ -67,6 +67,37 @@ const DEFAULT_STREAK: StreakState = {
 
 function streakKey(userId: string) {
   return `stockpilot-streak-${userId}`;
+}
+
+/**
+ * The streak advance rule for one game day. Returns null when the day should be
+ * ignored (already counted), otherwise the state to store.
+ *
+ * The streak is stored per user, not per run, so a new game restarts at day 1
+ * while lastCheckedDay still holds the previous run's final day. Guarding only
+ * on `gameDay <= lastCheckedDay` swallowed every advance for the whole of that
+ * run -- after one 30-day game, cash_discipline and hot_streak were unreachable
+ * forever. A day earlier than the stored one means the streak belongs to a
+ * finished (or rewound) run, so a fresh streak starts from this day.
+ */
+export function nextStreakState(
+  streak: StreakState,
+  gameDay: number,
+  cash: number,
+  netWorth: number
+): StreakState | null {
+  const staleRun = gameDay < streak.lastCheckedDay;
+  if (!staleRun && gameDay <= streak.lastCheckedDay) return null;
+
+  const base = staleRun ? { ...DEFAULT_STREAK, prevNetWorth: netWorth } : streak;
+  const cashPct = netWorth > 0 ? (cash / netWorth) * 100 : 0;
+
+  return {
+    lastCheckedDay:       gameDay,
+    cashDisciplineStreak: cashPct >= 20 ? base.cashDisciplineStreak + 1 : 0,
+    hotStreakDays:        netWorth > base.prevNetWorth ? base.hotStreakDays + 1 : 0,
+    prevNetWorth:         netWorth,
+  };
 }
 
 function loadStreak(userId: string): StreakState {
@@ -243,15 +274,9 @@ export function useAchievements() {
     }
     if (gameDay === prevDayRef.current) return;
     prevDayRef.current = gameDay;
-    if (gameDay <= streak.lastCheckedDay) return;
 
-    const cashPct = netWorth > 0 ? (account.cash / netWorth) * 100 : 0;
-    const next: StreakState = {
-      lastCheckedDay:       gameDay,
-      cashDisciplineStreak: cashPct >= 20 ? streak.cashDisciplineStreak + 1 : 0,
-      hotStreakDays:        netWorth > streak.prevNetWorth ? streak.hotStreakDays + 1 : 0,
-      prevNetWorth:         netWorth,
-    };
+    const next = nextStreakState(streak, gameDay, account.cash, netWorth);
+    if (!next) return;
     setStreak(next);
     persistStreak(user.id, next);
   }, [gameDay, loading, user]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -345,6 +370,7 @@ export function useAchievements() {
     const [, latestRates] = await Promise.all([refreshUnlocks(), refreshUnlockRates()]);
     items.forEach((item) => {
       addInboxMessage(user.id, {
+        id: `achievement-${item.id}`,
         from: "Achievements Desk",
         subject: `Achievement unlocked: ${item.title}`,
         body: `${item.description} Reward: ${item.reward}.`,
@@ -399,6 +425,21 @@ export function useAchievements() {
       .filter((a) => a.unlocked)
       .reduce((sum, a) => sum + a.rewardXp, 0),
     [achievements]
+  );
+
+  // XP backed by rows that actually exist in user_achievement_unlocks.
+  //
+  // totalXP above is optimistic: an achievement counts as soon as local progress
+  // hits 100%, in the same render that merely *starts* the upsert. Anything that
+  // asks the server to act on XP must wait for the row to land, or the server
+  // reads the pre-insert total. That is what made the level cash reward silently
+  // skip: process_level_cash_rewards ran against stale XP, returned $0, and the
+  // caller's "already processed this XP" guard then blocked any retry.
+  const confirmedXP = useMemo(
+    () => achievements
+      .filter((achievement) => Boolean(unlocks[achievement.id]))
+      .reduce((sum, achievement) => sum + achievement.rewardXp, 0),
+    [achievements, unlocks]
   );
 
   const resetStreakForNewGame = useCallback(() => {
@@ -538,6 +579,7 @@ export function useAchievements() {
   return {
     achievements,
     totalXP,
+    confirmedXP,
     loading,
     persistenceError,
     retryPersistence,

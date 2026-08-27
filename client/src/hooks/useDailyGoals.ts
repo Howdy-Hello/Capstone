@@ -102,14 +102,24 @@ export function useDailyGoals() {
 
   // Once a goal is hit it stays complete for the day, even if the player later
   // sells down. Persisted per (user, day).
-  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  //
+  // Tagged with the day it belongs to. On a day rollover the load effect and
+  // the persist effect run in the same flush, and the persist effect (declared
+  // later, so it runs second) used to read the PREVIOUS day's set while gameDay
+  // had already advanced -- writing yesterday's completions into today's
+  // localStorage key and Supabase rows, and clobbering the load effect's reset.
+  // Comparing the tag makes the persist effect a no-op until the two agree.
+  const [completed, setCompleted] = useState<{ day: number; ids: Set<string> }>(
+    { day: -1, ids: new Set() }
+  );
+  const completedIds = completed.ids;
 
   // Local cache loads instantly; Supabase is merged in once it resolves so
   // progress follows the player across devices without blocking the UI.
   useEffect(() => {
-    if (!user) { setCompleted(new Set()); return; }
+    if (!user) { setCompleted({ day: gameDay, ids: new Set() }); return; }
     const local = loadCompleted(user.id, gameDay);
-    setCompleted(local);
+    setCompleted({ day: gameDay, ids: local });
 
     let cancelled = false;
     (async () => {
@@ -122,7 +132,7 @@ export function useDailyGoals() {
       const merged = new Set(local);
       data.forEach((row: { goal_id: string }) => merged.add(row.goal_id));
       if (merged.size !== local.size) {
-        setCompleted(merged);
+        setCompleted({ day: gameDay, ids: merged });
         saveCompleted(user.id, gameDay, merged);
       }
     })();
@@ -153,20 +163,24 @@ export function useDailyGoals() {
         current,
         target,
         progress,
-        done: completed.has(def.id) || progress >= 100,
+        done: completedIds.has(def.id) || progress >= 100,
         rewardXp: def.rewardXp,
       };
     });
-  }, [account, stocks, watchlistSymbols, netWorth, gameDay, marketSeed, user, completed]);
+  }, [account, stocks, watchlistSymbols, netWorth, gameDay, marketSeed, user, completedIds]);
 
   useEffect(() => {
     if (!user) return;
-    const newlyDone = goals.filter((g) => g.progress >= 100 && !completed.has(g.id));
+    // The loaded set still belongs to the previous day; wait for the load
+    // effect to catch up rather than persisting it under the new day's key.
+    if (completed.day !== gameDay) return;
+
+    const newlyDone = goals.filter((g) => g.progress >= 100 && !completed.ids.has(g.id));
     if (newlyDone.length === 0) return;
 
-    const next = new Set(completed);
+    const next = new Set(completed.ids);
     newlyDone.forEach((g) => next.add(g.id));
-    setCompleted(next);
+    setCompleted({ day: gameDay, ids: next });
     saveCompleted(user.id, gameDay, next);
 
     // Best-effort sync — daily goals are non-critical to gameplay, so a

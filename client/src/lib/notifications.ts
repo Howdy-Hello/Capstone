@@ -19,24 +19,59 @@ export type AppNotification = {
   createdAt?: string;
 };
 
+// Scoped per user, like lib/inbox.ts. A single global key meant the next
+// account signed in on the same browser opened /notifications and read the
+// previous account's activity -- and it was never cleared on sign-out. The
+// legacy unscoped key is still read once for the first signed-in user so an
+// existing player does not lose their history on upgrade.
 const HISTORY_KEY = "stockpilot-notification-history";
 const MAX_HISTORY = 80;
+
+function historyKey(userId: string | null) {
+  return userId ? `${HISTORY_KEY}-${userId}` : HISTORY_KEY;
+}
+
+let currentUserId: string | null = null;
 let queue: AppNotification[] = [];
-let history = loadHistory();
+let history = loadHistory(null);
 const listeners = new Set<() => void>();
 
-function loadHistory(): AppNotification[] {
+function readKey(key: string): AppNotification[] {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) as AppNotification[] : [];
   } catch {
     return [];
   }
 }
 
+function loadHistory(userId: string | null): AppNotification[] {
+  if (!userId) return readKey(HISTORY_KEY);
+  const scoped = readKey(historyKey(userId));
+  if (scoped.length > 0) return scoped;
+  // One-time migration off the shared key.
+  const legacy = readKey(HISTORY_KEY);
+  if (legacy.length > 0) {
+    try {
+      localStorage.setItem(historyKey(userId), JSON.stringify(legacy));
+      localStorage.removeItem(HISTORY_KEY);
+    } catch { /* ignore storage quota errors */ }
+  }
+  return legacy;
+}
+
+/** Point the store at a user (or null on sign-out). Mirrors setInboxUser. */
+export function setNotificationUser(userId: string | null) {
+  if (userId === currentUserId) return;
+  currentUserId = userId;
+  queue = [];
+  history = loadHistory(userId);
+  emit();
+}
+
 function persistHistory() {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+    localStorage.setItem(historyKey(currentUserId), JSON.stringify(history.slice(0, MAX_HISTORY)));
   } catch {
     /* notification history is helpful, not critical */
   }

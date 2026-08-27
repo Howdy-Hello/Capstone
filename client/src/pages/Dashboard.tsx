@@ -42,7 +42,9 @@ type TradeRecord = {
   stocks: { symbol: string; company_name: string } | null;
 };
 
-const PIE_COLORS = [D.green, D.brand, D.amber, "#38BDF8", "#F87171", "#A78BFA"];
+// A function, not a module-scope array: `applyDesignColors` mutates `D` when
+// the theme changes, and a captured array keeps the import-time colours forever.
+const pieColors = () => [D.green, D.brand, D.amber, "#38BDF8", "#F87171", "#A78BFA"];
 
 function StatTile({ label, value, icon, up, index = 0 }: { label: string; value: string; icon: React.ReactNode; up?: boolean; index?: number }) {
   const reduceMotion = useReducedMotion();
@@ -337,7 +339,7 @@ export default function Dashboard() {
                         formatter={(val: any) => [money(Number(val)), ""]}
                       />
                       <Pie data={sectorExposure} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="80%" paddingAngle={2}>
-                        {sectorExposure.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                        {sectorExposure.map((_, i) => <Cell key={i} fill={pieColors()[i % pieColors().length]} />)}
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>
@@ -347,7 +349,7 @@ export default function Dashboard() {
                   {sectorExposure.map((e, i) => (
                     <Stack key={e.name} direction="row" justifyContent="space-between" alignItems="center">
                       <Stack direction="row" spacing={1} alignItems="center">
-                        <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                        <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: pieColors()[i % pieColors().length] }} />
                         <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: D.t2 }}>{e.name}</Typography>
                       </Stack>
                       <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>{money(e.value)}</Typography>

@@ -118,11 +118,71 @@ async function testLeaderboardLimit() {
   assert.equal(resolveLeaderboardLimit("7.9"), 7);
 }
 
+async function testSupabaseErrorResponse() {
+  const { supabaseErrorResponse } = await import("../lib/supabaseServer");
+
+  // Silence the deliberate error logging these assertions provoke.
+  const realError = console.error;
+  console.error = () => {};
+  try {
+    // A server-side fault stays a 500 and must not echo the driver's text.
+    const internal = supabaseErrorResponse("unit", {
+      message: 'relation "public.leaderboard_entries" does not exist',
+      code: "42P01",
+    });
+    assert.equal(internal.status, 500);
+    const internalBody = await internal.json();
+    assert.equal(internalBody.message, "Internal server error.");
+    assert.ok(!JSON.stringify(internalBody).includes("leaderboard_entries"));
+
+    // Postgres class 22/23 are caller-input faults, so 400 rather than 500.
+    for (const code of ["22P02", "23514", "23505"]) {
+      const res = supabaseErrorResponse("unit", { message: "invalid input syntax for uuid", code });
+      assert.equal(res.status, 400, `expected 400 for ${code}`);
+      const body = await res.json();
+      assert.equal(body.message, "Request could not be processed.");
+      assert.ok(!JSON.stringify(body).includes("uuid"));
+    }
+
+    // A missing/!unknown code must not be treated as a caller fault.
+    const unknown = supabaseErrorResponse("unit", { message: "boom" });
+    assert.equal(unknown.status, 500);
+    const nullish = supabaseErrorResponse("unit", null);
+    assert.equal(nullish.status, 500);
+  } finally {
+    console.error = realError;
+  }
+}
+
+// Mirrors the terminal error handler in server.ts.
+function terminalStatusFor(err: unknown): number {
+  const status = (err as { status?: unknown; statusCode?: unknown } | null)?.status
+    ?? (err as { statusCode?: unknown } | null)?.statusCode;
+  return typeof status === "number" && status >= 400 && status < 500 ? status : 500;
+}
+
+async function testTerminalErrorStatus() {
+  // body-parser surfaces malformed JSON as 400 and an oversized body as 413;
+  // reporting either as 500 blames the server for the caller's request.
+  assert.equal(terminalStatusFor(Object.assign(new Error("Unexpected token"), { status: 400 })), 400);
+  assert.equal(terminalStatusFor(Object.assign(new Error("too large"), { status: 413 })), 413);
+  assert.equal(terminalStatusFor(Object.assign(new Error("x"), { statusCode: 415 })), 415);
+
+  // Genuine faults and anything untrusted collapse to 500.
+  assert.equal(terminalStatusFor(new Error("kaboom")), 500);
+  assert.equal(terminalStatusFor(Object.assign(new Error("x"), { status: 503 })), 500);
+  assert.equal(terminalStatusFor(Object.assign(new Error("x"), { status: "400" })), 500);
+  assert.equal(terminalStatusFor(null), 500);
+  assert.equal(terminalStatusFor(undefined), 500);
+}
+
 async function main() {
   await testValidateBody();
   await testRateLimit();
   await testEnvValidation();
   await testLeaderboardLimit();
+  await testSupabaseErrorResponse();
+  await testTerminalErrorStatus();
   console.log("Server tests passed.");
 }
 

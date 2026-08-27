@@ -1552,7 +1552,7 @@ const bearishTemplates = [
   },
 ];
 
-function hashString(input: string) {
+export function hashString(input: string) {
   let hash = 2166136261;
 
   for (let i = 0; i < input.length; i += 1) {
@@ -1598,13 +1598,13 @@ export function generateMarketSeedCode(length = MARKET_SEED_LENGTH) {
   return seed.join("");
 }
 
-function seededRandom(seed: string, marketSeed?: string | null) {
+export function seededRandom(seed: string, marketSeed?: string | null) {
   const seedCode = normalizeMarketSeed(marketSeed);
   const hash = hashString(`${seedCode}:${seed}`);
   return (hash % 1_000_000) / 1_000_000;
 }
 
-function seededRange(seed: string, min: number, max: number, marketSeed?: string | null) {
+export function seededRange(seed: string, min: number, max: number, marketSeed?: string | null) {
   return min + seededRandom(seed, marketSeed) * (max - min);
 }
 

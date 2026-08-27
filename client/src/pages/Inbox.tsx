@@ -16,14 +16,29 @@ import { D, CARD, MONO } from "../theme/design";
 
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{ initial?: boolean; mode?: "sync" | "popLayout" | "wait" }>>;
 
-const CATEGORY_META: Record<InboxCategory, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
-  mission:     { color: D.greenText,  bg: D.greenBg,  icon: <FlagIcon sx={{ fontSize: 16 }} />,              label: "Mission" },
-  bill:        { color: D.redText,    bg: D.redBg,    icon: <ReceiptLongIcon sx={{ fontSize: 16 }} />,       label: "Billing" },
-  rival:       { color: "#F59E0B",    bg: "rgba(245,158,11,0.1)", icon: <SportsMmaIcon sx={{ fontSize: 16 }} />, label: "Rival" },
-  achievement: { color: D.brandText,  bg: D.brandBg,  icon: <WorkspacePremiumIcon sx={{ fontSize: 16 }} />,  label: "Achievement" },
-  level:       { color: D.brandText,  bg: D.brandBg,  icon: <MilitaryTechIcon sx={{ fontSize: 16 }} />,      label: "Level Up" },
-  system:      { color: D.t2,         bg: D.overlay,  icon: <InfoIcon sx={{ fontSize: 16 }} />,              label: "System" },
+// Icons and labels are theme-independent, so they stay at module scope.
+const CATEGORY_META: Record<InboxCategory, { icon: React.ReactNode; label: string }> = {
+  mission:     { icon: <FlagIcon sx={{ fontSize: 16 }} />,              label: "Mission" },
+  bill:        { icon: <ReceiptLongIcon sx={{ fontSize: 16 }} />,       label: "Billing" },
+  rival:       { icon: <SportsMmaIcon sx={{ fontSize: 16 }} />,         label: "Rival" },
+  achievement: { icon: <WorkspacePremiumIcon sx={{ fontSize: 16 }} />,  label: "Achievement" },
+  level:       { icon: <MilitaryTechIcon sx={{ fontSize: 16 }} />,      label: "Level Up" },
+  system:      { icon: <InfoIcon sx={{ fontSize: 16 }} />,              label: "System" },
 };
+
+// Read during render: `applyDesignColors` mutates the shared `D` singleton when
+// the theme changes, so a module-scope capture freezes the colours at whatever
+// `D` held at import time -- before ThemeProvider hydrates.
+function categoryColors(category: InboxCategory): { color: string; bg: string } {
+  switch (category) {
+    case "mission":     return { color: D.greenText, bg: D.greenBg };
+    case "bill":        return { color: D.redText,   bg: D.redBg };
+    case "rival":       return { color: "#F59E0B",   bg: "rgba(245,158,11,0.1)" };
+    case "achievement": return { color: D.brandText, bg: D.brandBg };
+    case "level":       return { color: D.brandText, bg: D.brandBg };
+    default:            return { color: D.t2,        bg: D.overlay };
+  }
+}
 
 function formatTimestamp(iso: string) {
   const date = new Date(iso);
@@ -31,7 +46,7 @@ function formatTimestamp(iso: string) {
 }
 
 function MessageRow({ message, expanded, onToggle }: { message: InboxMessage; expanded: boolean; onToggle: () => void }) {
-  const meta = CATEGORY_META[message.category];
+  const meta = { ...CATEGORY_META[message.category], ...categoryColors(message.category) };
   return (
     <Box
       component={motion.div}

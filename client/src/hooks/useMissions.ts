@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
@@ -58,7 +58,15 @@ export function useMissions() {
   const [alertCount, setAlertCount] = useState(0);
   const [goalCompletionCount, setGoalCompletionCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
-  const [pending, setPending] = useState<Set<string>>(new Set());
+  // In-flight and permanently-failed mission ids. A ref, not state, and
+  // deliberately NOT an effect dependency: when this was state, a failed upsert
+  // removed the id again, which changed the Set identity, which re-ran the
+  // effect, which saw the mission still un-persisted and fired the same write
+  // -- one request per render cycle, forever, with nothing surfaced to the
+  // player. Ids are now dropped only on success, so a hard failure stops after
+  // one attempt and reports itself.
+  const pendingRef = useRef<Set<string>>(new Set());
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!user) { setUnlocked({}); setLoaded(true); return; }
@@ -119,10 +127,12 @@ export function useMissions() {
   // Detect newly-completed missions and persist them once loaded.
   useEffect(() => {
     if (!user || !loaded) return;
-    const newlyDone = missions.filter((m) => m.progress >= 100 && !unlocked[m.id] && !pending.has(m.id));
+    const newlyDone = missions.filter(
+      (m) => m.progress >= 100 && !unlocked[m.id] && !pendingRef.current.has(m.id)
+    );
     if (newlyDone.length === 0) return;
 
-    setPending((prev) => new Set([...prev, ...newlyDone.map((m) => m.id)]));
+    newlyDone.forEach((m) => pendingRef.current.add(m.id));
 
     (async () => {
       const { error } = await supabase.from("user_mission_completions").upsert(
@@ -137,27 +147,40 @@ export function useMissions() {
         });
         newlyDone.forEach((m) => {
           pushNotification({
+            id: `mission-${m.id}`,
             kind: "mission",
             title: `Mission complete: ${m.title}`,
             description: `+${m.rewardXp} XP — ${m.description}`,
           });
           addInboxMessage(user.id, {
+            id: `mission-${m.id}`,
             from: "Onboarding Coach",
             subject: `Mission complete: ${m.title}`,
             body: `${m.description} You earned +${m.rewardXp} XP.`,
             category: "mission",
           });
         });
+        newlyDone.forEach((m) => pendingRef.current.delete(m.id));
+        setPersistenceError(null);
+      } else {
+        // Leave the ids in pendingRef so this does not spin, and tell the
+        // player their progress is showing locally but has not been saved.
+        setPersistenceError(
+          `Could not save mission progress: ${error.message}. It will retry when you reload.`
+        );
       }
-      setPending((prev) => {
-        const next = new Set(prev);
-        newlyDone.forEach((m) => next.delete(m.id));
-        return next;
-      });
     })();
-  }, [missions, unlocked, pending, user, loaded]);
+  }, [missions, unlocked, user, loaded]);
+
+  const retryPersistence = useCallback(() => {
+    pendingRef.current.clear();
+    setPersistenceError(null);
+  }, []);
 
   const completedCount = missions.filter((m) => m.done).length;
 
-  return { missions, completedCount, totalCount: missions.length, loaded };
+  return {
+    missions, completedCount, totalCount: missions.length, loaded,
+    persistenceError, retryPersistence,
+  };
 }

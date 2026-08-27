@@ -9,9 +9,11 @@ import {
   getSelectedStoryArcKeys,
   getStockHistoryBySymbol,
   getStocksForGameDay,
+  hashString,
   MarketNews,
   normalizeGameDay,
   normalizeMarketSeed,
+  seededRange,
   Stock,
   StockPriceHistory,
 } from "../data/mockStocks";
@@ -245,22 +247,6 @@ function mapDatabasePrice(row: DatabasePrice, symbol: string): StockPriceHistory
   };
 }
 
-function hashString(value: string) {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
-  }
-  return hash;
-}
-
-function seededRandom(seed: string) {
-  return (hashString(seed) % 1_000_000) / 1_000_000;
-}
-
-function seededRange(seed: string, min: number, max: number) {
-  return min + seededRandom(seed) * (max - min);
-}
-
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -292,18 +278,19 @@ function getContinuationTrendBias(stock: DatabaseStock, gameDay: number) {
 function generateContinuationPricePoint(
   stock: DatabaseStock,
   previousClose: number,
-  gameDay: number
+  gameDay: number,
+  marketSeed: string
 ): StockPriceHistory {
   const symbol = stock.symbol;
   const marketDrift =
     0.0007 +
     Math.sin(gameDay / 14) * 0.003 +
-    seededRange(`market-continuation-${gameDay}`, -0.006, 0.006);
+    seededRange(`market-continuation-${gameDay}`, -0.006, 0.006, marketSeed);
   const sectorDrift =
     Math.sin((gameDay + hashString(stock.sector) % 11) / 8) * 0.004 +
-    seededRange(`sector-continuation-${stock.sector}-${gameDay}`, -0.004, 0.004);
+    seededRange(`sector-continuation-${stock.sector}-${gameDay}`, -0.004, 0.004, marketSeed);
   const randomShock =
-    seededRange(`shock-continuation-${symbol}-${gameDay}`, -1, 1) *
+    seededRange(`shock-continuation-${symbol}-${gameDay}`, -1, 1, marketSeed) *
     asNumber(stock.volatility);
   const trendBias = getContinuationTrendBias(stock, gameDay);
   const meanReversion = getContinuationMeanReversion(stock, previousClose);
@@ -318,7 +305,7 @@ function generateContinuationPricePoint(
   const intradayRange =
     Math.abs(dailyReturn) * 0.45 +
     asNumber(stock.volatility) *
-      seededRange(`range-continuation-${symbol}-${gameDay}`, 0.18, 0.5);
+      seededRange(`range-continuation-${symbol}-${gameDay}`, 0.18, 0.5, marketSeed);
   const highPrice = Math.max(openPrice, closePrice) * (1 + intradayRange);
   const lowPrice = Math.min(openPrice, closePrice) * (1 - intradayRange * 0.8);
   const baseVolume =
@@ -328,7 +315,7 @@ function generateContinuationPricePoint(
         ? 850_000
         : 600_000;
   const activityBoost = Math.abs(dailyReturn) * 12;
-  const randomBoost = seededRange(`volume-continuation-${symbol}-${gameDay}`, -0.12, 0.22);
+  const randomBoost = seededRange(`volume-continuation-${symbol}-${gameDay}`, -0.12, 0.22, marketSeed);
 
   return {
     priceId: `generated_${symbol.toLowerCase()}_${gameDay}`,
@@ -349,7 +336,8 @@ function generateContinuationPricePoint(
 function getHistoryForDatabaseStock(
   stock: DatabaseStock,
   prices: DatabasePrice[],
-  throughDay: number
+  throughDay: number,
+  marketSeed: string
 ) {
   const storedHistory = prices
     .filter((price) => relatedSymbol(price.stocks) === stock.symbol)
@@ -368,7 +356,7 @@ function getHistoryForDatabaseStock(
   let previousClose = lastStoredPoint.closePrice;
 
   for (let day = lastStoredPoint.gameDay + 1; day <= safeGameDay; day += 1) {
-    const point = generateContinuationPricePoint(stock, previousClose, day);
+    const point = generateContinuationPricePoint(stock, previousClose, day, marketSeed);
     generatedHistory.push(point);
     previousClose = point.closePrice;
   }
@@ -419,13 +407,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<GameSession | null>(null);
   const [account, setAccount] = useState<TradingAccount>(defaultAccount);
   const [gameMode, setGameModeState] = useState<GameMode>("infinite");
-  const [marketSeed, setMarketSeed] = useState(() => (
-    normalizeMarketSeed(localStorage.getItem(GAME_SEED_STORAGE_KEY))
-  ));
-  const [gameDay, setGameDayState] = useState(() => {
-    const saved = Number(localStorage.getItem(GAME_DAY_STORAGE_KEY));
-    return normalizeGameDay(saved || 1);
-  });
+  // Seeded from neutral defaults, never from the unscoped GAME_*_STORAGE_KEY
+  // entries: those are shared by every account on this browser, so reading them
+  // here handed the next player the previous player's day and market seed for
+  // the first render -- before loadOrCreateSession() replaced them. Hooks that
+  // key off gameDay (alerts, streaks, the rival) ran against that stale day.
+  // loadOrCreateSession() is the only source of real progress; until it lands,
+  // day 1 on the default seed is the correct neutral state.
+  const [marketSeed, setMarketSeed] = useState(() => normalizeMarketSeed(null));
+  const [gameDay, setGameDayState] = useState(1);
   const [databaseStocks, setDatabaseStocks] = useState<DatabaseStock[]>([]);
   const [databaseEvents, setDatabaseEvents] = useState<DatabaseEvent[]>([]);
   const [databasePrices, setDatabasePrices] = useState<DatabasePrice[]>([]);
@@ -664,7 +654,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return databaseStocks
       .filter((stock) => stock.is_active)
       .map((stock) => {
-        const history = getHistoryForDatabaseStock(stock, databasePrices, gameDay);
+        const history = getHistoryForDatabaseStock(stock, databasePrices, gameDay, marketSeed);
         return mapStockFromHistory(stock, history);
       });
   }, [databasePrices, databaseStocks, gameDay, gameMode, marketSeed]);
@@ -688,7 +678,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       (item) => item.symbol.toLowerCase() === symbol.toLowerCase()
     );
 
-    return stock ? getHistoryForDatabaseStock(stock, databasePrices, gameDay) : [];
+    return stock ? getHistoryForDatabaseStock(stock, databasePrices, gameDay, marketSeed) : [];
   }, [databasePrices, databaseStocks, gameDay, gameMode, marketSeed]);
 
   const getStock = useCallback(
@@ -703,11 +693,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       return getRelatedNewsBySymbol(symbol, gameDay, marketSeed);
     }
 
+    // Ascending, matching getRelatedNewsBySymbol's day 1..gameDay loop above.
+    // StockDetails renders relatedNews.slice(-8) -- the TAIL -- so a descending
+    // sort here silently showed the eight OLDEST stories in infinite mode while
+    // limited_30 showed the eight newest. Sorted explicitly rather than relying
+    // on the .order("game_day") in the fetch 250 lines away.
     return databaseEvents
       .filter((event) => event.game_day <= gameDay)
       .map(mapDatabaseEvent)
       .filter((event) => event.relatedTickers.includes(symbol))
-      .sort((a, b) => b.gameDay - a.gameDay);
+      .sort((a, b) => a.gameDay - b.gameDay);
   }, [databaseEvents, gameDay, gameMode, marketSeed]);
 
   const setGameDay = useCallback(async (

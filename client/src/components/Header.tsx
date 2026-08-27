@@ -56,15 +56,18 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const unreadCount = useUnreadInboxCount();
-  const { totalXP } = useAchievements();
+  const { totalXP, confirmedXP } = useAchievements();
   const { gameMode, sessionId, reloadSession } = useGame();
   const playerLevel = React.useMemo(() => getPlayerLevel(totalXP), [totalXP]);
   const [levelReward, setLevelReward] = React.useState<{ level: number; amount: number } | null>(null);
   const processedXpRef = React.useRef<number | null>(null);
 
+  // Keyed on confirmedXP, not totalXP: the reward RPC recomputes the level from
+  // user_achievement_unlocks, so firing it on optimistic XP raced the upsert
+  // that writes the row it reads.
   React.useEffect(() => {
-    if (!user || !sessionId || processedXpRef.current === totalXP) return;
-    processedXpRef.current = totalXP;
+    if (!user || !sessionId || processedXpRef.current === confirmedXP) return;
+    processedXpRef.current = confirmedXP;
 
     void (async () => {
       const { data, error } = await supabase.rpc("process_level_cash_rewards", {
@@ -82,7 +85,7 @@ const Header: React.FC = () => {
         setLevelReward({ level: Number(result.level), amount });
       }
     })();
-  }, [gameMode, reloadSession, sessionId, totalXP, user]);
+  }, [gameMode, reloadSession, sessionId, confirmedXP, user]);
 
   const isActive = (to: string) => pathname === to || (to !== "/" && pathname.startsWith(to));
 

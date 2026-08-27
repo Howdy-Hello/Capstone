@@ -156,7 +156,15 @@ export default function SaveLoad() {
         return;
       }
 
-      await trading.setGameDay(slot.game_day);
+      // Deliberately no setGameDay() here. restore_save_slot has already
+      // written current_day, game_mode, game_seed, cash and holdings
+      // authoritatively, and reloadSession() pulls all of it back into React.
+      // Calling setGameDay would undo the restore: it clamps against the
+      // PRE-restore gameMode still in React state (a day-90 infinite save
+      // loaded while in limited_30 collapses to day 30) and forwards that
+      // stale mode to advance_game_day, which overwrites the mode the RPC just
+      // set and bills every weekly cycle between bills_paid_through_day and
+      // the restored day in one lump against the restored cash.
       await trading.reloadSession();
       setMessage({ text: `Loaded "${slot.slot_name}". Resuming from Day ${slot.game_day}.`, severity: "success" });
       setTimeout(() => navigate("/game"), 800);

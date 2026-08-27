@@ -88,6 +88,21 @@ app.use('/api', (_req: Request, res: Response) => {
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Unhandled request error:', err);
   if (res.headersSent) return;
+
+  // body-parser reports malformed JSON as 400 and an oversized body as 413.
+  // Reporting those as 500 tells the caller the server broke when the request
+  // was at fault. Only 4xx is trusted from the error object; any other value
+  // (including a 5xx a dependency invented) is an internal fault.
+  const status = (err as { status?: unknown; statusCode?: unknown } | null)?.status
+    ?? (err as { statusCode?: unknown } | null)?.statusCode;
+
+  if (typeof status === 'number' && status >= 400 && status < 500) {
+    res.status(status).json({
+      message: status === 413 ? 'Request body too large.' : 'Bad request.',
+    });
+    return;
+  }
+
   res.status(500).json({ message: 'Internal server error.' });
 });
 

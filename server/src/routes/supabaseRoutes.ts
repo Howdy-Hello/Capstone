@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { supabaseHandler } from '../lib/supabaseServer';
+import { supabaseErrorResponse, supabaseHandler } from '../lib/supabaseServer';
 import { rateLimit } from '../middleware/rateLimit';
 
 const router = Router();
@@ -39,7 +39,7 @@ router.get('/me', authLimiter, supabaseHandler({ auth: 'user' }, async (_req, ct
     .maybeSingle();
 
   if (error) {
-    return Response.json({ message: error.message }, { status: 500 });
+    return supabaseErrorResponse('GET /me', error);
   }
 
   return Response.json({
@@ -84,7 +84,7 @@ router.delete('/account', deleteAccountLimiter, supabaseHandler({ auth: 'user' }
   const { error: deleteError } = await ctx.supabaseAdmin.auth.admin.deleteUser(userId);
 
   if (deleteError) {
-    return Response.json({ message: deleteError.message }, { status: 500 });
+    return supabaseErrorResponse('DELETE /account', deleteError);
   }
 
   return Response.json({ deleted: true });
@@ -96,7 +96,7 @@ router.get('/admin/profile-count', supabaseHandler({ auth: 'secret' }, async (_r
     .select('id', { count: 'exact', head: true });
 
   if (error) {
-    return Response.json({ message: error.message }, { status: 500 });
+    return supabaseErrorResponse('GET /admin/profile-count', error);
   }
 
   return Response.json({ count });

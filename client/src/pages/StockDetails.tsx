@@ -24,7 +24,7 @@ import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 
 import { Stock, StockPriceHistory } from "../data/mockStocks";
-import { getSharesOwned } from "../data/tradingState";
+import { getMaxAffordableQuantity, getSharesOwned } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
 import { AlertCondition, describeAlert, useStockAlerts } from "../hooks/useStockAlerts";
 import { useAdvisor } from "../hooks/useAdvisor";
@@ -397,7 +397,11 @@ export default function StockDetails() {
                       <AddIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                     <Button size="small"
-                      onClick={() => setQuantity(stock.currentPrice > 0 ? Math.max(1, Math.floor(trading.account.cash / stock.currentPrice)) : 1)}
+                      onClick={() => setQuantity(Math.max(1, getMaxAffordableQuantity(
+                        trading.account.cash,
+                        stock.currentPrice,
+                        (q) => trading.getTradeQuote(stock, "buy", q).total
+                      )))}
                       sx={{ color: D.brandText, fontSize: 11, fontWeight: 800, textTransform: "none", px: 1, minWidth: "auto" }}>
                       Max
                     </Button>

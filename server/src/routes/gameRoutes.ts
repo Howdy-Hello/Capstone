@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { supabaseHandler } from '../lib/supabaseServer';
+import { supabaseErrorResponse, supabaseHandler } from '../lib/supabaseServer';
 import { validateBody } from '../middleware/validate';
 import { rateLimit } from '../middleware/rateLimit';
 
@@ -43,7 +43,7 @@ router.get('/leaderboard', supabaseHandler({ auth: 'none' }, async (req, ctx) =>
   const limit = resolveLeaderboardLimit(new URL(req.url).searchParams.get('limit'));
 
   const { data, error } = await ctx.supabaseAdmin.rpc('get_leaderboard', { p_limit: limit });
-  if (error) return Response.json({ message: error.message }, { status: 500 });
+  if (error) return supabaseErrorResponse('GET /leaderboard', error);
 
   return Response.json({ leaderboard: data ?? [] });
 }));
@@ -68,7 +68,7 @@ router.post('/leaderboard/submit', writeLimiter, validateBody({
     p_day: normalizeDay(body?.day),
   });
 
-  if (error) return Response.json({ message: error.message }, { status: 500 });
+  if (error) return supabaseErrorResponse('POST /leaderboard/submit', error);
   return Response.json({ entry: data });
 }));
 
@@ -110,7 +110,7 @@ router.post('/game/sync', writeLimiter, validateBody({
     .select('id');
 
   if (sessionError) {
-    return Response.json({ message: sessionError.message }, { status: 500 });
+    return supabaseErrorResponse('POST /game/sync (session update)', sessionError);
   }
 
   if (!updated || updated.length === 0) {
@@ -127,7 +127,7 @@ router.post('/game/sync', writeLimiter, validateBody({
   });
 
   if (scoreError) {
-    return Response.json({ message: scoreError.message }, { status: 500 });
+    return supabaseErrorResponse('POST /game/sync (score)', scoreError);
   }
 
   return Response.json({ ok: true, entry });
