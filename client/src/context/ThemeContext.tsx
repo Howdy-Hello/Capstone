@@ -99,6 +99,34 @@ const makePalette = (
   };
 };
 
+const HIGH_CONTRAST_WHITE: DesignColors = {
+  bg: "#FFFFFF",
+  surface: "#FFFFFF",
+  elevated: "#F3F4F6",
+  overlay: "#E5E7EB",
+  border: "#374151",
+  borderHi: "#111827",
+  green: "#047857",
+  greenBg: "#ECFDF5",
+  greenBd: "#047857",
+  greenText: "#065F46",
+  red: "#B91C1C",
+  redBg: "#FEF2F2",
+  redBd: "#B91C1C",
+  redText: "#991B1B",
+  amber: "#92400E",
+  amberBg: "#FFFBEB",
+  brand: "#1D4ED8",
+  brandMid: "#1E40AF",
+  brandBg: "#DBEAFE",
+  brandBd: "#1D4ED8",
+  brandText: "#1E40AF",
+  t1: "#000000",
+  t2: "#1F2937",
+  t3: "#374151",
+  t4: "#4B5563",
+};
+
 // Every token here clears WCAG AAA (>= 7:1) against the white background,
 // including the faintest tier: t4 measures 7.73:1, where the ordinary light
 // presets put t4 at 2.56:1 (an outright failure) and t3 at 4.76:1. The
@@ -209,6 +237,11 @@ export const themePresets: ThemePreset[] = [
       elevated: "#F1F5F9",
       brand: "#2563EB",
     }, "light"),
+  },
+  {
+    id: "contrast-white",
+    name: "High Contrast White",
+    colors: HIGH_CONTRAST_WHITE,
   },
   {
     id: "mint",
