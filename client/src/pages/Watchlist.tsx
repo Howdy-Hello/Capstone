@@ -29,7 +29,9 @@ export default function Watchlist() {
             {trading.watchlistStocks.map((stock) => {
               const up = stock.dayChangePercent >= 0;
               const owned = getSharesOwned(trading.account, stock.symbol);
-              const comparison = trading.watchlistStocks.find((item) => item.symbol !== stock.symbol) ?? trading.stocks.find((item) => item.symbol !== stock.symbol);
+              // Only the left side is pinned; /compare resolves the counterpart with
+              // the same rules it uses everywhere else, and offers a picker to change it.
+              const canCompare = trading.stocks.some((item) => item.symbol !== stock.symbol);
               return (
                 <Grid item xs={12} sm={6} md={4} key={stock.symbol}>
                   <Box sx={{ ...CARD, p: 2.5, height: "100%" }}>
@@ -46,7 +48,7 @@ export default function Watchlist() {
                     <Typography sx={{ color: D.t3, fontSize: 12, mb: 2 }}>{owned ? `${owned} shares owned` : "Not owned"}</Typography>
                     <Stack direction="row" spacing={1}>
                       <Button component={RouterLink} to={`/stocks/${stock.symbol}`} size="small" sx={{ color: D.brandText, textTransform: "none", fontWeight: 800 }}>Details</Button>
-                      {comparison && <Button component={RouterLink} to={`/compare?left=${stock.symbol}&right=${comparison.symbol}`} size="small" sx={{ color: D.greenText, textTransform: "none", fontWeight: 800 }}>Compare</Button>}
+                      {canCompare && <Button component={RouterLink} to={`/compare?left=${stock.symbol}`} size="small" sx={{ color: D.greenText, textTransform: "none", fontWeight: 800 }}>Compare</Button>}
                       <Button size="small" onClick={() => trading.removeFromWatchlist(stock)} sx={{ ml: "auto!important", color: D.t3, textTransform: "none" }}>Remove</Button>
                     </Stack>
                   </Box>

@@ -59,19 +59,32 @@ function getRiskScore(r: Stock["riskLevel"]) {
 }
 
 function Candlestick({ x, y, width, height, payload }: any) {
-  const up = payload.closePrice >= payload.openPrice;
+  if (!payload || typeof x !== "number" || typeof y !== "number") return null;
+  const { openPrice, closePrice, highPrice, lowPrice } = payload;
+  if ([openPrice, closePrice, highPrice, lowPrice].some((v) => typeof v !== "number" || !Number.isFinite(v))) return null;
+
+  const up = closePrice >= openPrice;
   const color = up ? D.green : D.red;
-  const range = payload.highPrice - payload.lowPrice || 1;
-  const openY = y + ((payload.highPrice - payload.openPrice) / range) * height;
-  const closeY = y + ((payload.highPrice - payload.closePrice) / range) * height;
-  const bodyY = Math.min(openY, closeY);
-  const bodyHeight = Math.max(2, Math.abs(closeY - openY));
+  const span = Math.max(0, height);
+  const range = highPrice - lowPrice;
   const candleWidth = Math.max(3, Math.min(width * 0.65, 18));
   const centerX = x + width / 2;
 
+  // A flat day has no high-low range to scale against, so the band collapses to
+  // a single pixel row. Draw a doji tick at the close instead of dividing by a
+  // fake range and landing open and close on top of each other.
+  if (range <= 0 || span <= 0) {
+    return <rect x={centerX - candleWidth / 2} y={y} width={candleWidth} height={2} fill={color} rx={1} />;
+  }
+
+  const openY = y + ((highPrice - openPrice) / range) * span;
+  const closeY = y + ((highPrice - closePrice) / range) * span;
+  const bodyY = Math.min(openY, closeY);
+  const bodyHeight = Math.max(2, Math.abs(closeY - openY));
+
   return (
     <g>
-      <line x1={centerX} x2={centerX} y1={y} y2={y + height} stroke={color} strokeWidth={1.5} />
+      <line x1={centerX} x2={centerX} y1={y} y2={y + span} stroke={color} strokeWidth={1.5} />
       <rect x={centerX - candleWidth / 2} y={bodyY} width={candleWidth} height={bodyHeight} fill={color} rx={1} />
     </g>
   );

@@ -37,7 +37,12 @@ export const LIMITED_GAME_DAYS = 30;
 // generated in a loop per stock, so an out-of-range day (corrupted or
 // hand-edited localStorage) would otherwise lock up the tab.
 export const MAX_GAME_DAY = 10_000;
-export const WEEKLY_BILL_TOTAL = 350;
+export const WEEKLY_BILL_ITEMS = [
+  { label: "Rent", amount: 200, detail: "Housing for one weekly cycle" },
+  { label: "Food", amount: 100, detail: "Groceries and everyday meals" },
+  { label: "Utilities", amount: 50, detail: "Power, water, and connectivity" },
+] as const;
+export const WEEKLY_BILL_TOTAL = WEEKLY_BILL_ITEMS.reduce((sum, item) => sum + item.amount, 0);
 export type GameMode = "infinite" | "limited_30";
 
 export type BillCharge = {

@@ -18,15 +18,12 @@ import CodeIcon from "@mui/icons-material/Code";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AllInclusiveIcon from "@mui/icons-material/AllInclusive";
 import TimerIcon from "@mui/icons-material/Timer";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import FlagIcon from "@mui/icons-material/Flag";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
 import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
@@ -36,8 +33,7 @@ import {
   getNewsCredibility, getOpeningStoryDays, STORY_DAYS, Stock,
 } from "../data/mockStocks";
 import { getMaxAffordableQuantity, getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
-import { getPlayerLevel } from "../data/levelSystem";
-import { GameMode, useGame, WEEKLY_BILL_TOTAL } from "../context/GameContext";
+import { GameMode, useGame } from "../context/GameContext";
 import { useAchievements } from "../hooks/useAchievements";
 import { useDailyGoals } from "../hooks/useDailyGoals";
 import { useStockAlerts } from "../hooks/useStockAlerts";
@@ -82,19 +78,16 @@ export default function Game() {
     queuedNotificationCount,
     dismissAchievementNotification,
     achievementIds,
-    totalXP,
     devUnlockAchievements,
     devClearAchievements,
   } = useAchievements();
-  const dailyGoals = useDailyGoals();
-  const missions = useMissions();
+  // Goals and missions are presented on /game/goals, but their progress is
+  // earned here, so the hooks stay mounted for the completions they record.
+  useDailyGoals();
+  useMissions();
   const rival = useRivalTrader();
   useStockAlerts();
   const level = useLevel();
-  const [missionsHidden, setMissionsHidden] = useState(
-    () => localStorage.getItem("stockpilot-missions-hidden") === "1"
-  );
-  const playerLevel = useMemo(() => getPlayerLevel(totalXP), [totalXP]);
   const {
     gameDay, gameMode, isGameComplete, maxGameDay, setGameDay,
     stocks, news: todayNews, syncSessionValue,
@@ -113,12 +106,6 @@ export default function Game() {
   const openingStories = useMemo(() => getOpeningStoryDays(), []);
   const portfolioValue = useMemo(() => getPortfolioValue(trading.account, stocks), [trading.account, stocks]);
   const netWorth = useMemo(() => getNetWorth(trading.account, stocks), [trading.account, stocks]);
-  const nextBillDay = (Math.floor(gameDay / 7) + 1) * 7;
-  const bills = {
-    billIntervalDays: 7,
-    nextBillDay,
-    nextBillAmount: WEEKLY_BILL_TOTAL,
-  };
   const portfolioPnL = useMemo(() =>
     trading.account.holdings.reduce((sum, h) => {
       const live = stocks.find((s) => s.symbol === h.symbol);
@@ -613,22 +600,6 @@ export default function Game() {
           ))}
         </Grid>
 
-        {/* Trade message */}
-        {false && <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.amberBg, border: "1px solid rgba(245,158,11,0.24)" }}>
-          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1}>
-            <Stack direction="row" spacing={1.2} alignItems="center">
-              <ReceiptLongIcon sx={{ color: D.amber, fontSize: 20 }} />
-              <Box>
-                <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1 }}>Weekly living expenses</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t2 }}>Rent $200 · Food $100 · Utilities $50</Typography>
-              </Box>
-            </Stack>
-            <Typography sx={{ color: D.amber, fontFamily: MONO, fontWeight: 900, fontSize: 12 }}>
-              {money(WEEKLY_BILL_TOTAL)} DUE DAY {nextBillDay}
-            </Typography>
-          </Stack>
-        </Box>}
-
         <MotionPresence initial={false}>
           {trading.latestBill && (
             <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
@@ -857,185 +828,8 @@ export default function Game() {
                 </Box>
               </Box>
 
-              {/* Watchlist */}
-              {false && <>
-              <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <StarIcon sx={{ fontSize: 18, color: D.amber }} />
-                    <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Watchlist</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    {trading.watchlistStocks.length >= 2 && (
-                      <Button component={RouterLink} to={`/compare?left=${trading.watchlistStocks[0].symbol}&right=${trading.watchlistStocks[1].symbol}`} size="small"
-                        sx={{ color: D.brandText, fontSize: 11, fontWeight: 800, textTransform: "none", px: 0.5 }}>
-                        Compare
-                      </Button>
-                    )}
-                    <Chip label={`${trading.watchlistStocks.length}`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 900, fontSize: 10 }} />
-                  </Stack>
-                </Stack>
-                <Box sx={{ p: 2.5 }}>
-                  {trading.watchlistStocks.length === 0 ? (
-                    <Box sx={{ textAlign: "center", py: 1.5 }}>
-                      <Typography sx={{ fontSize: 13, color: D.t3, mb: 1 }}>No watched stocks yet.</Typography>
-                      <Typography sx={{ fontSize: 12, color: D.t3 }}>Use the star beside a ticker to track it without buying shares.</Typography>
-                    </Box>
-                  ) : (
-                    <Stack spacing={1}>
-                      {trading.watchlistStocks.map((watched) => {
-                        const up = watched.dayChangePercent >= 0;
-                        const sharesOwned = getSharesOwned(trading.account, watched.symbol);
-                        return (
-                          <Box key={watched.symbol} sx={{ p: 1.6, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                              <Box sx={{ minWidth: 0 }}>
-                                <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: D.t1, fontFamily: MONO }}>{watched.symbol}</Typography>
-                                <Typography sx={{ fontSize: 11.5, color: D.t3 }} noWrap>{watched.name}</Typography>
-                                <Typography sx={{ fontSize: 11, color: D.t3 }}>{sharesOwned > 0 ? `${sharesOwned} owned` : "Not owned"}</Typography>
-                              </Box>
-                              <Box sx={{ textAlign: "right", flexShrink: 0 }}>
-                                <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1, fontFamily: MONO }}>{money(watched.currentPrice)}</Typography>
-                                <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: up ? D.greenText : D.redText }}>
-                                  {pct(watched.dayChangePercent)}
-                                </Typography>
-                              </Box>
-                            </Stack>
-                            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                              <Button size="small" component={RouterLink} to={`/compare?left=${watched.symbol}&right=${trading.watchlistStocks.find((item) => item.symbol !== watched.symbol)?.symbol ?? stocks.find((item) => item.symbol !== watched.symbol)?.symbol ?? watched.symbol}`}
-                                sx={{ color: D.greenText, fontSize: 11, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto" }}>
-                                Compare
-                              </Button>
-                              <Button size="small" onClick={() => navigate(`/stocks/${watched.symbol}`, { state: { gameDay } })}
-                                sx={{ color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto" }}>
-                                Details
-                              </Button>
-                              <Button size="small" onClick={() => trading.removeFromWatchlist(watched)}
-                                sx={{ color: D.t3, fontSize: 11, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto" }}>
-                                Remove
-                              </Button>
-                            </Stack>
-                          </Box>
-                        );
-                      })}
-                    </Stack>
-                  )}
-                </Box>
-              </Box>
-              </>}
 
-              {/* Beginner missions */}
-              {false && missions.loaded && !missionsHidden && missions.completedCount < missions.totalCount && (
-                <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <FlagIcon sx={{ fontSize: 18, color: D.greenText }} />
-                      <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Getting Started</Typography>
-                    </Stack>
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <Chip label={`${missions.completedCount}/${missions.totalCount}`} size="small"
-                        sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 900, fontSize: 10 }} />
-                      <IconButton size="small" title="Hide checklist" aria-label="Hide beginner checklist"
-                        onClick={() => { localStorage.setItem("stockpilot-missions-hidden", "1"); setMissionsHidden(true); }}
-                        sx={{ color: D.t3, p: 0.4, "&:hover": { color: D.t1 } }}>
-                        <CloseIcon sx={{ fontSize: 14 }} />
-                      </IconButton>
-                    </Stack>
-                  </Stack>
-                  <Box sx={{ p: 2.5 }}>
-                    <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 1.5 }}>A quick checklist to learn the ropes.</Typography>
-                    <Stack spacing={1.2}>
-                      {missions.missions.map((m) => (
-                        <Box key={m.id} sx={{ p: 1.6, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${m.done ? D.greenBd : D.border}` }}>
-                          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
-                            <Stack direction="row" spacing={0.8} alignItems="center">
-                              {m.done && <CheckCircleIcon sx={{ fontSize: 14, color: D.greenText }} />}
-                              <Typography sx={{ fontSize: 13, fontWeight: 800, color: m.done ? D.greenText : D.t1 }}>{m.title}</Typography>
-                            </Stack>
-                            <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: D.t3, fontFamily: MONO }}>+{m.rewardXp} XP</Typography>
-                          </Stack>
-                          <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 0.8 }}>{m.description}</Typography>
-                          <LinearProgress variant="determinate" value={m.progress}
-                            sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: m.done ? D.green : D.brand, borderRadius: 99 } }} />
-                        </Box>
-                      ))}
-                    </Stack>
-                  </Box>
-                </Box>
-              )}
 
-              {/* Daily goals */}
-              {false && <>
-              <Box sx={{ ...CARD, p: 2.5 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.2 }}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <WorkspacePremiumIcon sx={{ color: D.brandText, fontSize: 20 }} />
-                    <Box>
-                      <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>PLAYER LEVEL</Typography>
-                      <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>Level {playerLevel.level}</Typography>
-                    </Box>
-                  </Stack>
-                  <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>
-                    {playerLevel.xpIntoLevel}/{playerLevel.xpForNextLevel} XP
-                  </Typography>
-                </Stack>
-                <LinearProgress variant="determinate" value={playerLevel.progress}
-                  sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
-                <Typography sx={{ fontSize: 11, color: D.t3, mt: 1 }}>
-                  {playerLevel.xpForNextLevel - playerLevel.xpIntoLevel} XP until Level {playerLevel.level + 1} · {totalXP} total XP
-                </Typography>
-              </Box>
-
-              <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <CheckCircleIcon sx={{ fontSize: 18, color: D.brandText }} />
-                    <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Daily Goals</Typography>
-                  </Stack>
-                  <Chip label={`${dailyGoals.completedCount}/${dailyGoals.goals.length}`} size="small"
-                    sx={{ bgcolor: dailyGoals.completedCount === dailyGoals.goals.length ? D.greenBg : D.overlay, color: dailyGoals.completedCount === dailyGoals.goals.length ? D.greenText : D.t3, fontWeight: 900, fontSize: 10 }} />
-                </Stack>
-                <Box sx={{ p: 2.5 }}>
-                  <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 1.5 }}>Fresh objectives each day. Day {gameDay} · {dailyGoals.totalXp} XP earned.</Typography>
-                  <Stack spacing={1.2}>
-                    {dailyGoals.goals.map((g) => (
-                      <Box key={g.id} sx={{ p: 1.6, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${g.done ? D.greenBd : D.border}` }}>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
-                          <Stack direction="row" spacing={0.8} alignItems="center">
-                            {g.done && <CheckCircleIcon sx={{ fontSize: 14, color: D.greenText }} />}
-                            <Typography sx={{ fontSize: 13, fontWeight: 800, color: g.done ? D.greenText : D.t1 }}>{g.title}</Typography>
-                          </Stack>
-                          <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: D.t3, fontFamily: MONO }}>+{g.rewardXp} XP</Typography>
-                        </Stack>
-                        <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 0.8 }}>{g.description}</Typography>
-                        <LinearProgress variant="determinate" value={g.progress}
-                          sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: g.done ? D.green : D.brand, borderRadius: 99 } }} />
-                      </Box>
-                    ))}
-                  </Stack>
-                </Box>
-              </Box>
-
-              {/* Next bill */}
-              <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.8 }}>
-                  <ReceiptLongIcon sx={{ fontSize: 18, color: D.redText }} />
-                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Living Costs</Typography>
-                </Stack>
-                <Typography sx={{ fontSize: 13, color: D.t3, mb: 1.5 }}>
-                  Rent & expenses come due every {bills.billIntervalDays} days, scaled to your net worth.
-                </Typography>
-                <Stack direction="row" justifyContent="space-between" alignItems="center"
-                  sx={{ p: 1.6, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}` }}>
-                  <Typography sx={{ fontSize: 12.5, color: D.t2 }}>
-                    Next bill: Day {bills.nextBillDay}
-                  </Typography>
-                  <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.redText, fontFamily: MONO }}>
-                    ~{money(bills.nextBillAmount)}
-                  </Typography>
-                </Stack>
-              </Box>
-              </>}
 
               {/* Rival trader */}
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>

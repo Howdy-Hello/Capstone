@@ -3,7 +3,7 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { useGame, WEEKLY_BILL_TOTAL } from "../context/GameContext";
+import { useGame, WEEKLY_BILL_ITEMS, WEEKLY_BILL_TOTAL } from "../context/GameContext";
 import { CARD, D, MONO, money } from "../theme/design";
 
 export default function LivingCosts() {
@@ -13,11 +13,7 @@ export default function LivingCosts() {
   const cashAfterBill = Math.max(0, trading.account.cash - WEEKLY_BILL_TOTAL);
   const shortfall = Math.max(0, WEEKLY_BILL_TOTAL - trading.account.cash);
   const coverage = Math.min(100, (trading.account.cash / WEEKLY_BILL_TOTAL) * 100);
-  const expenses = [
-    { label: "Rent", amount: 200, detail: "Housing for one weekly cycle" },
-    { label: "Food", amount: 100, detail: "Groceries and everyday meals" },
-    { label: "Utilities", amount: 50, detail: "Power, water, and connectivity" },
-  ];
+  const expenses = WEEKLY_BILL_ITEMS;
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh", py: { xs: 3, md: 5 } }}>

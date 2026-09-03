@@ -43,5 +43,9 @@ export async function recordTradeJournalEntry(params: {
     horizon_days: Math.min(365, Math.max(1, params.journal.horizonDays)),
     exit_plan: params.journal.exitPlan.trim().slice(0, 500),
   });
-  return !error;
+  if (error) {
+    console.error("Failed to record trade journal entry", error);
+    return false;
+  }
+  return true;
 }
