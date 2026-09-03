@@ -20,6 +20,9 @@ import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOu
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import SportsMmaOutlinedIcon from "@mui/icons-material/SportsMmaOutlined";
+import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
+import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useUnreadInboxCount } from "../lib/inbox";
@@ -32,11 +35,18 @@ import { supabase } from "../lib/supabase";
 
 const nav = [
   { to: "/dashboard",   label: "Dashboard",   icon: <DashboardOutlinedIcon sx={{ fontSize: 17 }} /> },
-  { to: "/game",        label: "Game",         icon: <SportsEsportsOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/leaderboard", label: "Leaderboard",  icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/achievements", label: "Achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/learn",       label: "Learn",        icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/inbox",       label: "Inbox",        icon: <MailOutlineIcon sx={{ fontSize: 17 }} /> },
+];
+
+const gameMenu = [
+  { to: "/game", label: "Market", icon: <SportsEsportsOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/game/watchlist", label: "Watchlist", icon: <StarBorderOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/level", label: "Player Level", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/game/goals", label: "Goals & Missions", icon: <FlagOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/game/living-costs", label: "Living Costs", icon: <ReceiptLongOutlinedIcon sx={{ fontSize: 17 }} /> },
 ];
 
 const accountMenu = [
@@ -52,6 +62,7 @@ const accountMenu = [
 const Header: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [menuAnchor, setMenuAnchor] = React.useState<null | HTMLElement>(null);
+  const [gameAnchor, setGameAnchor] = React.useState<null | HTMLElement>(null);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
@@ -136,11 +147,31 @@ const Header: React.FC = () => {
 
           {/* Desktop nav */}
           <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 0.5, flex: 1 }}>
+            <Box sx={{ order: 1, display: "flex", alignItems: "center", borderRadius: 1.5, bgcolor: pathname === "/level" || pathname.startsWith("/game") ? D.overlay : "transparent", "&:hover": { bgcolor: D.overlay } }}>
+              <Button component={RouterLink} to="/game" size="small"
+                sx={{ minWidth: 0, color: pathname === "/level" || pathname.startsWith("/game") ? D.t1 : D.t2, fontWeight: pathname === "/level" || pathname.startsWith("/game") ? 800 : 600, fontSize: 13.5, textTransform: "none", pl: 1.5, pr: 0.6, py: 0.7, borderRadius: "6px 0 0 6px", "&:hover": { color: D.t1, bgcolor: "transparent" } }}>
+                Game
+              </Button>
+              <IconButton size="small" onClick={(event) => setGameAnchor(event.currentTarget)} aria-label="Open Game menu" aria-haspopup="menu" aria-expanded={Boolean(gameAnchor)}
+                sx={{ color: pathname === "/level" || pathname.startsWith("/game") ? D.t1 : D.t2, p: 0.55, borderRadius: "0 6px 6px 0", "&:hover": { color: D.t1, bgcolor: "transparent" } }}>
+                <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Box>
+            <Menu anchorEl={gameAnchor} open={Boolean(gameAnchor)} onClose={() => setGameAnchor(null)}
+              PaperProps={{ sx: { bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, minWidth: 210, mt: 0.5 } }}>
+              {gameMenu.map((item) => (
+                <MenuItem key={item.to} selected={pathname === item.to} onClick={() => { setGameAnchor(null); navigate(item.to); }}
+                  sx={{ gap: 1.2, fontSize: 13, fontWeight: 700, color: D.t2, py: 1, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
+                  {item.icon}{item.label}
+                </MenuItem>
+              ))}
+            </Menu>
             {nav.map(({ to, label }) => {
               const active = isActive(to);
               return (
                 <Button key={to} component={RouterLink} to={to} size="small"
                   sx={{
+                    order: to === "/dashboard" ? 0 : 2,
                     color: active ? D.t1 : D.t2,
                     fontWeight: active ? 800 : 600,
                     fontSize: 13.5,
@@ -278,6 +309,15 @@ const Header: React.FC = () => {
           </Stack>
 
           <List disablePadding sx={{ "& .MuiListItemButton-root": { borderRadius: 1.5, mb: 0.3, px: 1.5, py: 0.9 } }}>
+            <Typography sx={{ px: 1.5, pt: 0.5, pb: 0.7, color: D.t3, fontSize: 10, fontWeight: 900, letterSpacing: 1 }}>GAME</Typography>
+            {gameMenu.map(({ to, label, icon }) => (
+              <ListItemButton key={to} component={RouterLink} to={to} onClick={() => setDrawerOpen(false)} selected={pathname === to}
+                sx={{ color: pathname === to ? D.t1 : D.t2, bgcolor: pathname === to ? D.overlay : "transparent", "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
+                <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>{icon}</ListItemIcon>
+                <ListItemText primary={label} primaryTypographyProps={{ fontWeight: 700, fontSize: 13.5 }} />
+              </ListItemButton>
+            ))}
+            <Divider sx={{ borderColor: D.border, my: 1 }} />
             {nav.map(({ to, label, icon }) => (
               <ListItemButton key={to} component={RouterLink} to={to} onClick={() => setDrawerOpen(false)} selected={isActive(to)}
                 sx={{ color: isActive(to) ? D.t1 : D.t2, bgcolor: isActive(to) ? D.overlay : "transparent", "&:hover": { color: D.t1, bgcolor: D.overlay }, "& .Mui-selected": {} }}>

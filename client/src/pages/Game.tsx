@@ -614,7 +614,7 @@ export default function Game() {
         </Grid>
 
         {/* Trade message */}
-        <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.amberBg, border: "1px solid rgba(245,158,11,0.24)" }}>
+        {false && <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.amberBg, border: "1px solid rgba(245,158,11,0.24)" }}>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1}>
             <Stack direction="row" spacing={1.2} alignItems="center">
               <ReceiptLongIcon sx={{ color: D.amber, fontSize: 20 }} />
@@ -627,7 +627,7 @@ export default function Game() {
               {money(WEEKLY_BILL_TOTAL)} DUE DAY {nextBillDay}
             </Typography>
           </Stack>
-        </Box>
+        </Box>}
 
         <MotionPresence initial={false}>
           {trading.latestBill && (
@@ -858,6 +858,7 @@ export default function Game() {
               </Box>
 
               {/* Watchlist */}
+              {false && <>
               <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                   <Stack direction="row" spacing={1} alignItems="center">
@@ -921,9 +922,10 @@ export default function Game() {
                   )}
                 </Box>
               </Box>
+              </>}
 
               {/* Beginner missions */}
-              {missions.loaded && !missionsHidden && missions.completedCount < missions.totalCount && (
+              {false && missions.loaded && !missionsHidden && missions.completedCount < missions.totalCount && (
                 <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
                   <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                     <Stack direction="row" spacing={1} alignItems="center">
@@ -963,6 +965,7 @@ export default function Game() {
               )}
 
               {/* Daily goals */}
+              {false && <>
               <Box sx={{ ...CARD, p: 2.5 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.2 }}>
                   <Stack direction="row" spacing={1} alignItems="center">
@@ -1032,6 +1035,7 @@ export default function Game() {
                   </Typography>
                 </Stack>
               </Box>
+              </>}
 
               {/* Rival trader */}
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>

@@ -310,7 +310,7 @@ const AuthPage: React.FC = () => {
                           sx={{ color: D.t3, p: 0.6, "&.Mui-checked": { color: D.brandText } }}
                         />
                       )}
-                      label={<Typography sx={{ fontSize: 12.5, color: D.t3 }}>Keep me signed in</Typography>}
+                      label={<Typography sx={{ fontSize: 12.5, color: D.t3 }}>Remember me</Typography>}
                       sx={{ ml: -0.5, mr: 0 }}
                     />
                     <Link component="button" type="button" underline="hover" onClick={() => setMode("reset")}

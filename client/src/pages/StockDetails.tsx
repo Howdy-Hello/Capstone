@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Box, Button, Chip, CircularProgress, Container, Divider, Grid, IconButton,
-  LinearProgress, MenuItem, Select, Stack, TextField, Typography,
+  LinearProgress, MenuItem, Select, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -11,7 +11,7 @@ import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
 } from "recharts";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -58,6 +58,42 @@ function getRiskScore(r: Stock["riskLevel"]) {
   return 34;
 }
 
+function Candlestick({ x, y, width, height, payload }: any) {
+  const up = payload.closePrice >= payload.openPrice;
+  const color = up ? D.green : D.red;
+  const range = payload.highPrice - payload.lowPrice || 1;
+  const openY = y + ((payload.highPrice - payload.openPrice) / range) * height;
+  const closeY = y + ((payload.highPrice - payload.closePrice) / range) * height;
+  const bodyY = Math.min(openY, closeY);
+  const bodyHeight = Math.max(2, Math.abs(closeY - openY));
+  const candleWidth = Math.max(3, Math.min(width * 0.65, 18));
+  const centerX = x + width / 2;
+
+  return (
+    <g>
+      <line x1={centerX} x2={centerX} y1={y} y2={y + height} stroke={color} strokeWidth={1.5} />
+      <rect x={centerX - candleWidth / 2} y={bodyY} width={candleWidth} height={bodyHeight} fill={color} rx={1} />
+    </g>
+  );
+}
+
+function CandleTooltip({ active, payload }: any) {
+  const candle = payload?.[0]?.payload as StockPriceHistory | undefined;
+  if (!active || !candle) return null;
+  const up = candle.closePrice >= candle.openPrice;
+  return (
+    <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 1.5, boxShadow: "0 10px 28px rgba(0,0,0,.35)" }}>
+      <Typography sx={{ color: D.t1, fontWeight: 900, fontSize: 12, mb: 0.7 }}>Day {candle.gameDay}</Typography>
+      {[['Open', candle.openPrice], ['High', candle.highPrice], ['Low', candle.lowPrice], ['Close', candle.closePrice]].map(([label, value]) => (
+        <Stack key={label} direction="row" justifyContent="space-between" spacing={2.5}>
+          <Typography sx={{ color: D.t3, fontSize: 11 }}>{label}</Typography>
+          <Typography sx={{ color: label === 'Close' ? (up ? D.greenText : D.redText) : D.t2, fontFamily: MONO, fontWeight: 800, fontSize: 11 }}>{money(Number(value))}</Typography>
+        </Stack>
+      ))}
+    </Box>
+  );
+}
+
 export default function StockDetails() {
   const reduceMotion = useReducedMotion();
   const { symbol } = useParams();
@@ -74,6 +110,7 @@ export default function StockDetails() {
   const [tradeThesis, setTradeThesis] = useState("");
   const [tradeExitPlan, setTradeExitPlan] = useState("");
   const [tradeHorizonDays, setTradeHorizonDays] = useState(3);
+  const [chartType, setChartType] = useState<"area" | "bar">("area");
 
   const journalInput = (): TradeJournalInput | undefined => (
     tradeThesis.trim() || tradeExitPlan.trim()
@@ -86,6 +123,7 @@ export default function StockDetails() {
 
   const stock = symbol ? trading.getStock(symbol) : undefined;
   const history = symbol ? trading.getHistory(symbol) : [];
+  const candleHistory = history.map((point) => ({ ...point, range: [point.lowPrice, point.highPrice] }));
   const relatedNews = symbol ? trading.getRelatedNews(symbol) : [];
 
   // Auto-dismiss trade message
@@ -246,27 +284,35 @@ export default function StockDetails() {
                   <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Price History</Typography>
                   <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Close prices up to Day {gameDay}.</Typography>
                 </Box>
-                <Chip label={`${history.length} data points`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontSize: 11 }} />
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <ToggleButtonGroup exclusive size="small" value={chartType} onChange={(_, value) => value && setChartType(value)} aria-label="Price chart type"
+                    sx={{ "& .MuiToggleButton-root": { color: D.t3, borderColor: D.border, px: 1.5, py: 0.45, fontSize: 11, fontWeight: 800, textTransform: "none", "&.Mui-selected": { color: D.brandText, bgcolor: D.brandBg }, "&.Mui-selected:hover": { bgcolor: D.brandBg } } }}>
+                    <ToggleButton value="area" aria-label="Area chart">Area</ToggleButton>
+                    <ToggleButton value="bar" aria-label="Candlestick chart">Candles</ToggleButton>
+                  </ToggleButtonGroup>
+                  <Chip label={`${history.length} data points`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontSize: 11 }} />
+                </Stack>
               </Stack>
               <Box sx={{ p: 2.5, height: 360 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={history}>
-                    <defs>
-                      <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor={D.brand} stopOpacity={0.35} />
-                        <stop offset="95%" stopColor={D.brand} stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
-                    <XAxis dataKey="gameDay" tickFormatter={(v) => `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 11 }} />
-                    <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 11 }} />
-                    <RTooltip
-                      contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }}
-                      formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "Close"]}
-                      labelFormatter={(l) => `Day ${l}`}
-                    />
-                    <Area type="monotone" dataKey="closePrice" stroke={D.brand} strokeWidth={2.5} fill="url(#priceFill)" dot={history.length <= 40} activeDot={{ r: 5, fill: D.brand }} />
-                  </AreaChart>
+                  {chartType === "area" ? (
+                    <AreaChart data={history}>
+                      <defs><linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={D.brand} stopOpacity={0.35} /><stop offset="95%" stopColor={D.brand} stopOpacity={0.02} /></linearGradient></defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
+                      <XAxis dataKey="gameDay" tickFormatter={(v) => `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 11 }} />
+                      <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 11 }} />
+                      <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "Close"]} labelFormatter={(l) => `Day ${l}`} />
+                      <Area type="monotone" dataKey="closePrice" stroke={D.brand} strokeWidth={2.5} fill="url(#priceFill)" dot={history.length <= 40} activeDot={{ r: 5, fill: D.brand }} />
+                    </AreaChart>
+                  ) : (
+                    <BarChart data={candleHistory} barCategoryGap="10%">
+                      <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
+                      <XAxis dataKey="gameDay" tickFormatter={(v) => `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 11 }} />
+                      <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 11 }} />
+                      <RTooltip cursor={{ fill: D.overlay }} content={<CandleTooltip />} />
+                      <Bar dataKey="range" shape={<Candlestick />} isAnimationActive={false} />
+                    </BarChart>
+                  )}
                 </ResponsiveContainer>
               </Box>
             </Box>

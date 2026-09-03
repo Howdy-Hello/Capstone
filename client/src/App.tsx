@@ -33,6 +33,9 @@ import Inbox from "./pages/Inbox";
 import Notifications from "./pages/Notifications";
 import { trackEvent } from "./lib/analytics";
 import Level from "./pages/Level";
+import Watchlist from "./pages/Watchlist";
+import GoalsMissions from "./pages/GoalsMissions";
+import LivingCosts from "./pages/LivingCosts";
 import { useTradeDebriefs } from "./hooks/useTradeDebriefs";
 
 const NotFound: React.FC = () => (
@@ -97,6 +100,9 @@ function AppLayout() {
           {/* Protected */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/game" element={<ProtectedRoute><Game /></ProtectedRoute>} />
+          <Route path="/game/watchlist" element={<ProtectedRoute><Watchlist /></ProtectedRoute>} />
+          <Route path="/game/goals" element={<ProtectedRoute><GoalsMissions /></ProtectedRoute>} />
+          <Route path="/game/living-costs" element={<ProtectedRoute><LivingCosts /></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
           <Route path="/rival" element={<ProtectedRoute><Rival /></ProtectedRoute>} />
           <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
