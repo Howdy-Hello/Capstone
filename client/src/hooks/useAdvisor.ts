@@ -1,16 +1,31 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { getNewsCredibility, MarketNews, Stock, StockPriceHistory } from "../data/mockStocks";
 import { pushNotification } from "../lib/notifications";
+import { addInboxMessage } from "../lib/inbox";
 
 // No LLM is wired into this project — the "advisor" is a rule-based read of
 // data already in the game state (momentum, fundamentals, risk, recent
 // credible news), purchasable with in-game cash since that's the only
 // currency the game has. One consult per stock per game day, to keep it a
 // deliberate purchase rather than something to spam.
-export const ADVISOR_COST = 25;
+export type AdvisorDefinition = {
+  id: string;
+  name: string;
+  role: string;
+  cost: number;
+  description: string;
+  features: string[];
+};
+
+export const ADVISORS: AdvisorDefinition[] = [
+  { id: "riley", name: "Riley", role: "Trading Intern", cost: 100, description: "A friendly guide for learning market fundamentals.", features: ["Basic metric explanations", "Risk-level warnings", "2-point stock reports"] },
+  { id: "morgan", name: "Morgan", role: "Market Analyst", cost: 350, description: "Researches momentum, fundamentals, and credible news.", features: ["Full stock reports", "Momentum analysis", "News credibility checks"] },
+  { id: "avery", name: "Avery", role: "Portfolio Manager", cost: 750, description: "Focuses on allocation, cash reserves, and concentration risk.", features: ["Full stock reports", "Portfolio perspective", "Living-cost awareness"] },
+  { id: "jordan", name: "Jordan", role: "Senior Strategist", cost: 1500, description: "The most complete assistant for experienced players.", features: ["Full stock reports", "Advanced risk context", "Decision-focused guidance"] },
+];
 
 export type AdvisorReport = {
   symbol: string;
@@ -18,6 +33,7 @@ export type AdvisorReport = {
   verdict: "Bullish" | "Neutral" | "Cautious";
   summary: string;
   points: string[];
+  advisorName: string;
 };
 
 function cooldownKey(userId: string, symbol: string) {
@@ -28,7 +44,8 @@ function buildReport(
   stock: Stock,
   history: StockPriceHistory[],
   relatedNews: MarketNews[],
-  gameDay: number
+  gameDay: number,
+  advisor: AdvisorDefinition,
 ): AdvisorReport {
   const points: string[] = [];
   let score = 0;
@@ -66,7 +83,7 @@ function buildReport(
   points.push(`Analyst consensus: ${analystRating}, P/E ${peRatio.toFixed(1)}, margin ${profitMargin.toFixed(1)}%.`);
 
   if (stock.riskLevel === "High") {
-    points.push(`Classified High risk (volatility ${(stock.volatility * 100).toFixed(1)}%) — expect bigger daily swings.`);
+    points.unshift(`Classified High risk (volatility ${(stock.volatility * 100).toFixed(1)}%) — expect bigger daily swings.`);
   }
 
   const recentCredible = relatedNews
@@ -87,16 +104,45 @@ function buildReport(
     ? `${stock.symbol} is showing more warning signs than positive signals right now.`
     : `${stock.symbol}'s signals are mixed — no strong lean either way.`;
 
-  return { symbol: stock.symbol, gameDay, verdict, summary, points: points.slice(0, 4) };
+  return { symbol: stock.symbol, gameDay, verdict, summary, points: points.slice(0, advisor.id === "riley" ? 2 : 4), advisorName: advisor.name };
+}
+
+export function ownershipKey(sessionId: string) {
+  return `stockpilot-advisors-${sessionId}`;
 }
 
 export function useAdvisor() {
   const { user } = useAuth();
-  const { account, gameDay, addCash, getHistory, getRelatedNews } = useGame();
+  const { account, gameDay, sessionId, addCash, getHistory, getRelatedNews } = useGame();
   const [report, setReport] = useState<AdvisorReport | null>(null);
   const [loading, setLoading] = useState(false);
+  const [ownedIds, setOwnedIds] = useState<string[]>([]);
 
-  const canAfford = account.cash >= ADVISOR_COST;
+  useEffect(() => {
+    if (!sessionId) return setOwnedIds([]);
+    try { setOwnedIds(JSON.parse(localStorage.getItem(ownershipKey(sessionId)) ?? "[]")); }
+    catch { setOwnedIds([]); }
+  }, [sessionId]);
+
+  const ownedAdvisors = useMemo(() => ADVISORS.filter((advisor) => ownedIds.includes(advisor.id)), [ownedIds]);
+  const activeAdvisor = ownedAdvisors[ownedAdvisors.length - 1] ?? null;
+
+  const hire = useCallback(async (advisor: AdvisorDefinition) => {
+    if (!user || !sessionId || advisor.id !== "riley" || ownedIds.includes(advisor.id) || account.cash < advisor.cost) return false;
+    await addCash(-advisor.cost);
+    const next = [...ownedIds, advisor.id];
+    localStorage.setItem(ownershipKey(sessionId), JSON.stringify(next));
+    setOwnedIds(next);
+    pushNotification({ kind: "advisor", title: `${advisor.name} joined your team`, description: `${advisor.role} hired for $${advisor.cost.toLocaleString()}.` });
+    addInboxMessage(user.id, {
+      id: `advisor-welcome-${sessionId}-${advisor.id}`,
+      from: `${advisor.name} · ${advisor.role}`,
+      subject: "Welcome — let's learn the market together",
+      body: `Hi! I'm Riley, your Rookie Advisor for this run.\n\nI can explain stock fundamentals, flag high-risk situations, and prepare one beginner-friendly report per stock each game day. Open any stock and choose “Ask Riley” to get started.\n\nI provide educational guidance, not guaranteed predictions, and I will never place a trade for you.`,
+      category: "advisor",
+    });
+    return true;
+  }, [account.cash, addCash, ownedIds, sessionId, user]);
 
   const isOnCooldown = useCallback((symbol: string) => {
     if (!user) return true;
@@ -105,12 +151,11 @@ export function useAdvisor() {
   }, [user, gameDay]);
 
   const consult = useCallback(async (stock: Stock) => {
-    if (!user || !canAfford || isOnCooldown(stock.symbol)) return null;
+    if (!user || !activeAdvisor || isOnCooldown(stock.symbol)) return null;
     setLoading(true);
     const history = getHistory(stock.symbol);
     const relatedNews = getRelatedNews(stock.symbol);
-    const built = buildReport(stock, history, relatedNews, gameDay);
-    await addCash(-ADVISOR_COST);
+    const built = buildReport(stock, history, relatedNews, gameDay, activeAdvisor);
     localStorage.setItem(cooldownKey(user.id, stock.symbol), String(gameDay));
     setReport(built);
     setLoading(false);
@@ -119,8 +164,15 @@ export function useAdvisor() {
       title: `Advisor report: ${stock.symbol}`,
       description: built.summary,
     });
+    addInboxMessage(user.id, {
+      id: `advisor-report-${activeAdvisor.id}-${stock.symbol}-${gameDay}`,
+      from: `${activeAdvisor.name} · ${activeAdvisor.role}`,
+      subject: `${stock.symbol} beginner report — Day ${gameDay}`,
+      body: `${built.summary}\n\n${built.points.map((point) => `• ${point}`).join("\n")}\n\nUse this report as a research starting point, not a guaranteed buy or sell signal.`,
+      category: "advisor",
+    });
     return built;
-  }, [user, canAfford, isOnCooldown, getHistory, getRelatedNews, gameDay, addCash]);
+  }, [user, activeAdvisor, isOnCooldown, getHistory, getRelatedNews, gameDay]);
 
-  return { report, loading, canAfford, isOnCooldown, consult, cost: ADVISOR_COST };
+  return { report, loading, isOnCooldown, consult, hire, ownedIds, ownedAdvisors, activeAdvisor };
 }

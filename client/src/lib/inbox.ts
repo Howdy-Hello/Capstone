@@ -6,7 +6,7 @@ import { useSyncExternalStore } from "react";
 // having watched every toast. Stored per-user in localStorage — same
 // durability tier as streaks/bills, since none of this is competitive or
 // cross-device critical.
-export type InboxCategory = "mission" | "bill" | "rival" | "achievement" | "level" | "system";
+export type InboxCategory = "mission" | "advisor" | "bill" | "rival" | "achievement" | "level" | "system";
 
 export type InboxMessage = {
   id: string;

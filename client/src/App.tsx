@@ -14,6 +14,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import NotificationHost from "./components/NotificationHost";
+import AdvisorEffects from "./components/AdvisorEffects";
 
 import Home from "./pages/Home";
 import AuthPage from "./pages/AuthPage";
@@ -36,6 +37,7 @@ import Level from "./pages/Level";
 import Watchlist from "./pages/Watchlist";
 import GoalsMissions from "./pages/GoalsMissions";
 import LivingCosts from "./pages/LivingCosts";
+import Advisor from "./pages/Advisor";
 import { useTradeDebriefs } from "./hooks/useTradeDebriefs";
 
 const NotFound: React.FC = () => (
@@ -103,6 +105,7 @@ function AppLayout() {
           <Route path="/game/watchlist" element={<ProtectedRoute><Watchlist /></ProtectedRoute>} />
           <Route path="/game/goals" element={<ProtectedRoute><GoalsMissions /></ProtectedRoute>} />
           <Route path="/game/living-costs" element={<ProtectedRoute><LivingCosts /></ProtectedRoute>} />
+          <Route path="/game/advisor" element={<ProtectedRoute><Advisor /></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
           <Route path="/rival" element={<ProtectedRoute><Rival /></ProtectedRoute>} />
           <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
@@ -123,6 +126,7 @@ function AppLayout() {
       </Box>
 
       <NotificationHost />
+      <AdvisorEffects />
     </Box>
   );
 }

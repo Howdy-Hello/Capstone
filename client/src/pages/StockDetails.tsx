@@ -539,11 +539,11 @@ export default function StockDetails() {
                     <SmartToyIcon sx={{ fontSize: 18, color: D.brandText }} />
                     <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Advisor</Typography>
                   </Stack>
-                  <Chip label={`${money(advisor.cost)}/consult`} size="small"
+                  <Chip label={advisor.activeAdvisor ? advisor.activeAdvisor.name : "No advisor"} size="small"
                     sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 800, fontSize: 10, fontFamily: MONO }} />
                 </Stack>
                 <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2 }}>
-                  A rules-based read of {stock.symbol}'s momentum, fundamentals, and recent news.
+                  {advisor.activeAdvisor ? `${advisor.activeAdvisor.name} will review ${stock.symbol}'s momentum, fundamentals, and recent news.` : "Hire an advisor to unlock stock reports for this game run."}
                 </Typography>
 
                 {advisor.report && advisor.report.symbol === stock.symbol && (
@@ -564,15 +564,16 @@ export default function StockDetails() {
                 )}
 
                 <Button fullWidth size="small"
-                  disabled={advisor.loading || !advisor.canAfford || advisor.isOnCooldown(stock.symbol)}
+                  disabled={advisor.loading || !advisor.activeAdvisor || advisor.isOnCooldown(stock.symbol)}
                   onClick={() => advisor.consult(stock)}
                   sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" }, "&.Mui-disabled": { color: D.t3, borderColor: D.border, bgcolor: D.overlay } }}>
                   {advisor.isOnCooldown(stock.symbol)
                     ? "Consulted today"
-                    : !advisor.canAfford
-                    ? "Not enough cash"
-                    : `Ask the Advisor (${money(advisor.cost)})`}
+                    : !advisor.activeAdvisor
+                    ? "Hire an advisor first"
+                    : `Ask ${advisor.activeAdvisor.name}`}
                 </Button>
+                {!advisor.activeAdvisor && <Button component={RouterLink} to="/game/advisor" fullWidth size="small" sx={{ mt: 1, color: D.brandText, textTransform: "none", fontWeight: 800 }}>Visit Advisor Marketplace →</Button>}
               </Box>
 
               {/* Price alerts */}

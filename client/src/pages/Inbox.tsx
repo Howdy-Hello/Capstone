@@ -26,6 +26,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
 
 import {
   InboxCategory, InboxMessage, markAllRead, markMessageRead,
@@ -59,7 +60,8 @@ type MailItem = {
 const FOLDERS: { id: MailFolder | "all"; label: string; icon: React.ReactNode }[] = [
   { id: "all",         label: "Inbox",       icon: <InboxIcon sx={{ fontSize: 17 }} /> },
   { id: "news",        label: "Market news", icon: <NewspaperIcon sx={{ fontSize: 17 }} /> },
-  { id: "mission",     label: "Advisor",     icon: <FlagIcon sx={{ fontSize: 17 }} /> },
+  { id: "mission",     label: "Missions",    icon: <FlagIcon sx={{ fontSize: 17 }} /> },
+  { id: "advisor",     label: "Advisor",     icon: <SmartToyIcon sx={{ fontSize: 17 }} /> },
   { id: "achievement", label: "Achievements",icon: <WorkspacePremiumIcon sx={{ fontSize: 17 }} /> },
   { id: "rival",       label: "Rival",       icon: <SportsMmaIcon sx={{ fontSize: 17 }} /> },
   { id: "bill",        label: "Billing",     icon: <ReceiptLongIcon sx={{ fontSize: 17 }} /> },
@@ -74,6 +76,7 @@ function folderColors(folder: MailFolder): { color: string; bg: string } {
   switch (folder) {
     case "news":        return { color: D.brandText, bg: D.brandBg };
     case "mission":     return { color: D.greenText, bg: D.greenBg };
+    case "advisor":     return { color: D.brandText, bg: D.brandBg };
     case "bill":        return { color: D.redText,   bg: D.redBg };
     case "rival":       return { color: D.amber,     bg: D.amberBg };
     case "achievement": return { color: D.brandText, bg: D.brandBg };

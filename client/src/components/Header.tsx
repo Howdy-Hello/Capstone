@@ -23,6 +23,7 @@ import SportsMmaOutlinedIcon from "@mui/icons-material/SportsMmaOutlined";
 import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
 import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useUnreadInboxCount } from "../lib/inbox";
@@ -47,6 +48,7 @@ const gameMenu = [
   { to: "/level", label: "Player Level", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/game/goals", label: "Goals & Missions", icon: <FlagOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/game/living-costs", label: "Living Costs", icon: <ReceiptLongOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/game/advisor", label: "Advisors", icon: <SmartToyOutlinedIcon sx={{ fontSize: 17 }} /> },
 ];
 
 const accountMenu = [
