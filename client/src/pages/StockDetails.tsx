@@ -29,6 +29,7 @@ import { useGame } from "../context/GameContext";
 import { AlertCondition, describeAlert, useStockAlerts } from "../hooks/useStockAlerts";
 import { useAdvisor } from "../hooks/useAdvisor";
 import { D, CARD, MONO, money, pct } from "../theme/design";
+import { TradeJournalInput } from "../lib/tradeJournal";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -70,6 +71,15 @@ export default function StockDetails() {
   const [alertCondition, setAlertCondition] = useState<AlertCondition>("price_above");
   const [alertThreshold, setAlertThreshold] = useState("");
   const [creatingAlert, setCreatingAlert] = useState(false);
+  const [tradeThesis, setTradeThesis] = useState("");
+  const [tradeExitPlan, setTradeExitPlan] = useState("");
+  const [tradeHorizonDays, setTradeHorizonDays] = useState(3);
+
+  const journalInput = (): TradeJournalInput | undefined => (
+    tradeThesis.trim() || tradeExitPlan.trim()
+      ? { thesis: tradeThesis, horizonDays: tradeHorizonDays, exitPlan: tradeExitPlan }
+      : undefined
+  );
 
   const state = location.state as LocationState | null;
   const gameDay = state?.gameDay ?? trading.gameDay;
@@ -124,13 +134,13 @@ export default function StockDetails() {
 
   const handleBuy = async () => {
     const quote = trading.getTradeQuote(stock, "buy", quantity);
-    const ok = await trading.buyStock(stock, quantity);
+    const ok = await trading.buyStock(stock, quantity, journalInput());
     const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
     setTradeMsg({ ok, text: ok ? `Bought ${shares} of ${stock.symbol} for ${money(quote.total)}.` : `Not enough cash to buy ${shares} of ${stock.symbol}.` });
   };
   const handleSell = async () => {
     const quote = trading.getTradeQuote(stock, "sell", quantity);
-    const ok = await trading.sellStock(stock, quantity);
+    const ok = await trading.sellStock(stock, quantity, journalInput());
     const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
     setTradeMsg({ ok, text: ok ? `Sold ${shares} of ${stock.symbol} for ${money(quote.total)}.` : `Not enough shares to sell.` });
   };
@@ -419,6 +429,18 @@ export default function StockDetails() {
                       This quantity is large relative to your net worth — buys cost more and sells return less per share until you trade smaller.
                     </Typography>
                   )}
+                </Box>
+
+                <Box sx={{ mb: 2, p: 1.75, bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2 }}>
+                  <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t1, mb: .35 }}>DECISION JOURNAL <Box component="span" sx={{ color: D.t3, fontWeight: 600 }}>(OPTIONAL)</Box></Typography>
+                  <Typography sx={{ fontSize: 11, color: D.t3, mb: 1.2 }}>Your advisor will review the decision after the market moves.</Typography>
+                  <TextField fullWidth size="small" multiline minRows={2} value={tradeThesis} onChange={(event) => setTradeThesis(event.target.value.slice(0, 500))} placeholder="What is your thesis?"
+                    inputProps={{ "aria-label": "Trade thesis" }} sx={{ mb: 1, "& .MuiOutlinedInput-root": { bgcolor: D.surface, color: D.t1, fontSize: 12, "& fieldset": { borderColor: D.border }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
+                  <Stack direction="row" spacing={.6} sx={{ mb: 1 }}>
+                    {[3, 10, 30].map((days) => <Button key={days} size="small" onClick={() => setTradeHorizonDays(days)} sx={{ minWidth: 0, px: 1, py: .35, borderRadius: 99, textTransform: "none", fontSize: 10, fontWeight: 800, color: tradeHorizonDays === days ? D.brandText : D.t3, bgcolor: tradeHorizonDays === days ? D.brandBg : "transparent", border: `1px solid ${tradeHorizonDays === days ? D.brandBd : D.border}` }}>{days} days</Button>)}
+                  </Stack>
+                  <TextField fullWidth size="small" value={tradeExitPlan} onChange={(event) => setTradeExitPlan(event.target.value.slice(0, 500))} placeholder="What would prove you wrong?"
+                    inputProps={{ "aria-label": "Trade exit rule" }} sx={{ "& .MuiOutlinedInput-root": { bgcolor: D.surface, color: D.t1, fontSize: 12, "& fieldset": { borderColor: D.border }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
                 </Box>
 
                 <MotionPresence initial={false}>

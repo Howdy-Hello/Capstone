@@ -23,6 +23,7 @@ import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
 import { useLevel } from "../hooks/useLevel";
 import { supabase } from "../lib/supabase";
+import { TradeJournalEntry } from "../lib/tradeJournal";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
@@ -41,6 +42,32 @@ type TradeRecord = {
   executed_at: string;
   stocks: { symbol: string; company_name: string } | null;
 };
+
+function realizedProfitLoss(records: TradeRecord[]) {
+  const positions = new Map<string, { quantity: number; averageCost: number }>();
+  let realized = 0;
+  [...records].reverse().forEach((trade) => {
+    const symbol = trade.stocks?.symbol;
+    if (!symbol) return;
+    const quantity = Number(trade.quantity);
+    const price = Number(trade.price_per_share);
+    const position = positions.get(symbol) ?? { quantity: 0, averageCost: 0 };
+    if (trade.trade_type === "buy") {
+      const nextQuantity = position.quantity + quantity;
+      positions.set(symbol, {
+        quantity: nextQuantity,
+        averageCost: nextQuantity > 0
+          ? ((position.quantity * position.averageCost) + (quantity * price)) / nextQuantity
+          : 0,
+      });
+    } else {
+      const sold = Math.min(position.quantity, quantity);
+      realized += sold * (price - position.averageCost);
+      positions.set(symbol, { ...position, quantity: Math.max(0, position.quantity - quantity) });
+    }
+  });
+  return realized;
+}
 
 // A function, not a module-scope array: `applyDesignColors` mutates `D` when
 // the theme changes, and a captured array keeps the import-time colours forever.
@@ -78,6 +105,7 @@ export default function Dashboard() {
   const [tradeHistoryLoading, setTradeHistoryLoading] = useState(true);
   const [tradeHistoryError, setTradeHistoryError] = useState<string | null>(null);
   const [tradeTypeFilter, setTradeTypeFilter] = useState<"all" | "buy" | "sell">("all");
+  const [journalEntries, setJournalEntries] = useState<TradeJournalEntry[]>([]);
 
   const playerName =
     profile?.display_name
@@ -89,15 +117,16 @@ export default function Dashboard() {
   const level = useLevel();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !trading.sessionId) return;
     let cancelled = false;
     setTradeHistoryLoading(true);
     supabase
       .from("trades")
       .select("id, game_day, trade_type, quantity, price_per_share, total_amount, executed_at, stocks(symbol, company_name)")
       .eq("user_id", user.id)
+      .eq("session_id", trading.sessionId)
       .order("executed_at", { ascending: false })
-      .limit(20)
+      .limit(500)
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error) {
@@ -110,8 +139,17 @@ export default function Dashboard() {
         setTradeHistoryError(null);
         setTradeHistoryLoading(false);
       });
+    void supabase
+      .from("trade_journal_entries")
+      .select("id, session_id, symbol, trade_type, quantity, execution_price, game_day, thesis, horizon_days, exit_plan, reviewed_day, created_at")
+      .eq("session_id", trading.sessionId)
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data, error }) => {
+        if (!cancelled && !error) setJournalEntries((data ?? []) as unknown as TradeJournalEntry[]);
+      });
     return () => { cancelled = true; };
-  }, [user]);
+  }, [trading.sessionId, user]);
 
   const holdings = useMemo(() => trading.account.holdings.map((h) => {
     const stock = stocks.find((s) => s.symbol === h.symbol);
@@ -142,6 +180,9 @@ export default function Dashboard() {
 
   const movers = useMemo(() => [...stocks].sort((a, b) => Math.abs(b.dayChangePercent) - Math.abs(a.dayChangePercent)).slice(0, 8), [stocks]);
   const returnPct = ((netWorth - 2000) / 2000) * 100;
+  const benchmarkReturnPct = useMemo(() => stocks.length
+    ? stocks.reduce((sum, stock) => sum + ((stock.currentPrice - stock.startingPrice) / stock.startingPrice) * 100, 0) / stocks.length
+    : 0, [stocks]);
   const portfolioAnalytics = useMemo(() => {
     const sorted = [...holdings].sort((a, b) => b.marketValue - a.marketValue);
     const largest = sorted[0] ?? null;
@@ -162,6 +203,38 @@ export default function Dashboard() {
     const volume = tradeHistory.reduce((sum, trade) => sum + Number(trade.total_amount), 0);
     return { buys: buys.length, sells: sells.length, volume };
   }, [tradeHistory]);
+  const review = useMemo(() => {
+    const investedValue = holdings.reduce((sum, holding) => sum + holding.marketValue, 0);
+    const highRiskValue = holdings
+      .filter((holding) => holding.stock?.riskLevel === "High")
+      .reduce((sum, holding) => sum + holding.marketValue, 0);
+    const sectorValues = sectorExposure.filter((item) => item.name !== "Cash");
+    const largestSectorPct = netWorth > 0 && sectorValues.length
+      ? (Math.max(...sectorValues.map((item) => item.value)) / netWorth) * 100
+      : 0;
+    const highRiskPct = investedValue > 0 ? (highRiskValue / investedValue) * 100 : 0;
+    let riskScore = 100;
+    riskScore -= Math.max(0, portfolioAnalytics.concentrationPercent - 30) * 1.25;
+    riskScore -= Math.max(0, largestSectorPct - 40) * 0.8;
+    riskScore -= Math.max(0, highRiskPct - 35) * 0.45;
+    if (holdings.length === 1) riskScore -= 15;
+    if (portfolioAnalytics.cashPercent < 5) riskScore -= 8;
+    riskScore = Math.max(0, Math.min(100, Math.round(riskScore)));
+    const riskLabel = riskScore >= 80 ? "Well balanced" : riskScore >= 60 ? "Watch exposure" : "Concentrated";
+    const callouts: string[] = [];
+    if (portfolioAnalytics.concentrationPercent > 35) callouts.push(`${portfolioAnalytics.largest?.symbol ?? "One holding"} is ${portfolioAnalytics.concentrationPercent.toFixed(0)}% of net worth.`);
+    if (largestSectorPct > 45) callouts.push(`Your largest sector is ${largestSectorPct.toFixed(0)}% of net worth.`);
+    if (portfolioAnalytics.cashPercent < 10) callouts.push(`Only ${portfolioAnalytics.cashPercent.toFixed(0)}% remains in cash for new opportunities or bills.`);
+    if (highRiskPct > 50) callouts.push(`${highRiskPct.toFixed(0)}% of invested capital is in high-risk stocks.`);
+    if (!callouts.length) callouts.push(holdings.length ? "No major concentration warning is active." : "Build a portfolio to unlock personalized risk feedback.");
+    return {
+      alphaPct: returnPct - benchmarkReturnPct,
+      realizedPnL: realizedProfitLoss(tradeHistory),
+      riskScore,
+      riskLabel,
+      callouts,
+    };
+  }, [benchmarkReturnPct, holdings, netWorth, portfolioAnalytics, returnPct, sectorExposure, tradeHistory]);
 
   if (trading.loading) {
     return (
@@ -231,6 +304,43 @@ export default function Dashboard() {
             </Grid>
           ))}
         </Grid>
+
+        <Box sx={{ ...CARD, p: 0, overflow: "hidden", mb: 3 }}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+            <Box>
+              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio Review</Typography>
+              <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Performance versus the equal-weight market, realized results, and portfolio risk.</Typography>
+            </Box>
+            <Chip label={`${review.riskScore}/100 · ${review.riskLabel}`} size="small"
+              sx={{ bgcolor: review.riskScore >= 80 ? D.greenBg : review.riskScore >= 60 ? D.amberBg : D.redBg, color: review.riskScore >= 80 ? D.greenText : review.riskScore >= 60 ? D.amber : D.redText, fontWeight: 900, fontFamily: MONO }} />
+          </Stack>
+          <Grid container sx={{ borderBottom: `1px solid ${D.border}` }}>
+            {[
+              { label: "Account return", value: pct(returnPct), color: returnPct >= 0 ? D.greenText : D.redText },
+              { label: "Market benchmark", value: pct(benchmarkReturnPct), color: benchmarkReturnPct >= 0 ? D.greenText : D.redText },
+              { label: "Performance gap", value: pct(review.alphaPct), color: review.alphaPct >= 0 ? D.greenText : D.redText },
+              { label: "Realized P/L", value: `${review.realizedPnL >= 0 ? "+" : ""}${money(review.realizedPnL)}`, color: review.realizedPnL >= 0 ? D.greenText : D.redText },
+            ].map((item) => (
+              <Grid item xs={6} md={3} key={item.label} sx={{ borderRight: `1px solid ${D.border}`, borderBottom: { xs: `1px solid ${D.border}`, md: 0 } }}>
+                <Box sx={{ p: 2.5 }}>
+                  <Typography sx={{ fontSize: 10, color: D.t3, fontWeight: 900, fontFamily: MONO, letterSpacing: .5 }}>{item.label.toUpperCase()}</Typography>
+                  <Typography sx={{ mt: .6, fontSize: 19, color: item.color, fontWeight: 950, fontFamily: MONO }}>{item.value}</Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+          <Box sx={{ px: 3, py: 2.25 }}>
+            <Typography sx={{ fontSize: 10, color: D.t3, fontWeight: 900, fontFamily: MONO, letterSpacing: .7, mb: 1 }}>RISK CHECK</Typography>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={{ xs: .8, md: 3 }}>
+              {review.callouts.map((callout) => (
+                <Stack key={callout} direction="row" spacing={.8} alignItems="flex-start" sx={{ flex: 1 }}>
+                  <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: review.riskScore >= 80 ? D.green : D.amber, mt: .7, flexShrink: 0 }} />
+                  <Typography sx={{ fontSize: 12.5, color: D.t2, lineHeight: 1.55 }}>{callout}</Typography>
+                </Stack>
+              ))}
+            </Stack>
+          </Box>
+        </Box>
 
         <Grid container spacing={3}>
           {/* Holdings */}
@@ -570,6 +680,53 @@ export default function Dashboard() {
                 {filteredTradeHistory.length === 0 && (
                   <Typography sx={{ fontSize: 13, color: D.t3, py: 1 }}>No trades match this filter.</Typography>
                 )}
+              </Stack>
+            )}
+          </Box>
+        </Box>
+
+        <Box sx={{ ...CARD, p: 0, overflow: "hidden", mt: 3 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+            <Box>
+              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Decision Journal</Typography>
+              <Typography sx={{ fontSize: 12.5, color: D.t3 }}>The reasoning you captured before trading. Advisor reviews arrive in your inbox after the market moves.</Typography>
+            </Box>
+            <Chip size="small" label={`${journalEntries.length} PLANNED`} sx={{ bgcolor: D.brandBg, color: D.brandText, fontWeight: 900, fontSize: 10, fontFamily: MONO }} />
+          </Stack>
+          <Box sx={{ p: 2.5 }}>
+            {journalEntries.length === 0 ? (
+              <Box sx={{ p: 3, borderRadius: 2, bgcolor: D.elevated, border: `1px dashed ${D.borderHi}`, textAlign: "center" }}>
+                <Typography sx={{ fontWeight: 800, color: D.t1, mb: .5 }}>No trade plans recorded yet.</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t3 }}>Add a thesis and exit rule in the trade ticket to begin your decision journal.</Typography>
+              </Box>
+            ) : (
+              <Stack spacing={1.2}>
+                {journalEntries.map((entry) => {
+                  const stock = stocks.find((item) => item.symbol === entry.symbol);
+                  const direction = entry.trade_type === "buy" ? 1 : -1;
+                  const outcome = stock && Number(entry.execution_price) > 0
+                    ? direction * ((stock.currentPrice - Number(entry.execution_price)) / Number(entry.execution_price)) * 100
+                    : 0;
+                  return (
+                    <Box key={entry.id} sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: .8 }}>
+                            <Chip size="small" label={entry.trade_type.toUpperCase()} sx={{ bgcolor: entry.trade_type === "buy" ? D.greenBg : D.redBg, color: entry.trade_type === "buy" ? D.greenText : D.redText, fontSize: 9.5, fontWeight: 900, fontFamily: MONO }} />
+                            <Typography sx={{ color: D.t1, fontWeight: 900, fontFamily: MONO }}>{entry.symbol}</Typography>
+                            <Typography sx={{ color: D.t3, fontSize: 11 }}>Day {entry.game_day} · {entry.horizon_days}-day horizon</Typography>
+                          </Stack>
+                          <Typography sx={{ color: D.t2, fontSize: 13, lineHeight: 1.55 }}>{entry.thesis || "No thesis recorded."}</Typography>
+                          {entry.exit_plan && <Typography sx={{ color: D.t3, fontSize: 12, mt: .6 }}>Exit rule: {entry.exit_plan}</Typography>}
+                        </Box>
+                        <Box sx={{ textAlign: { sm: "right" }, flexShrink: 0 }}>
+                          <Typography sx={{ color: outcome >= 0 ? D.greenText : D.redText, fontSize: 15, fontWeight: 900, fontFamily: MONO }}>{pct(outcome)}</Typography>
+                          <Typography sx={{ color: D.t3, fontSize: 10.5 }}>{entry.reviewed_day ? `Reviewed Day ${entry.reviewed_day}` : "Awaiting review"}</Typography>
+                        </Box>
+                      </Stack>
+                    </Box>
+                  );
+                })}
               </Stack>
             )}
           </Box>

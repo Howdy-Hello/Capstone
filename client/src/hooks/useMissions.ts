@@ -154,7 +154,7 @@ export function useMissions() {
           });
           addInboxMessage(user.id, {
             id: `mission-${m.id}`,
-            from: "Onboarding Coach",
+            from: "Your Advisor",
             subject: `Mission complete: ${m.title}`,
             body: `${m.description} You earned +${m.rewardXp} XP.`,
             category: "mission",

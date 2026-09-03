@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
-  Badge, Box, Button, Chip, Container, Divider, IconButton, InputAdornment,
+  Avatar, Badge, Box, Button, Checkbox, Chip, Divider, IconButton, InputAdornment,
   Stack, TextField, Tooltip, Typography,
 } from "@mui/material";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -20,6 +20,12 @@ import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
+import AutorenewIcon from "@mui/icons-material/Autorenew";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
 
 import {
   InboxCategory, InboxMessage, markAllRead, markMessageRead,
@@ -51,9 +57,9 @@ type MailItem = {
 };
 
 const FOLDERS: { id: MailFolder | "all"; label: string; icon: React.ReactNode }[] = [
-  { id: "all",         label: "All mail",    icon: <InboxIcon sx={{ fontSize: 17 }} /> },
+  { id: "all",         label: "Inbox",       icon: <InboxIcon sx={{ fontSize: 17 }} /> },
   { id: "news",        label: "Market news", icon: <NewspaperIcon sx={{ fontSize: 17 }} /> },
-  { id: "mission",     label: "Missions",    icon: <FlagIcon sx={{ fontSize: 17 }} /> },
+  { id: "mission",     label: "Advisor",     icon: <FlagIcon sx={{ fontSize: 17 }} /> },
   { id: "achievement", label: "Achievements",icon: <WorkspacePremiumIcon sx={{ fontSize: 17 }} /> },
   { id: "rival",       label: "Rival",       icon: <SportsMmaIcon sx={{ fontSize: 17 }} /> },
   { id: "bill",        label: "Billing",     icon: <ReceiptLongIcon sx={{ fontSize: 17 }} /> },
@@ -192,65 +198,36 @@ export default function Inbox() {
   }
 
   const totalUnread = unreadByFolder.get("all") ?? 0;
+  const folderTitle = FOLDERS.find((item) => item.id === folder)?.label ?? "Inbox";
 
   return (
-    <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
-      {/* Toolbar */}
-      <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
-        <Container maxWidth="xl" sx={{ py: { xs: 2, md: 2.5 } }}>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
-            <Box sx={{ flex: 1 }}>
-              <Chip label="INBOX" size="small"
-                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 0.75 }} />
-              <Typography sx={{ fontWeight: 950, fontSize: { xs: 21, md: 25 }, color: D.t1, lineHeight: 1.1 }}>
-                Mail &amp; Market News
-              </Typography>
-              <Typography sx={{ fontSize: 13, color: D.t3, mt: 0.5 }}>
-                {totalUnread > 0 ? `${totalUnread} unread` : "You're all caught up."}
-                {" · "}Headlines, missions, achievements and rival chatter in one place.
-              </Typography>
+    <Box sx={{ bgcolor: D.bg, minHeight: "100vh", p: { xs: 1, md: 2 } }}>
+      <Box sx={{ maxWidth: 1600, mx: "auto", bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden", minHeight: { md: "calc(100vh - 110px)" } }}>
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ height: 72, px: { xs: 2, md: 3 }, borderBottom: `1px solid ${D.border}` }}>
+          <Stack direction="row" spacing={1.25} alignItems="center" sx={{ width: { md: 218 }, flexShrink: 0 }}>
+            <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: D.brand, display: "grid", placeItems: "center", color: "white" }}>
+              <MailOutlineIcon sx={{ fontSize: 21 }} />
             </Box>
-
-            <Stack direction="row" spacing={1.2} alignItems="center">
-              <TextField
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search mail"
-                size="small"
-                inputProps={{ "aria-label": "Search mail" }}
-                sx={{
-                  minWidth: { xs: "100%", md: 240 },
-                  "& .MuiOutlinedInput-root": {
-                    bgcolor: D.elevated, borderRadius: 2,
-                    "& fieldset": { borderColor: D.border },
-                    "&:hover fieldset": { borderColor: D.borderHi },
-                    "&.Mui-focused fieldset": { borderColor: D.brand },
-                    "& input": { color: D.t1, fontSize: 13.5 },
-                  },
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ fontSize: 17, color: D.t3 }} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              {totalUnread > 0 && (
-                <Button onClick={markEverythingRead} startIcon={<MarkEmailReadIcon />}
-                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 2, fontSize: 13, whiteSpace: "nowrap", "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
-                  Mark all read
-                </Button>
-              )}
-            </Stack>
+            <Box>
+              <Typography sx={{ fontWeight: 950, fontSize: 16, color: D.t1, lineHeight: 1.1 }}>StockPilot Mail</Typography>
+              <Typography sx={{ fontSize: 10, color: D.t3, fontFamily: MONO }}>MARKET DESK</Typography>
+            </Box>
           </Stack>
-        </Container>
-      </Box>
+          <TextField value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search news, people, or messages" size="small" inputProps={{ "aria-label": "Search mail" }}
+            sx={{ flex: 1, maxWidth: 720, "& .MuiOutlinedInput-root": { bgcolor: D.elevated, borderRadius: 2.5, height: 46, "& fieldset": { borderColor: "transparent" }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand }, "& input": { color: D.t1, fontSize: 13.5 } } }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: D.t3 }} /></InputAdornment> }} />
+          <Box sx={{ flex: 1 }} />
+          <Tooltip title="More options"><IconButton sx={{ color: D.t3 }}><MoreVertIcon /></IconButton></Tooltip>
+          <Avatar sx={{ width: 34, height: 34, bgcolor: D.brandBg, color: D.brandText, fontSize: 12, fontWeight: 900 }}>SP</Avatar>
+        </Stack>
 
-      <Container maxWidth="xl" sx={{ py: { xs: 2.5, md: 3 } }}>
-        <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start", flexDirection: { xs: "column", md: "row" } }}>
+        <Box sx={{ display: "flex", alignItems: "stretch", minHeight: { md: "calc(100vh - 182px)" }, flexDirection: { xs: "column", md: "row" } }}>
           {/* Folder rail */}
-          <Box sx={{ width: { xs: "100%", md: 210 }, flexShrink: 0 }}>
+          <Box sx={{ width: { xs: "100%", md: 242 }, flexShrink: 0, p: { xs: 1.25, md: 2 }, borderRight: { md: `1px solid ${D.border}` } }}>
+            <Button fullWidth startIcon={<MarkEmailReadIcon />} onClick={markEverythingRead}
+              sx={{ justifyContent: "flex-start", px: 2, py: 1.35, mb: 1.5, borderRadius: 2.5, bgcolor: D.brand, color: "white", textTransform: "none", fontWeight: 850, boxShadow: "0 8px 24px rgba(124,58,237,.18)", "&:hover": { bgcolor: D.brandMid } }}>
+              Mark all as read
+            </Button>
             <Stack
               direction={{ xs: "row", md: "column" }}
               spacing={0.5}
@@ -270,7 +247,7 @@ export default function Inbox() {
                       flexShrink: 0,
                       gap: 0.5,
                       px: 1.5, py: 1,
-                      borderRadius: 2,
+                      borderRadius: "0 18px 18px 0",
                       textTransform: "none",
                       fontWeight: active ? 900 : 700,
                       fontSize: 13,
@@ -288,17 +265,31 @@ export default function Inbox() {
                 );
               })}
             </Stack>
+            <Box sx={{ display: { xs: "none", md: "block" }, mt: 3, px: 1.5 }}>
+              <Typography sx={{ fontSize: 10, color: D.t3, fontFamily: MONO, letterSpacing: 1, mb: 1.5 }}>MAIL SUMMARY</Typography>
+              <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: 12, color: D.t3 }}>Unread</Typography><Typography sx={{ fontSize: 12, color: D.t1, fontFamily: MONO }}>{totalUnread}</Typography></Stack>
+              <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}><Typography sx={{ fontSize: 12, color: D.t3 }}>Total mail</Typography><Typography sx={{ fontSize: 12, color: D.t1, fontFamily: MONO }}>{allMail.length}</Typography></Stack>
+            </Box>
           </Box>
 
           {/* List + reading pane */}
-          <Box sx={{ flex: 1, minWidth: 0, width: "100%", display: "flex", gap: 3, alignItems: "flex-start" }}>
+          <Box sx={{ flex: 1, minWidth: 0, width: "100%", display: "flex", alignItems: "stretch" }}>
             {/* List: hidden on small screens while a message is open */}
             <Box sx={{
               flex: 1, minWidth: 0,
               display: { xs: selected ? "none" : "block", lg: "block" },
-              maxWidth: { lg: selected ? 420 : "none" },
+              maxWidth: { lg: selected ? 510 : "none" },
+              borderRight: selected ? { lg: `1px solid ${D.border}` } : undefined,
             }}>
-              <Box sx={{ bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden" }}>
+              <Stack direction="row" alignItems="center" sx={{ px: 2, height: 54, borderBottom: `1px solid ${D.border}` }}>
+                <Checkbox size="small" disabled sx={{ color: D.t4 }} />
+                <Tooltip title="Refresh"><IconButton size="small" sx={{ color: D.t3 }}><AutorenewIcon sx={{ fontSize: 19 }} /></IconButton></Tooltip>
+                <Typography sx={{ ml: 1, color: D.t1, fontWeight: 850, fontSize: 14 }}>{folderTitle}</Typography>
+                <Box sx={{ flex: 1 }} />
+                <Typography sx={{ fontSize: 10.5, color: D.t3, fontFamily: MONO }}>{visible.length} messages</Typography>
+                <IconButton size="small" disabled><ChevronLeftIcon sx={{ fontSize: 18 }} /></IconButton><IconButton size="small" disabled><ChevronRightIcon sx={{ fontSize: 18 }} /></IconButton>
+              </Stack>
+              <Box sx={{ bgcolor: D.surface, overflow: "hidden" }}>
                 {visible.length === 0 ? (
                   <Box sx={{ p: 6, textAlign: "center" }}>
                     <InboxIcon sx={{ fontSize: 40, color: D.t4, mb: 1.5 }} />
@@ -330,24 +321,20 @@ export default function Inbox() {
                             if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openItem(item); }
                           }}
                           sx={{
-                            display: "flex", gap: 1.5, alignItems: "flex-start",
-                            px: 2, py: 1.5,
+                            display: "flex", gap: 0.75, alignItems: "center",
+                            px: 1.25, py: 1.15,
                             cursor: "pointer",
                             borderBottom: `1px solid ${D.border}`,
                             borderLeft: `3px solid ${active ? D.brand : "transparent"}`,
-                            bgcolor: active ? D.overlay : item.read ? "transparent" : D.elevated,
+                            bgcolor: active ? D.overlay : item.read ? "transparent" : D.brandBg,
                             transition: "background-color .12s ease",
                             "&:hover": { bgcolor: D.overlay },
                             "&:last-of-type": { borderBottom: "none" },
                           }}
                         >
-                          <Box sx={{
-                            mt: 0.25, width: 30, height: 30, borderRadius: 1.5, flexShrink: 0,
-                            display: "grid", placeItems: "center",
-                            bgcolor: meta.bg, color: meta.color,
-                          }}>
-                            {folderIcon(item.folder)}
-                          </Box>
+                          <Checkbox size="small" onClick={(e) => e.stopPropagation()} sx={{ color: D.t4, p: .5 }} />
+                          <IconButton size="small" onClick={(e) => e.stopPropagation()} aria-label="Star message" sx={{ color: D.t4, p: .5 }}><StarBorderIcon sx={{ fontSize: 18 }} /></IconButton>
+                          <Box sx={{ width: 27, height: 27, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", bgcolor: meta.bg, color: meta.color }}>{folderIcon(item.folder)}</Box>
 
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Stack direction="row" spacing={1} alignItems="baseline">
@@ -358,12 +345,7 @@ export default function Inbox() {
                                 {timeLabel(item)}
                               </Typography>
                             </Stack>
-                            <Typography noWrap sx={{ fontSize: 13.5, fontWeight: item.read ? 600 : 900, color: item.read ? D.t2 : D.t1, mt: 0.15 }}>
-                              {item.subject}
-                            </Typography>
-                            <Typography noWrap sx={{ fontSize: 12, color: D.t3, mt: 0.15 }}>
-                              {item.preview}
-                            </Typography>
+                            <Typography noWrap sx={{ fontSize: 13, fontWeight: item.read ? 600 : 900, color: item.read ? D.t2 : D.t1, mt: 0.15 }}>{item.subject}<Box component="span" sx={{ fontWeight: 500, color: D.t3 }}> — {item.preview}</Box></Typography>
                           </Box>
 
                           {!item.read && (
@@ -385,8 +367,7 @@ export default function Inbox() {
                 animate={{ opacity: 1, x: 0 }}
                 sx={{
                   flex: 1, minWidth: 0, width: "100%",
-                  position: { lg: "sticky" }, top: { lg: 88 },
-                  bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden",
+                  bgcolor: D.surface, overflow: "hidden",
                 }}
               >
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${D.border}` }}>
@@ -405,13 +386,10 @@ export default function Inbox() {
                 </Stack>
 
                 <Box sx={{ p: { xs: 2.5, md: 3 } }}>
-                  <Typography sx={{ fontWeight: 950, fontSize: 19, color: D.t1, lineHeight: 1.35, mb: 1 }}>
+                  <Typography sx={{ fontWeight: 950, fontSize: { xs: 20, md: 23 }, color: D.t1, lineHeight: 1.35, mb: 2 }}>
                     {selected.subject}
                   </Typography>
-                  <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>
-                    From <Box component="span" sx={{ color: D.t2, fontWeight: 700 }}>{selected.from}</Box>
-                    {selected.gameDay !== null && ` · Day ${selected.gameDay}`}
-                  </Typography>
+                  <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 3 }}><Avatar sx={{ width: 38, height: 38, bgcolor: folderColors(selected.folder).bg, color: folderColors(selected.folder).color, fontSize: 14, fontWeight: 900 }}>{selected.from.slice(0, 1).toUpperCase()}</Avatar><Box><Typography sx={{ color: D.t1, fontWeight: 800, fontSize: 13.5 }}>{selected.from}</Typography><Typography sx={{ fontSize: 11.5, color: D.t3 }}>to me{selected.gameDay !== null && ` · Day ${selected.gameDay}`}</Typography></Box></Stack>
 
                   {selected.news && (
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }}>
@@ -457,7 +435,7 @@ export default function Inbox() {
             )}
           </Box>
         </Box>
-      </Container>
+      </Box>
     </Box>
   );
 }

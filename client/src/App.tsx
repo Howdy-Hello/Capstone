@@ -33,6 +33,7 @@ import Inbox from "./pages/Inbox";
 import Notifications from "./pages/Notifications";
 import { trackEvent } from "./lib/analytics";
 import Level from "./pages/Level";
+import { useTradeDebriefs } from "./hooks/useTradeDebriefs";
 
 const NotFound: React.FC = () => (
   <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 2, px: 2, textAlign: "center" }}>
@@ -66,6 +67,7 @@ function InboxSync() {
 
 function AppLayout() {
   useThemeSettings();
+  useTradeDebriefs();
   const location = useLocation();
 
   useEffect(() => {

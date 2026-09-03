@@ -26,6 +26,7 @@ import {
 } from "../data/tradingState";
 import { supabase } from "../lib/supabase";
 import { syncGameState } from "../lib/api";
+import { recordTradeJournalEntry, TradeJournalInput } from "../lib/tradeJournal";
 import { useAuth } from "./AuthContext";
 
 const STARTING_CASH = 2_000;
@@ -126,8 +127,8 @@ type TradeResult = {
 
 type GameContextValue = {
   account: TradingAccount;
-  buyStock: (stock: Stock, quantity?: number) => Promise<boolean>;
-  sellStock: (stock: Stock, quantity?: number) => Promise<boolean>;
+  buyStock: (stock: Stock, quantity?: number, journal?: TradeJournalInput) => Promise<boolean>;
+  sellStock: (stock: Stock, quantity?: number, journal?: TradeJournalInput) => Promise<boolean>;
   getTradeQuote: (stock: Stock, tradeType: "buy" | "sell", quantity?: number) => {
     basePrice: number; effectivePrice: number; slippage: number; total: number;
   };
@@ -788,7 +789,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const executeTrade = useCallback(async (
     stock: Stock,
     tradeType: "buy" | "sell",
-    quantity = 1
+    quantity = 1,
+    journal?: TradeJournalInput,
   ) => {
     if (!session || !user) return false;
 
@@ -855,17 +857,34 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       };
     });
 
+    if (journal && (journal.thesis.trim() || journal.exitPlan.trim())) {
+      const journalSaved = await recordTradeJournalEntry({
+        sessionId: session.id,
+        userId: user.id,
+        symbol: stock.symbol,
+        tradeType,
+        quantity,
+        executionPrice: quote.effectivePrice,
+        gameDay,
+        journal,
+      });
+      if (!journalSaved) {
+        setError("The trade completed, but its decision journal could not be saved.");
+        return true;
+      }
+    }
+
     setError(null);
     return true;
   }, [account.cash, account.holdings, gameDay, getTradeQuote, session, user]);
 
   const buyStock = useCallback(
-    (stock: Stock, quantity = 1) => executeTrade(stock, "buy", quantity),
+    (stock: Stock, quantity = 1, journal?: TradeJournalInput) => executeTrade(stock, "buy", quantity, journal),
     [executeTrade]
   );
 
   const sellStock = useCallback(
-    (stock: Stock, quantity = 1) => executeTrade(stock, "sell", quantity),
+    (stock: Stock, quantity = 1, journal?: TradeJournalInput) => executeTrade(stock, "sell", quantity, journal),
     [executeTrade]
   );
 

@@ -48,6 +48,7 @@ import { fetchLeaderboard } from "../lib/api";
 import { addInboxMessage } from "../lib/inbox";
 import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
+import { TradeJournalInput } from "../lib/tradeJournal";
 
 const DEV_CONSOLE_ENABLED = process.env.NODE_ENV !== "production";
 const BRIEFING_DISMISSED_KEY = "stockpilot-hide-opening-briefing";
@@ -287,10 +288,10 @@ export default function Game() {
   const handleBuyStock = (stock: Stock) => setTradeDialog({ stock, mode: "buy" });
   const handleSellStock = (stock: Stock) => setTradeDialog({ stock, mode: "sell" });
 
-  const handleTradeConfirm = async (stock: Stock, mode: "buy" | "sell", quantity: number) => {
+  const handleTradeConfirm = async (stock: Stock, mode: "buy" | "sell", quantity: number, journal?: TradeJournalInput) => {
     const quote = trading.getTradeQuote(stock, mode, quantity);
     const fn = mode === "buy" ? trading.buyStock : trading.sellStock;
-    const ok = await fn(stock, quantity);
+    const ok = await fn(stock, quantity, journal);
     const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
     const total = money(quote.total);
     setTradeMessage(
@@ -493,7 +494,7 @@ export default function Game() {
           sharesOwned={getSharesOwned(trading.account, tradeDialog.stock.symbol)}
           getQuote={(qty) => trading.getTradeQuote(tradeDialog.stock, tradeDialog.mode, qty)}
           onClose={() => setTradeDialog(null)}
-          onConfirm={(qty) => handleTradeConfirm(tradeDialog.stock, tradeDialog.mode, qty)}
+          onConfirm={(qty, journal) => handleTradeConfirm(tradeDialog.stock, tradeDialog.mode, qty, journal)}
         />
       )}
       {DEV_CONSOLE_ENABLED && (
@@ -1415,7 +1416,7 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
   sharesOwned: number;
   getQuote: (quantity: number) => { basePrice: number; effectivePrice: number; slippage: number; total: number };
   onClose: () => void;
-  onConfirm: (quantity: number) => void;
+  onConfirm: (quantity: number, journal?: TradeJournalInput) => void;
 }) {
   const reduceMotion = useReducedMotion();
   // Max has to be priced *with* slippage. Spending the whole cash balance is
@@ -1437,6 +1438,9 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
   // the confirm button stays live for the whole round trip and a double-click
   // sends two execute_trade calls, spending twice what the dialog showed.
   const [submitting, setSubmitting] = useState(false);
+  const [thesis, setThesis] = useState("");
+  const [exitPlan, setExitPlan] = useState("");
+  const [horizonDays, setHorizonDays] = useState(3);
   const qty = Math.min(Math.max(1, quantity), maxQty);
   const quote = getQuote(qty);
   const total = quote.total;
@@ -1547,6 +1551,33 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
               </Typography>
             </Box>
           )}
+
+          <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.25 }}>
+              <Box>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t1 }}>Decision journal</Typography>
+                <Typography sx={{ fontSize: 11, color: D.t3 }}>Optional · your advisor will revisit this when your horizon ends.</Typography>
+              </Box>
+              <Chip size="small" label="LEARNING" sx={{ bgcolor: D.brandBg, color: D.brandText, fontSize: 9, fontWeight: 900, fontFamily: MONO }} />
+            </Stack>
+            <TextField fullWidth size="small" multiline minRows={2} value={thesis} onChange={(event) => setThesis(event.target.value.slice(0, 500))}
+              placeholder={isBuy ? "Why do you expect this investment to work?" : "Why are you exiting now?"}
+              inputProps={{ "aria-label": "Trade thesis" }}
+              sx={{ mb: 1.25, "& .MuiOutlinedInput-root": { color: D.t1, fontSize: 12.5, bgcolor: D.surface, "& fieldset": { borderColor: D.border }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
+            <Typography sx={{ fontSize: 10, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: .75 }}>TIME HORIZON</Typography>
+            <Stack direction="row" spacing={.75} sx={{ mb: 1.25 }}>
+              {[{ label: "3 days", days: 3 }, { label: "10 days", days: 10 }, { label: "30 days", days: 30 }].map((item) => (
+                <Button key={item.days} size="small" onClick={() => setHorizonDays(item.days)}
+                  sx={{ minWidth: 0, px: 1.2, py: .45, borderRadius: 99, textTransform: "none", fontSize: 10.5, fontWeight: 800, color: horizonDays === item.days ? D.brandText : D.t3, bgcolor: horizonDays === item.days ? D.brandBg : "transparent", border: `1px solid ${horizonDays === item.days ? D.brandBd : D.border}` }}>
+                  {item.label}
+                </Button>
+              ))}
+            </Stack>
+            <TextField fullWidth size="small" value={exitPlan} onChange={(event) => setExitPlan(event.target.value.slice(0, 500))}
+              placeholder="What would prove this decision wrong?"
+              inputProps={{ "aria-label": "Trade exit rule" }}
+              sx={{ "& .MuiOutlinedInput-root": { color: D.t1, fontSize: 12.5, bgcolor: D.surface, "& fieldset": { borderColor: D.border }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
+          </Box>
         </Stack>
       </DialogContent>
 
@@ -1559,7 +1590,7 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
           onClick={() => {
             if (submitting) return;
             setSubmitting(true);
-            onConfirm(qty);
+            onConfirm(qty, (thesis.trim() || exitPlan.trim()) ? { thesis, horizonDays, exitPlan } : undefined);
           }}
           sx={{
             bgcolor: isBuy ? D.green : D.red, color: "#fff", fontWeight: 800, textTransform: "none",
