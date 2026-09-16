@@ -15,6 +15,7 @@ import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import NotificationHost from "./components/NotificationHost";
 import AdvisorEffects from "./components/AdvisorEffects";
+import GuidedTutorial from "./components/GuidedTutorial";
 
 import Home from "./pages/Home";
 import AuthPage from "./pages/AuthPage";
@@ -38,15 +39,16 @@ import Watchlist from "./pages/Watchlist";
 import GoalsMissions from "./pages/GoalsMissions";
 import LivingCosts from "./pages/LivingCosts";
 import Advisor from "./pages/Advisor";
+import Tutorial from "./pages/Tutorial";
 import { useTradeDebriefs } from "./hooks/useTradeDebriefs";
 
 const NotFound: React.FC = () => (
   <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 2, px: 2, textAlign: "center" }}>
-    <Typography sx={{ fontSize: 72, fontWeight: 950, color: "rgba(124,58,237,0.3)", lineHeight: 1 }}>404</Typography>
-    <Typography sx={{ fontSize: 22, fontWeight: 900, color: "#F1F5F9" }}>Page not found</Typography>
-    <Typography sx={{ fontSize: 14, color: "#94A3B8", maxWidth: 320 }}>This route doesn't exist. Head back to the market.</Typography>
+    <Typography sx={{ fontSize: 72, fontWeight: 950, color: D.brandBd, lineHeight: 1 }}>404</Typography>
+    <Typography sx={{ fontSize: 22, fontWeight: 900, color: D.t1 }}>Page not found</Typography>
+    <Typography sx={{ fontSize: 14, color: D.t3, maxWidth: 320 }}>This route doesn't exist. Head back to the market.</Typography>
     <Button component={RouterLink} to="/" variant="contained"
-      sx={{ bgcolor: "#7C3AED", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", mt: 1, "&:hover": { bgcolor: "#6D28D9", boxShadow: "none" } }}>
+      sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", mt: 1, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
       Back to Home
     </Button>
   </Box>
@@ -96,7 +98,6 @@ function AppLayout() {
           <Route path="/news" element={<Navigate to="/inbox" replace />} />
 
           {/* Legacy redirects */}
-          <Route path="/tutorial" element={<Navigate to="/learn" replace />} />
           <Route path="/guide" element={<Navigate to="/learn?tab=guide" replace />} />
 
           {/* Protected */}
@@ -106,6 +107,7 @@ function AppLayout() {
           <Route path="/game/goals" element={<ProtectedRoute><GoalsMissions /></ProtectedRoute>} />
           <Route path="/game/living-costs" element={<ProtectedRoute><LivingCosts /></ProtectedRoute>} />
           <Route path="/game/advisor" element={<ProtectedRoute><Advisor /></ProtectedRoute>} />
+          <Route path="/tutorial" element={<ProtectedRoute><Tutorial /></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
           <Route path="/rival" element={<ProtectedRoute><Rival /></ProtectedRoute>} />
           <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
@@ -127,6 +129,7 @@ function AppLayout() {
 
       <NotificationHost />
       <AdvisorEffects />
+      <GuidedTutorial />
     </Box>
   );
 }

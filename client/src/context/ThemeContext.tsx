@@ -25,7 +25,7 @@ type ThemeContextValue = {
   resetTheme: () => void;
 };
 
-const STORAGE_KEY = "stockpilot.theme.v1";
+const STORAGE_KEY = "stockpilot.theme.v4";
 
 const hexToRgb = (hex: string) => {
   const clean = hex.replace("#", "");
@@ -43,6 +43,11 @@ const hexToRgb = (hex: string) => {
 const rgba = (hex: string, alpha: number) => {
   const { r, g, b } = hexToRgb(hex);
   return `rgba(${r},${g},${b},${alpha})`;
+};
+
+const paletteMode = (colors: DesignColors) => {
+  const { r, g, b } = hexToRgb(colors.bg);
+  return (r * 0.299 + g * 0.587 + b * 0.114) > 150 ? "light" : "dark";
 };
 
 const mix = (hex: string, target: string, weight: number) => {
@@ -167,9 +172,17 @@ const HIGH_CONTRAST_LIGHT: DesignColors = {
 };
 
 export const SYSTEM_THEME_ID = "system";
-const SYSTEM_DARK_ID = "apex";
-const SYSTEM_LIGHT_ID = "daybreak";
 const DARK_QUERY = "(prefers-color-scheme: dark)";
+
+const SYSTEM_LIGHT: DesignColors = {
+  bg: "#FFFFFF", surface: "#FFFFFF", elevated: "#F7F7F7", overlay: "#EFEFEF",
+  border: "#DEDEDE", borderHi: "#BFBFBF",
+  green: "#079455", greenBg: "rgba(7,148,85,0.10)", greenBd: "rgba(7,148,85,0.30)", greenText: "#06713F",
+  red: "#D92D3A", redBg: "rgba(217,45,58,0.09)", redBd: "rgba(217,45,58,0.28)", redText: "#A51F2B",
+  amber: "#9B6700", amberBg: "rgba(155,103,0,0.10)",
+  brand: "#7C3AED", brandMid: "#6D28D9", brandBg: "rgba(124,58,237,0.10)", brandBd: "rgba(124,58,237,0.30)", brandText: "#5B21B6",
+  t1: "#111111", t2: "#333333", t3: "#555555", t4: "#6B6B6B",
+};
 
 function prefersDark() {
   try {
@@ -185,7 +198,7 @@ function prefersDark() {
 export const themePresets: ThemePreset[] = [
   {
     id: "apex",
-    name: "Apex Violet",
+    name: "Midnight Violet",
     colors: DEFAULT_COLORS,
   },
   {
@@ -273,15 +286,12 @@ export const themePresets: ThemePreset[] = [
     // it live. `colors` is only the swatch shown in the picker.
     id: SYSTEM_THEME_ID,
     name: "Match System",
-    colors: prefersDark() ? DEFAULT_COLORS : makePalette({
-      bg: "#F6F8FC", surface: "#FFFFFF", elevated: "#EEF2F9", brand: "#2563EB",
-    }, "light"),
+    colors: prefersDark() ? DEFAULT_COLORS : SYSTEM_LIGHT,
   },
 ];
 
 function systemPalette(): DesignColors {
-  const id = prefersDark() ? SYSTEM_DARK_ID : SYSTEM_LIGHT_ID;
-  return themePresets.find((item) => item.id === id)?.colors ?? DEFAULT_COLORS;
+  return prefersDark() ? DEFAULT_COLORS : SYSTEM_LIGHT;
 }
 
 const defaultCustomInput: CustomThemeInput = {
@@ -313,9 +323,9 @@ type StoredTheme = {
 // window entirely: there is nothing to race.
 function readStoredTheme(): StoredTheme {
   const fallback: StoredTheme = {
-    selectedThemeId: themePresets[0].id,
+    selectedThemeId: SYSTEM_THEME_ID,
     customInput: defaultCustomInput,
-    palette: DEFAULT_COLORS,
+    palette: systemPalette(),
   };
 
   try {
@@ -361,6 +371,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setActivePalette = React.useCallback((colors: DesignColors) => {
     applyDesignColors(colors);
+    document.documentElement.style.colorScheme = paletteMode(colors);
     setPalette(colors);
   }, []);
 
@@ -368,6 +379,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // StrictMode double-invoke is harmless.
   React.useEffect(() => {
     applyDesignColors(stored.palette);
+    document.documentElement.style.colorScheme = paletteMode(stored.palette);
   }, [stored.palette]);
 
   React.useEffect(() => {
@@ -416,9 +428,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [customInput, setActivePalette]);
 
   const resetTheme = React.useCallback(() => {
-    setSelectedThemeId(themePresets[0].id);
+    setSelectedThemeId(SYSTEM_THEME_ID);
     setCustomInput(defaultCustomInput);
-    setActivePalette(DEFAULT_COLORS);
+    setActivePalette(systemPalette());
   }, [setActivePalette]);
 
   const value = React.useMemo(

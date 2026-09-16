@@ -71,7 +71,7 @@ function realizedProfitLoss(records: TradeRecord[]) {
 
 // A function, not a module-scope array: `applyDesignColors` mutates `D` when
 // the theme changes, and a captured array keeps the import-time colours forever.
-const pieColors = () => [D.green, D.brand, D.amber, "#38BDF8", "#F87171", "#A78BFA"];
+const pieColors = () => [D.green, D.brand, D.amber, D.red, D.greenText, D.redText];
 
 function StatTile({ label, value, icon, up, index = 0 }: { label: string; value: string; icon: React.ReactNode; up?: boolean; index?: number }) {
   const reduceMotion = useReducedMotion();
@@ -415,7 +415,7 @@ export default function Dashboard() {
                           </Box>
                           <Stack direction="row" spacing={1} sx={{ mt: 1.2 }}>
                             <Button size="small" component={RouterLink} to={`/stocks/${h.symbol}`}
-                              sx={{ color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", px: 1.2, py: 0.4, borderRadius: 1.2, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}`, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
+                              sx={{ color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", px: 1.2, py: 0.4, borderRadius: 1.2, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}`, "&:hover": { bgcolor: D.overlay } }}>
                               View Chart →
                             </Button>
                             <Button size="small" component={RouterLink} to="/game"
@@ -472,7 +472,7 @@ export default function Dashboard() {
 
           {/* Market movers bar chart */}
           <Grid item xs={12} lg={7}>
-            <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+            <Box data-tour="market-movers" sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Market Movers</Typography>
                 <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Top 8 absolute moves today.</Typography>

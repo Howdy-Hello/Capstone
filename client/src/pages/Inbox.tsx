@@ -204,7 +204,7 @@ export default function Inbox() {
   const folderTitle = FOLDERS.find((item) => item.id === folder)?.label ?? "Inbox";
 
   return (
-    <Box sx={{ bgcolor: D.bg, minHeight: "100vh", p: { xs: 1, md: 2 } }}>
+    <Box data-tour="inbox-page" sx={{ bgcolor: D.bg, minHeight: "100vh", p: { xs: 1, md: 2 } }}>
       <Box sx={{ maxWidth: 1600, mx: "auto", bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden", minHeight: { md: "calc(100vh - 110px)" } }}>
         <Stack direction="row" alignItems="center" spacing={2} sx={{ height: 72, px: { xs: 2, md: 3 }, borderBottom: `1px solid ${D.border}` }}>
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ width: { md: 218 }, flexShrink: 0 }}>
@@ -228,7 +228,7 @@ export default function Inbox() {
           {/* Folder rail */}
           <Box sx={{ width: { xs: "100%", md: 242 }, flexShrink: 0, p: { xs: 1.25, md: 2 }, borderRight: { md: `1px solid ${D.border}` } }}>
             <Button fullWidth startIcon={<MarkEmailReadIcon />} onClick={markEverythingRead}
-              sx={{ justifyContent: "flex-start", px: 2, py: 1.35, mb: 1.5, borderRadius: 2.5, bgcolor: D.brand, color: "white", textTransform: "none", fontWeight: 850, boxShadow: "0 8px 24px rgba(124,58,237,.18)", "&:hover": { bgcolor: D.brandMid } }}>
+              sx={{ justifyContent: "flex-start", px: 2, py: 1.35, mb: 1.5, borderRadius: 2.5, bgcolor: D.brand, color: "white", textTransform: "none", fontWeight: 850, boxShadow: `0 8px 24px ${D.brandBg}`, "&:hover": { bgcolor: D.brandMid } }}>
               Mark all as read
             </Button>
             <Stack

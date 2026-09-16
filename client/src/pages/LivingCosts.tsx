@@ -26,7 +26,7 @@ export default function LivingCosts() {
 
         <Grid container spacing={3}>
           <Grid item xs={12} md={8}>
-            <Box sx={{ ...CARD, p: { xs: 2.5, md: 3.5 }, mb: 3 }}>
+            <Box data-tour="living-costs" sx={{ ...CARD, p: { xs: 2.5, md: 3.5 }, mb: 3 }}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 3 }}>
                 <Box>
                   <Typography sx={{ color: D.t3, fontSize: 11, fontWeight: 900, letterSpacing: 1 }}>NEXT BILL</Typography>

@@ -149,12 +149,12 @@ const Header: React.FC = () => {
 
           {/* Desktop nav */}
           <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 0.5, flex: 1 }}>
-            <Box sx={{ order: 1, display: "flex", alignItems: "center", borderRadius: 1.5, bgcolor: pathname === "/level" || pathname.startsWith("/game") ? D.overlay : "transparent", "&:hover": { bgcolor: D.overlay } }}>
+            <Box data-tour="game-menu" sx={{ order: 1, display: "flex", alignItems: "center", borderRadius: 1.5, bgcolor: pathname === "/level" || pathname.startsWith("/game") ? D.overlay : "transparent", "&:hover": { bgcolor: D.overlay } }}>
               <Button component={RouterLink} to="/game" size="small"
                 sx={{ minWidth: 0, color: pathname === "/level" || pathname.startsWith("/game") ? D.t1 : D.t2, fontWeight: pathname === "/level" || pathname.startsWith("/game") ? 800 : 600, fontSize: 13.5, textTransform: "none", pl: 1.5, pr: 0.6, py: 0.7, borderRadius: "6px 0 0 6px", "&:hover": { color: D.t1, bgcolor: "transparent" } }}>
                 Game
               </Button>
-              <IconButton size="small" onClick={(event) => setGameAnchor(event.currentTarget)} aria-label="Open Game menu" aria-haspopup="menu" aria-expanded={Boolean(gameAnchor)}
+              <IconButton data-tour="game-menu-arrow" size="small" onClick={(event) => setGameAnchor(event.currentTarget)} aria-label="Open Game menu" aria-haspopup="menu" aria-expanded={Boolean(gameAnchor)}
                 sx={{ color: pathname === "/level" || pathname.startsWith("/game") ? D.t1 : D.t2, p: 0.55, borderRadius: "0 6px 6px 0", "&:hover": { color: D.t1, bgcolor: "transparent" } }}>
                 <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
               </IconButton>
@@ -288,7 +288,7 @@ const Header: React.FC = () => {
           </Stack>
 
           {/* Mobile hamburger */}
-          <IconButton onClick={() => setDrawerOpen(true)} aria-label="Open navigation menu" title="Open menu" sx={{ color: D.t2, display: { xs: "flex", md: "none" }, p: 0.8 }}>
+          <IconButton data-tour="game-menu" onClick={() => setDrawerOpen(true)} aria-label="Open navigation menu" title="Open menu" sx={{ color: D.t2, display: { xs: "flex", md: "none" }, p: 0.8 }}>
             <MenuIcon />
           </IconButton>
         </Toolbar>

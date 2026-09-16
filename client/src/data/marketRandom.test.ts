@@ -1,4 +1,10 @@
-import { hashString, normalizeMarketSeed, seededRange } from "./mockStocks";
+import {
+  getNewsForGameDay,
+  getStocksForGameDay,
+  hashString,
+  normalizeMarketSeed,
+  seededRange,
+} from "./mockStocks";
 
 // Regression guard for the continuation-price generator's randomness source.
 //
@@ -56,4 +62,18 @@ test("hashString avalanches on a single-character change", () => {
   const a = hashString("shock-continuation-AAPL-41");
   const b = hashString("shock-continuation-AAPL-42");
   expect(Math.abs(a - b)).toBeGreaterThan(1_000);
+});
+
+test("the opening tutorial gives CAI a Day 1 catalyst and a Day 2 reversal", () => {
+  const day1 = getStocksForGameDay(1, SEED).find((stock) => stock.symbol === "CAI");
+  const day2 = getStocksForGameDay(2, SEED).find((stock) => stock.symbol === "CAI");
+  const day1News = getNewsForGameDay(1, SEED).find((item) => item.relatedTickers.includes("CAI"));
+  const day2News = getNewsForGameDay(2, SEED).find((item) => item.relatedTickers.includes("CAI"));
+  const day3News = getNewsForGameDay(3, SEED).find((item) => item.relatedTickers.includes("CAI"));
+
+  expect(day1?.dayChangePercent).toBeGreaterThan(0);
+  expect(day2?.dayChangePercent).toBeLessThan(0);
+  expect(day1News?.marketTone).toBe("Bullish");
+  expect(day2News?.marketTone).toBe("Bearish");
+  expect(day3News?.headline).toContain("stabilizes");
 });

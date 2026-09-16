@@ -232,7 +232,7 @@ export default function StockDetails() {
                 </motion.div>
                 <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} style={{ display: "inline-block", marginTop: 16, marginLeft: 8 }}>
                   <Button component={RouterLink} to={`/compare?left=${stock.symbol}&right=${compareSymbol}`}
-                    sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
+                    sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.overlay } }}>
                     Compare
                   </Button>
                 </motion.div>
@@ -240,7 +240,7 @@ export default function StockDetails() {
             </Grid>
             <Grid item xs={12} md={5}>
               <motion.div initial={reduceMotion ? undefined : { opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.1 }}>
-                <Box sx={{ ...CARD, p: 3 }}>
+                <Box data-tour="stock-price" sx={{ ...CARD, p: 3 }}>
                   <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>CURRENT PRICE</Typography>
                   <motion.div key={stock.currentPrice} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
                     <Typography sx={{ fontSize: 36, fontWeight: 950, color: D.t1, fontFamily: MONO, lineHeight: 1, mb: 1 }}>{money(stock.currentPrice)}</Typography>
@@ -260,7 +260,7 @@ export default function StockDetails() {
 
       <Container maxWidth="xl" sx={{ py: 3 }}>
         {/* Stat tiles */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid data-tour="stock-values" container spacing={2} sx={{ mb: 3 }}>
           {[
             { label: "Current Price",   val: money(stock.currentPrice),                             icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: true },
             { label: "P/E Ratio",       val: stock.fundamentals.peRatio.toFixed(1),                 icon: <AssessmentIcon sx={{ fontSize: 20 }} />,           up: true },
@@ -298,7 +298,7 @@ export default function StockDetails() {
                   <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Close prices up to Day {gameDay}.</Typography>
                 </Box>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <ToggleButtonGroup exclusive size="small" value={chartType} onChange={(_, value) => value && setChartType(value)} aria-label="Price chart type"
+                  <ToggleButtonGroup data-tour="chart-toggle" exclusive size="small" value={chartType} onChange={(_, value) => value && setChartType(value)} aria-label="Price chart type"
                     sx={{ "& .MuiToggleButton-root": { color: D.t3, borderColor: D.border, px: 1.5, py: 0.45, fontSize: 11, fontWeight: 800, textTransform: "none", "&.Mui-selected": { color: D.brandText, bgcolor: D.brandBg }, "&.Mui-selected:hover": { bgcolor: D.brandBg } } }}>
                     <ToggleButton value="area" aria-label="Area chart">Area</ToggleButton>
                     <ToggleButton value="bar" aria-label="Candlestick chart">Candles</ToggleButton>
@@ -422,7 +422,7 @@ export default function StockDetails() {
               </Box>
 
               {/* Trading actions */}
-              <Box sx={{ ...CARD, p: 3 }}>
+              <Box data-tour="trade-panel" sx={{ ...CARD, p: 3 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
                   <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Trading Actions</Typography>
                   <Chip label={watchlisted ? "WATCHING" : "WATCHLIST"} size="small"
@@ -490,7 +490,7 @@ export default function StockDetails() {
                   )}
                 </Box>
 
-                <Box sx={{ mb: 2, p: 1.75, bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2 }}>
+                <Box data-tour="trade-journal" sx={{ mb: 2, p: 1.75, bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2 }}>
                   <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t1, mb: .35 }}>DECISION JOURNAL <Box component="span" sx={{ color: D.t3, fontWeight: 600 }}>(OPTIONAL)</Box></Typography>
                   <Typography sx={{ fontSize: 11, color: D.t3, mb: 1.2 }}>Your advisor will review the decision after the market moves.</Typography>
                   <TextField fullWidth size="small" multiline minRows={2} value={tradeThesis} onChange={(event) => setTradeThesis(event.target.value.slice(0, 500))} placeholder="What is your thesis?"
@@ -513,14 +513,14 @@ export default function StockDetails() {
                 </MotionPresence>
                 <Stack spacing={1}>
                   <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
-                    <Button fullWidth variant="contained" onClick={handleBuy}
+                    <Button data-tour="tutorial-buy" fullWidth variant="contained" onClick={handleBuy}
                       disabled={trading.account.cash < buyQuote.total}
                       sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Buy {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>
                   </motion.div>
                   <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
-                    <Button fullWidth variant="contained" disabled={sharesOwned < quantity} onClick={handleSell}
+                    <Button data-tour="tutorial-sell" fullWidth variant="contained" disabled={sharesOwned < quantity} onClick={handleSell}
                       sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Sell {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>
@@ -533,7 +533,7 @@ export default function StockDetails() {
               </Box>
 
               {/* AI advisor */}
-              <Box sx={{ ...CARD, p: 3 }}>
+              <Box data-tour="advisor-panel" sx={{ ...CARD, p: 3 }}>
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <SmartToyIcon sx={{ fontSize: 18, color: D.brandText }} />
@@ -566,7 +566,7 @@ export default function StockDetails() {
                 <Button fullWidth size="small"
                   disabled={advisor.loading || !advisor.activeAdvisor || advisor.isOnCooldown(stock.symbol)}
                   onClick={() => advisor.consult(stock)}
-                  sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" }, "&.Mui-disabled": { color: D.t3, borderColor: D.border, bgcolor: D.overlay } }}>
+                  sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.overlay }, "&.Mui-disabled": { color: D.t3, borderColor: D.border, bgcolor: D.overlay } }}>
                   {advisor.isOnCooldown(stock.symbol)
                     ? "Consulted today"
                     : !advisor.activeAdvisor
@@ -577,7 +577,7 @@ export default function StockDetails() {
               </Box>
 
               {/* Price alerts */}
-              <Box sx={{ ...CARD, p: 3 }}>
+              <Box data-tour="price-alerts" sx={{ ...CARD, p: 3 }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
                   <NotificationsActiveIcon sx={{ fontSize: 18, color: D.brandText }} />
                   <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Price Alerts</Typography>
@@ -632,7 +632,7 @@ export default function StockDetails() {
                     </Typography>
                   )}
                   <Button fullWidth size="small" disabled={creatingAlert || (needsThreshold(alertCondition) && !alertThreshold)} onClick={handleCreateAlert}
-                    sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: "rgba(124,58,237,0.15)" } }}>
+                    sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.overlay } }}>
                     Set Alert
                   </Button>
                 </Stack>

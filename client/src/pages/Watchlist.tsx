@@ -10,7 +10,7 @@ export default function Watchlist() {
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh", py: { xs: 3, md: 5 } }}>
-      <Container maxWidth="lg">
+      <Container data-tour="watchlist-page" maxWidth="lg">
         <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 1 }}>
           <StarIcon sx={{ color: D.amber }} />
           <Typography sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 950 }}>Watchlist</Typography>

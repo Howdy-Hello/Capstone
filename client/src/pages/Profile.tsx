@@ -10,12 +10,14 @@ import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import LogoutIcon from "@mui/icons-material/Logout";
+import SchoolIcon from "@mui/icons-material/School";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import ThemeSettingsPanel from "../components/ThemeSettingsPanel";
 import { D, MONO } from "../theme/design";
+import { getTutorialProgress } from "../lib/tutorial";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -387,6 +389,26 @@ export default function ProfilePage() {
                   </Stack>
                 </Box>
               </Box>
+
+              {isSettings && (() => {
+                const progress = getTutorialProgress(user.id);
+                return (
+                  <Box data-tour="tutorial-settings" component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.1 }} sx={sectionSx()}>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.25, borderBottom: `1px solid ${D.border}` }}>
+                      <SchoolIcon sx={{ color: D.brandText, fontSize: 18 }} />
+                      <Typography sx={{ fontWeight: 900, fontSize: 15.5, color: D.t1 }}>Interactive tutorials</Typography>
+                    </Stack>
+                    <Box sx={{ p: 3 }}>
+                      <Typography sx={{ color: D.t3, fontSize: 13, mb: 2 }}>Replay the interface, gameplay, or advanced-tools tour at any time.</Typography>
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap" useFlexGap>
+                        <Button onClick={() => navigate("/tutorial")} variant="contained" sx={{ bgcolor: D.brand, textTransform: "none", fontWeight: 900, boxShadow: "none" }}>Website tour {progress.uiComplete ? "✓" : ""}</Button>
+                        <Button onClick={() => navigate("/tutorial?course=game")} sx={{ color: D.t1, border: `1px solid ${D.border}`, textTransform: "none", fontWeight: 800 }}>Gameplay tutorial {progress.gameComplete ? "✓" : ""}</Button>
+                        <Button onClick={() => navigate("/tutorial?course=advanced")} sx={{ color: D.t1, border: `1px solid ${D.border}`, textTransform: "none", fontWeight: 800 }}>Advanced tools {progress.advancedComplete ? "✓" : ""}</Button>
+                      </Stack>
+                    </Box>
+                  </Box>
+                );
+              })()}
 
               {/* Appearance */}
               <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.1 }}>

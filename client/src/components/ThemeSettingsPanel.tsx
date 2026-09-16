@@ -40,7 +40,7 @@ export default function ThemeSettingsPanel() {
 
       <Box sx={{ p: 3 }}>
         <Typography sx={{ fontSize: 13, color: D.t3, mb: 2.2 }}>
-          Choose a premade palette or create your own color combination.
+          The default follows your device automatically. You can also choose a fixed palette or create your own.
         </Typography>
 
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.2 }}>

@@ -31,36 +31,36 @@ export type DesignColors = {
 
 export const DEFAULT_COLORS: DesignColors = {
   // Backgrounds
-  bg:        '#09090F',
-  surface:   '#0E101A',
-  elevated:  '#131723',
-  overlay:   '#1A1F2E',
+  bg:        '#050505',
+  surface:   '#0B0B0B',
+  elevated:  '#141414',
+  overlay:   '#1E1E1E',
 
   // Borders. Deliberately low-contrast, but not invisible: the previous
   // #1C2436 measured 1.15:1 against the elevated surface it divides.
-  border:    '#252F45',
-  borderHi:  '#38455F',
+  border:    '#303030',
+  borderHi:  '#484848',
 
   // Data colors (semantic only — never use for brand)
-  green:     '#22C55E',
-  greenBg:   'rgba(34,197,94,0.08)',
-  greenBd:   'rgba(34,197,94,0.22)',
-  greenText: '#4ADE80',
+  green:     '#16C784',
+  greenBg:   'rgba(22,199,132,0.12)',
+  greenBd:   'rgba(22,199,132,0.32)',
+  greenText: '#54E3AD',
 
-  red:       '#EF4444',
-  redBg:     'rgba(239,68,68,0.08)',
-  redBd:     'rgba(239,68,68,0.22)',
-  redText:   '#F87171',
+  red:       '#F04452',
+  redBg:     'rgba(240,68,82,0.12)',
+  redBd:     'rgba(240,68,82,0.32)',
+  redText:   '#FF7A85',
 
-  amber:     '#F59E0B',
-  amberBg:   'rgba(245,158,11,0.08)',
+  amber:     '#F4B740',
+  amberBg:   'rgba(244,183,64,0.12)',
 
   // Brand accent (interactive, focus, active)
   brand:     '#7C3AED',
   brandMid:  '#6D28D9',
-  brandBg:   'rgba(124,58,237,0.1)',
-  brandBd:   'rgba(124,58,237,0.3)',
-  brandText: '#A78BFA',
+  brandBg:   'rgba(124,58,237,0.14)',
+  brandBd:   'rgba(124,58,237,0.38)',
+  brandText: '#B69CFF',
 
   // Text scale. Verified by theme/contrast.test.ts against every surface of
   // every dark preset: t1 12.15:1, t2 8.96:1, t3 5.19:1 (all clear WCAG AA
@@ -68,10 +68,10 @@ export const DEFAULT_COLORS: DesignColors = {
   // for de-emphasised micro-labels. t3 previously sat at #718096 and measured
   // as low as 3.31:1 on the elevated/overlay surfaces -- under AA on every
   // dark theme.
-  t1:  '#F1F5F9',
-  t2:  '#CBD5E1',
-  t3:  '#94A3B8',
-  t4:  '#6F7C8F',
+  t1:  '#FFFFFF',
+  t2:  '#D6D6D6',
+  t3:  '#AAAAAA',
+  t4:  '#898989',
 };
 
 export const D: DesignColors = { ...DEFAULT_COLORS };

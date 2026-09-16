@@ -39,7 +39,7 @@ export default function Home() {
       {/* HERO */}
       <Box sx={{ position: "relative", overflow: "hidden", minHeight: { xs: 520, md: 680 }, display: "flex", alignItems: "center" }}>
         <Box sx={{ position: "absolute", inset: 0, backgroundImage: `linear-gradient(${D.border} 1px, transparent 1px), linear-gradient(90deg, ${D.border} 1px, transparent 1px)`, backgroundSize: "48px 48px", opacity: 0.5 }} />
-        <Box sx={{ position: "absolute", top: -100, left: -100, width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(124,58,237,0.18) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <Box sx={{ position: "absolute", top: -100, left: -100, width: 600, height: 600, borderRadius: "50%", background: `radial-gradient(circle, ${D.brandBg} 0%, transparent 70%)`, pointerEvents: "none" }} />
         <Box sx={{ position: "absolute", bottom: -120, right: -80, width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
 
         <Container maxWidth="xl" sx={{ position: "relative", zIndex: 1, py: { xs: 6, md: 8 } }}>

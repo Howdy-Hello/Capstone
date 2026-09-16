@@ -197,9 +197,9 @@ export const openingStoryDays: OpeningStoryDay[] = [
     gameDay: 2,
     title: "Day 2: Defensive money rotates in",
     summary:
-      "Healthcare, utilities, grocery, and education stocks receive buying interest. Energy and airlines weaken as demand and fuel concerns return.",
+      "Healthcare, utilities, grocery, and education stocks receive buying interest. A major customer pause also reverses the early optimism around Closed Ai.",
     rising: ["MCH", "AQL", "FDM", "EDU", "C22", "AGR"],
-    falling: ["GVE", "SKY", "MIN", "SLD"],
+    falling: ["CAI", "GVE", "SKY", "MIN", "SLD"],
     playerHint:
       "Defensive stocks may be safer when the market looks mixed. Look at margins, debt, and dividend yield before deciding.",
   },
@@ -706,7 +706,7 @@ export const mockStockCompanies: StockCompany[] = [
 ];
 
 const hardcodedFirstThreeDayCloses: Record<string, Record<number, number>> = {
-  CAI: { 1: 104.8, 2: 106.95, 3: 112.65 },
+  CAI: { 1: 104.8, 2: 99.95, 3: 102.1 },
   GVE: { 1: 75.6, 2: 73.85, 3: 77.9 },
   MCH: { 1: 95.9, 2: 100.45, 3: 99.1 },
   URB: { 1: 55.45, 2: 56.25, 3: 55.4 },
@@ -811,6 +811,22 @@ const hardcodedOpeningNews: MarketNews[] = [
     category: "operations",
   },
   {
+    newsId: "story_day2_cai_customer_pause",
+    gameDay: 2,
+    source: NEWS_PUBLISHERS.cynTimes,
+    headline: "Closed Ai drops as major customer pauses rollout",
+    body:
+      "Closed Ai's largest enterprise customer paused a planned expansion while it reviews costs and data controls. The original contracts remain active, but the delay weakens the near-term growth case that lifted the shares yesterday.",
+    importance: "High",
+    marketTone: "Bearish",
+    relatedTickers: ["CAI"],
+    expectedImpact: -0.065,
+    actualImpact: -0.046,
+    isAccurate: true,
+    isRumor: false,
+    category: "contract",
+  },
+  {
     newsId: "story_day2_mch_product_approval",
     gameDay: 2,
     source: NEWS_PUBLISHERS.cynTimes,
@@ -886,6 +902,22 @@ const hardcodedOpeningNews: MarketNews[] = [
     relatedTickers: ["SLD"],
     expectedImpact: -0.031,
     actualImpact: -0.025,
+    isAccurate: true,
+    isRumor: false,
+    category: "operations",
+  },
+  {
+    newsId: "story_day3_cai_audit_update",
+    gameDay: 3,
+    source: NEWS_PUBLISHERS.techInsider,
+    headline: "Closed Ai stabilizes after independent controls audit",
+    body:
+      "An independent review found no material data-control failures in Closed Ai's platform. The update does not immediately restore the paused rollout, but it reduces one risk behind yesterday's selloff.",
+    importance: "Medium",
+    marketTone: "Bullish",
+    relatedTickers: ["CAI"],
+    expectedImpact: 0.025,
+    actualImpact: 0.022,
     isAccurate: true,
     isRumor: false,
     category: "operations",
