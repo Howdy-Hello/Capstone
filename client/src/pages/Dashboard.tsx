@@ -498,11 +498,11 @@ export default function Dashboard() {
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Today's News</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Game Day {gameDay} market events.</Typography>
+                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Day {gameDay} after-hours signals for the next session.</Typography>
               </Box>
               <Box sx={{ p: 2.5 }}>
                 {news.length === 0 ? (
-                  <Typography sx={{ fontSize: 13, color: D.t3, py: 1 }}>No major news today. Prices still move from drift and volatility.</Typography>
+                  <Typography sx={{ fontSize: 13, color: D.t3, py: 1 }}>{trading.marketPhase === "market_open" ? "News arrives after the market closes." : "No major news today. Prices still move from drift and volatility."}</Typography>
                 ) : (
                   <Stack spacing={1.2}>
                     <MotionPresence mode="popLayout" initial={false}>
@@ -526,8 +526,8 @@ export default function Dashboard() {
                   </Stack>
                 )}
                 <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
-                  <Button fullWidth variant="outlined" component={RouterLink} to="/inbox" sx={{ mt: 2, color: D.brandText, borderColor: D.brandBd, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.brandBg } }}>
-                    Open Inbox →
+                  <Button fullWidth variant="outlined" component={RouterLink} to="/news" sx={{ mt: 2, color: D.brandText, borderColor: D.brandBd, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.brandBg } }}>
+                    Open Newsroom →
                   </Button>
                 </motion.div>
               </Box>

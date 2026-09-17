@@ -12,7 +12,16 @@ export type EventCategory =
   | "macro"
   | "rumor"
   | "partnership"
-  | "operations";
+  | "operations"
+  | "analyst"
+  | "capital"
+  | "management"
+  | "regulatory"
+  | "merger"
+  | "labor";
+
+export type NewsConfidence = "Low" | "Medium" | "High";
+export type NewsHorizon = "Next session" | "Multi-day";
 
 export type Fundamentals = {
   peRatio: number;
@@ -78,6 +87,12 @@ export type MarketNews = {
   isAccurate: boolean;
   isRumor: boolean;
   category: EventCategory;
+  confidence?: NewsConfidence;
+  horizon?: NewsHorizon;
+  affectedSectors?: string[];
+  arcKey?: string;
+  followUpTo?: string;
+  branch?: string;
   impactByTicker?: Record<string, {
     expectedImpact: number;
     actualImpact: number;
@@ -102,6 +117,11 @@ export type MarketEventSeed = {
   isAccurate: boolean;
   isRumor: boolean;
   arcKey?: string;
+  confidence?: NewsConfidence;
+  horizon?: NewsHorizon;
+  affectedSectors?: string[];
+  followUpTo?: string;
+  branch?: string;
   impacts: MarketEventSeedImpact[];
 };
 
@@ -130,6 +150,9 @@ export const NEWS_PUBLISHERS = {
   techInsider: "Tech Insider",
   expedition: "Expedition",
   reddot: "Reddot",
+  officialWire: "Company Filing Wire",
+  sectorLedger: "Sector Ledger",
+  marketPulse: "Market Pulse",
 } as const;
 
 // News-credibility mechanic. Reputable outlets report confirmed facts; the rumor
@@ -140,6 +163,9 @@ export const PUBLISHER_RELIABILITY: Record<string, number> = {
   [NEWS_PUBLISHERS.techInsider]: 82,
   [NEWS_PUBLISHERS.expedition]: 78,
   [NEWS_PUBLISHERS.reddot]: 44,
+  [NEWS_PUBLISHERS.officialWire]: 96,
+  [NEWS_PUBLISHERS.sectorLedger]: 86,
+  [NEWS_PUBLISHERS.marketPulse]: 72,
 };
 
 export type CredibilityRating = "high" | "medium" | "low";
@@ -1385,6 +1411,46 @@ const healthcareTrialStoryNews: MarketNews[] = [
   },
 ];
 
+function arcEvent(
+  newsId: string, gameDay: number, headline: string, body: string,
+  category: EventCategory, impacts: Record<string, number>, source: string = NEWS_PUBLISHERS.marketPulse
+): MarketNews {
+  const relatedTickers = Object.keys(impacts);
+  const impactByTicker = Object.fromEntries(relatedTickers.map((symbol) => [symbol, {
+    expectedImpact: impacts[symbol], actualImpact: impacts[symbol] * 0.9,
+  }]));
+  return {
+    newsId, gameDay, source, headline, body, importance: "High", marketTone: "Unclear",
+    relatedTickers, expectedImpact: 0, actualImpact: 0, isAccurate: true, isRumor: false,
+    category, impactByTicker,
+  };
+}
+
+const consumerSlowdownStoryNews = [
+  arcEvent("arc_consumer_day7_spending", 7, "Household spending loses momentum", "Card and retail data point to more cautious discretionary spending, pressuring premium brands while staples remain steadier.", "macro", { LUX: -0.035, FDM: 0.012, AGR: 0.01 }),
+  arcEvent("arc_consumer_day12_discounting", 12, "Retailers turn to discounts as demand softens", "Promotions may protect sales volumes but put margins at risk across consumer businesses.", "operations", { LUX: -0.04, FDM: -0.012, AGR: -0.008 }),
+];
+const supplyChainStoryNews = [
+  arcEvent("arc_supply_day9_delays", 9, "Port congestion disrupts component deliveries", "Manufacturers and freight operators warn that delayed inputs could push revenue into later periods.", "supply", { ITC: -0.034, PAP: -0.022, FRX: 0.018 }),
+  arcEvent("arc_supply_day15_normalizes", 15, "Shipping backlogs begin to clear", "Improving delivery times ease production risk and reduce emergency freight costs.", "supply", { ITC: 0.03, PAP: 0.02, FRX: -0.012 }),
+];
+const takeoverStoryNews = [
+  arcEvent("arc_takeover_day11_report", 11, "Takeover talks emerge around OmniMedia", "Sources say a larger entertainment group is studying a bid, though no agreement has been announced.", "merger", { OMG: 0.045, HLW: 0.012 }, NEWS_PUBLISHERS.reddot),
+  arcEvent("arc_takeover_day17_update", 17, "OmniMedia board opens formal deal talks", "The board confirmed discussions while warning that financing and regulatory review could still derail a transaction.", "merger", { OMG: 0.055, HLW: -0.012 }, NEWS_PUBLISHERS.officialWire),
+];
+const laborStrikeStoryNews = [
+  arcEvent("arc_labor_day8_vote", 8, "Transport workers authorize strike action", "Airline and freight unions authorize leaders to call a strike if negotiations fail.", "labor", { SKY: -0.028, FRX: -0.022 }),
+  arcEvent("arc_labor_day14_talks", 14, "Contract talks enter final mediation", "A last round of mediation lowers immediate disruption risk but leaves wage pressure unresolved.", "labor", { SKY: 0.02, FRX: 0.018 }),
+];
+const regulationStoryNews = [
+  arcEvent("arc_regulation_day10_proposal", 10, "Officials propose tighter digital-platform rules", "The proposal could raise compliance costs for technology and media firms if adopted.", "regulatory", { CAI: -0.02, OMG: -0.025, CYB: 0.012 }),
+  arcEvent("arc_regulation_day23_revision", 23, "Revised technology rules narrow compliance burden", "Lawmakers removed several costly provisions while retaining stronger security requirements.", "regulatory", { CAI: 0.018, OMG: 0.015, CYB: 0.01 }),
+];
+const weatherStoryNews = [
+  arcEvent("arc_weather_day6_warning", 6, "Severe weather threatens travel and power networks", "Forecasts raise cancellation risk for airlines while increasing demand for resilient utilities.", "macro", { SKY: -0.032, AQL: 0.015, GVE: 0.012 }),
+  arcEvent("arc_weather_day9_damage", 9, "Storm damage disrupts routes and local infrastructure", "Initial assessments show transport delays but manageable utility damage.", "operations", { SKY: -0.025, FRX: -0.018, AQL: 0.02 }),
+];
+
 const storyArcDefinitions = [
   {
     arcKey: "gas_prices",
@@ -1406,6 +1472,12 @@ const storyArcDefinitions = [
     selectionWeight: 0.58,
     events: healthcareTrialStoryNews,
   },
+  { arcKey: "consumer_slowdown", selectionWeight: 0.5, events: consumerSlowdownStoryNews },
+  { arcKey: "supply_chain", selectionWeight: 0.52, events: supplyChainStoryNews },
+  { arcKey: "takeover", selectionWeight: 0.42, events: takeoverStoryNews },
+  { arcKey: "labor_strike", selectionWeight: 0.44, events: laborStrikeStoryNews },
+  { arcKey: "industry_regulation", selectionWeight: 0.48, events: regulationStoryNews },
+  { arcKey: "extreme_weather", selectionWeight: 0.46, events: weatherStoryNews },
 ];
 
 const bullishTemplates = [
@@ -1460,7 +1532,7 @@ const bullishTemplates = [
     isRumor: false,
   },
   {
-    category: "operations" as EventCategory,
+    category: "analyst" as EventCategory,
     importance: "Medium" as Importance,
     headline: "receives an analyst upgrade to Buy",
     body:
@@ -1470,7 +1542,7 @@ const bullishTemplates = [
     isRumor: false,
   },
   {
-    category: "operations" as EventCategory,
+    category: "capital" as EventCategory,
     importance: "Medium" as Importance,
     headline: "announces a share buyback and dividend increase",
     body:
@@ -1480,7 +1552,7 @@ const bullishTemplates = [
     isRumor: false,
   },
   {
-    category: "product" as EventCategory,
+    category: "regulatory" as EventCategory,
     importance: "High" as Importance,
     headline: "wins regulatory approval for a key product",
     body:
@@ -1543,7 +1615,7 @@ const bearishTemplates = [
     isRumor: false,
   },
   {
-    category: "lawsuit" as EventCategory,
+    category: "regulatory" as EventCategory,
     importance: "High" as Importance,
     headline: "faces a regulatory investigation",
     body:
@@ -1563,7 +1635,7 @@ const bearishTemplates = [
     isRumor: false,
   },
   {
-    category: "operations" as EventCategory,
+    category: "management" as EventCategory,
     importance: "Medium" as Importance,
     headline: "slides after a surprise executive departure",
     body:
@@ -1573,7 +1645,7 @@ const bearishTemplates = [
     isRumor: false,
   },
   {
-    category: "macro" as EventCategory,
+    category: "capital" as EventCategory,
     importance: "Medium" as Importance,
     headline: "falls after announcing a dilutive share sale",
     body:
@@ -1583,6 +1655,56 @@ const bearishTemplates = [
     isRumor: false,
   },
 ];
+
+const sectorEventCopy: Partial<Record<string, {
+  bullish: Array<{ headline: string; body: string }>;
+  bearish: Array<{ headline: string; body: string }>;
+}>> = {
+  Technology: {
+    bullish: [
+      { headline: "reports accelerating enterprise adoption", body: "Customer usage and recurring software demand improved, strengthening expectations for future revenue." },
+      { headline: "unveils a more efficient platform", body: "Early benchmarks suggest the new platform could improve performance while lowering customer operating costs." },
+    ],
+    bearish: [
+      { headline: "investigates a service outage", body: "A service disruption raised reliability concerns and may trigger customer credits or delayed deployments." },
+      { headline: "faces tighter component availability", body: "Limited supply may constrain shipments even though underlying customer demand remains intact." },
+    ],
+  },
+  Healthcare: {
+    bullish: [
+      { headline: "reports encouraging clinical evidence", body: "New patient data improved confidence in the program, though larger studies are still required." },
+      { headline: "wins clearance for a medical product", body: "Regulatory clearance removes a key uncertainty and allows commercial launch preparations to begin." },
+    ],
+    bearish: [
+      { headline: "pauses enrollment after a safety review", body: "The review may delay development while investigators determine whether the issue is isolated." },
+      { headline: "receives additional regulator questions", body: "The request extends the review timeline and increases uncertainty around approval." },
+    ],
+  },
+  Finance: {
+    bullish: [{ headline: "reports improving credit quality", body: "Lower delinquencies reduced expected loan losses and supported the earnings outlook." }],
+    bearish: [{ headline: "raises provisions for loan losses", body: "Management increased reserves as borrowers showed more financial stress." }],
+  },
+  Travel: {
+    bullish: [{ headline: "sees stronger booking demand", body: "Forward bookings improved while capacity discipline supported ticket pricing." }],
+    bearish: [{ headline: "warns of higher fuel and route costs", body: "Operating costs rose faster than fares, putting near-term margins under pressure." }],
+  },
+  Industrials: {
+    bullish: [{ headline: "expands its order backlog", body: "New customer orders improved factory visibility and future service revenue." }],
+    bearish: [{ headline: "faces production and delivery delays", body: "Parts shortages and logistics problems may postpone customer acceptance and revenue." }],
+  },
+  Consumer: {
+    bullish: [{ headline: "gains market share as demand improves", body: "Sales data show stronger customer traffic and resilient pricing." }],
+    bearish: [{ headline: "turns to promotions as demand cools", body: "Discounting may support volume but creates new pressure on profit margins." }],
+  },
+  Communication: {
+    bullish: [{ headline: "draws a larger audience for new releases", body: "Engagement and advertising demand improved around the latest content slate." }],
+    bearish: [{ headline: "faces rising content and subscriber costs", body: "Higher spending may be needed to defend audience share in a competitive market." }],
+  },
+  Energy: {
+    bullish: [{ headline: "adds a major project to its development pipeline", body: "The project expands future capacity, subject to financing and connection timelines." }],
+    bearish: [{ headline: "reports a permitting setback", body: "A delayed permit pushes expected construction and revenue milestones further out." }],
+  },
+};
 
 export function hashString(input: string) {
   let hash = 2166136261;
@@ -1653,15 +1775,46 @@ function getArcKey(newsId: string) {
   if (newsId.startsWith("arc_cyber_")) return "cyber_breach";
   if (newsId.startsWith("arc_rates_")) return "rate_cycle";
   if (newsId.startsWith("arc_health_")) return "healthcare_trial";
+  if (newsId.startsWith("arc_consumer_")) return "consumer_slowdown";
+  if (newsId.startsWith("arc_supply_")) return "supply_chain";
+  if (newsId.startsWith("arc_takeover_")) return "takeover";
+  if (newsId.startsWith("arc_labor_")) return "labor_strike";
+  if (newsId.startsWith("arc_regulation_")) return "industry_regulation";
+  if (newsId.startsWith("arc_weather_")) return "extreme_weather";
   if (newsId.startsWith("story_day")) return "opening_tutorial";
   return undefined;
 }
 
+function branchArcEvents(arcKey: string, events: MarketNews[], marketSeed?: string | null) {
+  const branch = seededRandom(`story-arc-branch-${arcKey}`, marketSeed) < 0.5 ? "resolution" : "setback";
+  if (branch === "resolution" || events.length === 0) {
+    return events.map((event) => ({ ...event, arcKey, branch }));
+  }
+  const finalIndex = events.length - 1;
+  return events.map((event, index) => {
+    if (index !== finalIndex) return { ...event, arcKey, branch };
+    const impactByTicker = event.impactByTicker && Object.fromEntries(
+      Object.entries(event.impactByTicker).map(([symbol, impact]) => [symbol, {
+        expectedImpact: -impact.expectedImpact,
+        actualImpact: -impact.actualImpact,
+      }])
+    );
+    return {
+      ...event,
+      newsId: `${event.newsId}_setback`,
+      headline: `${event.headline} — expected resolution falters`,
+      body: `${event.body} New evidence challenges the expected resolution, reversing part of the market's earlier assumption.`,
+      marketTone: "Unclear" as MarketTone,
+      impactByTicker,
+      arcKey,
+      branch,
+    };
+  });
+}
+
 function getSelectedStoryArcDefinitions(marketSeed?: string | null) {
   const seedCode = normalizeMarketSeed(marketSeed);
-  const arcCount = 1 + Math.floor(
-    seededRandom("story-arc-count", seedCode) * storyArcDefinitions.length
-  );
+  const arcCount = 2 + Math.floor(seededRandom("story-arc-count", seedCode) * 3);
 
   return [...storyArcDefinitions]
     .sort((a, b) => {
@@ -1672,7 +1825,8 @@ function getSelectedStoryArcDefinitions(marketSeed?: string | null) {
 
       return scoreB - scoreA;
     })
-    .slice(0, arcCount);
+    .slice(0, arcCount)
+    .map((arc) => ({ ...arc, events: branchArcEvents(arc.arcKey, arc.events, seedCode) }));
 }
 
 export function getSelectedStoryArcKeys(marketSeed?: string | null) {
@@ -1716,6 +1870,7 @@ function getImpactForTicker(news: MarketNews, symbol: string) {
 }
 
 export function marketNewsToSeed(news: MarketNews): MarketEventSeed {
+  const enriched = enrichMarketNews(news);
   return {
     eventKey: news.newsId,
     gameDay: news.gameDay,
@@ -1727,7 +1882,12 @@ export function marketNewsToSeed(news: MarketNews): MarketEventSeed {
     category: news.category,
     isAccurate: news.isAccurate,
     isRumor: news.isRumor,
-    arcKey: getArcKey(news.newsId),
+    arcKey: enriched.arcKey,
+    confidence: enriched.confidence,
+    horizon: enriched.horizon,
+    affectedSectors: enriched.affectedSectors,
+    followUpTo: enriched.followUpTo,
+    branch: enriched.branch,
     impacts: news.relatedTickers.map((symbol) => getImpactForTicker(news, symbol)),
   };
 }
@@ -1759,6 +1919,12 @@ export function marketNewsFromSeed(seed: MarketEventSeed): MarketNews {
     isRumor: seed.isRumor,
     category: seed.category,
     impactByTicker,
+    confidence: seed.confidence,
+    horizon: seed.horizon,
+    affectedSectors: seed.affectedSectors,
+    arcKey: seed.arcKey,
+    followUpTo: seed.followUpTo,
+    branch: seed.branch,
   };
 }
 
@@ -1791,7 +1957,7 @@ function getVolatilityClusterMultiplier(
   const priorShock = Math.abs(
     seededRange(`shock-${company.symbol}-${gameDay - 1}`, -1, 1, marketSeed)
   );
-  const priorEventImpact = Math.abs(getEventImpact(company, gameDay - 1, marketSeed));
+  const priorEventImpact = Math.abs(getEventImpact(company, gameDay - 2, marketSeed));
   const priorIntensity = clamp(priorShock + priorEventImpact / Math.max(company.volatility, 0.01), 0, 2);
 
   return clamp(0.75 + priorIntensity * 0.5, 0.75, 1.75);
@@ -1854,7 +2020,7 @@ function generateEarningsEvent(
   return {
     newsId: `news_earnings_${company.symbol.toLowerCase()}_${gameDay}`,
     gameDay,
-    source: getNewsSource(company, { isRumor: false }, gameDay, marketSeed),
+    source: NEWS_PUBLISHERS.officialWire,
     headline,
     body,
     importance: outcome === "meet" ? "Medium" : "High",
@@ -1929,7 +2095,8 @@ function getNewsSource(
   if (event.isRumor) return NEWS_PUBLISHERS.reddot;
 
   if (company.sector === "Technology") {
-    return NEWS_PUBLISHERS.techInsider;
+    return seededRandom(`publisher-tech-${company.symbol}-${gameDay}`, marketSeed) < 0.5
+      ? NEWS_PUBLISHERS.techInsider : NEWS_PUBLISHERS.sectorLedger;
   }
 
   if (
@@ -1986,13 +2153,17 @@ function generateEventForCompany(
   );
 
   const marketTone: MarketTone = actualImpact >= 0 ? "Bullish" : "Bearish";
+  const sectorPool = sectorEventCopy[company.sector]?.[actualImpact >= 0 ? "bullish" : "bearish"];
+  const sectorCopy = sectorPool?.[
+    Math.floor(seededRandom(`sector-copy-${company.symbol}-${gameDay}`, marketSeed) * sectorPool.length)
+  ];
 
   return {
     newsId: `news_${company.symbol.toLowerCase()}_${gameDay}`,
     gameDay,
     source: getNewsSource(company, template, gameDay, marketSeed),
-    headline: `${company.name} ${template.headline}`,
-    body: template.body,
+    headline: `${company.name} ${sectorCopy?.headline ?? template.headline}`,
+    body: sectorCopy?.body ?? template.body,
     importance: template.importance,
     marketTone,
     relatedTickers: [company.symbol],
@@ -2004,9 +2175,48 @@ function generateEventForCompany(
   };
 }
 
+function generateFollowUpForCompany(
+  company: StockCompany,
+  gameDay: number,
+  marketSeed?: string | null
+): MarketNews | null {
+  if (gameDay <= STORY_DAYS + 1) return null;
+  const original = generateEventForCompany(company, gameDay - 1, marketSeed);
+  if (!original?.newsId.startsWith("news_")) return null;
+  if (!["rumor", "regulatory", "lawsuit", "supply", "product", "partnership", "contract", "labor", "merger"].includes(original.category)) return null;
+  if (seededRandom(`follow-up-roll-${company.symbol}-${gameDay}`, marketSeed) > 0.55) return null;
+
+  const confirmed = original.isAccurate && seededRandom(`follow-up-outcome-${company.symbol}-${gameDay}`, marketSeed) > 0.25;
+  const originalImpact = original.impactByTicker?.[company.symbol]?.actualImpact ?? original.actualImpact;
+  const actualImpact = originalImpact * (confirmed ? 0.45 : -0.75);
+  return {
+    newsId: `followup_${original.newsId}_${gameDay}`,
+    gameDay,
+    source: NEWS_PUBLISHERS.officialWire,
+    headline: confirmed
+      ? `${company.name} confirms key details in developing report`
+      : `${company.name} challenges earlier report as facts change`,
+    body: confirmed
+      ? "An official update supports the central claim in yesterday's report, although execution risk remains."
+      : "The company supplied new evidence that contradicts the earlier account, increasing the chance of a price reversal.",
+    importance: original.importance,
+    marketTone: actualImpact >= 0 ? "Bullish" : "Bearish",
+    relatedTickers: [company.symbol],
+    expectedImpact: actualImpact,
+    actualImpact,
+    isAccurate: true,
+    isRumor: false,
+    category: original.category,
+    followUpTo: original.newsId,
+  };
+}
+
 function getEventImpact(company: StockCompany, gameDay: number, marketSeed?: string | null) {
+  if (gameDay < 1) return 0;
   const event = generateEventForCompany(company, gameDay, marketSeed);
-  return event?.impactByTicker?.[company.symbol]?.actualImpact ?? event?.actualImpact ?? 0;
+  const followUp = generateFollowUpForCompany(company, gameDay, marketSeed);
+  const eventImpact = event?.impactByTicker?.[company.symbol]?.actualImpact ?? event?.actualImpact ?? 0;
+  return eventImpact + (followUp?.actualImpact ?? 0);
 }
 
 function generateVolume(
@@ -2036,15 +2246,18 @@ function generateHardcodedOpeningPricePoint(
   gameDay: number,
   marketSeed?: string | null
 ): StockPriceHistory | null {
-  const hardcodedClose = hardcodedFirstThreeDayCloses[company.symbol]?.[gameDay];
+  // News is published after the close and moves the following session.
+  const hardcodedClose = gameDay === 1
+    ? company.startingPrice
+    : hardcodedFirstThreeDayCloses[company.symbol]?.[gameDay - 1];
 
   if (!hardcodedClose) return null;
 
   const openPrice = previousClose;
   const closePrice = hardcodedClose;
   const dailyReturn = (closePrice - openPrice) / openPrice;
-  const event = generateEventForCompany(company, gameDay, marketSeed);
-  const eventImpact = event?.actualImpact ?? 0;
+  const event = gameDay > 1 ? generateEventForCompany(company, gameDay - 1, marketSeed) : null;
+  const eventImpact = event?.impactByTicker?.[company.symbol]?.actualImpact ?? event?.actualImpact ?? 0;
 
   const intradayRange =
     Math.abs(dailyReturn) * 0.35 +
@@ -2092,10 +2305,10 @@ function generateNextPricePoint(
     seededRange(`shock-${company.symbol}-${gameDay}`, -1, 1, marketSeed)
     * company.volatility
     * clusterMultiplier;
-  const eventImpact = getEventImpact(company, gameDay, marketSeed);
+  const eventImpact = getEventImpact(company, gameDay - 1, marketSeed);
   // Post-earnings drift: the market keeps digesting yesterday's surprise today.
-  const postEarningsDrift = isEarningsDay(company, gameDay - 1, marketSeed)
-    ? getEventImpact(company, gameDay - 1, marketSeed) * 0.15
+  const postEarningsDrift = isEarningsDay(company, gameDay - 2, marketSeed)
+    ? getEventImpact(company, gameDay - 2, marketSeed) * 0.15
     : 0;
 
   let dailyReturn =
@@ -2118,7 +2331,7 @@ function generateNextPricePoint(
   const highPrice = Math.max(openPrice, closePrice) * (1 + intradayRange);
   const lowPrice = Math.min(openPrice, closePrice) * (1 - intradayRange * 0.8);
 
-  const event = generateEventForCompany(company, gameDay, marketSeed);
+  const event = gameDay > 1 ? generateEventForCompany(company, gameDay - 1, marketSeed) : null;
 
   return {
     priceId: `price_${company.symbol.toLowerCase()}_${gameDay}`,
@@ -2135,6 +2348,22 @@ function generateNextPricePoint(
     eventImpact: round2(eventImpact),
     eventId: event?.newsId,
   };
+}
+
+export function enrichMarketNews(news: MarketNews): MarketNews {
+  const credibility = getNewsCredibility(news).score;
+  const arcKey = news.arcKey ?? getArcKey(news.newsId);
+  const affectedSectors = Array.from(new Set(news.relatedTickers
+    .map((symbol) => getCompanyBySymbol(symbol)?.sector)
+    .filter((sector): sector is string => Boolean(sector))));
+  const horizon: NewsHorizon = arcKey || ["macro", "supply", "regulatory", "labor"].includes(news.category)
+    ? "Multi-day"
+    : "Next session";
+  const confidence: NewsConfidence = credibility >= 80 && !news.isRumor
+    ? "High"
+    : credibility >= 55 ? "Medium" : "Low";
+
+  return { ...news, confidence, horizon, affectedSectors, arcKey };
 }
 
 export function normalizeGameDay(gameDay: number) {
@@ -2214,7 +2443,7 @@ export function getNewsForGameDay(gameDay: number, marketSeed?: string | null): 
   const safeGameDay = normalizeGameDay(gameDay);
 
   if (safeGameDay <= STORY_DAYS) {
-    return hardcodedOpeningNews.filter((news) => news.gameDay === safeGameDay);
+    return hardcodedOpeningNews.filter((news) => news.gameDay === safeGameDay).map(enrichMarketNews);
   }
 
   const arcNews = getStoryArcNewsForGameDay(safeGameDay, marketSeed);
@@ -2222,8 +2451,11 @@ export function getNewsForGameDay(gameDay: number, marketSeed?: string | null): 
     .map((company) => generateEventForCompany(company, safeGameDay, marketSeed))
     .filter((news): news is MarketNews => Boolean(news))
     .filter((news) => !arcNews.some((storyNews) => storyNews.newsId === news.newsId));
+  const followUps = mockStockCompanies
+    .map((company) => generateFollowUpForCompany(company, safeGameDay, marketSeed))
+    .filter((news): news is MarketNews => Boolean(news));
 
-  return uniqueMarketNews([...arcNews, ...generatedNews]);
+  return uniqueMarketNews([...arcNews, ...generatedNews, ...followUps]).map(enrichMarketNews);
 }
 
 export function getMarketEventSeedsForGameDay(

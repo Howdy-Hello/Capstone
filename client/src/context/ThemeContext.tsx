@@ -1,4 +1,5 @@
 import React from "react";
+import { GlobalStyles } from "@mui/material";
 import { applyDesignColors, DEFAULT_COLORS, DesignColors } from "../theme/design";
 
 type CustomThemeInput = {
@@ -447,7 +448,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     [applyCustomTheme, applyPreset, customInput, palette, resetTheme, selectedThemeId, updateCustomInput]
   );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  const dark = paletteMode(palette) === "dark";
+
+  return (
+    <ThemeContext.Provider value={value}>
+      <GlobalStyles styles={{
+        "input, textarea, .MuiInputBase-input, .MuiSelect-select": {
+          color: dark ? "#FFFFFF" : palette.t1,
+          WebkitTextFillColor: dark ? "#FFFFFF" : palette.t1,
+        },
+        "input::placeholder, textarea::placeholder, .MuiInputBase-input::placeholder": {
+          color: palette.t3,
+          WebkitTextFillColor: palette.t3,
+          opacity: 1,
+        },
+      }} />
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 export function useThemeSettings() {

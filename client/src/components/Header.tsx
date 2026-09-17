@@ -39,6 +39,7 @@ const nav = [
   { to: "/leaderboard", label: "Leaderboard",  icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/achievements", label: "Achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/learn",       label: "Learn",        icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/news",        label: "News",         icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/inbox",       label: "Inbox",        icon: <MailOutlineIcon sx={{ fontSize: 17 }} /> },
 ];
 

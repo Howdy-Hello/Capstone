@@ -5,7 +5,7 @@ import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
 import { D } from "../theme/design";
 
 const cols = {
-  Product:  [{ l: "Dashboard",   h: "/dashboard"   }, { l: "Game",         h: "/game"        }, { l: "Inbox",     h: "/inbox"       }],
+  Product:  [{ l: "Dashboard",   h: "/dashboard"   }, { l: "Game",         h: "/game"        }, { l: "News",      h: "/news"        }, { l: "Inbox",     h: "/inbox"       }],
   Play:     [{ l: "Leaderboard", h: "/leaderboard" }, { l: "Achievements", h: "/achievements"}, { l: "Save & Load", h: "/save-load" }],
   Learn:    [{ l: "Tutorial",    h: "/learn"        }, { l: "Guide",       h: "/learn?tab=guide" }],
   Account:  [{ l: "Log in",     h: "/auth?mode=login" }, { l: "Sign up",  h: "/auth?mode=signup" }, { l: "Settings", h: "/settings" }, { l: "Profile", h: "/profile" }],

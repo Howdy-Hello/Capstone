@@ -85,7 +85,7 @@ export default function Game() {
   useStockAlerts();
   const level = useLevel();
   const {
-    gameDay, gameMode, isGameComplete, maxGameDay, setGameDay,
+    gameDay, gameMode, isGameComplete, marketPhase, maxGameDay, setGameDay, closeMarket,
     stocks, news: todayNews, syncSessionValue,
   } = trading;
 
@@ -194,8 +194,8 @@ export default function Game() {
     addInboxMessage(user.id, {
       id: `news-digest-${user.id}-day-${gameDay}`,
       from: top.source || "Market Wire",
-      subject: `Day ${gameDay} market wrap: ${top.headline}`,
-      body: `${top.body}\n\n${todayNews.length > 1 ? `${todayNews.length - 1} more stor${todayNews.length - 1 === 1 ? "y" : "ies"} moved the market today — check the News page.` : ""}`,
+      subject: `Day ${gameDay} after hours: ${top.headline}`,
+      body: `${top.body}\n\n${todayNews.length > 1 ? `${todayNews.length - 1} more stor${todayNews.length - 1 === 1 ? "y" : "ies"} may affect the next session — check the News page.` : ""}`,
       category: "system",
     });
   }, [todayNews, gameDay, user]);
@@ -206,12 +206,13 @@ export default function Game() {
       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
       if (e.key === "ArrowRight" && !isGameComplete) {
         e.preventDefault();
-        void setGameDay((d) => d + 1);
+        if (marketPhase === "market_open") closeMarket();
+        else void setGameDay((d) => d + 1);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isGameComplete, setGameDay]);
+  }, [closeMarket, gameMode, isGameComplete, marketPhase, setGameDay]);
 
   useEffect(() => {
     if (!DEV_CONSOLE_ENABLED) return;
@@ -245,8 +246,15 @@ export default function Game() {
 
   const handleNextDay = () => {
     if (isGameComplete) return;
+    if (marketPhase === "market_open") {
+      closeMarket();
+      return;
+    }
     void setGameDay((d) => d + 1);
   };
+  const advanceLabel = marketPhase === "market_open"
+    ? "Close Market & Reveal News"
+    : "Advance to Next Day →";
   const handleNewRun = (mode: GameMode) => {
     void trading.resetAccount(mode);
   };
@@ -496,6 +504,8 @@ export default function Game() {
                 <Chip icon={gameMode === "limited_30" ? <TimerIcon sx={{ fontSize: 14 }} /> : <AllInclusiveIcon sx={{ fontSize: 14 }} />}
                   label={modeLabel} size="small"
                   sx={{ bgcolor: D.elevated, color: D.t2, border: `1px solid ${D.border}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
+                <Chip label={marketPhase === "market_open" ? "MARKET OPEN" : "AFTER HOURS"} size="small"
+                  sx={{ bgcolor: marketPhase === "market_open" ? D.greenBg : D.amberBg, color: marketPhase === "market_open" ? D.greenText : D.amber, border: `1px solid ${marketPhase === "market_open" ? D.greenBd : D.amber}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
                 <Chip icon={<MilitaryTechIcon sx={{ fontSize: 14 }} />}
                   label={`LEVEL ${level.level} · ${level.progressPercent}%`} size="small"
                   sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
@@ -509,7 +519,7 @@ export default function Game() {
                   <Button data-tour="next-day" onClick={handleNextDay} variant="contained" disabled={isGameComplete}
                     title={isGameComplete ? undefined : "Advance to next day (→)"}
                     sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: `0 8px 24px ${D.brandBg}` }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
-                    {isGameComplete ? "Run Complete" : "Next Day →"}
+                    {isGameComplete ? "Run Complete" : advanceLabel}
                   </Button>
                 </motion.div>
                 <Button onClick={() => handleNewRun("infinite")} startIcon={<AllInclusiveIcon />}
@@ -640,11 +650,17 @@ export default function Game() {
         )}
 
         {/* Today's news */}
+        {marketPhase === "market_open" && !isGameComplete && (
+          <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}` }}>
+            <Typography sx={{ color: D.brandText, fontSize: 13.5, fontWeight: 900 }}>Market open</Typography>
+            <Typography sx={{ color: D.t2, fontSize: 12.5 }}>Review today’s price moves and trade, then close the market to reveal news that may affect the next session.</Typography>
+          </Box>
+        )}
         {todayNews.length > 0 && (
           <Box data-tour="today-news" sx={{ ...CARD, p: 0, overflow: "hidden", mb: 2.5 }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2, borderBottom: `1px solid ${D.border}` }}>
               <ReportProblemIcon sx={{ color: D.amber, fontSize: 18 }} />
-              <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Today's Market News</Typography>
+              <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>After-Hours News · Signals for Day {gameDay + 1}</Typography>
             </Stack>
             <Box sx={{ p: 2.5 }}>
               <Grid container spacing={2}>
@@ -654,6 +670,10 @@ export default function Game() {
                         <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
                           <Chip size="small" label={n.importance}
                             sx={{ bgcolor: n.importance === "High" ? D.redBg : D.greenBg, color: n.importance === "High" ? D.redText : D.greenText, fontWeight: 800, fontSize: 10 }} />
+                          <Chip size="small" label={`${n.marketTone} · ${n.confidence ?? "Medium"}`}
+                            sx={{ bgcolor: D.brandBg, color: D.brandText, fontWeight: 800, fontSize: 10 }} />
+                          <Chip size="small" label={n.horizon ?? "Next session"}
+                            sx={{ bgcolor: D.overlay, color: D.t2, fontWeight: 800, fontSize: 10 }} />
                           {(() => {
                             const c = getNewsCredibility(n);
                             const fg = c.rating === "high" ? D.greenText : c.rating === "medium" ? D.amber : D.redText;
@@ -685,7 +705,7 @@ export default function Game() {
                 </Box>
                 <Button onClick={handleNextDay} variant="contained" size="small" disabled={isGameComplete}
                   sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
-                  {isGameComplete ? "Complete" : "Next Day →"}
+                  {isGameComplete ? "Complete" : advanceLabel}
                 </Button>
               </Stack>
               <Box sx={{ p: 2 }}>
@@ -840,9 +860,9 @@ export default function Game() {
                     </Stack>
                   ))}
                 </Stack>
-                <Button fullWidth component={RouterLink} to="/inbox" startIcon={<NewspaperIcon />}
+                <Button fullWidth component={RouterLink} to="/news" startIcon={<NewspaperIcon />}
                   sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg, "&:hover": { bgcolor: D.overlay } }}>
-                  Open Inbox &amp; News
+                  Open Newsroom
                 </Button>
               </Box>
 

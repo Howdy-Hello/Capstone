@@ -11,6 +11,7 @@ import {
   getStockHistoryBySymbol,
   getStocksForGameDay,
   hashString,
+  enrichMarketNews,
   MarketNews,
   normalizeGameDay,
   normalizeMarketSeed,
@@ -32,6 +33,7 @@ import { useAuth } from "./AuthContext";
 const STARTING_CASH = 2_000;
 const GAME_DAY_STORAGE_KEY = "stockpilot-current-game-day";
 const GAME_SEED_STORAGE_KEY = "stockpilot-market-seed";
+const GAME_PHASE_STORAGE_KEY = "stockpilot-market-phase";
 export const LIMITED_GAME_DAYS = 30;
 // Ceiling for infinite mode. Each day past the last stored price point is
 // generated in a loop per stock, so an out-of-range day (corrupted or
@@ -44,6 +46,7 @@ export const WEEKLY_BILL_ITEMS = [
 ] as const;
 export const WEEKLY_BILL_TOTAL = WEEKLY_BILL_ITEMS.reduce((sum, item) => sum + item.amount, 0);
 export type GameMode = "infinite" | "limited_30";
+export type MarketPhase = "market_open" | "after_hours";
 
 export type BillCharge = {
   cycles: number;
@@ -59,6 +62,10 @@ function gameDayStorageKey(sessionId: string) {
 
 function marketSeedStorageKey(sessionId: string) {
   return `${GAME_SEED_STORAGE_KEY}:${sessionId}`;
+}
+
+function marketPhaseStorageKey(sessionId: string) {
+  return `${GAME_PHASE_STORAGE_KEY}:${sessionId}`;
 }
 
 type DatabaseStock = {
@@ -149,6 +156,8 @@ type GameContextValue = {
   watchlistStocks: Stock[];
   gameDay: number;
   setGameDay: (day: number | ((current: number) => number)) => Promise<void>;
+  marketPhase: MarketPhase;
+  closeMarket: () => void;
   latestBill: BillCharge | null;
   clearLatestBill: () => void;
   gameMode: GameMode;
@@ -214,8 +223,16 @@ function toneFromImpact(expectedImpact: number): MarketNews["marketTone"] {
 function mapDatabaseEvent(row: DatabaseEvent): MarketNews {
   const impacts = row.event_stock_impacts ?? [];
   const expectedImpact = impacts[0] ? asNumber(impacts[0].expected_impact) : 0;
+  const impactByTicker = impacts.reduce<NonNullable<MarketNews["impactByTicker"]>>((all, impact) => {
+    const symbol = relatedSymbol(impact.stocks);
+    if (symbol) all[symbol] = {
+      expectedImpact: asNumber(impact.expected_impact),
+      actualImpact: asNumber(impact.actual_impact),
+    };
+    return all;
+  }, {});
 
-  return {
+  return enrichMarketNews({
     newsId: row.event_key,
     gameDay: row.game_day,
     source: row.source,
@@ -231,7 +248,15 @@ function mapDatabaseEvent(row: DatabaseEvent): MarketNews {
     isAccurate: row.is_accurate,
     isRumor: row.is_rumor,
     category: row.category,
-  };
+    impactByTicker,
+  });
+}
+
+function seededEventImpact(symbol: string, gameDay: number, marketSeed: string) {
+  if (gameDay < 1) return 0;
+  const event = getNewsForGameDay(gameDay, marketSeed)
+    .find((item) => item.relatedTickers.includes(symbol));
+  return event?.impactByTicker?.[symbol]?.actualImpact ?? event?.actualImpact ?? 0;
 }
 
 function mapDatabasePrice(row: DatabasePrice, symbol: string): StockPriceHistory {
@@ -302,8 +327,9 @@ function generateContinuationPricePoint(
     asNumber(stock.volatility);
   const trendBias = getContinuationTrendBias(stock, gameDay);
   const meanReversion = getContinuationMeanReversion(stock, previousClose);
+  const eventImpact = seededEventImpact(symbol, gameDay - 1, marketSeed);
   const dailyReturn = clamp(
-    marketDrift + sectorDrift + trendBias + meanReversion + randomShock,
+    marketDrift + sectorDrift + trendBias + meanReversion + randomShock + eventImpact,
     -0.15,
     0.15
   );
@@ -337,7 +363,7 @@ function generateContinuationPricePoint(
     volume: Math.round(baseVolume * (1 + activityBoost + randomBoost)),
     change: round2(closePrice - openPrice),
     changePercent: openPrice > 0 ? round2(((closePrice - openPrice) / openPrice) * 100) : 0,
-    eventImpact: 0,
+    eventImpact: round2(eventImpact),
   };
 }
 
@@ -350,7 +376,23 @@ function getHistoryForDatabaseStock(
   const storedHistory = prices
     .filter((price) => relatedSymbol(price.stocks) === stock.symbol)
     .map((price) => mapDatabasePrice(price, stock.symbol))
+    .map((price) => ({ ...price, priceId: `${price.priceId}_delayed`, gameDay: price.gameDay + 1 }))
     .sort((a, b) => a.gameDay - b.gameDay);
+
+  storedHistory.unshift({
+    priceId: `initial_${stock.symbol.toLowerCase()}_1`,
+    stockId: stock.symbol,
+    symbol: stock.symbol,
+    gameDay: 1,
+    openPrice: asNumber(stock.initial_price),
+    highPrice: asNumber(stock.initial_price),
+    lowPrice: asNumber(stock.initial_price),
+    closePrice: asNumber(stock.initial_price),
+    volume: 0,
+    change: 0,
+    changePercent: 0,
+    eventImpact: 0,
+  });
 
   const safeGameDay = normalizeGameDay(throughDay);
   const visibleHistory = storedHistory.filter((price) => price.gameDay <= safeGameDay);
@@ -424,6 +466,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // day 1 on the default seed is the correct neutral state.
   const [marketSeed, setMarketSeed] = useState(() => normalizeMarketSeed(null));
   const [gameDay, setGameDayState] = useState(1);
+  const [marketPhase, setMarketPhase] = useState<MarketPhase>("market_open");
   const [databaseStocks, setDatabaseStocks] = useState<DatabaseStock[]>([]);
   const [databaseEvents, setDatabaseEvents] = useState<DatabaseEvent[]>([]);
   const [databasePrices, setDatabasePrices] = useState<DatabasePrice[]>([]);
@@ -576,6 +619,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         : activeSession.game_seed ?? storedSessionSeed
     );
     const storedSessionDay = Number(localStorage.getItem(gameDayStorageKey(activeSession.id)));
+    const storedPhase = localStorage.getItem(marketPhaseStorageKey(activeSession.id));
     const savedDay = clampGameDayForMode(storedSessionDay || 1, activeMode);
     const rawDatabaseDay = normalizeGameDay(activeSession.current_day);
     const databaseDay = clampGameDayForMode(rawDatabaseDay, activeMode);
@@ -620,6 +664,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setGameModeState(activeMode);
     setMarketSeed(activeSeed);
     setGameDayState(currentDay);
+    setMarketPhase(storedPhase === "after_hours" ? "after_hours" : "market_open");
     setAccount({
       cash: asNumber(activeSession.cash_balance),
       holdings,
@@ -654,6 +699,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(GAME_DAY_STORAGE_KEY, gameDay.toString());
   }, [gameDay]);
 
+  const maxDatabaseEventDay = useMemo(() => (
+    databaseEvents.reduce((latest, event) => Math.max(latest, event.game_day), 0)
+  ), [databaseEvents]);
+
+  const getInfiniteNewsForDay = useCallback((day: number) => {
+    if (day < 1) return [];
+    if (day <= maxDatabaseEventDay) {
+      return databaseEvents
+        .filter((event) => event.game_day === day)
+        .map(mapDatabaseEvent);
+    }
+    return getNewsForGameDay(day, marketSeed);
+  }, [databaseEvents, marketSeed, maxDatabaseEventDay]);
+
   const stocks = useMemo(() => {
     if (gameMode === "limited_30") {
       return getStocksForGameDay(gameDay, marketSeed);
@@ -668,26 +727,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [databasePrices, databaseStocks, gameDay, gameMode, marketSeed]);
 
   const news = useMemo(() => {
-    if (gameMode === "limited_30") {
-      return getNewsForGameDay(gameDay, marketSeed);
-    }
-
-    return databaseEvents
-      .filter((event) => event.game_day === gameDay)
-      .map(mapDatabaseEvent);
-  }, [databaseEvents, gameDay, gameMode, marketSeed]);
+    if (marketPhase === "market_open") return [];
+    return gameMode === "limited_30"
+      ? getNewsForGameDay(gameDay, marketSeed)
+      : getInfiniteNewsForDay(gameDay);
+  }, [gameDay, gameMode, getInfiniteNewsForDay, marketPhase, marketSeed]);
 
   // Every story the player could have seen so far, newest first. The inbox
   // renders news as mail alongside the in-game messages, and a mailbox holding
   // only today's headlines would read as broken.
   const newsHistory = useMemo(() => {
-    const all = gameMode === "limited_30"
-      ? getNewsUpToGameDay(gameDay, marketSeed)
-      : databaseEvents
-          .filter((event) => event.game_day <= gameDay)
-          .map(mapDatabaseEvent);
+    const visibleNewsDay = gameDay - (marketPhase === "market_open" ? 1 : 0);
+    const all = visibleNewsDay < 1
+      ? []
+      : gameMode === "limited_30"
+        ? getNewsUpToGameDay(visibleNewsDay, marketSeed)
+        : Array.from({ length: visibleNewsDay }, (_, index) => getInfiniteNewsForDay(index + 1)).flat();
     return [...all].sort((a, b) => b.gameDay - a.gameDay);
-  }, [databaseEvents, gameDay, gameMode, marketSeed]);
+  }, [gameDay, gameMode, getInfiniteNewsForDay, marketPhase, marketSeed]);
 
   const getHistory = useCallback((symbol: string) => {
     if (gameMode === "limited_30") {
@@ -709,21 +766,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   );
 
   const getRelatedNews = useCallback((symbol: string) => {
-    if (gameMode === "limited_30") {
-      return getRelatedNewsBySymbol(symbol, gameDay, marketSeed);
-    }
+    const visibleNewsDay = gameDay - (marketPhase === "market_open" ? 1 : 0);
+    if (visibleNewsDay < 1) return [];
+    const all = gameMode === "limited_30"
+      ? getRelatedNewsBySymbol(symbol, visibleNewsDay, marketSeed)
+      : Array.from({ length: visibleNewsDay }, (_, index) => getInfiniteNewsForDay(index + 1))
+          .flat()
+          .filter((event) => event.relatedTickers.includes(symbol));
+    return all.sort((a, b) => a.gameDay - b.gameDay);
+  }, [gameDay, gameMode, getInfiniteNewsForDay, marketPhase, marketSeed]);
 
-    // Ascending, matching getRelatedNewsBySymbol's day 1..gameDay loop above.
-    // StockDetails renders relatedNews.slice(-8) -- the TAIL -- so a descending
-    // sort here silently showed the eight OLDEST stories in infinite mode while
-    // limited_30 showed the eight newest. Sorted explicitly rather than relying
-    // on the .order("game_day") in the fetch 250 lines away.
-    return databaseEvents
-      .filter((event) => event.game_day <= gameDay)
-      .map(mapDatabaseEvent)
-      .filter((event) => event.relatedTickers.includes(symbol))
-      .sort((a, b) => a.gameDay - b.gameDay);
-  }, [databaseEvents, gameDay, gameMode, marketSeed]);
+  const closeMarket = useCallback(() => {
+    setMarketPhase("after_hours");
+    if (session) localStorage.setItem(marketPhaseStorageKey(session.id), "after_hours");
+  }, [session]);
 
   const setGameDay = useCallback(async (
     day: number | ((current: number) => number)
@@ -732,6 +788,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const next = clampGameDayForMode(requested, gameMode);
 
     if (!session) {
+      setMarketPhase("market_open");
       gameDayRef.current = next;
       setGameDayState(next);
       localStorage.setItem(GAME_DAY_STORAGE_KEY, next.toString());
@@ -756,6 +813,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         shortfall: number | string;
       };
       const appliedDay = Number(result.day);
+      setMarketPhase("market_open");
+      localStorage.setItem(marketPhaseStorageKey(session.id), "market_open");
       gameDayRef.current = appliedDay;
       setGameDayState(appliedDay);
       setAccount((current) => ({ ...current, cash: asNumber(result.cash) }));
@@ -905,6 +964,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setMarketSeed(nextSeed);
       localStorage.setItem(GAME_SEED_STORAGE_KEY, nextSeed);
       setGameDayState(1);
+      setMarketPhase("market_open");
       return;
     }
 
@@ -930,6 +990,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(gameDayStorageKey(nextSession.id), "1");
     localStorage.setItem(GAME_DAY_STORAGE_KEY, "1");
     localStorage.setItem(marketSeedStorageKey(nextSession.id), nextSeed);
+    localStorage.setItem(marketPhaseStorageKey(nextSession.id), "market_open");
     localStorage.setItem(GAME_SEED_STORAGE_KEY, nextSeed);
     gameDayRef.current = 1;
     setSession({ ...nextSession, game_seed: nextSeed });
@@ -937,6 +998,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setMarketSeed(nextSeed);
     setAccount(defaultAccount);
     setGameDayState(1);
+    setMarketPhase("market_open");
     setLatestBill(null);
     setError(null);
   }, [gameMode, marketSeed, user]);
@@ -1132,6 +1194,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     watchlistStocks,
     gameDay,
     setGameDay,
+    marketPhase,
+    closeMarket,
     latestBill,
     clearLatestBill: () => setLatestBill(null),
     gameMode,
@@ -1151,10 +1215,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     reloadSession: loadOrCreateSession,
     syncSessionValue,
   }), [
-    account, addCash, addToWatchlist, buyStock, error, gameDay, gameMode, getHistory, getRelatedNews,
+    account, addCash, addToWatchlist, buyStock, closeMarket, error, gameDay, gameMode, getHistory, getRelatedNews,
     getStock, getTradeQuote, loading, loadOrCreateSession, news, newsHistory, resetAccount, sellStock,
     marketSeed, setCash, setGameDay, setHolding, session, stocks, storyArcs, syncSessionValue,
-    maxGameDay, isGameComplete, isWatchlisted, removeFromWatchlist,
+    marketPhase, maxGameDay, isGameComplete, isWatchlisted, removeFromWatchlist,
     latestBill, toggleWatchlist, watchlistStocks, watchlistSymbols,
   ]);
 

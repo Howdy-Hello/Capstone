@@ -21,7 +21,7 @@ type TourStep = {
   body: string;
   requireAction?: boolean;
   actionHint?: string;
-  waitFor?: "holding" | "day2" | "sold";
+  waitFor?: "holding" | "after_hours" | "day2" | "sold";
   decision?: TourDecision;
   setupRun?: boolean;
 };
@@ -41,23 +41,26 @@ const uiSteps: TourStep[] = [
 ];
 
 const gameSteps: TourStep[] = [
-  { route: game, selector: "[data-tour='net-worth']", title: "Start a two-day practice run", body: "This hands-on scenario starts a fresh 30-day run so Day 1 and Day 2 have the intended prices and news. Your current run will be replaced only when you press the button below.", setupRun: true },
-  { route: game, selector: "[data-tour='tutorial-news']", title: "Day 1 · Read the catalyst", body: "Closed Ai reports stronger enterprise demand. Notice that this is verified, high-importance news—not a rumor. That makes it useful evidence, though never a guarantee." },
-  { route: game, selector: "[data-tour='market-list']", title: "Day 1 · Compare the market", body: "Scan the other red and green moves before acting. A good decision combines the news catalyst with price, risk, valuation, growth, and your available cash." },
+  { route: game, selector: "[data-tour='net-worth']", title: "Start a two-day practice run", body: "This hands-on scenario starts a fresh 30-day run. Each market session resolves yesterday’s information; after-hours news gives you evidence for tomorrow. Your current run is replaced only when you press the button below.", setupRun: true },
+  { route: game, selector: "[data-tour='next-day']", title: "Day 1 · Close the market", body: "Prices are settled for Day 1. Close the market to reveal information for the next session.", waitFor: "after_hours", actionHint: "Click Close Market & Reveal News" },
+  { route: game, selector: "[data-tour='tutorial-news']", title: "Day 1 · Read tomorrow’s catalyst", body: "Closed Ai reports stronger enterprise demand after hours. It is verified, high-importance evidence for Day 2—not a guaranteed price move." },
+  { route: game, selector: "[data-tour='market-list']", title: "Day 1 · Compare the market", body: "The catalyst has not been priced into tomorrow’s session yet. Compare risk, valuation, growth, and available cash before acting." },
   { route: game, selector: "[data-tour='tutorial-stock']", title: "Day 1 · Investigate Closed Ai", body: "Open CAI to verify the numbers behind the headline before you invest.", requireAction: true, actionHint: "Click the highlighted CAI row" },
-  { route: stock, selector: "[data-tour='stock-price']", title: "Day 1 · Read price and risk", body: "CAI rose from $100.00 to $104.80 today. The green daily change confirms the market reacted positively, while High Risk warns that reversals can be sharp." },
+  { route: stock, selector: "[data-tour='stock-price']", title: "Day 1 · Read price and risk", body: "CAI is still near $100 because the after-hours catalyst points to the next session. High Risk warns that even strong evidence can produce a sharp reversal." },
   { route: stock, selector: "[data-tour='stock-values']", title: "Day 1 · Check the supporting values", body: "Compare price, P/E, revenue growth, and volume. CAI has strong growth, but its high P/E means optimism is already priced in—so keep the first position small." },
-  { route: stock, selector: "[data-tour='trade-panel']", title: "Day 1 · Make the call", body: "The news is verified, growth is strong, and the move supports the story—but valuation and risk argue against a large position. What is the best first action?", decision: { options: [
+  { route: stock, selector: "[data-tour='trade-panel']", title: "Day 1 · Make the call", body: "The news is verified and growth is strong, but the outcome is still uncertain and valuation is high. What is the best first action?", decision: { options: [
     { label: "Buy 1 share", correct: true, feedback: "Good choice: take a small position while limiting high-risk exposure." },
     { label: "Spend all available cash", correct: false, feedback: "Too risky. CAI is volatile and expensive, and you still need cash for future opportunities and living costs." },
     { label: "Ignore all verified news", correct: false, feedback: "News should not decide a trade alone, but verified company news is meaningful evidence when the values support it." },
   ] } },
   { route: stock, selector: "[data-tour='tutorial-buy']", title: "Day 1 · Buy your first share", body: "Leave the quantity at 1, review the total and remaining cash, then place the trade.", waitFor: "holding", actionHint: "Click Buy 1 share to continue" },
-  { route: game, selector: "[data-tour='next-day']", title: "Close Day 1", body: "You now own CAI. Advancing the day updates prices and delivers new information that may change your original thesis.", waitFor: "day2", actionHint: "Click Next Day to reveal Day 2" },
-  { route: game, selector: "[data-tour='tutorial-news']", title: "Day 2 · The story changes", body: "A major customer paused its rollout. This verified, high-importance update directly weakens yesterday’s growth catalyst, so the original reason for buying is no longer intact." },
-  { route: game, selector: "[data-tour='tutorial-stock']", title: "Day 2 · Check the market reaction", body: "CAI is now red and trading near $99.95. Open it again to compare the new price and values with your Day 1 thesis.", requireAction: true, actionHint: "Click CAI to inspect the position" },
-  { route: stock, selector: "[data-tour='stock-price']", title: "Day 2 · Reassess, don’t hope", body: "The price decline confirms that the market also sees the customer pause as material. A loss alone is not a reason to sell; the broken growth thesis is the important signal." },
-  { route: stock, selector: "[data-tour='trade-panel']", title: "Day 2 · Choose an exit", body: "The verified news contradicts the reason you bought, and price action confirms the change. What should you do with the tutorial share?", decision: { options: [
+  { route: game, selector: "[data-tour='next-day']", title: "Open Day 2", body: "You now own CAI. Advance the day to see how the market resolves yesterday’s catalyst.", waitFor: "day2", actionHint: "Click Advance to Next Day" },
+  { route: game, selector: "[data-tour='tutorial-stock']", title: "Day 2 · Check the result", body: "CAI rose to about $104.80 after yesterday’s demand report. The signal helped, but it was evidence rather than certainty.", requireAction: true, actionHint: "Click CAI to inspect the position" },
+  { route: stock, selector: "[data-tour='stock-price']", title: "Day 2 · Separate outcome from process", body: "The gain resolved yesterday’s prediction. Return to the market and close today’s session before deciding what tomorrow may bring." },
+  { route: game, selector: "[data-tour='next-day']", title: "Day 2 · Reveal new information", body: "Close the market to receive the next after-hours report.", waitFor: "after_hours", actionHint: "Click Close Market & Reveal News" },
+  { route: game, selector: "[data-tour='tutorial-news']", title: "Day 2 · The story changes", body: "A major customer paused its rollout. This verified update weakens the original growth thesis and signals risk for Day 3." },
+  { route: game, selector: "[data-tour='tutorial-stock']", title: "Day 2 · Reassess before the move", body: "CAI is still near $104.80 because the new report arrived after hours. Open it and decide whether to act before Day 3.", requireAction: true, actionHint: "Click CAI to inspect the position" },
+  { route: stock, selector: "[data-tour='trade-panel']", title: "Day 2 · Choose an exit", body: "The verified report contradicts the reason you bought. What should you do before the next session?", decision: { options: [
     { label: "Sell the share", correct: true, feedback: "Correct. Exit because the thesis changed—not simply because the price is red." },
     { label: "Hold and hope", correct: false, feedback: "Hope is not a plan. The verified update directly weakens the growth thesis used for this trade." },
     { label: "Buy more because it is cheaper", correct: false, feedback: "A lower price is not automatically better when the underlying reason for buying has weakened." },
@@ -83,7 +86,7 @@ function visibleTarget(selector: string) {
 
 export default function GuidedTutorial() {
   const { user } = useAuth();
-  const { stocks, account, gameDay, resetAccount } = useGame();
+  const { stocks, account, gameDay, marketPhase, resetAccount } = useGame();
   const navigate = useNavigate();
   const location = useLocation();
   const reduceMotion = useReducedMotion();
@@ -173,11 +176,13 @@ export default function GuidedTutorial() {
     if (course !== "game" || !step?.waitFor || advancing) return;
     const completeAction = step.waitFor === "holding"
       ? tutorialShares > 0
+      : step.waitFor === "after_hours"
+        ? marketPhase === "after_hours"
       : step.waitFor === "day2"
         ? gameDay >= 2
         : tutorialShares === 0;
     if (completeAction) next();
-  }, [advancing, course, gameDay, next, step, tutorialShares]);
+  }, [advancing, course, gameDay, marketPhase, next, step, tutorialShares]);
 
   useEffect(() => {
     if (!step?.requireAction) return;

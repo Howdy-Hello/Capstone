@@ -1,12 +1,10 @@
 import React from "react";
 import {
-  Box, Button, Chip, Container, Divider, Stack, Typography,
+  Box, Button, Chip, Container, Stack, Typography,
 } from "@mui/material";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import InsightsIcon from "@mui/icons-material/Insights";
 import { clearNotificationHistory, markNotificationsSeen, useNotificationHistory } from "../lib/notifications";
-import { clearAnalyticsEvents, useAnalyticsEvents } from "../lib/analytics";
 import { D, CARD, MONO } from "../theme/design";
 
 function timeLabel(value?: string) {
@@ -23,8 +21,6 @@ export default function Notifications() {
   React.useEffect(() => {
     markNotificationsSeen();
   }, [notifications]);
-  const analytics = useAnalyticsEvents();
-
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
@@ -35,7 +31,7 @@ export default function Notifications() {
             Notifications & Activity
           </Typography>
           <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
-            Recent alerts, gameplay notices, and local diagnostic events from this browser.
+            Recent alerts and gameplay notices from this browser.
           </Typography>
         </Container>
       </Box>
@@ -75,34 +71,6 @@ export default function Notifications() {
             </Box>
           </Box>
 
-          <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ sm: "center" }}
-              sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <InsightsIcon sx={{ color: D.greenText, fontSize: 18 }} />
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Local Analytics Log</Typography>
-              </Stack>
-              <Button size="small" startIcon={<DeleteOutlineIcon />} onClick={clearAnalyticsEvents}
-                disabled={analytics.length === 0}
-                sx={{ color: D.t3, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.redText, borderColor: D.redBd, bgcolor: D.redBg } }}>
-                Clear
-              </Button>
-            </Stack>
-            <Box sx={{ p: 2.5 }}>
-              {analytics.length === 0 ? (
-                <Typography sx={{ fontSize: 13, color: D.t3 }}>No local analytics events recorded yet.</Typography>
-              ) : (
-                <Stack divider={<Divider sx={{ borderColor: D.border }} />} spacing={1.2}>
-                  {analytics.slice(0, 40).map((item) => (
-                    <Stack key={item.id} direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between">
-                      <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1 }}>{item.name}</Typography>
-                      <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>{timeLabel(item.createdAt)}</Typography>
-                    </Stack>
-                  ))}
-                </Stack>
-              )}
-            </Box>
-          </Box>
         </Stack>
       </Container>
     </Box>

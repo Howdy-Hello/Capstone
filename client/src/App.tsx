@@ -33,6 +33,7 @@ import CompareStocks from "./pages/CompareStocks";
 import Profile from "./pages/Profile";
 import Inbox from "./pages/Inbox";
 import Notifications from "./pages/Notifications";
+import News from "./pages/News";
 import { trackEvent } from "./lib/analytics";
 import Level from "./pages/Level";
 import Watchlist from "./pages/Watchlist";
@@ -95,7 +96,6 @@ function AppLayout() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/update-password" element={<UpdatePassword />} />
           <Route path="/learn" element={<Learn />} />
-          <Route path="/news" element={<Navigate to="/inbox" replace />} />
 
           {/* Legacy redirects */}
           <Route path="/guide" element={<Navigate to="/learn?tab=guide" replace />} />
@@ -118,6 +118,7 @@ function AppLayout() {
           <Route path="/level" element={<ProtectedRoute><Level /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
+          <Route path="/news" element={<ProtectedRoute><News /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>

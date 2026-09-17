@@ -1,5 +1,7 @@
 import {
   getNewsForGameDay,
+  getNewsUpToGameDay,
+  getSelectedStoryArcKeys,
   getStocksForGameDay,
   hashString,
   normalizeMarketSeed,
@@ -64,16 +66,35 @@ test("hashString avalanches on a single-character change", () => {
   expect(Math.abs(a - b)).toBeGreaterThan(1_000);
 });
 
-test("the opening tutorial gives CAI a Day 1 catalyst and a Day 2 reversal", () => {
+test("opening news predicts the following session instead of explaining an existing move", () => {
   const day1 = getStocksForGameDay(1, SEED).find((stock) => stock.symbol === "CAI");
   const day2 = getStocksForGameDay(2, SEED).find((stock) => stock.symbol === "CAI");
+  const day3 = getStocksForGameDay(3, SEED).find((stock) => stock.symbol === "CAI");
   const day1News = getNewsForGameDay(1, SEED).find((item) => item.relatedTickers.includes("CAI"));
   const day2News = getNewsForGameDay(2, SEED).find((item) => item.relatedTickers.includes("CAI"));
   const day3News = getNewsForGameDay(3, SEED).find((item) => item.relatedTickers.includes("CAI"));
 
-  expect(day1?.dayChangePercent).toBeGreaterThan(0);
-  expect(day2?.dayChangePercent).toBeLessThan(0);
+  expect(day1?.dayChangePercent).toBe(0);
+  expect(day1?.eventImpact).toBe(0);
+  expect(day2?.dayChangePercent).toBeGreaterThan(0);
+  expect(day2?.eventImpact).toBe(Number(day1News?.actualImpact.toFixed(2)));
+  expect(day3?.dayChangePercent).toBeLessThan(0);
   expect(day1News?.marketTone).toBe("Bullish");
   expect(day2News?.marketTone).toBe("Bearish");
   expect(day3News?.headline).toContain("stabilizes");
+});
+
+test("news exposes useful forecast metadata without exact future returns", () => {
+  const news = getNewsUpToGameDay(30, SEED);
+  expect(news.length).toBeGreaterThan(20);
+  expect(news.every((item) => item.confidence && item.horizon && item.affectedSectors)).toBe(true);
+  expect(news.some((item) => item.followUpTo)).toBe(true);
+  expect(news.some((item) => item.arcKey && item.branch)).toBe(true);
+});
+
+test("a run selects a focused mix from the expanded story-arc pool", () => {
+  const arcs = getSelectedStoryArcKeys(SEED);
+  expect(arcs.length).toBeGreaterThanOrEqual(2);
+  expect(arcs.length).toBeLessThanOrEqual(4);
+  expect(new Set(arcs).size).toBe(arcs.length);
 });
