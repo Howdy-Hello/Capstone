@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 
-// Dependency-free, in-memory fixed-window rate limiter. Good enough for a single
-// API instance (which is how StockPilot deploys). For a multi-instance setup,
-// swap the Map for a shared store (e.g. Redis).
+// Dependency-free, in-memory fixed-window rate limiter.
+// ponytail: limits apply per instance and reset on cold starts on Vercel;
+// use a shared store when deployment-wide quotas are required.
 
 type Bucket = { count: number; resetAt: number };
 

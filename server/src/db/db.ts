@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config({ path: './.env' });
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SECRfET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Missing credentials must not throw at import time: that kills the process
 // before the HTTP server binds, so the platform healthcheck sees a dead

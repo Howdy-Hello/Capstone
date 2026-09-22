@@ -80,3 +80,4 @@ coverage/
 uploads/
 tmp/
 .cache/
+.vercel/

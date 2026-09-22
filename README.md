@@ -106,6 +106,59 @@ App available at `http://localhost:3000`
 
 ---
 
+## Deploy on Vercel
+
+Use two Vercel projects connected to this repository and keep the existing
+Supabase project. The existing frontend project is `capstone`, with production
+URL `https://capstone-gamma-navy.vercel.app`.
+
+| Setting | Frontend | Backend |
+| --- | --- | --- |
+| Root Directory | `client` | `server` |
+| Framework | Create React App | Express |
+| Build Command | `react-scripts build` | `npm run build` |
+| Output Directory | `build` | Framework default |
+
+Each folder's `vercel.json` supplies the framework and build settings. Vercel
+detects `server/src/server.ts` and supports its existing `app.listen` entry point.
+The frontend build intentionally skips the GitHub Pages copy into `docs/`.
+
+1. Import the repository again for a backend project named `stockpilot-api`,
+   selecting `server` as the Root Directory. Set its Production environment:
+   - `SUPABASE_URL`
+   - `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`)
+   - `SUPABASE_PUBLISHABLE_KEY` (or `SUPABASE_ANON_KEY`)
+   - `CLIENT_ORIGIN=https://capstone-gamma-navy.vercel.app`
+   - `ADMIN_API_SECRET`: a separate secret if using admin routes.
+2. Deploy the backend and check `https://<backend-domain>/api/health`.
+   Use the actual domain assigned by Vercel, not an assumed project-name domain.
+3. Set the frontend project's Production environment:
+   - `REACT_APP_SUPABASE_URL`
+   - `REACT_APP_SUPABASE_PUBLISHABLE_KEY`
+   - `REACT_APP_API_URL=https://<backend-domain>` (no trailing slash or `/api`).
+   Redeploy the frontend: React embeds these values at build time.
+4. In Supabase Authentication URL Configuration, set the Site URL to the
+   frontend production URL and allow these redirect URLs:
+   - `https://capstone-gamma-navy.vercel.app/auth/callback`
+   - `https://capstone-gamma-navy.vercel.app/update-password`
+5. Verify direct navigation to `/auth`, sign-in, leaderboard, game sync, and
+   password-reset redirects. Test account deletion only with a disposable user.
+
+Keep Supabase secret/service-role keys in the backend project only. The API must
+be reachable by browser users; Vercel deployment protection can block calls to
+protected preview URLs before Express receives them. Use the production domain
+for `REACT_APP_API_URL`. For previews, explicitly configure their allowed origins
+and Supabase redirect URLs rather than allowing every `*.vercel.app` origin.
+
+The in-memory API rate limiter is per function instance on Vercel and resets
+on cold starts; it is not a deployment-wide quota. Auth and validation remain
+enforced on every request.
+
+References: [Express on Vercel](https://vercel.com/docs/frameworks/backend/express)
+and [Create React App on Vercel](https://vercel.com/docs/frameworks/frontend/create-react-app).
+
+---
+
 ## Project Structure
 
 ```
@@ -176,8 +229,8 @@ App available at `http://localhost:3000`
 - [ ] Input validation middleware on Express routes
 - [ ] Rate limiting on auth endpoints
 - [ ] Email confirmation flow (currently disabled)
-- [ ] Deploy client (Vercel / Netlify)
-- [ ] Deploy server (Railway / Render)
+- [ ] Verify current client deployment (Vercel)
+- [ ] Deploy server (Vercel)
 - [ ] CI/CD pipeline
 
 ---
