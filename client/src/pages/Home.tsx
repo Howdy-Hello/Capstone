@@ -8,6 +8,7 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 import AutoStoriesOutlinedIcon from "@mui/icons-material/AutoStoriesOutlined";
 import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
+import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 
 const STOCKS = [
@@ -34,6 +35,7 @@ const STEPS = [
 const MotionBox = motion(Box);
 
 export default function Home() {
+  const { user } = useAuth();
   return (
     <Box sx={{ bgcolor: D.bg, color: D.t1 }}>
       {/* HERO */}
@@ -55,9 +57,9 @@ export default function Home() {
                   StockPilot puts $2,000 of simulated capital in your hands. Keep advancing the market, build your portfolio, and learn what separates disciplined traders from the rest.
                 </Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                  <Button component={RouterLink} to="/auth?mode=signup" variant="contained"
+                  <Button component={RouterLink} to={user ? "/game" : "/auth?mode=signup"} variant="contained"
                     sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 14, textTransform: "none", borderRadius: 2, px: 3.5, py: 1.4, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-                    Start trading free
+                    {user ? "Continue trading" : "Start trading free"}
                   </Button>
                   <Button component={RouterLink} to="/learn" variant="outlined"
                     sx={{ color: D.t2, borderColor: D.border, fontWeight: 700, fontSize: 14, textTransform: "none", borderRadius: 2, px: 3, py: 1.4, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
@@ -172,14 +174,14 @@ export default function Home() {
       <Box sx={{ bgcolor: D.surface, borderTop: `1px solid ${D.border}` }}>
         <Container maxWidth="md" sx={{ py: { xs: 6, md: 8 }, textAlign: "center" }}>
           <Typography sx={{ fontSize: { xs: 26, md: 38 }, fontWeight: 950, color: D.t1, letterSpacing: -1.5, mb: 1.5 }}>
-            Ready to start trading?
+            {user ? "Ready for your next move?" : "Ready to start trading?"}
           </Typography>
           <Typography sx={{ fontSize: 15, color: D.t2, mb: 3.5 }}>
             Free forever. No credit card. Just better trading habits.
           </Typography>
-          <Button component={RouterLink} to="/auth?mode=signup" variant="contained"
+          <Button component={RouterLink} to={user ? "/game" : "/auth?mode=signup"} variant="contained"
             sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 15, textTransform: "none", borderRadius: 2, px: 4, py: 1.6, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-            Create free account
+            {user ? "Continue trading" : "Create free account"}
           </Button>
         </Container>
       </Box>

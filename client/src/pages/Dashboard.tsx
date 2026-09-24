@@ -309,10 +309,10 @@ export default function Dashboard() {
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
             <Box>
               <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio Review</Typography>
-              <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Performance versus the equal-weight market, realized results, and portfolio risk.</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t2 }}>Performance versus the equal-weight market, realized results, and portfolio risk.</Typography>
             </Box>
-            <Chip label={`${review.riskScore}/100 · ${review.riskLabel}`} size="small"
-              sx={{ bgcolor: review.riskScore >= 80 ? D.greenBg : review.riskScore >= 60 ? D.amberBg : D.redBg, color: review.riskScore >= 80 ? D.greenText : review.riskScore >= 60 ? D.amber : D.redText, fontWeight: 900, fontFamily: MONO }} />
+            <Chip label={holdings.length ? `Portfolio balance: ${review.riskScore}/100 · ${review.riskLabel}` : "Portfolio balance: awaiting holdings"} size="small"
+              sx={{ maxWidth: "100%", height: "auto", "& .MuiChip-label": { whiteSpace: "normal", py: .75 }, bgcolor: review.riskScore >= 80 ? D.greenBg : review.riskScore >= 60 ? D.amberBg : D.redBg, color: review.riskScore >= 80 ? D.greenText : review.riskScore >= 60 ? D.amber : D.redText, fontWeight: 900, fontFamily: MONO }} />
           </Stack>
           <Grid container sx={{ borderBottom: `1px solid ${D.border}` }}>
             {[
@@ -323,19 +323,23 @@ export default function Dashboard() {
             ].map((item) => (
               <Grid item xs={6} md={3} key={item.label} sx={{ borderRight: `1px solid ${D.border}`, borderBottom: { xs: `1px solid ${D.border}`, md: 0 } }}>
                 <Box sx={{ p: 2.5 }}>
-                  <Typography sx={{ fontSize: 10, color: D.t3, fontWeight: 900, fontFamily: MONO, letterSpacing: .5 }}>{item.label.toUpperCase()}</Typography>
+                  <Typography sx={{ fontSize: 12, color: D.t2, fontWeight: 900, fontFamily: MONO, letterSpacing: .5 }}>{item.label.toUpperCase()}</Typography>
                   <Typography sx={{ mt: .6, fontSize: 19, color: item.color, fontWeight: 950, fontFamily: MONO }}>{item.value}</Typography>
                 </Box>
               </Grid>
             ))}
           </Grid>
           <Box sx={{ px: 3, py: 2.25 }}>
-            <Typography sx={{ fontSize: 10, color: D.t3, fontWeight: 900, fontFamily: MONO, letterSpacing: .7, mb: 1 }}>RISK CHECK</Typography>
+            <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6, mb: 1.5 }}>
+              Higher balance scores mean fewer concentration warnings. The score considers your largest holding, sector exposure,
+              high-risk stocks, and cash reserve. It measures portfolio balance, not returns or the chance of profit.
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: D.t2, fontWeight: 900, fontFamily: MONO, letterSpacing: .7, mb: 1 }}>RISK CHECK</Typography>
             <Stack direction={{ xs: "column", md: "row" }} spacing={{ xs: .8, md: 3 }}>
               {review.callouts.map((callout) => (
                 <Stack key={callout} direction="row" spacing={.8} alignItems="flex-start" sx={{ flex: 1 }}>
                   <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: review.riskScore >= 80 ? D.green : D.amber, mt: .7, flexShrink: 0 }} />
-                  <Typography sx={{ fontSize: 12.5, color: D.t2, lineHeight: 1.55 }}>{callout}</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.55 }}>{callout}</Typography>
                 </Stack>
               ))}
             </Stack>
@@ -349,7 +353,7 @@ export default function Dashboard() {
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Box>
                   <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Holdings</Typography>
-                  <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Marked to Day {gameDay} prices.</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t2 }}>Marked to Day {gameDay} prices.</Typography>
                 </Box>
                 <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
                   <Button component={RouterLink} to="/game" size="small" variant="contained"
@@ -438,7 +442,7 @@ export default function Dashboard() {
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Allocation</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Cash and sector exposure.</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2 }}>Cash and sector exposure.</Typography>
               </Box>
               <Box sx={{ px: 2.5, py: 2 }}>
                 <Box sx={{ height: 260 }}>
@@ -475,7 +479,7 @@ export default function Dashboard() {
             <Box data-tour="market-movers" sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Market Movers</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Top 8 absolute moves today.</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2 }}>Top 8 absolute moves today.</Typography>
               </Box>
               <Box sx={{ p: 2.5, height: 320 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -498,7 +502,7 @@ export default function Dashboard() {
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Today's News</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Day {gameDay} after-hours signals for the next session.</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2 }}>Day {gameDay} after-hours signals for the next session.</Typography>
               </Box>
               <Box sx={{ p: 2.5 }}>
                 {news.length === 0 ? (
@@ -519,7 +523,7 @@ export default function Dashboard() {
                             ))}
                           </Stack>
                           <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: D.t1, mb: 0.4 }}>{item.headline}</Typography>
-                          <Typography sx={{ fontSize: 12.5, color: D.t3, lineHeight: 1.6 }}>{item.body}</Typography>
+                          <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6 }}>{item.body}</Typography>
                         </Box>
                     ))}
                     </MotionPresence>
@@ -565,7 +569,7 @@ export default function Dashboard() {
                       {" / "}
                       <Box component="span" sx={{ color: D.redText }}>{marketSummary.losers} down</Box>
                     </Typography>
-                    <Typography sx={{ fontSize: 12.5, color: D.t3, mt: 0.5 }}>Broad rally vs. concentrated move.</Typography>
+                    <Typography sx={{ fontSize: 14, color: D.t2, mt: 0.5 }}>Broad rally vs. concentrated move.</Typography>
                   </Box>
                 </Grid>
               </Grid>
@@ -576,7 +580,7 @@ export default function Dashboard() {
         <Box sx={{ ...CARD, p: 0, overflow: "hidden", mt: 3 }}>
           <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
             <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio Analytics</Typography>
-            <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Quick risk and behavior readouts from your current positions.</Typography>
+            <Typography sx={{ fontSize: 14, color: D.t2 }}>Quick risk and behavior readouts from your current positions.</Typography>
           </Box>
           <Grid container spacing={0} sx={{ "& > .MuiGrid-item": { borderRight: { md: `1px solid ${D.border}` }, borderBottom: { xs: `1px solid ${D.border}`, md: 0 } } }}>
             {[
@@ -589,7 +593,7 @@ export default function Dashboard() {
                 <Box sx={{ p: 2.5 }}>
                   <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{item.label.toUpperCase()}</Typography>
                   <Typography sx={{ fontSize: 18, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{item.value}</Typography>
-                  <Typography sx={{ fontSize: 12.5, color: D.t3, mt: 0.3 }}>{item.detail}</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t2, mt: 0.3 }}>{item.detail}</Typography>
                 </Box>
               </Grid>
             ))}
@@ -601,7 +605,7 @@ export default function Dashboard() {
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
             <Box>
               <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Trade History</Typography>
-              <Typography sx={{ fontSize: 12.5, color: D.t3 }}>
+              <Typography sx={{ fontSize: 14, color: D.t2 }}>
                 {tradeInsights.buys} buys, {tradeInsights.sells} sells, {money(tradeInsights.volume)} total volume.
               </Typography>
             </Box>
@@ -689,7 +693,7 @@ export default function Dashboard() {
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
             <Box>
               <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Decision Journal</Typography>
-              <Typography sx={{ fontSize: 12.5, color: D.t3 }}>The reasoning you captured before trading. Advisor reviews arrive in your inbox after the market moves.</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t2 }}>The reasoning you captured before trading. Advisor reviews arrive in your inbox after the market moves.</Typography>
             </Box>
             <Chip size="small" label={`${journalEntries.length} PLANNED`} sx={{ bgcolor: D.brandBg, color: D.brandText, fontWeight: 900, fontSize: 10, fontFamily: MONO }} />
           </Stack>

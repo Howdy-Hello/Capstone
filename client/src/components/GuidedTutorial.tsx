@@ -79,6 +79,9 @@ const advancedSteps: TourStep[] = [
 
 function visibleTarget(selector: string) {
   return Array.from(document.querySelectorAll<HTMLElement>(selector)).find((element) => {
+    // Reveal collapsed news when the guided lesson needs its article.
+    const details = element.closest("details");
+    if (details) details.open = true;
     const box = element.getBoundingClientRect();
     return box.width > 0 && box.height > 0;
   }) ?? null;

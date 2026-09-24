@@ -71,6 +71,10 @@ export default function News() {
           </Button>
         </Stack>
 
+        <Typography sx={{ color: D.t2, fontSize: 14, lineHeight: 1.6, mb: 2 }}>
+          Bullish signals point up; bearish signals point down. Confidence describes signal strength.
+          Credibility estimates report reliability from the publisher and rumor status. A score out of 100 is not a probability of profit.
+        </Typography>
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={5}><TextField fullWidth size="small" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search headlines, companies, or tickers" InputProps={{ startAdornment: <SearchIcon sx={{ mr: 1, color: D.t3 }} /> }} /></Grid>
           {([
@@ -129,7 +133,7 @@ function ArchiveCard({ item }: { item: MarketNews }) {
     <Typography sx={{ color: D.t2, fontSize: 13, lineHeight: 1.7, mb: 2 }}>{item.body}</Typography>
     <Stack direction="row" gap={.75} flexWrap="wrap">
       <Chip size="small" label={`${item.marketTone} signal`} />
-      <Chip size="small" label={`${credibility.label} · ${credibility.score}%`} />
+      <Chip size="small" label={`Credibility ${credibility.score}/100 · ${credibility.label}`} />
       {item.relatedTickers.map((ticker) => <Chip key={ticker} size="small" label={ticker} sx={{ bgcolor: D.elevated, color: D.t1 }} />)}
     </Stack>
   </Box>;
@@ -144,7 +148,7 @@ function ArticleDetail({ item }: { item: MarketNews }) {
       <Chip size="small" label={`${item.marketTone} signal`} />
       <Chip size="small" label={`${item.confidence ?? "Medium"} confidence`} />
       <Chip size="small" label={item.horizon ?? "Next session"} />
-      <Chip size="small" label={`${credibility.label} · ${credibility.score}%`} />
+      <Chip size="small" label={`Credibility ${credibility.score}/100 · ${credibility.label}`} />
       {item.followUpTo && <Chip size="small" color="info" label="Follow-up" />}
       {item.arcKey && <Chip size="small" label={`Story: ${item.arcKey.replace(/_/g, " ")}`} />}
     </Stack>
