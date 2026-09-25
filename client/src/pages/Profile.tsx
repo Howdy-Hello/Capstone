@@ -176,6 +176,11 @@ export default function ProfilePage() {
       return;
     }
 
+    // Collected before deletion (the sessions go with the account) so only this
+    // player's local keys are cleared below, not other accounts' on this browser.
+    const { data: ownSessions } = await supabase.from("game_sessions").select("id").eq("user_id", user.id);
+    const ownIds = [user.id, ...(ownSessions ?? []).map((row: { id: string }) => row.id)];
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/account`, {
         method: "DELETE",
@@ -190,10 +195,10 @@ export default function ProfilePage() {
         throw new Error(result.message ?? "Account deletion failed.");
       }
 
-      // Session-scoped keys carry dynamic ":<sessionId>" / "-<userId>" suffixes,
-      // so sweep every StockPilot game/session key by prefix.
+      // Keys carry a "-<userId>" or ":<sessionId>" part; sweep only this
+      // player's, since other accounts may share the browser.
       Object.keys(localStorage)
-        .filter((key) => key.startsWith("stockpilot-"))
+        .filter((key) => key.startsWith("stockpilot-") && ownIds.some((id) => key.includes(id)))
         .forEach((key) => localStorage.removeItem(key));
       await signOut();
       navigate("/", { replace: true });

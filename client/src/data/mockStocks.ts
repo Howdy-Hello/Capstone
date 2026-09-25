@@ -2213,9 +2213,21 @@ function generateFollowUpForCompany(
 
 function getEventImpact(company: StockCompany, gameDay: number, marketSeed?: string | null) {
   if (gameDay < 1) return 0;
-  const event = generateEventForCompany(company, gameDay, marketSeed);
+  // Every story-arc event naming the ticker moves it: two arcs can land on the
+  // same stock the same day, and the feed shows both.
+  const arcEvents = gameDay > STORY_DAYS
+    ? getStoryArcNewsForGameDay(gameDay, marketSeed)
+        .filter((news) => news.relatedTickers.includes(company.symbol))
+    : [];
+  const eventImpact = arcEvents.length > 0
+    ? arcEvents.reduce((sum, news) => (
+        sum + (news.impactByTicker?.[company.symbol]?.actualImpact ?? news.actualImpact)
+      ), 0)
+    : (() => {
+        const event = generateEventForCompany(company, gameDay, marketSeed);
+        return event?.impactByTicker?.[company.symbol]?.actualImpact ?? event?.actualImpact ?? 0;
+      })();
   const followUp = generateFollowUpForCompany(company, gameDay, marketSeed);
-  const eventImpact = event?.impactByTicker?.[company.symbol]?.actualImpact ?? event?.actualImpact ?? 0;
   return eventImpact + (followUp?.actualImpact ?? 0);
 }
 

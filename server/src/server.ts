@@ -1,14 +1,15 @@
+// Must stay the first import: lib/supabaseServer.ts reads process.env when it
+// is first imported, so .env has to be loaded before any route module.
+import 'dotenv/config';
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import dotenv from 'dotenv';
 import { connectDB } from './db/db';
 import supabaseRoutes from './routes/supabaseRoutes';
 import gameRoutes from './routes/gameRoutes';
+import marketRoutes from './routes/marketRoutes';
 import { rateLimit } from './middleware/rateLimit';
 import { getServerEnvIssues } from './lib/env';
-
-dotenv.config({ path: './.env' });
 
 const app = express();
 
@@ -19,10 +20,20 @@ app.set('trust proxy', 1);
 
 // Lock CORS to configured origins in production; reflect the request origin in
 // dev (when CLIENT_ORIGIN is unset).
+// Normalized to bare origins: browsers send `https://app.example.com`, and the
+// cors package compares strings exactly, so a trailing slash in the env value
+// would otherwise reject every request.
 const allowedOrigins = (process.env.CLIENT_ORIGIN ?? '')
   .split(',')
   .map((origin) => origin.trim())
-  .filter(Boolean);
+  .filter(Boolean)
+  .map((origin) => {
+    try {
+      return new URL(origin).origin;
+    } catch {
+      return origin;
+    }
+  });
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -56,10 +67,14 @@ app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 300, bucket: 'global'
 
 app.use('/api', supabaseRoutes);
 app.use('/api', gameRoutes);
+app.use('/api', marketRoutes);
 
 app.get('/api/health/config', (req: Request, res: Response) => {
   const issues = getServerEnvIssues();
-  const status = issues.some((issue) => issue.key === 'SUPABASE_URL') ? 503 : 200;
+  // Without these every data route fails, so report not-ready.
+  const blocking = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY'];
+  if (isProduction) blocking.push('MARKET_SEED_SECRET');
+  const status = issues.some((issue) => blocking.includes(issue.key)) ? 503 : 200;
 
   // Which env keys are missing is reconnaissance for an unauthenticated caller.
   // Once ADMIN_API_SECRET is configured, the detail requires it; without it the
@@ -108,12 +123,7 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Bind first, verify the database after. A Supabase outage or a missing
-// credential should surface as a running server reporting db: "error" — not as
-// a container that never binds and fails its healthcheck with no explanation.
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-
+function checkDatabase() {
   connectDB()
     .then(() => {
       dbStatus = 'ok';
@@ -123,4 +133,20 @@ app.listen(PORT, () => {
       dbStatus = 'error';
       console.error('Database connection check failed. API routes needing Supabase will fail:', err);
     });
-});
+}
+
+// On Vercel the platform imports the exported app and serves it itself;
+// elsewhere (local dev, Render, Railway) we bind a port. Bind first, verify
+// the database after: a Supabase outage or a missing credential should
+// surface as a running server reporting db: "error", not as a process that
+// never binds and fails its healthcheck with no explanation.
+if (process.env.VERCEL) {
+  checkDatabase();
+} else {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    checkDatabase();
+  });
+}
+
+export default app;

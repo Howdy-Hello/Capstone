@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useGame, WEEKLY_BILL_TOTAL } from "../context/GameContext";
-import { ownershipKey } from "../hooks/useAdvisor";
+import { readOwnedAdvisorIds } from "../hooks/useAdvisor";
 import { addInboxMessage } from "../lib/inbox";
 import { pushNotification } from "../lib/notifications";
 import { money } from "../theme/design";
@@ -12,9 +12,7 @@ export default function AdvisorEffects() {
 
   useEffect(() => {
     if (!user || !sessionId || gameDay < 2) return;
-    let hired = false;
-    try { hired = (JSON.parse(localStorage.getItem(ownershipKey(sessionId)) ?? "[]") as string[]).includes("riley"); } catch { return; }
-    if (!hired) return;
+    if (!readOwnedAdvisorIds(sessionId, gameDay).includes("riley")) return;
 
     const mover = [...stocks].sort((a, b) => Math.abs(b.dayChangePercent) - Math.abs(a.dayChangePercent))[0];
     const highRiskOwned = account.holdings.filter((holding) => stocks.find((stock) => stock.symbol === holding.symbol)?.riskLevel === "High");

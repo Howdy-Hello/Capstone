@@ -35,7 +35,9 @@ export function validateBody(schema: BodySchema) {
       }
 
       if (rule.type === 'number' || rule.type === 'integer') {
-        const n = Number(value);
+        // Strictly JSON numbers: Number(true) is 1 and Number("5e3") is 5000,
+        // which let booleans and strings through as numbers.
+        const n = typeof value === 'number' ? value : NaN;
         if (!Number.isFinite(n)) {
           errors.push(`${field} must be a finite number`);
           continue;

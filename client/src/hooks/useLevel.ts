@@ -28,7 +28,7 @@ function levelStorageKey(userId: string) {
 
 export function useLevel() {
   const { user } = useAuth();
-  const { totalXP: achievementXp } = useAchievements();
+  const { totalXP: achievementXp, loading: achievementsLoading } = useAchievements();
 
   const player = getPlayerLevel(achievementXp);
   const { level, totalXp, xpIntoLevel, xpForNextLevel } = player;
@@ -38,6 +38,9 @@ export function useLevel() {
 
   useEffect(() => {
     if (!user) { lastNotifiedRef.current = null; return; }
+    // Until unlocks load, `level` is the empty-XP level; recording that as the
+    // baseline sent a false "You've reached Level N" once they arrived.
+    if (achievementsLoading) return;
 
     const key = levelStorageKey(user.id);
     if (lastNotifiedRef.current === null) {
@@ -62,7 +65,7 @@ export function useLevel() {
         category: "level",
       });
     }
-  }, [level, user, xpForNextLevel, xpIntoLevel]);
+  }, [achievementsLoading, level, user, xpForNextLevel, xpIntoLevel]);
 
   return { level, totalXp, xpIntoLevel, xpForNextLevel, progressPercent };
 }

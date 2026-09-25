@@ -177,14 +177,14 @@ export function useRivalTrader() {
       // saying the same thing, which is the premise documented at the top.
       const line = pool[hash(`${marketSeed}:taunt:${gameDay}`) % pool.length];
       pushNotification({
-        id: `rival-${gameDay}`,
+        id: `rival-${sessionId}-${gameDay}`,
         kind: "rival",
         title: rivalName,
         description: `${rivalName} ${line} (${money(rivalNetWorth)} vs your ${money(playerNetWorth)})`,
       });
       if (user) {
         addInboxMessage(user.id, {
-          id: `rival-${gameDay}`,
+          id: `rival-${sessionId}-${gameDay}`,
           from: rivalName,
           // The sender is the rival, so the subject is written from their side:
           // playerAhead means the rival lost the lead.

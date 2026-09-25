@@ -10,14 +10,16 @@ import { TradeJournalEntry } from "../lib/tradeJournal";
 /** Delivers one delayed, outcome-based advisor review for each journaled trade. */
 export function useTradeDebriefs() {
   const { user } = useAuth();
-  const { gameDay, sessionId, getStock } = useGame();
+  const { gameDay, sessionId, getStock, loading, stocks } = useGame();
   // Marks a (session, day) pair as *finished*, never as merely started, so a
   // remount or a failed request retries instead of silently skipping the day.
   const completedRef = useRef("");
   const runningRef = useRef("");
 
   useEffect(() => {
-    if (!user || !sessionId || gameDay <= 1) return;
+    // Wait for the run's market: with no stocks yet every entry was skipped
+    // and the day marked done, pushing its reviews to the next advance.
+    if (!user || !sessionId || gameDay <= 1 || loading || stocks.length === 0) return;
     const guard = `${sessionId}:${gameDay}`;
     if (completedRef.current === guard || runningRef.current === guard) return;
     runningRef.current = guard;
@@ -44,9 +46,13 @@ export function useTradeDebriefs() {
           return;
         }
 
+        let skipped = false;
         for (const raw of data as unknown as TradeJournalEntry[]) {
           const stock = getStock(raw.symbol);
-          if (!stock) continue;
+          if (!stock) {
+            skipped = true;
+            continue;
+          }
           const executionPrice = Number(raw.execution_price);
           const direction = raw.trade_type === "buy" ? 1 : -1;
           const outcomePct = executionPrice > 0
@@ -88,10 +94,10 @@ export function useTradeDebriefs() {
             description: `${outcome} since your Day ${raw.game_day} ${raw.trade_type}.`,
           });
         }
-        completedRef.current = guard;
+        if (!skipped) completedRef.current = guard;
       } finally {
         if (runningRef.current === guard) runningRef.current = "";
       }
     })();
-  }, [gameDay, getStock, sessionId, user]);
+  }, [gameDay, getStock, loading, sessionId, stocks.length, user]);
 }

@@ -44,6 +44,13 @@ export function getServerEnvIssues(): EnvIssue[] {
     });
   }
 
+  if (!process.env.MARKET_SEED_SECRET || process.env.MARKET_SEED_SECRET.length < 16) {
+    issues.push({
+      key: "MARKET_SEED_SECRET",
+      message: "A random secret of at least 16 characters is required to generate run markets (a dev-only fallback is used outside production).",
+    });
+  }
+
   if (process.env.CLIENT_ORIGIN && !process.env.CLIENT_ORIGIN.split(",").every((origin) => isUrl(origin.trim()))) {
     issues.push({
       key: "CLIENT_ORIGIN",

@@ -36,8 +36,10 @@ export type AdvisorReport = {
   advisorName: string;
 };
 
-function cooldownKey(userId: string, symbol: string) {
-  return `stockpilot-advisor-lastday-${userId}-${symbol}`;
+// Scoped to the run: keyed by user alone, a report taken on day 4 of one run
+// put the same stock on cooldown on day 4 of the next.
+function cooldownKey(userId: string, sessionId: string | null, symbol: string) {
+  return `stockpilot-advisor-lastday-${userId}-${sessionId ?? "none"}-${symbol}`;
 }
 
 function buildReport(
@@ -111,6 +113,32 @@ export function ownershipKey(sessionId: string) {
   return `stockpilot-advisors-${sessionId}`;
 }
 
+type OwnedAdvisor = { id: string; hiredDay: number };
+
+function readOwnership(sessionId: string): OwnedAdvisor[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ownershipKey(sessionId)) ?? "[]") as Array<string | OwnedAdvisor>;
+    // Entries written before hiredDay existed count as hired on day 1.
+    return raw.map((entry) => typeof entry === "string" ? { id: entry, hiredDay: 1 } : entry);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Advisors hired in this run as of `gameDay`. Restoring a save rewinds the day
+ * (and refunds the hiring cost) in the same session, so hires from after the
+ * restored day are dropped rather than kept for free.
+ */
+export function readOwnedAdvisorIds(sessionId: string, gameDay: number): string[] {
+  const owned = readOwnership(sessionId);
+  const kept = owned.filter((entry) => entry.hiredDay <= gameDay);
+  if (kept.length !== owned.length) {
+    localStorage.setItem(ownershipKey(sessionId), JSON.stringify(kept));
+  }
+  return kept.map((entry) => entry.id);
+}
+
 export function useAdvisor() {
   const { user } = useAuth();
   const { account, gameDay, sessionId, addCash, getHistory, getRelatedNews } = useGame();
@@ -120,19 +148,18 @@ export function useAdvisor() {
 
   useEffect(() => {
     if (!sessionId) return setOwnedIds([]);
-    try { setOwnedIds(JSON.parse(localStorage.getItem(ownershipKey(sessionId)) ?? "[]")); }
-    catch { setOwnedIds([]); }
-  }, [sessionId]);
+    setOwnedIds(readOwnedAdvisorIds(sessionId, gameDay));
+  }, [gameDay, sessionId]);
 
   const ownedAdvisors = useMemo(() => ADVISORS.filter((advisor) => ownedIds.includes(advisor.id)), [ownedIds]);
   const activeAdvisor = ownedAdvisors[ownedAdvisors.length - 1] ?? null;
 
   const hire = useCallback(async (advisor: AdvisorDefinition) => {
     if (!user || !sessionId || advisor.id !== "riley" || ownedIds.includes(advisor.id) || account.cash < advisor.cost) return false;
-    await addCash(-advisor.cost);
-    const next = [...ownedIds, advisor.id];
+    if (!(await addCash(-advisor.cost))) return false;
+    const next = [...readOwnership(sessionId), { id: advisor.id, hiredDay: gameDay }];
     localStorage.setItem(ownershipKey(sessionId), JSON.stringify(next));
-    setOwnedIds(next);
+    setOwnedIds(next.map((entry) => entry.id));
     pushNotification({ kind: "advisor", title: `${advisor.name} joined your team`, description: `${advisor.role} hired for $${advisor.cost.toLocaleString()}.` });
     addInboxMessage(user.id, {
       id: `advisor-welcome-${sessionId}-${advisor.id}`,
@@ -142,13 +169,13 @@ export function useAdvisor() {
       category: "advisor",
     });
     return true;
-  }, [account.cash, addCash, ownedIds, sessionId, user]);
+  }, [account.cash, addCash, gameDay, ownedIds, sessionId, user]);
 
   const isOnCooldown = useCallback((symbol: string) => {
     if (!user) return true;
-    const raw = localStorage.getItem(cooldownKey(user.id, symbol));
+    const raw = localStorage.getItem(cooldownKey(user.id, sessionId, symbol));
     return raw !== null && Number(raw) === gameDay;
-  }, [user, gameDay]);
+  }, [user, gameDay, sessionId]);
 
   const consult = useCallback(async (stock: Stock) => {
     if (!user || !activeAdvisor || isOnCooldown(stock.symbol)) return null;
@@ -156,7 +183,7 @@ export function useAdvisor() {
     const history = getHistory(stock.symbol);
     const relatedNews = getRelatedNews(stock.symbol);
     const built = buildReport(stock, history, relatedNews, gameDay, activeAdvisor);
-    localStorage.setItem(cooldownKey(user.id, stock.symbol), String(gameDay));
+    localStorage.setItem(cooldownKey(user.id, sessionId, stock.symbol), String(gameDay));
     setReport(built);
     setLoading(false);
     pushNotification({
@@ -165,14 +192,14 @@ export function useAdvisor() {
       description: built.summary,
     });
     addInboxMessage(user.id, {
-      id: `advisor-report-${activeAdvisor.id}-${stock.symbol}-${gameDay}`,
+      id: `advisor-report-${sessionId}-${activeAdvisor.id}-${stock.symbol}-${gameDay}`,
       from: `${activeAdvisor.name} · ${activeAdvisor.role}`,
       subject: `${stock.symbol} beginner report — Day ${gameDay}`,
       body: `${built.summary}\n\n${built.points.map((point) => `• ${point}`).join("\n")}\n\nUse this report as a research starting point, not a guaranteed buy or sell signal.`,
       category: "advisor",
     });
     return built;
-  }, [user, activeAdvisor, isOnCooldown, getHistory, getRelatedNews, gameDay]);
+  }, [user, activeAdvisor, isOnCooldown, getHistory, getRelatedNews, gameDay, sessionId]);
 
   return { report, loading, isOnCooldown, consult, hire, ownedIds, ownedAdvisors, activeAdvisor };
 }

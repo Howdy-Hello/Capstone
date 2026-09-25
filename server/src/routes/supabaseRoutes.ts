@@ -48,6 +48,8 @@ router.get('/me', authLimiter, supabaseHandler({ auth: 'user' }, async (_req, ct
   });
 }));
 
+const AVATAR_PAGE_SIZE = 100;
+
 router.delete('/account', deleteAccountLimiter, supabaseHandler({ auth: 'user' }, async (_req, ctx) => {
   const userId = ctx.userClaims?.id;
 
@@ -55,29 +57,29 @@ router.delete('/account', deleteAccountLimiter, supabaseHandler({ auth: 'user' }
     return Response.json({ message: 'Missing user claims.' }, { status: 401 });
   }
 
-  const { data: avatarFiles, error: listError } = await ctx.supabaseAdmin.storage
-    .from('avatars')
-    .list(userId);
+  // list() returns at most `limit` entries, so page until a short page comes
+  // back; otherwise a user with many uploads kept the rest after deletion.
+  const avatarPaths: string[] = [];
+  for (let offset = 0; ; offset += AVATAR_PAGE_SIZE) {
+    const { data: avatarFiles, error: listError } = await ctx.supabaseAdmin.storage
+      .from('avatars')
+      .list(userId, { limit: AVATAR_PAGE_SIZE, offset });
 
-  if (listError) {
-    return Response.json(
-      { message: `Could not inspect avatar files: ${listError.message}` },
-      { status: 500 }
-    );
+    if (listError) {
+      return supabaseErrorResponse('DELETE /account (list avatars)', listError);
+    }
+
+    avatarPaths.push(...(avatarFiles ?? []).map((file) => `${userId}/${file.name}`));
+    if (!avatarFiles || avatarFiles.length < AVATAR_PAGE_SIZE) break;
   }
 
-  const avatarPaths = (avatarFiles ?? []).map((file) => `${userId}/${file.name}`);
-
-  if (avatarPaths.length > 0) {
+  for (let start = 0; start < avatarPaths.length; start += AVATAR_PAGE_SIZE) {
     const { error: removeError } = await ctx.supabaseAdmin.storage
       .from('avatars')
-      .remove(avatarPaths);
+      .remove(avatarPaths.slice(start, start + AVATAR_PAGE_SIZE));
 
     if (removeError) {
-      return Response.json(
-        { message: `Could not remove avatar files: ${removeError.message}` },
-        { status: 500 }
-      );
+      return supabaseErrorResponse('DELETE /account (remove avatars)', removeError);
     }
   }
 

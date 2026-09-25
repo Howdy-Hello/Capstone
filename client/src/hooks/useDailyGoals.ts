@@ -69,13 +69,15 @@ function selectGoals(userId: string, gameDay: number, marketSeed: string): GoalD
     .map((entry) => entry.goal);
 }
 
-function storageKey(userId: string, gameDay: number) {
-  return `stockpilot-daily-goals-${userId}-${gameDay}`;
+// Per run: keyed by user and day alone, a new run's day 3 showed the previous
+// run's day-3 goals as already complete.
+function storageKey(userId: string, sessionId: string, gameDay: number) {
+  return `stockpilot-daily-goals-${userId}-${sessionId}-${gameDay}`;
 }
 
-function loadCompleted(userId: string, gameDay: number): Set<string> {
+function loadCompleted(userId: string, sessionId: string, gameDay: number): Set<string> {
   try {
-    const raw = localStorage.getItem(storageKey(userId, gameDay));
+    const raw = localStorage.getItem(storageKey(userId, sessionId, gameDay));
     if (raw) return new Set(JSON.parse(raw) as string[]);
   } catch {
     /* ignore */
@@ -83,9 +85,9 @@ function loadCompleted(userId: string, gameDay: number): Set<string> {
   return new Set();
 }
 
-function saveCompleted(userId: string, gameDay: number, completed: Set<string>) {
+function saveCompleted(userId: string, sessionId: string, gameDay: number, completed: Set<string>) {
   try {
-    localStorage.setItem(storageKey(userId, gameDay), JSON.stringify([...completed]));
+    localStorage.setItem(storageKey(userId, sessionId, gameDay), JSON.stringify([...completed]));
   } catch {
     /* ignore */
   }
@@ -93,7 +95,7 @@ function saveCompleted(userId: string, gameDay: number, completed: Set<string>) 
 
 export function useDailyGoals() {
   const { user } = useAuth();
-  const { account, stocks, watchlistSymbols, gameDay, marketSeed } = useGame();
+  const { account, stocks, watchlistSymbols, gameDay, marketSeed, sessionId } = useGame();
 
   const netWorth = useMemo(
     () => account.cash + getPortfolioValue(account, stocks),
@@ -117,8 +119,8 @@ export function useDailyGoals() {
   // Local cache loads instantly; Supabase is merged in once it resolves so
   // progress follows the player across devices without blocking the UI.
   useEffect(() => {
-    if (!user) { setCompleted({ day: gameDay, ids: new Set() }); return; }
-    const local = loadCompleted(user.id, gameDay);
+    if (!user || !sessionId) { setCompleted({ day: gameDay, ids: new Set() }); return; }
+    const local = loadCompleted(user.id, sessionId, gameDay);
     setCompleted({ day: gameDay, ids: local });
 
     let cancelled = false;
@@ -127,18 +129,19 @@ export function useDailyGoals() {
         .from("user_daily_goal_completions")
         .select("goal_id")
         .eq("user_id", user.id)
+        .eq("session_id", sessionId)
         .eq("game_day", gameDay);
       if (cancelled || error || !data) return;
       const merged = new Set(local);
       data.forEach((row: { goal_id: string }) => merged.add(row.goal_id));
       if (merged.size !== local.size) {
         setCompleted({ day: gameDay, ids: merged });
-        saveCompleted(user.id, gameDay, merged);
+        saveCompleted(user.id, sessionId, gameDay, merged);
       }
     })();
 
     return () => { cancelled = true; };
-  }, [user, gameDay]);
+  }, [user, gameDay, sessionId]);
 
   const goals = useMemo<DailyGoal[]>(() => {
     const bySymbol = new Map(stocks.map((stock) => [stock.symbol, stock]));
@@ -170,7 +173,7 @@ export function useDailyGoals() {
   }, [account, stocks, watchlistSymbols, netWorth, gameDay, marketSeed, user, completedIds]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !sessionId) return;
     // The loaded set still belongs to the previous day; wait for the load
     // effect to catch up rather than persisting it under the new day's key.
     if (completed.day !== gameDay) return;
@@ -181,18 +184,18 @@ export function useDailyGoals() {
     const next = new Set(completed.ids);
     newlyDone.forEach((g) => next.add(g.id));
     setCompleted({ day: gameDay, ids: next });
-    saveCompleted(user.id, gameDay, next);
+    saveCompleted(user.id, sessionId, gameDay, next);
 
     // Best-effort sync — daily goals are non-critical to gameplay, so a
     // failed write here shouldn't surface an error to the player.
     void supabase
       .from("user_daily_goal_completions")
       .upsert(
-        newlyDone.map((g) => ({ user_id: user.id, game_day: gameDay, goal_id: g.id })),
-        { onConflict: "user_id,game_day,goal_id", ignoreDuplicates: true },
+        newlyDone.map((g) => ({ user_id: user.id, session_id: sessionId, game_day: gameDay, goal_id: g.id })),
+        { onConflict: "user_id,session_id,game_day,goal_id", ignoreDuplicates: true },
       )
       .then(() => {});
-  }, [goals, completed, user, gameDay]);
+  }, [goals, completed, user, gameDay, sessionId]);
 
   const completedCount = goals.filter((g) => g.done).length;
   const totalXp = goals.filter((g) => g.done).reduce((sum, g) => sum + g.rewardXp, 0);

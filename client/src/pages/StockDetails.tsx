@@ -8,7 +8,7 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
-import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
@@ -50,7 +50,6 @@ function needsThreshold(condition: AlertCondition) {
   return condition !== "new_all_time_high" && condition !== "new_all_time_low";
 }
 
-type LocationState = { gameDay?: number };
 
 function getRiskScore(r: Stock["riskLevel"]) {
   if (r === "High") return 82;
@@ -111,7 +110,6 @@ export default function StockDetails() {
   const reduceMotion = useReducedMotion();
   const { symbol } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const trading = useGame();
   const [tradeMsg, setTradeMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -124,6 +122,7 @@ export default function StockDetails() {
   const [tradeExitPlan, setTradeExitPlan] = useState("");
   const [tradeHorizonDays, setTradeHorizonDays] = useState(3);
   const [chartType, setChartType] = useState<"area" | "bar">("area");
+  const [submitting, setSubmitting] = useState(false);
 
   const journalInput = (): TradeJournalInput | undefined => (
     tradeThesis.trim() || tradeExitPlan.trim()
@@ -131,8 +130,9 @@ export default function StockDetails() {
       : undefined
   );
 
-  const state = location.state as LocationState | null;
-  const gameDay = state?.gameDay ?? trading.gameDay;
+  // Always the live day: a day carried in history state went stale when the
+  // player advanced and came back with Forward or a reload.
+  const gameDay = trading.gameDay;
 
   const stock = symbol ? trading.getStock(symbol) : undefined;
   const history = symbol ? trading.getHistory(symbol) : [];
@@ -183,17 +183,31 @@ export default function StockDetails() {
     ?? trading.stocks.find((item) => item.symbol !== stock.symbol)?.symbol
     ?? stock.symbol;
 
+  // One trade at a time: a double click sent two execute_trade calls, which
+  // also left the tutorial holding 2 CAI and waiting forever for 0.
   const handleBuy = async () => {
-    const quote = trading.getTradeQuote(stock, "buy", quantity);
-    const ok = await trading.buyStock(stock, quantity, journalInput());
-    const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
-    setTradeMsg({ ok, text: ok ? `Bought ${shares} of ${stock.symbol} for ${money(quote.total)}.` : `Not enough cash to buy ${shares} of ${stock.symbol}.` });
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const quote = trading.getTradeQuote(stock, "buy", quantity);
+      const ok = await trading.buyStock(stock, quantity, journalInput());
+      const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
+      setTradeMsg({ ok, text: ok ? `Bought ${shares} of ${stock.symbol} for ${money(quote.total)}.` : `Could not buy ${shares} of ${stock.symbol}.` });
+    } finally {
+      setSubmitting(false);
+    }
   };
   const handleSell = async () => {
-    const quote = trading.getTradeQuote(stock, "sell", quantity);
-    const ok = await trading.sellStock(stock, quantity, journalInput());
-    const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
-    setTradeMsg({ ok, text: ok ? `Sold ${shares} of ${stock.symbol} for ${money(quote.total)}.` : `Not enough shares to sell.` });
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const quote = trading.getTradeQuote(stock, "sell", quantity);
+      const ok = await trading.sellStock(stock, quantity, journalInput());
+      const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
+      setTradeMsg({ ok, text: ok ? `Sold ${shares} of ${stock.symbol} for ${money(quote.total)}.` : `Could not sell ${shares} of ${stock.symbol}.` });
+    } finally {
+      setSubmitting(false);
+    }
   };
   const handleCreateAlert = async () => {
     const value = needsThreshold(alertCondition) ? parseFloat(alertThreshold) : 0;
@@ -514,13 +528,13 @@ export default function StockDetails() {
                 <Stack spacing={1}>
                   <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
                     <Button data-tour="tutorial-buy" fullWidth variant="contained" onClick={handleBuy}
-                      disabled={trading.account.cash < buyQuote.total}
+                      disabled={submitting || trading.advancing || trading.account.cash < buyQuote.total}
                       sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Buy {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>
                   </motion.div>
                   <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
-                    <Button data-tour="tutorial-sell" fullWidth variant="contained" disabled={sharesOwned < quantity} onClick={handleSell}
+                    <Button data-tour="tutorial-sell" fullWidth variant="contained" disabled={submitting || trading.advancing || sharesOwned < quantity} onClick={handleSell}
                       sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Sell {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>

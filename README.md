@@ -217,21 +217,20 @@ and [Create React App on Vercel](https://vercel.com/docs/frameworks/frontend/cre
 - [x] Learn page (Tutorial tab + Market Guide tab)
 - [x] Leaderboard page (ranked table, top 3, your rank)
 - [x] Achievements page (6 achievements, progress bars)
-- [x] Save/Load page (localStorage slots, save/load/clear)
+- [x] Save/Load page (Supabase `save_slots` + `restore_save_slot` RPC)
 - [x] Server → replaced MongoDB/Mongoose with Supabase
+- [x] Google OAuth (Supabase social login)
+- [x] Leaderboards read live from `game_sessions` (infinite + 30-day run)
+- [x] Achievements persisted to `user_achievement_unlocks`
+- [x] Server API routes (`/api/leaderboard`, `/api/game/sync`, account routes)
+- [x] Input validation middleware on Express routes
+- [x] Rate limiting (global, auth, and game-write limiters)
+- [x] CI workflow (`.github/workflows/ci.yml`)
 
 ### 🔲 TODO
-- [ ] Google OAuth (Supabase social login)
-- [ ] Real leaderboard — persist net worth to Supabase `leaderboard` table
-- [ ] Real achievements — track and persist unlock state to Supabase
-- [ ] Real save/load — persist save slots to Supabase instead of localStorage only
-- [ ] Server-side API routes wired to Supabase (game state, leaderboard writes)
-- [ ] Input validation middleware on Express routes
-- [ ] Rate limiting on auth endpoints
-- [ ] Email confirmation flow (currently disabled)
+- [ ] Email confirmation flow (currently disabled in Supabase Auth)
 - [ ] Verify current client deployment (Vercel)
 - [ ] Deploy server (Vercel)
-- [ ] CI/CD pipeline
 
 ---
 

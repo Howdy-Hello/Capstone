@@ -1,8 +1,14 @@
 # Deploying StockPilot
 
 Three pieces: **Supabase** (database/auth), the **client** (React), and the
-optional **API server** (Express). The client works on its own; the server adds
-the persistent leaderboard + game-sync routes.
+**API server** (Express). All three are required: the server generates and
+stores each run's market and is the only thing that can advance a run's day,
+so the game can't be played without it.
+
+**Deploy order matters** when upgrading an existing install: apply the
+migrations, deploy the server (with `MARKET_SEED_SECRET`), then deploy the
+client with `REACT_APP_API_URL`. An old client stops working as soon as the
+`202609250001` migration is applied, because it wrote session state directly.
 
 ---
 
@@ -37,7 +43,7 @@ Required env vars (from **Supabase → Project Settings → API**):
 | --- | --- |
 | `REACT_APP_SUPABASE_URL` | your project URL |
 | `REACT_APP_SUPABASE_PUBLISHABLE_KEY` | anon/publishable key |
-| `REACT_APP_API_URL` | your deployed API URL (see §3); omit to run client-only |
+| `REACT_APP_API_URL` | your deployed API URL (see §3); required |
 
 ### Vercel
 1. New Project → import the repo.
@@ -56,7 +62,7 @@ Required env vars (from **Supabase → Project Settings → API**):
 
 ---
 
-## 3. API server — Render or Railway
+## 3. API server — Vercel, Render or Railway
 
 Required env vars:
 
@@ -66,7 +72,13 @@ Required env vars:
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (server-only secret) |
 | `SUPABASE_ANON_KEY` | anon key (so user-scoped routes run under RLS) |
 | `CLIENT_ORIGIN` | your deployed client origin, e.g. `https://your-app.vercel.app` |
+| `MARKET_SEED_SECRET` | random string, 16+ characters. Keys each run's market so players can't compute future prices from the visible seed. **Never change it** once runs exist: already-stored days are safe, but days not yet generated would come out differently. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `ADMIN_API_SECRET` | optional; guards `/api/admin/*` |
+
+### Vercel
+New Project → import the repo → **Root Directory: `server`** (picks up
+`server/vercel.json`, Express preset). Add the env vars above. `server.ts`
+exports the app for Vercel and only binds a port when not on Vercel.
 
 ### Render
 Blueprint deploy — `render.yaml` (repo root) sets rootDir=`server`, build, start,
@@ -92,10 +104,16 @@ dashboard.
 
 ## 4. Wire them together
 - Set the client's `REACT_APP_API_URL` to the server URL and redeploy the client.
-- Set the server's `CLIENT_ORIGIN` to the client URL (CORS allowlist).
+- Set the server's `CLIENT_ORIGIN` to the client URL (CORS allowlist; a trailing slash is fine).
 - Verify: `GET https://<api>/api/health` returns JSON.
-- Verify: `GET https://<api>/api/health/config` returns `status: "ok"` or only non-blocking warnings.
-- Verify: `GET https://<api>/api/leaderboard` returns JSON; the leaderboard page loads and updates after a trade.
+- Verify: `GET https://<api>/api/health/config` returns `status: "ok"` (a 503 means a required variable is missing).
+- Verify: open the game, advance a day and make a trade; the leaderboard updates.
 
-If the server is down or unset, the client automatically falls back to calling
-Supabase directly — nothing breaks, you just lose the server-side write path.
+If the server is down the game shows an error instead of playing: prices,
+day advances and trades are all validated server-side now.
+
+## 5. Shared market engine
+The server runs the same market generator as the client. The source lives in
+`client/src/data/{mockStocks,infiniteMarket,sessionMarket}.ts`; after editing
+any of them run `node scripts/sync-market-engine.cjs` to refresh the copies in
+`server/src/market/`. `npm test` in `server/` fails if they are out of date.

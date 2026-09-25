@@ -17,7 +17,6 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { GameMode, useGame } from "../context/GameContext";
-import { getNetWorth } from "../data/tradingState";
 import { D, CARD, MONO, money } from "../theme/design";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
@@ -46,10 +45,6 @@ type SaveSlot = {
   created_at: string;
 };
 
-function isMissingSeedColumn(error: { message?: string } | null | undefined) {
-  return Boolean(error?.message?.toLowerCase().includes("game_seed"));
-}
-
 export default function SaveLoad() {
   const reduceMotion = useReducedMotion();
   const navigate = useNavigate();
@@ -63,7 +58,6 @@ export default function SaveLoad() {
   const [message, setMessage]     = useState<{ text: string; severity: "success" | "error" } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<SaveSlot | null>(null);
 
-  const netWorth = useMemo(() => getNetWorth(trading.account, trading.stocks), [trading.account, trading.stocks]);
 
   // Load slots from Supabase
   const fetchSlots = async () => {
@@ -101,33 +95,11 @@ export default function SaveLoad() {
 
     setSaving(true);
     setMessage(null);
-    const holdingsSnapshot: HoldingSnapshot[] = trading.account.holdings.map((h) => ({
-      symbol:      h.symbol,
-      shares:      h.shares,
-      averageCost: h.averageCost,
-    }));
-
-    const savePayload = {
-      user_id:           user.id,
-      slot_name:         `Day ${trading.gameDay} Run`,
-      game_day:          trading.gameDay,
-      game_mode:         trading.gameMode,
-      game_seed:         trading.marketSeed,
-      cash_balance:      trading.account.cash,
-      net_worth:         netWorth,
-      holdings_snapshot: holdingsSnapshot,
-    };
-
-    let { error } = await supabase.from("save_slots").insert(savePayload);
-
-    if (isMissingSeedColumn(error)) {
-      const legacyPayload: Omit<typeof savePayload, "game_seed"> & { game_seed?: string } = {
-        ...savePayload,
-      };
-      delete legacyPayload.game_seed;
-      const retry = await supabase.from("save_slots").insert(legacyPayload);
-      error = retry.error;
-    }
+    // Snapshotted server-side from the session itself: a slot is restored into
+    // cash and holdings, so the client can't be the one to write it.
+    const { error } = await supabase.rpc("create_save_slot", {
+      p_slot_name: `Day ${trading.gameDay} Run`,
+    });
 
     try {
       if (error) {

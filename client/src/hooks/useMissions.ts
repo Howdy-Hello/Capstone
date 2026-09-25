@@ -67,6 +67,7 @@ export function useMissions() {
   // one attempt and reports itself.
   const pendingRef = useRef<Set<string>>(new Set());
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
 
   const refresh = useCallback(async () => {
     if (!user) { setUnlocked({}); setLoaded(true); return; }
@@ -170,11 +171,13 @@ export function useMissions() {
         );
       }
     })();
-  }, [missions, unlocked, user, loaded]);
+  }, [missions, unlocked, user, loaded, retryToken]);
 
+  // Clearing the ref alone changed no dependency, so the save never re-ran.
   const retryPersistence = useCallback(() => {
     pendingRef.current.clear();
     setPersistenceError(null);
+    setRetryToken((token) => token + 1);
   }, []);
 
   const completedCount = missions.filter((m) => m.done).length;

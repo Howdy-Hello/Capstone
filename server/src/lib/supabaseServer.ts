@@ -106,6 +106,12 @@ function userScopedClient(token: string): SupabaseClient {
   });
 }
 
+/** True when Auth rejected the token itself, not when it could not be reached. */
+export function isTokenRejection(error: { status?: number; name?: string }): boolean {
+  const status = error.status;
+  return typeof status === 'number' && status >= 400 && status < 500;
+}
+
 type AuthResult =
   | { ok: true; ctx: SupabaseContext }
   | { ok: false; status: number; message: string };
@@ -133,6 +139,12 @@ async function buildContext(
   }
 
   const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error && !isTokenRejection(error)) {
+    // Network failure or an Auth outage: the token may be fine, so don't tell
+    // the client to sign in again.
+    console.error('[auth] Could not verify token:', error);
+    return { ok: false, status: 503, message: 'Authentication is temporarily unavailable.' };
+  }
   if (error || !data.user) {
     return { ok: false, status: 401, message: 'Invalid or expired token.' };
   }

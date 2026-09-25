@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Avatar, Badge, Box, Button, Checkbox, Chip, Divider, IconButton, InputAdornment,
   Stack, TextField, Tooltip, Typography,
@@ -142,7 +142,11 @@ export default function Inbox() {
   const reduceMotion = useReducedMotion();
   const messages = useInboxMessages();
   const readNewsIds = useReadNewsIds();
-  const { newsHistory } = useGame();
+  const { newsHistory, sessionId } = useGame();
+  // News ids repeat across runs (news_CAI_5 exists in every run), so read
+  // state is kept per run: otherwise "mark all read" in one run marked the
+  // next run's different stories as read too.
+  const readKey = useCallback((newsId: string) => `${sessionId ?? "none"}:${newsId}`, [sessionId]);
 
   const [folder, setFolder] = useState<MailFolder | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -153,12 +157,12 @@ export default function Inbox() {
   // interleaved by day beneath the most recent messages.
   const allMail = useMemo<MailItem[]>(() => {
     const mail = messages.map(messageToMail);
-    const news = newsHistory.map((n) => newsToMail(n, readNewsIds.has(n.newsId)));
+    const news = newsHistory.map((n) => newsToMail(n, readNewsIds.has(readKey(n.newsId))));
     return [
       ...mail.sort((a, b) => (b.sentAt ?? "").localeCompare(a.sentAt ?? "")),
       ...news.sort((a, b) => (b.gameDay ?? 0) - (a.gameDay ?? 0)),
     ];
-  }, [messages, newsHistory, readNewsIds]);
+  }, [messages, newsHistory, readKey, readNewsIds]);
 
   const unreadByFolder = useMemo(() => {
     const counts = new Map<MailFolder | "all", number>();
@@ -191,13 +195,13 @@ export default function Inbox() {
   function openItem(item: MailItem) {
     setSelectedId(item.id);
     if (item.read) return;
-    if (item.news) markNewsRead(item.news.newsId);
+    if (item.news) markNewsRead(readKey(item.news.newsId));
     else markMessageRead(item.id.replace(/^msg:/, ""));
   }
 
   function markEverythingRead() {
     markAllRead();
-    markNewsReadBatch(newsHistory.map((n) => n.newsId));
+    markNewsReadBatch(newsHistory.map((n) => readKey(n.newsId)));
   }
 
   const totalUnread = unreadByFolder.get("all") ?? 0;

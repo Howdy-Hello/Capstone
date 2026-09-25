@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
@@ -124,6 +124,29 @@ function loadSuppressedAchievements(userId: string): Set<string> {
   return new Set();
 }
 
+// One pop-up queue for the whole app. Each useAchievements() call used to own
+// its own queue, and only Game.tsx displays one, so an unlock detected by the
+// Header's instance (mounted on every page) was queued where nobody looked --
+// a first trade on a stock's page never showed its pop-up.
+let sharedQueue: ComputedAchievement[] = [];
+const queueListeners = new Set<() => void>();
+
+function setSharedQueue(update: (current: ComputedAchievement[]) => ComputedAchievement[]) {
+  sharedQueue = update(sharedQueue);
+  queueListeners.forEach((listener) => listener());
+}
+
+function subscribeToQueue(listener: () => void) {
+  queueListeners.add(listener);
+  return () => {
+    queueListeners.delete(listener);
+  };
+}
+
+function getQueueSnapshot() {
+  return sharedQueue;
+}
+
 export function useAchievements() {
   const { user } = useAuth();
   const { account, stocks, gameDay, watchlistStocks } = useGame();
@@ -133,7 +156,7 @@ export function useAchievements() {
   const [unlockRates, setUnlockRates] = useState<Record<string, number>>({});
   const [loading, setLoading]       = useState(true);
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
-  const [notificationQueue, setNotificationQueue] = useState<ComputedAchievement[]>([]);
+  const notificationQueue = useSyncExternalStore(subscribeToQueue, getQueueSnapshot);
   const [suppressedUnlocks, setSuppressedUnlocks] = useState<Set<string>>(() =>
     user ? loadSuppressedAchievements(user.id) : new Set()
   );
@@ -377,7 +400,7 @@ export function useAchievements() {
         category: "achievement",
       });
     });
-    setNotificationQueue((current) => {
+    setSharedQueue((current) => {
       const queuedIds = new Set(current.map((achievement) => achievement.id));
       return [
         ...current,
@@ -464,7 +487,7 @@ export function useAchievements() {
   }, [achievements, persistUnlocks, refreshUnlocks, unlocks]);
 
   const dismissAchievementNotification = useCallback(() => {
-    setNotificationQueue((current) => current.slice(1));
+    setSharedQueue((current) => current.slice(1));
   }, []);
 
   const devUnlockAchievements = useCallback(async (
@@ -510,7 +533,7 @@ export function useAchievements() {
       return next;
     });
     const latestRates = await refreshUnlockRates();
-    setNotificationQueue((current) => {
+    setSharedQueue((current) => {
       const replacingIds = new Set<string>(definitions.map((definition) => definition.id));
       const remaining = current.filter((achievement) => !replacingIds.has(achievement.id));
       const notifications: ComputedAchievement[] = definitions.map((definition) => ({
@@ -562,7 +585,7 @@ export function useAchievements() {
       return next;
     });
     setSuppressedUnlocks((current) => new Set([...Array.from(current), ...clearedIds]));
-    setNotificationQueue((current) =>
+    setSharedQueue((current) =>
       current.filter((achievement) => !clearedSet.has(achievement.id))
     );
     setPersistenceError(null);

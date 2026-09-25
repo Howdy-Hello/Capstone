@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Avatar, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
   CircularProgress, Divider, Grid, IconButton, LinearProgress, Stack, TextField, Typography,
@@ -83,7 +83,7 @@ export default function Game() {
   useStockAlerts();
   const level = useLevel();
   const {
-    gameDay, gameMode, isGameComplete, marketPhase, maxGameDay, setGameDay, closeMarket,
+    advancing, gameDay, gameMode, isGameComplete, marketPhase, maxGameDay, setGameDay, closeMarket,
     stocks, news: todayNews, syncSessionValue,
   } = trading;
 
@@ -198,19 +198,10 @@ export default function Game() {
     });
   }, [todayNews, gameDay, user]);
 
+  // A dialog opened on one day must not trade on the next.
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
-      if (e.key === "ArrowRight" && !isGameComplete) {
-        e.preventDefault();
-        if (marketPhase === "market_open") closeMarket();
-        else void setGameDay((d) => d + 1);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [closeMarket, gameMode, isGameComplete, marketPhase, setGameDay]);
+    setTradeDialog(null);
+  }, [gameDay]);
 
   useEffect(() => {
     if (!DEV_CONSOLE_ENABLED) return;
@@ -234,6 +225,41 @@ export default function Game() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Closing the market swaps this button's label and action to "Advance", so
+  // without a pause a double click closed the market and skipped the
+  // after-hours window in one go.
+  const lastAdvanceClickRef = useRef(0);
+  const handleNextDay = () => {
+    if (isGameComplete || advancing) return;
+    const now = Date.now();
+    if (now - lastAdvanceClickRef.current < 600) return;
+    lastAdvanceClickRef.current = now;
+    if (marketPhase === "market_open") {
+      closeMarket();
+      return;
+    }
+    void setGameDay((d) => d + 1);
+  };
+  const handleNextDayRef = useRef(handleNextDay);
+  handleNextDayRef.current = handleNextDay;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
+      // Held keys auto-repeat and would step close -> advance -> close...;
+      // an open dialog (focus on its container div) must not move the day
+      // underneath the trade it is quoting.
+      if (e.repeat || tradeDialog || advancing) return;
+      if (e.key === "ArrowRight" && !isGameComplete) {
+        e.preventDefault();
+        handleNextDayRef.current();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [advancing, isGameComplete, tradeDialog]);
+
   if (trading.loading) {
     return (
       <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "grid", placeItems: "center" }}>
@@ -242,17 +268,11 @@ export default function Game() {
     );
   }
 
-  const handleNextDay = () => {
-    if (isGameComplete) return;
-    if (marketPhase === "market_open") {
-      closeMarket();
-      return;
-    }
-    void setGameDay((d) => d + 1);
-  };
-  const advanceLabel = marketPhase === "market_open"
-    ? "Close Market & Reveal News"
-    : "Advance to Next Day →";
+  const advanceLabel = advancing
+    ? "Advancing…"
+    : marketPhase === "market_open"
+      ? "Close Market & Reveal News"
+      : "Advance to Next Day →";
   const handleNewRun = (mode: GameMode) => {
     void trading.resetAccount(mode);
   };
@@ -359,34 +379,10 @@ export default function Game() {
       return `Seed ${trading.marketSeed} | Mode ${gameMode} | Day ${gameDay} | Arcs ${arcs}${trading.sessionId ? ` | Session ${trading.sessionId}` : ""}`;
     }
 
-    if (action === "cash" || action === "money") {
-      const mode = arg1.toLowerCase();
-      const amount = Number(arg2 || arg1);
-
-      if (Number.isNaN(amount)) return "Rejected.";
-
-      if (["increase", "inc", "add", "+", "up"].includes(mode)) {
-        void trading.addCash(Math.abs(amount));
-        return "Applied.";
-      }
-
-      if (["decrease", "dec", "subtract", "sub", "-", "down"].includes(mode)) {
-        void trading.addCash(-Math.abs(amount));
-        return "Applied.";
-      }
-
-      if (["set", "=", "to"].includes(mode)) {
-        void trading.setCash(amount);
-        return "Applied.";
-      }
-
-      if (arg1.startsWith("+") || arg1.startsWith("-")) {
-        void trading.addCash(Number(arg1));
-        return "Applied.";
-      }
-
-      void trading.setCash(amount);
-      return "Applied.";
+    if (action === "cash" || action === "money" || action === "shares") {
+      // Cash and holdings are server-authoritative; the dev console can't
+      // write them any more than a player can.
+      return "Disabled: cash and holdings are managed by the game server.";
     }
 
     if (action === "day") {
@@ -395,11 +391,12 @@ export default function Game() {
       if (!arg1 || Number.isNaN(value) || value < 1) return "Rejected.";
 
       if (["increase", "inc", "add", "+", "up"].includes(mode)) {
-        setGameDay((current) => Math.max(1, current + Math.floor(value)));
+        void setGameDay((current) => current + Math.floor(value));
       } else if (["decrease", "dec", "subtract", "sub", "-", "down"].includes(mode)) {
-        setGameDay((current) => Math.max(1, current - Math.floor(value)));
+        return "Rejected: days only move forward.";
       } else {
-        setGameDay(Math.floor(value));
+        if (Math.floor(value) < gameDay) return "Rejected: days only move forward.";
+        void setGameDay(Math.floor(value));
       }
 
       return "Applied.";
@@ -413,29 +410,13 @@ export default function Game() {
       return "Applied.";
     }
 
-    if (action === "shares") {
-      const symbol = arg1.toUpperCase();
-      const shares = Number(tokens[tokens.length - 1]);
-      const stock = stocks.find((item) => item.symbol === symbol);
-      if (!symbol || Number.isNaN(shares)) return "Rejected.";
-      if (!stock) return `Unknown ticker: ${symbol}.`;
-      void trading.setHolding(stock, shares);
-      return "Applied.";
-    }
-
     if (action === "reset") {
       const target = arg1.toLowerCase();
-      if (target === "cash") {
-        void trading.setCash(2000);
-        return "Applied.";
-      }
-      if (target === "day") {
-        setGameDay(1);
-        return "Applied.";
+      if (target === "cash" || target === "day") {
+        return "Rejected: start a new run with `reset all`.";
       }
       if (target === "all") {
         void trading.resetAccount(gameMode);
-        setGameDay(1);
         return "Applied.";
       }
       if (target === "infinite") {
@@ -514,7 +495,7 @@ export default function Game() {
               </Typography>
               <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
                 <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
-                  <Button data-tour="next-day" onClick={handleNextDay} variant="contained" disabled={isGameComplete}
+                  <Button data-tour="next-day" onClick={handleNextDay} variant="contained" disabled={isGameComplete || advancing}
                     title={isGameComplete ? undefined : "Advance to next day (→)"}
                     sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: `0 8px 24px ${D.brandBg}` }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                     {isGameComplete ? "Run Complete" : advanceLabel}
@@ -713,7 +694,7 @@ export default function Game() {
                     {filteredStocks.length} of {stocks.length} stocks shown. Click any stock to view details and chart.
                   </Typography>
                 </Box>
-                <Button onClick={handleNextDay} variant="contained" size="small" disabled={isGameComplete}
+                <Button onClick={handleNextDay} variant="contained" size="small" disabled={isGameComplete || advancing}
                   sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                   {isGameComplete ? "Complete" : advanceLabel}
                 </Button>

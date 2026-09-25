@@ -22,7 +22,6 @@ import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import SavingsIcon from "@mui/icons-material/Savings";
 import ShieldIcon from "@mui/icons-material/Shield";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { Link as RouterLink } from "react-router-dom";
 
 const BRAND = {
