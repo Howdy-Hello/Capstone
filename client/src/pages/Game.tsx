@@ -26,7 +26,6 @@ import SportsMmaIcon from "@mui/icons-material/SportsMma";
 import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-
 import { getNewsCredibility, STORY_DAYS, Stock } from "../data/mockStocks";
 import { getMaxAffordableQuantity, getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
 import { GameMode, useGame } from "../context/GameContext";
