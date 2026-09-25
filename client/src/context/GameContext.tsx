@@ -40,9 +40,11 @@ export const LIMITED_GAME_DAYS = 30;
 // hand-edited localStorage) would otherwise lock up the tab.
 export const MAX_GAME_DAY = 10_000;
 export const WEEKLY_BILL_ITEMS = [
-  { label: "Rent", amount: 200, detail: "Housing for one weekly cycle" },
-  { label: "Food", amount: 100, detail: "Groceries and everyday meals" },
-  { label: "Utilities", amount: 50, detail: "Power, water, and connectivity" },
+  // Must sum to the amount advance_game_day charges per cycle
+  // (supabase/migrations/202609180001_reduce_weekly_living_expenses.sql).
+  { label: "Rent", amount: 60, detail: "Housing for one weekly cycle" },
+  { label: "Food", amount: 30, detail: "Groceries and everyday meals" },
+  { label: "Utilities", amount: 10, detail: "Power, water, and connectivity" },
 ] as const;
 export const WEEKLY_BILL_TOTAL = WEEKLY_BILL_ITEMS.reduce((sum, item) => sum + item.amount, 0);
 export type GameMode = "infinite" | "limited_30";
@@ -64,6 +66,9 @@ function marketSeedStorageKey(sessionId: string) {
   return `${GAME_SEED_STORAGE_KEY}:${sessionId}`;
 }
 
+// Value is "after_hours:<day>" so the phase only applies to the day it was set
+// on. A bare flag leaked into restored save slots (same session id, earlier
+// day) and into days advanced on another device, revealing news early.
 function marketPhaseStorageKey(sessionId: string) {
   return `${GAME_PHASE_STORAGE_KEY}:${sessionId}`;
 }
@@ -252,11 +257,31 @@ function mapDatabaseEvent(row: DatabaseEvent): MarketNews {
   });
 }
 
+// getNewsForGameDay builds the whole market's feed (~5ms). The continuation
+// loop asks once per stock per generated day, and every gameDay change
+// regenerates all of it, so without this cache a run 100 days past the stored
+// prices froze the tab for ~15s per advance. Output is deterministic per
+// (seed, day), so caching the per-ticker impacts is safe.
+const seededImpactCache = new Map<string, Map<string, number>>();
+const SEEDED_IMPACT_CACHE_LIMIT = 5_000;
+
 function seededEventImpact(symbol: string, gameDay: number, marketSeed: string) {
   if (gameDay < 1) return 0;
-  const event = getNewsForGameDay(gameDay, marketSeed)
-    .find((item) => item.relatedTickers.includes(symbol));
-  return event?.impactByTicker?.[symbol]?.actualImpact ?? event?.actualImpact ?? 0;
+  const key = `${marketSeed}:${gameDay}`;
+  let impacts = seededImpactCache.get(key);
+  if (!impacts) {
+    impacts = new Map();
+    for (const event of getNewsForGameDay(gameDay, marketSeed)) {
+      for (const ticker of event.relatedTickers) {
+        // First matching story wins, as before.
+        if (impacts.has(ticker)) continue;
+        impacts.set(ticker, event.impactByTicker?.[ticker]?.actualImpact ?? event.actualImpact ?? 0);
+      }
+    }
+    if (seededImpactCache.size >= SEEDED_IMPACT_CACHE_LIMIT) seededImpactCache.clear();
+    seededImpactCache.set(key, impacts);
+  }
+  return impacts.get(symbol) ?? 0;
 }
 
 function mapDatabasePrice(row: DatabasePrice, symbol: string): StockPriceHistory {
@@ -664,7 +689,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setGameModeState(activeMode);
     setMarketSeed(activeSeed);
     setGameDayState(currentDay);
-    setMarketPhase(storedPhase === "after_hours" ? "after_hours" : "market_open");
+    setMarketPhase(storedPhase === `after_hours:${currentDay}` ? "after_hours" : "market_open");
     setAccount({
       cash: asNumber(activeSession.cash_balance),
       holdings,
@@ -778,7 +803,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const closeMarket = useCallback(() => {
     setMarketPhase("after_hours");
-    if (session) localStorage.setItem(marketPhaseStorageKey(session.id), "after_hours");
+    if (session) localStorage.setItem(marketPhaseStorageKey(session.id), `after_hours:${gameDayRef.current}`);
   }, [session]);
 
   const setGameDay = useCallback(async (
