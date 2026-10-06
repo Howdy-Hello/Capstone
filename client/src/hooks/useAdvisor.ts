@@ -160,7 +160,7 @@ export function useAdvisor() {
     const next = [...readOwnership(sessionId), { id: advisor.id, hiredDay: gameDay }];
     localStorage.setItem(ownershipKey(sessionId), JSON.stringify(next));
     setOwnedIds(next.map((entry) => entry.id));
-    pushNotification({ kind: "advisor", title: `${advisor.name} joined your team`, description: `${advisor.role} hired for $${advisor.cost.toLocaleString()}.` });
+    pushNotification({ kind: "advisor", title: `${advisor.name} joined your team`, description: `${advisor.role} hired for $${advisor.cost.toLocaleString("en-US")}.` });
     addInboxMessage(user.id, {
       id: `advisor-welcome-${sessionId}-${advisor.id}`,
       from: `${advisor.name} · ${advisor.role}`,

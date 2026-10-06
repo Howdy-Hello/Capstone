@@ -103,7 +103,7 @@ export default function CompareStocks() {
       { label: "Debt / Equity", left: left.fundamentals.debtToEquity.toFixed(2), right: right.fundamentals.debtToEquity.toFixed(2), leftRaw: left.fundamentals.debtToEquity, rightRaw: right.fundamentals.debtToEquity, preference: "lower" },
       { label: "Dividend Yield", left: pct(left.fundamentals.dividendYield), right: pct(right.fundamentals.dividendYield), leftRaw: left.fundamentals.dividendYield, rightRaw: right.fundamentals.dividendYield, preference: "higher" },
       { label: "Volatility", left: pct(left.volatility * 100), right: pct(right.volatility * 100), leftRaw: left.volatility, rightRaw: right.volatility, preference: "lower" },
-      { label: "Volume", left: left.volume.toLocaleString(), right: right.volume.toLocaleString(), leftRaw: left.volume, rightRaw: right.volume, preference: "higher" },
+      { label: "Volume", left: left.volume.toLocaleString("en-US"), right: right.volume.toLocaleString("en-US"), leftRaw: left.volume, rightRaw: right.volume, preference: "higher" },
       { label: "Risk Level", left: left.riskLevel, right: right.riskLevel },
       { label: "Sector", left: left.sector, right: right.sector },
       { label: "Analyst Rating", left: left.fundamentals.analystRating, right: right.fundamentals.analystRating },

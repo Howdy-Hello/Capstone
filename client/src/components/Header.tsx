@@ -130,7 +130,7 @@ const Header: React.FC = () => {
       <Snackbar open={Boolean(levelReward)} autoHideDuration={6000} onClose={() => setLevelReward(null)}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}>
         <Alert severity="success" variant="filled" onClose={() => setLevelReward(null)} sx={{ fontWeight: 800 }}>
-          Level up! You reached LV {levelReward?.level} and earned ${levelReward?.amount.toLocaleString()} for your Endless run.
+          Level up! You reached LV {levelReward?.level} and earned ${levelReward?.amount.toLocaleString("en-US")} for your Endless run.
         </Alert>
       </Snackbar>
       <AppBar position="sticky" elevation={0} sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}`, zIndex: 1200 }}>

@@ -34,6 +34,11 @@ const STEPS = [
 
 const MotionBox = motion(Box);
 
+// The huge top margin counts anything above the viewport as "in view", so a
+// visitor who jumps past a section (End key, fast fling) still gets it revealed
+// instead of a blank gap; sections below the fold still animate on arrival.
+const REVEAL_VIEWPORT = { once: true, margin: "100000px 0px 0px 0px" };
+
 export default function Home() {
   const { user } = useAuth();
   return (
@@ -130,7 +135,7 @@ export default function Home() {
           <Grid container spacing={2.5}>
             {FEATURES.map((f, i) => (
               <Grid item xs={12} sm={6} lg={3} key={i}>
-                <MotionBox initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.4 }}>
+                <MotionBox initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={REVEAL_VIEWPORT} transition={{ delay: i * 0.1, duration: 0.4 }}>
                   <Box sx={{ ...CARD, p: 3, height: "100%", borderRadius: 2.5, "&:hover": { borderColor: D.borderHi }, transition: "border-color 200ms" }}>
                     <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}`, display: "grid", placeItems: "center", mb: 2, color: D.brandText }}>
                       {f.icon}
@@ -155,7 +160,7 @@ export default function Home() {
           <Grid container spacing={2} sx={{ maxWidth: 900, mx: "auto" }}>
             {STEPS.map((s, i) => (
               <Grid item xs={12} sm={6} key={i}>
-                <MotionBox initial={{ opacity: 0, x: -16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.4 }}>
+                <MotionBox initial={{ opacity: 0, x: -16 }} whileInView={{ opacity: 1, x: 0 }} viewport={REVEAL_VIEWPORT} transition={{ delay: i * 0.1, duration: 0.4 }}>
                   <Stack direction="row" spacing={2} sx={{ p: 2.5, borderRadius: 2.5, bgcolor: D.surface, border: `1px solid ${D.border}` }}>
                     <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.t4, fontFamily: MONO, pt: 0.1, flexShrink: 0 }}>{s.n}</Typography>
                     <Box>

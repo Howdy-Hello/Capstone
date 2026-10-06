@@ -279,7 +279,7 @@ export default function StockDetails() {
             { label: "Current Price",   val: money(stock.currentPrice),                             icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: true },
             { label: "P/E Ratio",       val: stock.fundamentals.peRatio.toFixed(1),                 icon: <AssessmentIcon sx={{ fontSize: 20 }} />,           up: true },
             { label: "Revenue Growth",  val: `+${stock.fundamentals.revenueGrowth.toFixed(1)}%`,    icon: <TrendingUpIcon sx={{ fontSize: 20 }} />,            up: true },
-            { label: "Volume",          val: latestHistory ? latestHistory.volume.toLocaleString() : "-", icon: <QueryStatsIcon sx={{ fontSize: 20 }} />,      up: undefined },
+            { label: "Volume",          val: latestHistory ? latestHistory.volume.toLocaleString("en-US") : "-", icon: <QueryStatsIcon sx={{ fontSize: 20 }} />,      up: undefined },
           ].map((s, i) => {
             const color = s.up === undefined ? D.brandText : D.greenText;
             const bg    = s.up === undefined ? D.brandBg   : D.greenBg;

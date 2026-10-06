@@ -119,10 +119,10 @@ export default function Level() {
                         </Box>
                         <Box>
                           <Typography sx={{ fontSize: 14, fontWeight: 900, color: index === 0 ? D.brandText : D.t1 }}>Level {entry.level} → {entry.level + 1}</Typography>
-                          <Typography sx={{ fontSize: 11, color: D.t3 }}>{entry.totalRequired.toLocaleString()} total XP to reach Level {entry.level + 1}</Typography>
+                          <Typography sx={{ fontSize: 11, color: D.t3 }}>{entry.totalRequired.toLocaleString("en-US")} total XP to reach Level {entry.level + 1}</Typography>
                         </Box>
                       </Stack>
-                      <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.t2, fontFamily: MONO }}>{entry.requirement.toLocaleString()} XP</Typography>
+                      <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.t2, fontFamily: MONO }}>{entry.requirement.toLocaleString("en-US")} XP</Typography>
                     </Stack>
                   </Box>
                 ))}
@@ -161,7 +161,7 @@ export default function Level() {
                   </Box>
                   <Box sx={{ textAlign: "right" }}>
                     <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>CASH REWARD</Typography>
-                    <Typography sx={{ fontSize: 22, fontWeight: 950, color: D.greenText, fontFamily: MONO }}>${nextCashReward.toLocaleString()}</Typography>
+                    <Typography sx={{ fontSize: 22, fontWeight: 950, color: D.greenText, fontFamily: MONO }}>${nextCashReward.toLocaleString("en-US")}</Typography>
                   </Box>
                 </Stack>
               </Box>

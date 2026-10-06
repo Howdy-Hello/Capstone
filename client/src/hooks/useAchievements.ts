@@ -149,7 +149,7 @@ function getQueueSnapshot() {
 
 export function useAchievements() {
   const { user } = useAuth();
-  const { account, stocks, gameDay, watchlistStocks } = useGame();
+  const { account, stocks, gameDay, watchlistStocks, sessionId } = useGame();
 
   const [unlocks, setUnlocks]       = useState<Record<string, string>>({});
   const [tradeCount, setTradeCount] = useState(0);
@@ -164,6 +164,9 @@ export function useAchievements() {
     user ? loadStreak(user.id) : DEFAULT_STREAK
   );
   const pendingUnlocksRef = useRef(new Set<string>());
+  // Ids the server refused (its state doesn't meet the condition yet). Skipped
+  // until the game state changes, so the unlock effect doesn't retry every render.
+  const [rejectedUnlocks, setRejectedUnlocks] = useState<Set<string>>(() => new Set());
 
   const refreshUnlocks = useCallback(async () => {
     if (!user) {
@@ -259,6 +262,10 @@ export function useAchievements() {
   }, [account.cash, holdingsSignature, loading, refreshTradeCount]);
 
   useEffect(() => {
+    setRejectedUnlocks((current) => (current.size === 0 ? current : new Set()));
+  }, [account.cash, holdingsSignature, gameDay, sessionId, tradeCount, watchlistStocks.length]);
+
+  useEffect(() => {
     setStreak(user ? loadStreak(user.id) : DEFAULT_STREAK);
   }, [user]);
 
@@ -297,6 +304,8 @@ export function useAchievements() {
     }
     if (gameDay === prevDayRef.current) return;
     prevDayRef.current = gameDay;
+    // The day advance awards the streak achievements on the server.
+    void refreshUnlocks();
 
     const next = nextStreakState(streak, gameDay, account.cash, netWorth);
     if (!next) return;
@@ -351,7 +360,9 @@ export function useAchievements() {
       }
 
       const alreadyUnlocked = Boolean(unlocks[def.id]);
-      const justHit100      = progress >= 100 && !suppressedUnlocks.has(def.id);
+      const justHit100      = progress >= 100
+        && !suppressedUnlocks.has(def.id)
+        && !rejectedUnlocks.has(def.id);
 
       return {
         ...def,
@@ -363,32 +374,42 @@ export function useAchievements() {
     });
   }, [
     account.cash, account.holdings.length, gameDay, heldSectorCount, netWorth,
-    streak, suppressedUnlocks, tradeCount, unlockRates, unlocks, watchlistStocks.length,
+    rejectedUnlocks, streak, suppressedUnlocks, tradeCount, unlockRates, unlocks,
+    watchlistStocks.length,
   ]);
 
+  // The server checks each condition itself (claim_achievements) and returns
+  // the ids it accepted; players can no longer insert unlock rows directly.
+  const claimUnlocks = useCallback(async (ids: string[]) => {
+    if (!sessionId) return { granted: [] as string[], error: "No active game." };
+    const { data, error } = await supabase.rpc("claim_achievements", {
+      target_session_id: sessionId,
+      p_achievement_ids: ids,
+    });
+    if (error) return { granted: [] as string[], error: error.message };
+    return { granted: (data ?? []) as string[], error: null };
+  }, [sessionId]);
+
   // Persist newly-reached achievements and then hydrate their server timestamps.
-  const persistUnlocks = useCallback(async (items: ComputedAchievement[]) => {
-    if (!user || items.length === 0) return;
+  const persistUnlocks = useCallback(async (candidates: ComputedAchievement[]) => {
+    if (!user || !sessionId || candidates.length === 0) return;
 
-    for (const item of items) pendingUnlocksRef.current.add(item.id);
-    const rows = items.map((item) => ({
-      user_id: user.id,
-      achievement_id: item.id,
-    }));
-
-    const { error } = await supabase
-      .from("user_achievement_unlocks")
-      .upsert(rows, {
-        onConflict: "user_id,achievement_id",
-        ignoreDuplicates: true,
-      });
-
-    for (const item of items) pendingUnlocksRef.current.delete(item.id);
+    for (const item of candidates) pendingUnlocksRef.current.add(item.id);
+    const { granted, error } = await claimUnlocks(candidates.map((item) => item.id));
+    for (const item of candidates) pendingUnlocksRef.current.delete(item.id);
 
     if (error) {
-      setPersistenceError(`Could not save achievements: ${error.message}`);
+      setPersistenceError(`Could not save achievements: ${error}`);
       return;
     }
+
+    const grantedSet = new Set(granted);
+    const refusedIds = candidates.filter((item) => !grantedSet.has(item.id)).map((item) => item.id);
+    if (refusedIds.length > 0) {
+      setRejectedUnlocks((current) => new Set([...Array.from(current), ...refusedIds]));
+    }
+    const items = candidates.filter((item) => grantedSet.has(item.id));
+    if (items.length === 0) return;
 
     const [, latestRates] = await Promise.all([refreshUnlocks(), refreshUnlockRates()]);
     items.forEach((item) => {
@@ -412,7 +433,7 @@ export function useAchievements() {
           })),
       ];
     });
-  }, [refreshUnlockRates, refreshUnlocks, user]);
+  }, [claimUnlocks, refreshUnlockRates, refreshUnlocks, sessionId, user]);
 
   useEffect(() => {
     if (!user || loading) return;
@@ -421,11 +442,12 @@ export function useAchievements() {
       (a) => a.progress >= 100
         && !unlocks[a.id]
         && !suppressedUnlocks.has(a.id)
+        && !rejectedUnlocks.has(a.id)
         && !pendingUnlocksRef.current.has(a.id)
     );
 
     if (newlyUnlocked.length > 0) void persistUnlocks(newlyUnlocked);
-  }, [achievements, loading, persistUnlocks, suppressedUnlocks, unlocks, user]);
+  }, [achievements, loading, persistUnlocks, rejectedUnlocks, suppressedUnlocks, unlocks, user]);
 
   // Once the real condition falls below its target, a dev-cleared achievement
   // becomes eligible to unlock naturally again.
@@ -495,7 +517,7 @@ export function useAchievements() {
   ): Promise<AchievementCommandResult> => {
     if (!user) return { ok: false, message: "Authentication required." };
 
-    const definitions = requestedId === "all"
+    let definitions: Array<typeof DEFS[number]> = requestedId === "all"
       ? [...DEFS]
       : DEFS.filter((definition) => definition.id === requestedId);
     if (definitions.length === 0) {
@@ -505,19 +527,24 @@ export function useAchievements() {
       };
     }
 
-    const { data, error } = await supabase
+    // Same server check as a normal unlock: the console can only unlock what
+    // the current run has actually earned.
+    const { granted, error } = await claimUnlocks(definitions.map((definition) => definition.id));
+    if (error) return { ok: false, message: `Achievement command failed: ${error}` };
+
+    const grantedSet = new Set(granted);
+    const refusedIds = definitions
+      .filter((definition) => !grantedSet.has(definition.id))
+      .map((definition) => definition.id);
+    definitions = definitions.filter((definition) => grantedSet.has(definition.id));
+    if (definitions.length === 0) {
+      return { ok: false, message: `Not earned yet: ${refusedIds.join(", ")}.` };
+    }
+
+    const { data } = await supabase
       .from("user_achievement_unlocks")
-      .upsert(
-        definitions.map((definition) => ({
-          user_id: user.id,
-          achievement_id: definition.id,
-        })),
-        { onConflict: "user_id,achievement_id" }
-      )
-      .select("achievement_id, unlocked_at");
-
-    if (error) return { ok: false, message: `Achievement command failed: ${error.message}` };
-
+      .select("achievement_id, unlocked_at")
+      .eq("user_id", user.id);
     const savedRows = (data ?? []) as AchievementUnlockRow[];
     const savedAt = new Map(savedRows.map((row) => [row.achievement_id, row.unlocked_at]));
     setUnlocks((current) => {
@@ -547,13 +574,14 @@ export function useAchievements() {
     });
     setPersistenceError(null);
 
+    const refusedNote = refusedIds.length > 0 ? ` Not earned yet: ${refusedIds.join(", ")}.` : "";
     return {
       ok: true,
-      message: requestedId === "all"
-        ? `Unlocked all ${definitions.length} achievements.`
-        : `Unlocked ${definitions[0].id}.`,
+      message: (requestedId === "all"
+        ? `Unlocked ${definitions.length} earned achievements.`
+        : `Unlocked ${definitions[0].id}.`) + refusedNote,
     };
-  }, [refreshUnlockRates, unlockRates, user]);
+  }, [claimUnlocks, refreshUnlockRates, unlockRates, user]);
 
   const devClearAchievements = useCallback(async (
     requestedId: string | "all"
