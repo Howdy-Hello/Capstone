@@ -27,10 +27,21 @@ export type MarketSession = {
   market_generated_through: number | null;
   market_fingerprint: string | null;
   market_seed_secret: boolean | null;
+  market_engine?: number | null;
 };
 
 export const SESSION_COLUMNS =
-  'id, user_id, status, current_day, game_mode, game_seed, market_generated_through, market_fingerprint, market_seed_secret';
+  'id, user_id, status, current_day, game_mode, game_seed, market_generated_through, market_fingerprint, market_seed_secret, market_engine';
+
+/**
+ * Engine 1: infinite runs replay the shared 30-day database script (the same
+ * prices and news in every run, readable in the repo). Engine 2 (runs started
+ * from migration 202610060002): only the listing prices come from the script;
+ * every later day and all news are generated from the run's own seed.
+ */
+export function marketEngine(session: Pick<MarketSession, 'market_engine'>) {
+  return (session.market_engine ?? 1) >= 2 ? 2 : 1;
+}
 
 /** Days generated per round trip; bounds memory and each upsert's size. */
 const CHUNK_DAYS = 60;
@@ -43,8 +54,12 @@ export function normalizeMode(mode: string | null | undefined): SessionGameMode 
   return mode === 'limited_30' ? 'limited_30' : 'infinite';
 }
 
-export function marketFingerprint(session: Pick<MarketSession, 'game_mode' | 'game_seed'>) {
-  return `${normalizeMode(session.game_mode)}:${session.game_seed ?? ''}`;
+/** Must match the fingerprint restore_save_slot computes (202610060002). */
+export function marketFingerprint(
+  session: Pick<MarketSession, 'game_mode' | 'game_seed' | 'market_engine'>
+) {
+  const base = `${normalizeMode(session.game_mode)}:${session.game_seed ?? ''}`;
+  return marketEngine(session) >= 2 ? `${base}:v2` : base;
 }
 
 export function getMarketSecret(): string | null {
@@ -115,6 +130,22 @@ export async function loadMarketScript(admin: SupabaseClient): Promise<MarketScr
   return script;
 }
 
+/** What the generator gets for a run; see marketEngine(). */
+export async function scriptForRun(
+  admin: SupabaseClient,
+  mode: SessionGameMode,
+  engine: number
+): Promise<MarketScript> {
+  if (mode !== 'infinite') return { stocks: [], prices: [], events: [] };
+  const script = await loadMarketScript(admin);
+  return engine >= 2 ? scriptlessRun(script) : script;
+}
+
+/** Keeps the stocks (listing prices, metadata); drops the shared days and news. */
+export function scriptlessRun(script: MarketScript): MarketScript {
+  return { stocks: script.stocks, prices: [], events: [] };
+}
+
 async function upsertInBatches(
   admin: SupabaseClient,
   table: string,
@@ -167,9 +198,7 @@ export async function ensureMarketThrough(
   const seed = session.market_seed_secret === false
     ? session.game_seed ?? ''
     : deriveGenerationSeed(secret, mode, session.game_seed ?? '');
-  const script = mode === 'infinite'
-    ? await loadMarketScript(admin)
-    : { stocks: [], prices: [], events: [] };
+  const script = await scriptForRun(admin, mode, marketEngine(session));
 
   while (generated < target) {
     const fromDay = generated + 1;

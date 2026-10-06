@@ -43,7 +43,11 @@ type SaveSlot = {
   net_worth: number;
   holdings_snapshot: HoldingSnapshot[];
   created_at: string;
+  ranked?: boolean;
 };
+
+const UNRANKED_NOTE =
+  "This run is now unranked: the save is from before the furthest day you've already played on this market, or from an unranked run. You can keep playing; it just won't appear on the leaderboards.";
 
 export default function SaveLoad() {
   const reduceMotion = useReducedMotion();
@@ -121,7 +125,7 @@ export default function SaveLoad() {
     setLoadingSlot(slot.id);
 
     try {
-      const { error } = await supabase.rpc("restore_save_slot", { p_slot_id: slot.id });
+      const { data: restored, error } = await supabase.rpc("restore_save_slot", { p_slot_id: slot.id });
 
       if (error) {
         setMessage({ text: `Load failed: ${error.message}`, severity: "error" });
@@ -138,7 +142,13 @@ export default function SaveLoad() {
       // set and bills every weekly cycle between bills_paid_through_day and
       // the restored day in one lump against the restored cash.
       await trading.reloadSession();
-      setMessage({ text: `Loaded "${slot.slot_name}". Resuming from Day ${slot.game_day}.`, severity: "success" });
+      const loaded = `Loaded "${slot.slot_name}". Resuming from Day ${slot.game_day}.`;
+      if ((restored as { ranked?: boolean } | null)?.ranked === false) {
+        // Stay on the page so the player reads why the run left the leaderboards.
+        setMessage({ text: `${loaded} ${UNRANKED_NOTE}`, severity: "success" });
+        return;
+      }
+      setMessage({ text: loaded, severity: "success" });
       setTimeout(() => navigate("/game"), 800);
     } finally {
       setLoadingSlot(null);
@@ -293,6 +303,10 @@ export default function SaveLoad() {
                           <Grid container spacing={1.5} alignItems="center">
                             <Grid item xs={12} sm={3.5}>
                               <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1 }}>{slot.slot_name}</Typography>
+                              {slot.ranked === false && (
+                                <Chip label="Unranked" size="small"
+                                  sx={{ mt: 0.5, height: 20, fontSize: 11, fontWeight: 800, color: D.t2, bgcolor: D.overlay, border: `1px solid ${D.border}` }} />
+                              )}
                               <Typography sx={{ fontSize: 12, color: D.t3 }}>{new Date(slot.created_at).toLocaleString()}</Typography>
                             </Grid>
                             {[

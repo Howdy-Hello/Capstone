@@ -270,6 +270,32 @@ async function testSessionPriceChunking() {
   assert.deepEqual(cai.map((row) => row.close_price).slice(0, 4), [100, 101, 102, 103]);
 }
 
+// BUG-004: engine-2 infinite runs must not replay the shared script.
+async function testScriptlessInfiniteRuns() {
+  const { generateSessionPrices, generateSessionNews } = await import("../market/sessionMarket");
+  const { scriptlessRun, marketFingerprint } = await import("../lib/marketService");
+  const script = scriptlessRun(fakeScript() as any);
+  const run = (seed: string) => generateSessionPrices({ mode: "infinite", seed, fromDay: 1, toDay: 30, script })
+    .filter((row) => row.symbol === "CAI").sort((x, y) => x.game_day - y.game_day)
+    .map((row) => row.close_price);
+
+  const a = run("0123456789ABCDEF");
+  const b = run("FEDCBA9876543210");
+  assert.equal(a[0], 100, "day 1 is still the listing price");
+  assert.notDeepEqual(a.slice(1, 4), [101, 102, 103], "scripted closes must not appear");
+  assert.notDeepEqual(a.slice(1), b.slice(1), "two seeds must give two markets");
+
+  // Days 1-3 are the fixed tutorial intro (STORY_DAYS) in every mode; after it
+  // the news comes from the seed.
+  const scriptedNews = generateSessionNews({ mode: "infinite", seed: "0123456789ABCDEF", day: 5, script });
+  const otherNews = generateSessionNews({ mode: "infinite", seed: "FEDCBA9876543210", day: 5, script });
+  assert.notDeepEqual(scriptedNews.map((n) => n.headline), otherNews.map((n) => n.headline));
+
+  assert.equal(marketFingerprint({ game_mode: "infinite", game_seed: "ABC234", market_engine: 2 }), "infinite:ABC234:v2");
+  assert.equal(marketFingerprint({ game_mode: "infinite", game_seed: "ABC234", market_engine: 1 }), "infinite:ABC234");
+  assert.equal(marketFingerprint({ game_mode: "infinite", game_seed: "ABC234" }), "infinite:ABC234");
+}
+
 async function testNewsSanitized() {
   const { generateSessionNews, sanitizeNews } = await import("../market/sessionMarket");
   const news = generateSessionNews({ mode: "limited_30", seed: "0123456789ABCDEF", day: 1, script: fakeScript() as any });
@@ -296,6 +322,7 @@ async function main() {
   await testGenerationSeed();
   await testSessionPriceChunking();
   await testNewsSanitized();
+  await testScriptlessInfiniteRuns();
   console.log("Server tests passed.");
 }
 
