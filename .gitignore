@@ -81,3 +81,5 @@ uploads/
 tmp/
 .cache/
 .vercel/
+
+/server/src/market/

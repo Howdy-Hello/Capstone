@@ -1,3 +1,6 @@
+import DecisionNote from "../components/learning/DecisionNote";
+import { useLearningProgress } from "../hooks/useLearningProgress";
+import { AccountFlow, accountPerformance } from "../lib/accountPerformance";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert, Box, Button, Chip, CircularProgress, Container, Divider, FormControl, Grid,
@@ -105,6 +108,11 @@ export default function Dashboard() {
   const [tradeHistoryLoading, setTradeHistoryLoading] = useState(true);
   const [tradeHistoryError, setTradeHistoryError] = useState<string | null>(null);
   const [tradeTypeFilter, setTradeTypeFilter] = useState<"all" | "buy" | "sell">("all");
+  const learning = useLearningProgress();
+  const [flows, setFlows] = useState<AccountFlow[]>([]);
+  const [flowError, setFlowError] = useState<string | null>(null);
+  const [flowRetry, setFlowRetry] = useState(0);
+  const [journalError, setJournalError] = useState<string | null>(null);
   const [journalEntries, setJournalEntries] = useState<TradeJournalEntry[]>([]);
 
   const playerName =
@@ -120,6 +128,7 @@ export default function Dashboard() {
     if (!user || !trading.sessionId) return;
     let cancelled = false;
     setTradeHistoryLoading(true);
+    setJournalEntries([]); setJournalError(null);
     supabase
       .from("trades")
       .select("id, game_day, trade_type, quantity, price_per_share, total_amount, executed_at, stocks(symbol, company_name)")
@@ -146,10 +155,23 @@ export default function Dashboard() {
       .order("created_at", { ascending: false })
       .limit(50)
       .then(({ data, error }) => {
-        if (!cancelled && !error) setJournalEntries((data ?? []) as unknown as TradeJournalEntry[]);
+        if (!cancelled) { setJournalEntries((data ?? []) as unknown as TradeJournalEntry[]); setJournalError(error ? "Trade plans could not be loaded. Try again." : null); }
       });
     return () => { cancelled = true; };
-  }, [trading.sessionId, user]);
+  }, [trading.sessionId, user, trading.account.cash, gameDay, flowRetry]);
+
+  useEffect(() => {
+    setFlows([]); setFlowError(null);
+    if (!user || !trading.sessionId) return;
+    let cancelled = false;
+    void supabase.rpc("get_account_breakdown", { target_session_id: trading.sessionId }).then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) setFlowError("The account breakdown could not be loaded. Try again.");
+      else setFlows((data ?? []) as AccountFlow[]);
+    });
+    return () => { cancelled = true; };
+  }, [user, trading.sessionId, trading.account.cash, gameDay, flowRetry]);
+  const performance = useMemo(() => accountPerformance(netWorth, flows), [netWorth, flows]);
 
   const holdings = useMemo(() => trading.account.holdings.map((h) => {
     const stock = stocks.find((s) => s.symbol === h.symbol);
@@ -228,13 +250,12 @@ export default function Dashboard() {
     if (highRiskPct > 50) callouts.push(`${highRiskPct.toFixed(0)}% of invested capital is in high-risk stocks.`);
     if (!callouts.length) callouts.push(holdings.length ? "No major concentration warning is active." : "Build a portfolio to unlock personalized risk feedback.");
     return {
-      alphaPct: returnPct - benchmarkReturnPct,
       realizedPnL: realizedProfitLoss(tradeHistory),
       riskScore,
       riskLabel,
       callouts,
     };
-  }, [benchmarkReturnPct, holdings, netWorth, portfolioAnalytics, returnPct, sectorExposure, tradeHistory]);
+  }, [holdings, netWorth, portfolioAnalytics, sectorExposure, tradeHistory]);
 
   if (trading.loading) {
     return (
@@ -297,7 +318,7 @@ export default function Dashboard() {
             { label: "Cash",         value: money(trading.account.cash), icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: undefined },
             { label: "Portfolio",    value: money(portfolioValue),        icon: <PieChartIcon sx={{ fontSize: 20 }} />,            up: undefined },
             { label: "Net Worth",    value: money(netWorth),              icon: <AssessmentIcon sx={{ fontSize: 20 }} />,          up: returnPct >= 0 },
-            { label: "Total Return", value: pct(returnPct, 2),            icon: returnPct >= 0 ? <TrendingUpIcon sx={{ fontSize: 20 }} /> : <TrendingDownIcon sx={{ fontSize: 20 }} />, up: returnPct >= 0 },
+            { label: "Net-worth change", value: pct(returnPct, 2),            icon: returnPct >= 0 ? <TrendingUpIcon sx={{ fontSize: 20 }} /> : <TrendingDownIcon sx={{ fontSize: 20 }} />, up: returnPct >= 0 },
           ].map((s, i) => (
             <Grid item xs={12} sm={6} md={3} key={s.label}>
               <StatTile {...s} index={i} />
@@ -309,17 +330,17 @@ export default function Dashboard() {
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
             <Box>
               <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio Review</Typography>
-              <Typography sx={{ fontSize: 14, color: D.t2 }}>Performance versus the equal-weight market, realized results, and portfolio risk.</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t2 }}>Separate investment results from spending, then check your portfolio exposure.</Typography>
             </Box>
             <Chip label={holdings.length ? `Portfolio balance: ${review.riskScore}/100 · ${review.riskLabel}` : "Portfolio balance: awaiting holdings"} size="small"
               sx={{ maxWidth: "100%", height: "auto", "& .MuiChip-label": { whiteSpace: "normal", py: .75 }, bgcolor: review.riskScore >= 80 ? D.greenBg : review.riskScore >= 60 ? D.amberBg : D.redBg, color: review.riskScore >= 80 ? D.greenText : review.riskScore >= 60 ? D.amber : D.redText, fontWeight: 900, fontFamily: MONO }} />
           </Stack>
           <Grid container sx={{ borderBottom: `1px solid ${D.border}` }}>
             {[
-              { label: "Account return", value: pct(returnPct), color: returnPct >= 0 ? D.greenText : D.redText },
-              { label: "Market benchmark", value: pct(benchmarkReturnPct), color: benchmarkReturnPct >= 0 ? D.greenText : D.redText },
-              { label: "Performance gap", value: pct(review.alphaPct), color: review.alphaPct >= 0 ? D.greenText : D.redText },
-              { label: "Realized P/L", value: `${review.realizedPnL >= 0 ? "+" : ""}${money(review.realizedPnL)}`, color: review.realizedPnL >= 0 ? D.greenText : D.redText },
+              { label: "Investment gain / loss · tracked period", value: performance ? money(performance.investmentGain) : "Unavailable", color: performance && performance.investmentGain < 0 ? D.redText : D.t1 },
+              { label: "Market price change · since Day 1", value: pct(benchmarkReturnPct), color: benchmarkReturnPct >= 0 ? D.greenText : D.redText },
+              { label: "Net-worth change · since Day 1", value: pct(returnPct), color: D.t1 },
+              { label: "Realized P/L · recorded trades", value: tradeHistoryLoading || tradeHistoryError ? "Unavailable" : `${review.realizedPnL >= 0 ? "+" : ""}${money(review.realizedPnL)}`, color: review.realizedPnL >= 0 ? D.greenText : D.redText },
             ].map((item) => (
               <Grid item xs={6} md={3} key={item.label} sx={{ borderRight: `1px solid ${D.border}`, borderBottom: { xs: `1px solid ${D.border}`, md: 0 } }}>
                 <Box sx={{ p: 2.5 }}>
@@ -330,6 +351,17 @@ export default function Dashboard() {
             ))}
           </Grid>
           <Box sx={{ px: 3, py: 2.25 }}>
+            <Typography sx={{ color: D.t2, fontSize: 13, mb: 2 }}>Net-worth change includes bills, advisor spending, and game rewards. The market figure is an equal-weight average of stock price changes from Day 1, with no cash, fees, dividends, or spending; it is context, not a like-for-like performance comparison. Realized P/L uses up to 500 recent trades and can be incomplete in long runs.</Typography>
+            <Typography sx={{ fontWeight: 900, color: D.t1, mb: 1 }}>Where did my balance go?</Typography>
+            {flowError && <Alert severity="error" action={<Button onClick={() => setFlowRetry(n => n + 1)}>Retry</Button>}>{flowError}</Alert>}
+            {performance ? <>
+              <Typography sx={{ fontSize: 12, color: D.t2, mb: 1 }}>Tracking from Day {performance.startDay}. New saves preserve this breakdown. Older runs begin at their first tracked value; saves made before tracking began start at their restored value. Earlier spending is not reconstructed.</Typography>
+              <Stack spacing={.8} sx={{ mb: 2 }}>{[
+                ["Opening account value", performance.start], ["Investment gain / loss (including execution costs)", performance.investmentGain],
+                ["Living expenses paid", -performance.livingCosts], ["Advisor spending", -performance.advisorCosts], ["Game rewards", performance.rewards], ["Ending account value", netWorth],
+              ].map(([label, amount]) => <Stack key={String(label)} direction="row" justifyContent="space-between" gap={2}><Typography sx={{ color: D.t2, fontSize: 13 }}>{label}</Typography><Typography sx={{ color: D.t1, fontFamily: MONO, fontSize: 13 }}>{money(Number(amount))}</Typography></Stack>)}</Stack>
+            </> : !flowError && <Typography sx={{ color: D.t2, fontSize: 13, mb: 2 }}>Account tracking is not available yet. No investment result is inferred from spending.</Typography>}
+
             <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6, mb: 1.5 }}>
               Higher balance scores mean fewer concentration warnings. The score considers your largest holding, sector exposure,
               high-risk stocks, and cash reserve. It measures portfolio balance, not returns or the chance of profit.
@@ -693,15 +725,16 @@ export default function Dashboard() {
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
             <Box>
               <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Decision Journal</Typography>
-              <Typography sx={{ fontSize: 14, color: D.t2 }}>The reasoning you captured before trading. Advisor reviews arrive in your inbox after the market moves.</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t2 }}>The reasoning you captured before trading. Price-outcome reviews arrive in your inbox at your chosen horizon. Reflect here to assess the plan, evidence, position size, and luck.</Typography>
             </Box>
             <Chip size="small" label={`${journalEntries.length} PLANNED`} sx={{ bgcolor: D.brandBg, color: D.brandText, fontWeight: 900, fontSize: 10, fontFamily: MONO }} />
           </Stack>
           <Box sx={{ p: 2.5 }}>
+            {journalError && <Alert severity="error" action={<Button onClick={() => setFlowRetry(n => n + 1)}>Retry</Button>}>{journalError}</Alert>}
             {journalEntries.length === 0 ? (
               <Box sx={{ p: 3, borderRadius: 2, bgcolor: D.elevated, border: `1px dashed ${D.borderHi}`, textAlign: "center" }}>
                 <Typography sx={{ fontWeight: 800, color: D.t1, mb: .5 }}>No trade plans recorded yet.</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3 }}>Add a thesis and exit rule in the trade ticket to begin your decision journal.</Typography>
+                <Typography sx={{ fontSize: 13, color: D.t3 }}>Add your reason and exit rule in the trade ticket to begin your decision journal.</Typography>
               </Box>
             ) : (
               <Stack spacing={1.2}>
@@ -720,20 +753,29 @@ export default function Dashboard() {
                             <Typography sx={{ color: D.t1, fontWeight: 900, fontFamily: MONO }}>{entry.symbol}</Typography>
                             <Typography sx={{ color: D.t3, fontSize: 11 }}>Day {entry.game_day} · {entry.horizon_days}-day horizon</Typography>
                           </Stack>
-                          <Typography sx={{ color: D.t2, fontSize: 13, lineHeight: 1.55 }}>{entry.thesis || "No thesis recorded."}</Typography>
+                          <Typography sx={{ color: D.t2, fontSize: 13, lineHeight: 1.55 }}>{entry.thesis || "No reason recorded."}</Typography>
                           {entry.exit_plan && <Typography sx={{ color: D.t3, fontSize: 12, mt: .6 }}>Exit rule: {entry.exit_plan}</Typography>}
                         </Box>
                         <Box sx={{ textAlign: { sm: "right" }, flexShrink: 0 }}>
                           <Typography sx={{ color: outcome >= 0 ? D.greenText : D.redText, fontSize: 15, fontWeight: 900, fontFamily: MONO }}>{pct(outcome)}</Typography>
-                          <Typography sx={{ color: D.t3, fontSize: 10.5 }}>{entry.reviewed_day ? `Reviewed Day ${entry.reviewed_day}` : "Awaiting review"}</Typography>
+                          <Typography sx={{ color: D.t3, fontSize: 10.5 }}>Price movement since trade</Typography>
+                          <Typography sx={{ color: D.t3, fontSize: 10.5 }}>{entry.reviewed_day ? `Outcome review Day ${entry.reviewed_day}` : "Awaiting outcome review"}</Typography>
                         </Box>
                       </Stack>
+                      <Box component="details" sx={{ mt: 2, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText }}>Reflect on this decision</Box><Box sx={{ mt: 2 }}><DecisionNote kind="reflection" symbol={entry.symbol} journalId={entry.id} /></Box></Box>
                     </Box>
                   );
                 })}
               </Stack>
             )}
           </Box>
+        </Box>
+        <Box sx={{ ...CARD, p: 3, mt: 3 }}>
+          <Typography sx={{ color: D.t1, fontWeight: 900, mb: 2 }}>Learning journal · {learning.entries.length} notes</Typography>
+          {learning.error && <Alert severity="error" action={<Button onClick={learning.refresh}>Retry</Button>}>{learning.error}</Alert>}
+          <Box component="details" sx={{ color: D.t1, mb: 3 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText }}>Record my goal and time horizon</Box><Box sx={{ mt: 2 }}><DecisionNote kind="plan" /></Box></Box>
+          {!learning.entries.length && !learning.error && <Typography sx={{ color: D.t2 }}>Record evidence in Market, Stock Details, Compare, or Learning Goals. A no-trade session can still be a useful learning session.</Typography>}
+          <Stack spacing={2}>{learning.entries.slice(0, 20).map(entry => <Box key={entry.id} sx={{ p: 2, bgcolor: D.elevated, borderRadius: 2 }}><Typography sx={{ color: D.brandText, fontWeight: 800 }}>Day {entry.game_day} · {entry.kind}{entry.symbol ? ` · ${entry.symbol}` : ""} · {entry.decision}</Typography><Typography sx={{ color: D.t2, whiteSpace: "pre-wrap", mt: 1 }}>{entry.evidence}</Typography>{entry.reflection && <Typography sx={{ color: D.t2, whiteSpace: "pre-wrap", mt: 1 }}>{entry.reflection}</Typography>}</Box>)}</Stack>
         </Box>
       </Container>
     </Box>

@@ -10,6 +10,7 @@ export default function Tutorial() {
 
   useEffect(() => {
     const requested = params.get("course");
+    if (requested === "game") { navigate("/practice", { replace: true }); return; }
     requestTutorial(requested === "advanced" ? "advanced" : requested === "game" ? "game" : "ui");
     navigate("/game", { replace: true });
   }, [navigate, params]);

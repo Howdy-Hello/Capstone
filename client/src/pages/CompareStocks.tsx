@@ -1,3 +1,4 @@
+import DecisionNote from "../components/learning/DecisionNote";
 import React, { useEffect, useMemo } from "react";
 import {
   Box, Button, Chip, CircularProgress, Container, Grid, MenuItem,
@@ -27,19 +28,8 @@ type Metric = {
   label: string;
   left: string;
   right: string;
-  leftRaw?: number;
-  rightRaw?: number;
-  preference?: "higher" | "lower";
+  note: string;
 };
-
-function metricTone(metric: Metric, side: "left" | "right") {
-  if (!metric.preference || metric.leftRaw === undefined || metric.rightRaw === undefined) return D.t1;
-  if (metric.leftRaw === metric.rightRaw) return D.t1;
-  const leftWins = metric.preference === "higher"
-    ? metric.leftRaw > metric.rightRaw
-    : metric.leftRaw < metric.rightRaw;
-  return (side === "left" ? leftWins : !leftWins) ? D.greenText : D.t2;
-}
 
 export default function CompareStocks() {
   const reduceMotion = useReducedMotion();
@@ -94,6 +84,7 @@ export default function CompareStocks() {
   const metrics = useMemo<Metric[]>(() => {
     if (!left || !right) return [];
     return [
+<<<<<<< HEAD
       { label: "Current Price", left: money(left.currentPrice), right: money(right.currentPrice), leftRaw: left.currentPrice, rightRaw: right.currentPrice },
       { label: "Day Move", left: pct(left.dayChangePercent), right: pct(right.dayChangePercent), leftRaw: left.dayChangePercent, rightRaw: right.dayChangePercent, preference: "higher" },
       { label: "P/E Ratio", left: left.fundamentals.peRatio.toFixed(1), right: right.fundamentals.peRatio.toFixed(1), leftRaw: left.fundamentals.peRatio, rightRaw: right.fundamentals.peRatio, preference: "lower" },
@@ -108,6 +99,22 @@ export default function CompareStocks() {
       { label: "Sector", left: left.sector, right: right.sector },
       { label: "Analyst Rating", left: left.fundamentals.analystRating, right: right.fundamentals.analystRating },
       { label: "Shares Owned", left: getSharesOwned(trading.account, left.symbol).toString(), right: getSharesOwned(trading.account, right.symbol).toString() },
+=======
+      { label: "Current Price", left: money(left.currentPrice), right: money(right.currentPrice), note: "A lower share price does not mean a cheaper business." },
+      { label: "Day Move", left: pct(left.dayChangePercent), right: pct(right.dayChangePercent), note: "One-day movement describes a result; it does not recommend a purchase." },
+      { label: "P/E Ratio", left: left.fundamentals.peRatio.toFixed(1), right: right.fundamentals.peRatio.toFixed(1), note: "Price \u00f7 annual earnings per share. Lower can reflect lower growth expectations or weaker earnings prospects, as well as a lower valuation." },
+      { label: "EPS", left: money(left.fundamentals.eps), right: money(right.fundamentals.eps), note: "Earnings per share. Share counts differ; compare earnings quality and trends instead of ranking businesses by raw EPS." },
+      { label: "Revenue Growth", left: pct(left.fundamentals.revenueGrowth), right: pct(right.fundamentals.revenueGrowth), note: "Sales growth can help, but investigate costs and whether it becomes sustainable profit." },
+      { label: "Profit Margin", left: pct(left.fundamentals.profitMargin), right: pct(right.fundamentals.profitMargin), note: "The share of revenue kept as profit. Compare similar businesses and investigate changes over time." },
+      { label: "Debt / Equity", left: left.fundamentals.debtToEquity.toFixed(2), right: right.fundamentals.debtToEquity.toFixed(2), note: "Debt relative to shareholder equity. Capital needs differ by industry; leverage can amplify losses." },
+      { label: "Dividend Yield", left: pct(left.fundamentals.dividendYield), right: pct(right.fundamentals.dividendYield), note: "Dividend relative to price. A high yield can reflect a falling price or an expected cut; it is not guaranteed income." },
+      { label: "Volatility", left: pct(left.volatility * 100), right: pct(right.volatility * 100), note: "A game parameter describing price movement. Less volatility does not mean no risk." },
+      { label: "Volume", left: left.volume.toLocaleString(), right: right.volume.toLocaleString(), note: "Shares traded. Activity and liquidity are different from investment quality." },
+      { label: "Risk Level", left: left.riskLevel, right: right.riskLevel, note: "An illustrative game classification, not a probability of loss." },
+      { label: "Sector", left: left.sector, right: right.sector, note: "Compare similar businesses; sectors have different economics and exposures." },
+      { label: "Analyst Rating", left: left.fundamentals.analystRating, right: right.fundamentals.analystRating, note: "An illustrative game opinion. Investigate the evidence and uncertainty yourself." },
+      { label: "Shares Owned", left: getSharesOwned(trading.account, left.symbol).toString(), right: getSharesOwned(trading.account, right.symbol).toString(), note: "Your exposure matters alongside the business case." },
+>>>>>>> 607e372 (feat: add learning entries and account flows tracking)
     ];
   }, [left, right, trading.account]);
 
@@ -243,7 +250,7 @@ export default function CompareStocks() {
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Attribute Matrix</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Green marks the stronger side when a metric has a clear direction.</Typography>
+                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>These are differences to investigate. No metric makes one stock automatically better; start with similar businesses and your own goal.</Typography>
               </Box>
               <Box sx={{ p: 2.5 }}>
                 <Stack spacing={1}>
@@ -254,17 +261,18 @@ export default function CompareStocks() {
                       <Grid container spacing={1.5} alignItems="center">
                         <Grid item xs={12} md={4}>
                           <Typography sx={{ fontSize: 11, color: D.t3, fontWeight: 900, fontFamily: MONO }}>{metric.label.toUpperCase()}</Typography>
+                          <Typography sx={{ fontSize: 12, color: D.t2, mt: .5 }}>{metric.note}</Typography>
                         </Grid>
                         <Grid item xs={6} md={4}>
                           <Typography sx={{ fontSize: 13, color: D.t3, mb: 0.2 }}>{left.symbol}</Typography>
                           <motion.div key={metric.left} initial={reduceMotion ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-                            <Typography sx={{ fontSize: 15, color: metricTone(metric, "left"), fontWeight: 900, fontFamily: MONO }}>{metric.left}</Typography>
+                            <Typography sx={{ fontSize: 15, color: D.t1, fontWeight: 900, fontFamily: MONO }}>{metric.left}</Typography>
                           </motion.div>
                         </Grid>
                         <Grid item xs={6} md={4}>
                           <Typography sx={{ fontSize: 13, color: D.t3, mb: 0.2 }}>{right.symbol}</Typography>
                           <motion.div key={metric.right} initial={reduceMotion ? false : { opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-                            <Typography sx={{ fontSize: 15, color: metricTone(metric, "right"), fontWeight: 900, fontFamily: MONO }}>{metric.right}</Typography>
+                            <Typography sx={{ fontSize: 15, color: D.t1, fontWeight: 900, fontFamily: MONO }}>{metric.right}</Typography>
                           </motion.div>
                         </Grid>
                       </Grid>
@@ -273,6 +281,7 @@ export default function CompareStocks() {
                 </Stack>
               </Box>
             </Box>
+            {!sameStock && <Box sx={{ ...CARD, p: 3, mt: 3 }}><DecisionNote key={`${left.symbol}:${right.symbol}`} kind="compare" symbol={`${left.symbol} / ${right.symbol}`} /></Box>}
           </>
         )}
       </Container>

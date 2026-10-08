@@ -163,7 +163,8 @@ export function useInboxMessages() {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
-export function useUnreadInboxCount() {
+export function useUnreadInboxCount(news: { newsId: string }[] = []) {
   const list = useInboxMessages();
-  return list.filter((message) => !message.read).length;
+  const read = useReadNewsIds();
+  return list.filter((message) => !message.read).length + news.filter((item) => !read.has(item.newsId)).length;
 }

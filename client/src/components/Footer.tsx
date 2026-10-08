@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Container, Divider, Grid, Link, Stack, Typography } from "@mui/material";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useLocation } from "react-router-dom";
 import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
 import { D } from "../theme/design";
 
@@ -11,7 +11,10 @@ const cols = {
   Account:  [{ l: "Log in",     h: "/auth?mode=login" }, { l: "Sign up",  h: "/auth?mode=signup" }, { l: "Settings", h: "/settings" }, { l: "Profile", h: "/profile" }],
 };
 
-const Footer: React.FC = () => (
+const Footer: React.FC = () => {
+  const { pathname } = useLocation();
+  if (pathname !== "/") return <Box component="footer" sx={{ p: 2, textAlign: "center", color: D.t3, borderTop: `1px solid ${D.border}` }}><Typography variant="caption">StockPilot · Simulation only · <Link component={RouterLink} to="/learn">Help</Link></Typography></Box>;
+  return (
   <Box sx={{ bgcolor: D.surface, borderTop: `1px solid ${D.border}` }}>
     <Container maxWidth="xl" sx={{ py: { xs: 5, md: 6 } }}>
       <Grid container spacing={4}>
@@ -53,12 +56,11 @@ const Footer: React.FC = () => (
         <Typography sx={{ fontSize: 12, color: D.t4 }}>
           © {new Date().getFullYear()} StockPilot. Simulation only.
         </Typography>
-        <Typography sx={{ fontSize: 11, color: D.t4, fontFamily: "'Courier New', monospace" }}>
-          v1.0.0
-        </Typography>
+
       </Stack>
     </Container>
   </Box>
 );
+};
 
 export default Footer;

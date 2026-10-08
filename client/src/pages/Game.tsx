@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+=======
+import DecisionNote from "../components/learning/DecisionNote";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+>>>>>>> 607e372 (feat: add learning entries and account flows tracking)
 import {
   Avatar, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
   CircularProgress, Divider, Grid, IconButton, LinearProgress, Stack, TextField, Typography,
@@ -117,22 +122,8 @@ export default function Game() {
   }, [stocks]);
   const modeLabel = gameMode === "limited_30" ? "30-Day Challenge" : "Infinite";
   const modeDescription = gameMode === "limited_30"
-    ? "A focused 30-day scoring run. Rankings use your best net worth at the finish."
+    ? "A focused 30-day scoring run. Rankings use your final net worth at the finish."
     : "An open-ended sandbox. Keep advancing days as long as you want.";
-  const gameLoopTips = gameMode === "limited_30"
-    ? [
-        "Use the first 3 days to learn the market story.",
-        "Build a position before the 30-day clock runs out.",
-        "Your best net worth drives the leaderboard.",
-        "Start a new challenge when Day 30 ends.",
-      ]
-    : [
-        "Use the first 3 days to learn the market story.",
-        "Open stock details before buying.",
-        "Compare P/E, growth, debt, and margin.",
-        "Advance as many days as you want.",
-      ];
-
   useEffect(() => {
     if (!sectors.includes(selectedSector)) setSelectedSector("All");
   }, [selectedSector, sectors, setSelectedSector]);
@@ -200,8 +191,23 @@ export default function Game() {
 
   // A dialog opened on one day must not trade on the next.
   useEffect(() => {
+<<<<<<< HEAD
     setTradeDialog(null);
   }, [gameDay]);
+=======
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
+      if (e.key === "ArrowRight" && !isGameComplete && !tradeDialog && !trading.actionPending) {
+        e.preventDefault();
+        if (marketPhase === "market_open") closeMarket();
+        else void setGameDay((d) => d + 1);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [closeMarket, gameMode, isGameComplete, marketPhase, setGameDay, tradeDialog, trading.actionPending]);
+>>>>>>> 607e372 (feat: add learning entries and account flows tracking)
 
   useEffect(() => {
     if (!DEV_CONSOLE_ENABLED) return;
@@ -282,7 +288,7 @@ export default function Game() {
   };
   const startTutorial = () => {
     dismissTutorial();
-    navigate("/tutorial");
+    navigate("/practice");
   };
 
   const handleBuyStock = (stock: Stock) => setTradeDialog({ stock, mode: "buy" });
@@ -297,11 +303,9 @@ export default function Game() {
     setTradeMessage(
       ok
         ? `${mode === "buy" ? "Bought" : "Sold"} ${shares} of ${stock.symbol} for ${total}.`
-        : mode === "buy"
-          ? `Not enough cash to buy ${shares} of ${stock.symbol}.`
-          : `Not enough shares to sell.`
+        : "Trade could not be completed. Check the message below and try again."
     );
-    setTradeDialog(null);
+    if (ok) setTradeDialog(null);
   };
 
   const runConsoleCommand = async (rawCommand: string) => {
@@ -379,10 +383,15 @@ export default function Game() {
       return `Seed ${trading.marketSeed} | Mode ${gameMode} | Day ${gameDay} | Arcs ${arcs}${trading.sessionId ? ` | Session ${trading.sessionId}` : ""}`;
     }
 
+<<<<<<< HEAD
     if (action === "cash" || action === "money" || action === "shares") {
       // Cash and holdings are server-authoritative; the dev console can't
       // write them any more than a player can.
       return "Disabled: cash and holdings are managed by the game server.";
+=======
+    if (["cash", "money", "shares"].includes(action)) {
+      return "Cash and holdings can only change through gameplay.";
+>>>>>>> 607e372 (feat: add learning entries and account flows tracking)
     }
 
     if (action === "day") {
@@ -412,8 +421,17 @@ export default function Game() {
 
     if (action === "reset") {
       const target = arg1.toLowerCase();
+<<<<<<< HEAD
       if (target === "cash" || target === "day") {
         return "Rejected: start a new run with `reset all`.";
+=======
+      if (target === "cash") {
+        return "Start a new run to reset cash.";
+      }
+      if (target === "day") {
+        setGameDay(1);
+        return "Applied.";
+>>>>>>> 607e372 (feat: add learning entries and account flows tracking)
       }
       if (target === "all") {
         void trading.resetAccount(gameMode);
@@ -435,20 +453,21 @@ export default function Game() {
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
-      <Dialog open={tutorialPromptOpen} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3 } }}>
+      <Dialog onClose={dismissTutorial} open={tutorialPromptOpen} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3 } }}>
         <DialogContent sx={{ p: { xs: 3, md: 4 }, textAlign: "center" }}>
           <Box sx={{ width: 58, height: 58, mx: "auto", mb: 2, borderRadius: 3, bgcolor: D.brandBg, color: D.brandText, display: "grid", placeItems: "center" }}><ShowChartIcon sx={{ fontSize: 30 }} /></Box>
           <Typography sx={{ color: D.t1, fontSize: 24, fontWeight: 950 }}>Welcome to StockPilot</Typography>
-          <Typography sx={{ color: D.t3, fontSize: 13.5, lineHeight: 1.7, mt: 1 }}>Take a short guided tour through the website’s navigation, pages, controls, and information. A separate gameplay tutorial follows if you want it.</Typography>
+          <Typography sx={{ color: D.t3, fontSize: 13.5, lineHeight: 1.7, mt: 1 }}>Learn by making one practice decision. Research a fictional company, choose whether to invest or wait, then review what happened. Your current game stays safe.</Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, justifyContent: "center" }}>
-          <Button onClick={dismissTutorial} sx={{ color: D.t3, textTransform: "none", fontWeight: 700 }}>Skip for now</Button>
-          <Button onClick={startTutorial} variant="contained" sx={{ bgcolor: D.brand, textTransform: "none", fontWeight: 900, boxShadow: "none" }}>Start website tour</Button>
+          <Button onClick={() => { dismissTutorial(); navigate("/tutorial?course=ui"); }} sx={{ color: D.t3, textTransform: "none", fontWeight: 700 }}>Tour the controls</Button>
+          <Button onClick={startTutorial} variant="contained" sx={{ bgcolor: D.brand, textTransform: "none", fontWeight: 900, boxShadow: "none" }}>Try a practice decision</Button>
         </DialogActions>
       </Dialog>
       {tradeDialog && (
         <TradeDialog
-          stock={tradeDialog.stock}
+          error={trading.error}
+          stock={trading.getStock(tradeDialog.stock.symbol) ?? tradeDialog.stock}
           mode={tradeDialog.mode}
           cash={trading.account.cash}
           sharesOwned={getSharesOwned(trading.account, tradeDialog.stock.symbol)}
@@ -538,7 +557,7 @@ export default function Game() {
         {trading.error && (
           <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
             <Typography sx={{ color: D.redText, fontSize: 13, fontWeight: 800 }}>
-              Supabase: {trading.error}
+              {trading.error}
             </Typography>
           </Box>
         )}
@@ -628,7 +647,10 @@ export default function Game() {
           </Box>
         )}
 
-        {!isGameComplete && (
+        {!trading.loading && !trading.verifiedRun && <Typography sx={{ color: D.t3, mb: 2 }}>This older run is practice-only. Start a new run to earn achievements and enter the leaderboards.</Typography>}
+        <Box component="details" sx={{ ...CARD, p: 2, mb: 2, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText, fontWeight: 800 }}>My decision today · trading is optional</Box><Box sx={{ mt: 2 }}><DecisionNote kind="wait" /></Box></Box>
+        <Typography sx={{ color: D.t2, fontSize: 12, mb: 2 }}>Fictional companies and synthetic prices. The after-hours news window pauses price reactions for learning; real markets may react immediately. Game risk scores and analyst ratings are illustrative.</Typography>
+        {!isGameComplete && gameDay <= 3 && !getTutorialProgress(user?.id ?? "guest").gameComplete && (
           <Box sx={{ mb: 2, pl: 2, borderLeft: `3px solid ${D.brand}` }}>
             <Typography sx={{ color: D.t1, fontSize: 14, fontWeight: 800 }}>Your next step</Typography>
             <Typography sx={{ color: D.t2, fontSize: 14, lineHeight: 1.6 }}>
@@ -837,24 +859,6 @@ export default function Game() {
                     See their basket
                   </Button>
                 </Stack>
-              </Box>
-
-              {/* Game loop */}
-              <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.8 }}>Game Loop</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>{gameMode === "limited_30" ? "Beat the market before Day 30 ends." : "Seeded randomness, sector drift, and volatility keep the market running indefinitely."}</Typography>
-                <Stack spacing={1} sx={{ mb: 2 }}>
-                  {gameLoopTips.map((tip) => (
-                    <Stack key={tip} direction="row" spacing={1} alignItems="flex-start">
-                      <Box sx={{ width: 4, height: 4, borderRadius: "50%", bgcolor: D.brandText, mt: 0.8, flexShrink: 0 }} />
-                      <Typography sx={{ fontSize: 12.5, color: D.t2, lineHeight: 1.6 }}>{tip}</Typography>
-                    </Stack>
-                  ))}
-                </Stack>
-                <Button fullWidth component={RouterLink} to="/news" startIcon={<NewspaperIcon />}
-                  sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg, "&:hover": { bgcolor: D.overlay } }}>
-                  Open Newsroom
-                </Button>
               </Box>
 
               {/* Risk guide */}
@@ -1185,14 +1189,15 @@ function StockRow({ stock, gameDay, animationIndex, sharesOwned, watchlisted, on
   );
 }
 
-function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConfirm }: {
+function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConfirm, error }: {
+  error: string | null;
   stock: Stock;
   mode: "buy" | "sell";
   cash: number;
   sharesOwned: number;
   getQuote: (quantity: number) => { basePrice: number; effectivePrice: number; slippage: number; total: number };
   onClose: () => void;
-  onConfirm: (quantity: number, journal?: TradeJournalInput) => void;
+  onConfirm: (quantity: number, journal?: TradeJournalInput) => Promise<void>;
 }) {
   const reduceMotion = useReducedMotion();
   // Max has to be priced *with* slippage. Spending the whole cash balance is
@@ -1244,6 +1249,7 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
       </DialogTitle>
 
       <DialogContent sx={{ bgcolor: D.bg, p: 2.5 }}>
+        {error && <Typography role="alert" sx={{ color: D.redText, mb: 2 }}>{error}</Typography>}
         <Stack spacing={2} sx={{ pt: 0.5 }}>
           <Stack direction="row" justifyContent="space-between">
             <Typography sx={{ fontSize: 13, color: D.t3 }}>Price per share</Typography>
@@ -1322,8 +1328,8 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
           {hasSlippage && (
             <Box sx={{ p: 1.6, borderRadius: 2, bgcolor: D.amberBg, border: `1px solid ${D.amber}` }}>
               <Typography sx={{ fontSize: 12, color: D.amber, fontWeight: 700 }}>
-                This trade is large relative to your net worth, so it's getting a {(quote.slippage * 100).toFixed(1)}% worse fill
-                ({money(quote.effectivePrice)}/share instead of {money(quote.basePrice)}). Split it into smaller trades to avoid the penalty.
+                This trade is large relative to your net worth, so this game applies a {(quote.slippage * 100).toFixed(1)}% execution penalty
+                ({money(quote.effectivePrice)}/share instead of {money(quote.basePrice)}). This account-size penalty is a game-balancing rule. Real execution costs depend on market conditions and the order.
               </Typography>
             </Box>
           )}
@@ -1332,13 +1338,13 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.25 }}>
               <Box>
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t1 }}>Decision journal</Typography>
-                <Typography sx={{ fontSize: 11, color: D.t3 }}>Optional · your advisor will revisit this when your horizon ends.</Typography>
+                <Typography sx={{ fontSize: 11, color: D.t3 }}>Optional · a price-outcome review arrives at your horizon. Reflect on your plan in Portfolio.</Typography>
               </Box>
               <Chip size="small" label="LEARNING" sx={{ bgcolor: D.brandBg, color: D.brandText, fontSize: 9, fontWeight: 900, fontFamily: MONO }} />
             </Stack>
             <TextField fullWidth size="small" multiline minRows={2} value={thesis} onChange={(event) => setThesis(event.target.value.slice(0, 500))}
               placeholder={isBuy ? "Why do you expect this investment to work?" : "Why are you exiting now?"}
-              inputProps={{ "aria-label": "Trade thesis" }}
+              inputProps={{ "aria-label": "Reason for this decision" }}
               sx={{ mb: 1.25, "& .MuiOutlinedInput-root": { color: D.t1, fontSize: 12.5, bgcolor: D.surface, "& fieldset": { borderColor: D.border }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
             <Typography sx={{ fontSize: 10, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: .75 }}>TIME HORIZON</Typography>
             <Stack direction="row" spacing={.75} sx={{ mb: 1.25 }}>
@@ -1363,10 +1369,11 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
           Cancel
         </Button>
         <Button variant="contained" disabled={!canConfirm || submitting}
-          onClick={() => {
+          onClick={async () => {
             if (submitting) return;
             setSubmitting(true);
-            onConfirm(qty, (thesis.trim() || exitPlan.trim()) ? { thesis, horizonDays, exitPlan } : undefined);
+            try { await onConfirm(qty, (thesis.trim() || exitPlan.trim()) ? { thesis, horizonDays, exitPlan } : undefined); }
+            finally { setSubmitting(false); }
           }}
           sx={{
             bgcolor: isBuy ? D.green : D.red, color: "#fff", fontWeight: 800, textTransform: "none",

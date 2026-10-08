@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useLearningProgress } from "./useLearningProgress";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { supabase } from "../lib/supabase";
@@ -14,12 +15,11 @@ export type Mission = {
   target: number;
   progress: number; // 0–100
   done: boolean;
-  rewardXp: number;
 };
 
 type MeasureCtx = {
-  tradeCount: number;
-  holdingsCount: number;
+  learningCount: number;
+  riskCount: number;
   watchlistCount: number;
   alertCount: number;
   goalCompletionCount: number;
@@ -30,22 +30,21 @@ type MissionDef = {
   id: string;
   title: string;
   description: string;
-  rewardXp: number;
   measure: (ctx: MeasureCtx) => { current: number; target: number };
 };
 
 const DEFS: MissionDef[] = [
-  { id: "first_trade", title: "Make your first trade", description: "Buy or sell any stock.", rewardXp: 40,
-    measure: (c) => ({ current: c.tradeCount, target: 1 }) },
-  { id: "build_watchlist", title: "Start a watchlist", description: "Add a stock to your watchlist.", rewardXp: 25,
+  { id: "first_learning_note", title: "Explain your first decision", description: "Record evidence for a decision, including choosing to wait.",
+    measure: (c) => ({ current: c.learningCount, target: 1 }) },
+  { id: "build_watchlist", title: "Start a watchlist", description: "Add a stock to your watchlist.",
     measure: (c) => ({ current: c.watchlistCount, target: 1 }) },
-  { id: "diversify_first", title: "Own two companies", description: "Hold shares in 2 different companies at once.", rewardXp: 45,
-    measure: (c) => ({ current: c.holdingsCount, target: 2 }) },
-  { id: "set_first_alert", title: "Set a price alert", description: "Create your first stock price alert.", rewardXp: 30,
+  { id: "first_risk_review", title: "Recognize portfolio risk", description: "Record a risk review before committing money.",
+    measure: (c) => ({ current: c.riskCount, target: 1 }) },
+  { id: "set_first_alert", title: "Set a price alert", description: "Create your first stock price alert.",
     measure: (c) => ({ current: c.alertCount, target: 1 }) },
-  { id: "complete_goal", title: "Complete a daily goal", description: "Finish any one of your daily objectives.", rewardXp: 35,
+  { id: "complete_goal", title: "Complete a daily goal", description: "Finish any one of your daily objectives.",
     measure: (c) => ({ current: c.goalCompletionCount, target: 1 }) },
-  { id: "survive_week", title: "Survive a week", description: "Reach Day 7 with your account intact.", rewardXp: 50,
+  { id: "survive_week", title: "Review a week", description: "Reach Day 7 and review your cash needs. Trading is optional.",
     measure: (c) => ({ current: Math.min(c.gameDay, 7), target: 7 }) },
 ];
 
@@ -54,7 +53,7 @@ export function useMissions() {
   const { account, watchlistSymbols, gameDay } = useGame();
 
   const [unlocked, setUnlocked] = useState<Record<string, boolean>>({});
-  const [tradeCount, setTradeCount] = useState(0);
+  const learning = useLearningProgress();
   const [alertCount, setAlertCount] = useState(0);
   const [goalCompletionCount, setGoalCompletionCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -66,15 +65,18 @@ export function useMissions() {
   // player. Ids are now dropped only on success, so a hard failure stops after
   // one attempt and reports itself.
   const pendingRef = useRef<Set<string>>(new Set());
+  const reachedRef = useRef(new Map<string, Mission>());
+  const [retry, setRetry] = useState(0);
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
+
+  useEffect(() => { pendingRef.current.clear(); reachedRef.current.clear(); setPersistenceError(null); }, [user?.id]);
 
   const refresh = useCallback(async () => {
     if (!user) { setUnlocked({}); setLoaded(true); return; }
 
-    const [unlockRes, tradeRes, alertRes, goalRes] = await Promise.all([
+    const [unlockRes, alertRes, goalRes] = await Promise.all([
       supabase.from("user_mission_completions").select("mission_id").eq("user_id", user.id),
-      supabase.from("trades").select("id", { count: "exact", head: true }).eq("user_id", user.id),
       supabase.from("user_stock_alerts").select("id", { count: "exact", head: true }).eq("user_id", user.id),
       supabase.from("user_daily_goal_completions").select("goal_id", { count: "exact", head: true }).eq("user_id", user.id),
     ]);
@@ -82,7 +84,6 @@ export function useMissions() {
     const map: Record<string, boolean> = {};
     (unlockRes.data ?? []).forEach((row: { mission_id: string }) => { map[row.mission_id] = true; });
     setUnlocked(map);
-    setTradeCount(tradeRes.count ?? 0);
     setAlertCount(alertRes.count ?? 0);
     setGoalCompletionCount(goalRes.count ?? 0);
     setLoaded(true);
@@ -101,8 +102,8 @@ export function useMissions() {
 
   const missions = useMemo<Mission[]>(() => {
     const ctx: MeasureCtx = {
-      tradeCount,
-      holdingsCount: account.holdings.length,
+      learningCount: learning.entries.length,
+      riskCount: learning.entries.filter(entry => entry.kind === "risk").length,
       watchlistCount: watchlistSymbols.length,
       alertCount,
       goalCompletionCount,
@@ -119,17 +120,17 @@ export function useMissions() {
         current,
         target,
         progress,
-        done: Boolean(unlocked[def.id]) || progress >= 100,
-        rewardXp: def.rewardXp,
+        done: Boolean(unlocked[def.id]),
       };
     });
-  }, [tradeCount, account.holdings.length, watchlistSymbols.length, alertCount, goalCompletionCount, gameDay, unlocked]);
+  }, [learning.entries, watchlistSymbols.length, alertCount, goalCompletionCount, gameDay, unlocked]);
 
   // Detect newly-completed missions and persist them once loaded.
   useEffect(() => {
     if (!user || !loaded) return;
-    const newlyDone = missions.filter(
-      (m) => m.progress >= 100 && !unlocked[m.id] && !pendingRef.current.has(m.id)
+    missions.filter(m => m.current >= m.target).forEach(m => reachedRef.current.set(m.id, m));
+    const newlyDone = [...reachedRef.current.values()].filter(
+      (m) => !unlocked[m.id] && !pendingRef.current.has(m.id)
     );
     if (newlyDone.length === 0) return;
 
@@ -151,13 +152,13 @@ export function useMissions() {
             id: `mission-${m.id}`,
             kind: "mission",
             title: `Mission complete: ${m.title}`,
-            description: `+${m.rewardXp} XP — ${m.description}`,
+            description: m.description,
           });
           addInboxMessage(user.id, {
             id: `mission-${m.id}`,
             from: "Your Advisor",
             subject: `Mission complete: ${m.title}`,
-            body: `${m.description} You earned +${m.rewardXp} XP.`,
+            body: m.description,
             category: "mission",
           });
         });
@@ -167,15 +168,20 @@ export function useMissions() {
         // Leave the ids in pendingRef so this does not spin, and tell the
         // player their progress is showing locally but has not been saved.
         setPersistenceError(
-          `Could not save mission progress: ${error.message}. It will retry when you reload.`
+          "Mission progress could not be saved. Try again."
         );
       }
     })();
+<<<<<<< HEAD
   }, [missions, unlocked, user, loaded, retryToken]);
+=======
+  }, [missions, unlocked, user, loaded, retry]);
+>>>>>>> 607e372 (feat: add learning entries and account flows tracking)
 
   // Clearing the ref alone changed no dependency, so the save never re-ran.
   const retryPersistence = useCallback(() => {
     pendingRef.current.clear();
+    setRetry((value) => value + 1);
     setPersistenceError(null);
     setRetryToken((token) => token + 1);
   }, []);

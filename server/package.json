@@ -6,7 +6,10 @@
     "start": "node dist/server.js",
     "build": "tsc",
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
-    "test": "ts-node --transpile-only src/tests/run.ts"
+    "test": "ts-node --transpile-only src/tests/run.ts",
+    "prebuild": "node scripts/sync-market.cjs",
+    "predev": "node scripts/sync-market.cjs",
+    "pretest": "node scripts/sync-market.cjs"
   },
   "keywords": [],
   "author": "",

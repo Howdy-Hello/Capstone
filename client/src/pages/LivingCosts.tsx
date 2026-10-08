@@ -9,9 +9,15 @@ import { CARD, D, MONO, money } from "../theme/design";
 export default function LivingCosts() {
   const trading = useGame();
   const nextBillDay = (Math.floor(trading.gameDay / 7) + 1) * 7;
+<<<<<<< HEAD
   // A 30-day run never reaches day 35, 42...
   const upcomingBillDays = [nextBillDay, nextBillDay + 7, nextBillDay + 14]
     .filter((day) => trading.maxGameDay === null || day <= trading.maxGameDay);
+=======
+  if (trading.maxGameDay !== null && nextBillDay > trading.maxGameDay) {
+    return <Container sx={{ py: 5 }}><Typography variant="h4">Living Costs</Typography><Typography sx={{ mt: 2 }}>{trading.isGameComplete ? "Challenge complete. " : ""}No more bills are due in this challenge.</Typography></Container>;
+  }
+>>>>>>> 607e372 (feat: add learning entries and account flows tracking)
   const daysRemaining = nextBillDay - trading.gameDay;
   const cashAfterBill = Math.max(0, trading.account.cash - WEEKLY_BILL_TOTAL);
   const shortfall = Math.max(0, WEEKLY_BILL_TOTAL - trading.account.cash);
@@ -67,10 +73,14 @@ export default function LivingCosts() {
 
             <Box sx={{ ...CARD, p: 3 }}>
               <Typography sx={{ color: D.t1, fontWeight: 900, mb: 2 }}>Upcoming schedule</Typography>
+<<<<<<< HEAD
               {upcomingBillDays.length === 0 && (
                 <Typography sx={{ color: D.t3, fontSize: 13 }}>No more bills are due before this run ends.</Typography>
               )}
               {upcomingBillDays.map((day, index) => (
+=======
+              {[nextBillDay, nextBillDay + 7, nextBillDay + 14].filter((day) => trading.maxGameDay === null || day <= trading.maxGameDay).map((day, index) => (
+>>>>>>> 607e372 (feat: add learning entries and account flows tracking)
                 <Stack key={day} direction="row" justifyContent="space-between" alignItems="center" sx={{ py: 1.4, borderTop: index ? `1px solid ${D.border}` : "none" }}>
                   <Stack direction="row" spacing={1.2} alignItems="center"><CalendarMonthIcon sx={{ color: index ? D.t3 : D.brandText, fontSize: 19 }} /><Box><Typography sx={{ color: D.t1, fontWeight: 800, fontSize: 13 }}>Day {day}</Typography><Typography sx={{ color: D.t3, fontSize: 11 }}>{index ? "Future cycle" : "Next payment"}</Typography></Box></Stack>
                   <Typography sx={{ color: D.t2, fontFamily: MONO, fontWeight: 900 }}>{money(WEEKLY_BILL_TOTAL)}</Typography>

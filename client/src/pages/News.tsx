@@ -71,10 +71,11 @@ export default function News() {
           </Button>
         </Stack>
 
-        <Typography sx={{ color: D.t2, fontSize: 14, lineHeight: 1.6, mb: 2 }}>
+        <Box component="details" sx={{ mb: 2, color: D.t2 }}><summary>Understanding news signals</summary>
+        <Typography sx={{ fontSize: 14, lineHeight: 1.6 }}>
           Bullish signals point up; bearish signals point down. Confidence describes signal strength.
           Credibility estimates report reliability from the publisher and rumor status. A score out of 100 is not a probability of profit.
-        </Typography>
+        </Typography></Box>
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} md={5}><TextField fullWidth size="small" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search headlines, companies, or tickers" InputProps={{ startAdornment: <SearchIcon sx={{ mr: 1, color: D.t3 }} /> }} /></Grid>
           {([

@@ -1,4 +1,5 @@
 import React from "react";
+import InvestingPath from "../components/learning/InvestingPath";
 import { useSearchParams } from "react-router-dom";
 import {
   Box, Button, Chip, Container, Divider, Grid, LinearProgress, Stack, Tab, Tabs, Typography,
@@ -24,21 +25,21 @@ import { D, CARD, MONO } from "../theme/design";
 /* ─── Data ─────────────────────────────────────────────────── */
 const tutorialSteps = [
   { title: "Start with Cash",  desc: "You begin with $2,000 of virtual capital. Allocate carefully — cash is your safety net when markets turn.",                               icon: <AccountBalanceWalletIcon /> },
-  { title: "Buy Stocks",       desc: "Pick companies you believe will rise. The core objective: buy low, sell higher. Position size matters as much as selection.",               icon: <TrendingUpIcon /> },
-  { title: "Read the News",    desc: "Each day surfaces market events. Strong traders read headlines before placing orders, not after prices have already moved.",               icon: <NewspaperIcon /> },
+  { title: "Buy Stocks",       desc: "Research a business and explain your decision. A small position or a decision to wait can both fit a plan.",               icon: <TrendingUpIcon /> },
+  { title: "Read the News",    desc: "Read credible evidence and ask whether it changes the business. Real prices may react immediately; our turn-based news window is simplified.",               icon: <NewspaperIcon /> },
   { title: "Manage Risk",      desc: "Never concentrate everything in one position. Spreading across sectors limits the damage of any single bad bet.",                         icon: <WarningAmberIcon /> },
 ];
 const strategyTips = [
-  "Buy a strong company that fell on temporary negative news.",
-  "Sell into strength — lock in profit before momentum reverses.",
+  "Investigate whether bad news changes long-term earnings; a falling price alone is not a reason to buy.",
+  "Use your goal and exit rule rather than guessing the next price move.",
   "Never deploy 100% of cash at once; keep dry powder.",
   "Watch sector exposure — diversify across industries.",
   "Track your reasoning; log why you entered before entering.",
 ];
 const daySteps = [
   { title: "Review your position", text: "Check cash balance and current holdings before making any new order." },
-  { title: "Read the market news",  text: "Headlines signal which companies may rise or fall this turn." },
-  { title: "Place orders",          text: "Buy stocks you expect to rise. Sell to realise profit or cut a losing position." },
+  { title: "Read the market news",  text: "Ask whether a headline is credible, unexpected, and relevant to the business." },
+  { title: "Place orders",          text: "Choose whether to buy, sell, or wait based on evidence, cash needs, and your plan." },
   { title: "Advance the day",       text: "The market updates, prices shift, and fresh events appear." },
 ];
 const quickLessons = [
@@ -48,8 +49,8 @@ const quickLessons = [
   { title: "News needs interpretation",  text: "A good headline can be priced in. A bad one can be temporary. Markets react to surprise, scale, and credibility — not tone.",                   icon: <NewspaperIcon /> },
 ];
 const coreConcepts = [
-  { title: "Market Capitalization", text: "Share price × shares outstanding. It sizes a company relative to others. Large-cap firms are more stable; small-cap stocks move faster but carry more risk." },
-  { title: "Earnings & EPS",        text: "EPS = earnings per share. Rising EPS over time usually justifies a higher stock price." },
+  { title: "Market Capitalization", text: "Share price × shares outstanding. It sizes a company relative to others. Size can affect risk and liquidity, but large companies can also suffer major losses." },
+  { title: "Earnings & EPS",        text: "EPS = earnings per share. Compare earnings quality and changes over time; raw EPS differs with share counts and is not a ranking across companies." },
   { title: "P/E Ratio",             text: "Price divided by annual earnings per share. High P/E signals growth expectations; low P/E may mean value or deteriorating fundamentals." },
   { title: "Revenue Growth",        text: "Expanding revenue confirms demand. It matters most when the company can eventually convert sales into profit at meaningful margins." },
   { title: "Profit Margin",         text: "Revenue minus costs as a percentage. High margins signal pricing power or efficiency." },
@@ -60,7 +61,7 @@ const coreConcepts = [
 const orderTypes = [
   { title: "Market Order",   text: "Executes immediately at the best available price. Fast, but the fill price may differ from what you expected." },
   { title: "Limit Order",    text: "Sets your price ceiling when buying or floor when selling. Gives price control, but may never execute." },
-  { title: "Stop Order",     text: "Triggers a buy or sell when the stock crosses a threshold. Used to limit losses." },
+  { title: "Stop Order",     text: "Becomes a market order once triggered. The stop price is not a guaranteed fill price, especially during a gap." },
   { title: "Position Size",  text: "The share of your portfolio in one trade. Sizing is the most practical risk control." },
 ];
 const marketForces = [
@@ -88,13 +89,13 @@ const sectorGuide = [
 ];
 const investorMistakes = [
   "Chasing price — buying because a stock is already up.",
-  "Panic selling without checking whether the original thesis changed.",
+  "Panic selling without checking whether the original reason for buying changed.",
   "Overconcentrating in one company or sector.",
   "Confusing a great company with a great stock price.",
   "Ignoring debt, margins, or cash flow.",
   "Trusting rumours without evaluating credibility.",
   "Trading too frequently without a written plan.",
-  "Refusing to exit when the thesis is proven wrong.",
+  "Refusing to exit when the reason for buying is no longer supported.",
 ];
 const decisionFramework = [
   { title: "1. Business",    text: "What does the company sell, who buys it, and why might demand grow or shrink?" },
@@ -197,12 +198,12 @@ function TutorialTab() {
         <Box sx={{ ...CARD, p: 3 }}>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={2}>
             <Box>
-              <Typography sx={{ fontWeight: 950, fontSize: 17, color: D.t1 }}>Ready to test your strategy?</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t3 }}>Launch the simulator and try to grow your portfolio without blowing up your cash.</Typography>
+              <Typography sx={{ fontWeight: 950, fontSize: 17, color: D.t1 }}>Try your first practice decision</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t3 }}>Research, decide, and reflect. No account required; your saved game stays safe.</Typography>
             </Box>
-            <Button variant="contained" component={RouterLink} to="/game"
+            <Button variant="contained" component={RouterLink} to="/practice"
               sx={{ bgcolor: D.brand, fontWeight: 900, textTransform: "none", borderRadius: 1.5, px: 4, whiteSpace: "nowrap", boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-              Open Simulator
+              Try practice
             </Button>
           </Stack>
         </Box>
@@ -287,7 +288,7 @@ function GuideTab() {
               <PieChartIcon sx={{ color: D.brandText, fontSize: 18 }} />
               <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Sector Volatility</Typography>
             </Stack>
-            <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Industries react differently to the same economic conditions.</Typography>
+            <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Illustrative game scores, not measured real-world risk. Industries react differently to economic conditions.</Typography>
             <Divider sx={{ borderColor: D.border, mb: 2.5 }} />
             {sectorGuide.map((sector) => (
               <Box key={sector.name} sx={{ mb: 2.5 }}>
@@ -343,9 +344,9 @@ function GuideTab() {
               <Typography sx={{ fontSize: 13, color: D.t3 }}>Use the Game page to practise, then review the Dashboard to see how your positions behave.</Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
-              <Button variant="contained" component={RouterLink} to="/game"
+              <Button variant="contained" component={RouterLink} to="/practice"
                 sx={{ bgcolor: D.brand, fontWeight: 900, textTransform: "none", borderRadius: 1.5, px: 3, whiteSpace: "nowrap", boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-                Open Simulator
+                Try practice
               </Button>
               <Button component={RouterLink} to="/inbox"
                 sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, px: 3, whiteSpace: "nowrap", "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
@@ -362,9 +363,9 @@ function GuideTab() {
 /* ─── Page ───────────────────────────────────────────────── */
 export default function Learn() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get("tab") === "guide" ? 1 : 0;
+  const tab = searchParams.get("tab") === "investing" ? 2 : searchParams.get("tab") === "guide" ? 1 : 0;
   const setTab = (value: number) => {
-    setSearchParams(value === 1 ? { tab: "guide" } : {}, { replace: true });
+    setSearchParams(value === 2 ? { tab: "investing" } : value === 1 ? { tab: "guide" } : {}, { replace: true });
   };
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
@@ -376,29 +377,29 @@ export default function Learn() {
               <Chip label={tab === 0 ? "BEGINNER TUTORIAL" : "REAL MARKET GUIDE"} size="small"
                 sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1.5 }} />
               <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, letterSpacing: -1, color: D.t1, lineHeight: 1.1, mb: 1.5 }}>
-                {tab === 0 ? "Learn to trade before you trade." : "How the stock market actually works."}
+                {tab === 2 ? "Build an investing plan." : tab === 0 ? "Learn to make a reasoned decision." : "How the stock market actually works."}
               </Typography>
               <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.7, maxWidth: 600 }}>
                 {tab === 0
                   ? "This tutorial covers buying, selling, reading market news, and building better decision habits in the StockPilot simulator."
-                  : "This guide turns simulator experience into real market intuition: valuation, price movement, news analysis, and risk management."}
+                  : "Explore investing concepts beyond the game: valuation, uncertainty, diversification, and risk. Try the Investing Path for longer horizons and execution lessons."}
               </Typography>
             </Grid>
             <Grid item xs={12} md={5}>
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
                 <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, letterSpacing: 1, mb: 0.5 }}>{tab === 0 ? "QUICK OBJECTIVE" : "CORE IDEA"}</Typography>
                 <Typography sx={{ fontWeight: 950, fontSize: 17, color: D.t1, my: 0.8 }}>
-                  {tab === 0 ? "Grow your net worth." : "Stocks move when expectations change."}
+                  {tab === 0 ? "Explain your decision." : "Stocks move when expectations change."}
                 </Typography>
                 <Typography sx={{ fontSize: 13, color: D.t3, mb: 2.5, lineHeight: 1.7 }}>
                   {tab === 0
-                    ? "Net worth = cash + value of all held shares. The higher it climbs, the stronger your score."
+                    ? "Learning progress comes from research, risk awareness, and reflection. A thoughtful decision to wait counts. Profit competition is an optional challenge."
                     : "The market compares new information against what investors already believed. Your job is to judge whether new info truly changes the business."}
                 </Typography>
                 <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
                   {[
                     { label: "Starting Capital", val: "$2,000" },
-                    { label: "Win Condition",    val: "Net Worth ↑" },
+                    { label: "Learning Goal",    val: "Explain why" },
                     { label: "Risk",             val: "Always" },
                   ].map((b) => (
                     <Box key={b.label} sx={{ px: 2, py: 1.2, borderRadius: 2, bgcolor: D.overlay, border: `1px solid ${D.borderHi}`, textAlign: "center", minWidth: 100 }}>
@@ -413,20 +414,21 @@ export default function Learn() {
 
           {/* Tabs */}
           <Box sx={{ borderTop: `1px solid ${D.border}` }}>
-            <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{
+            <Tabs variant="scrollable" scrollButtons="auto" value={tab} onChange={(_, v) => setTab(v)} sx={{
               "& .MuiTab-root": { color: D.t3, fontWeight: 900, fontSize: 13.5, textTransform: "none", px: 3, py: 2, minHeight: 52 },
               "& .Mui-selected": { color: D.t1 },
               "& .MuiTabs-indicator": { bgcolor: D.brand, height: 3, borderRadius: "2px 2px 0 0" },
             }}>
               <Tab label="Tutorial — How to Play"        icon={<SchoolIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
-              <Tab label="Market Guide — Real Concepts"  icon={<AutoStoriesIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+              <Tab label="Market Guide — Real Concepts" icon={<AutoStoriesIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+              <Tab label="Investing Path — Goals & Practice" icon={<SavingsIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
             </Tabs>
           </Box>
         </Container>
       </Box>
 
       <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-        {tab === 0 ? <TutorialTab /> : <GuideTab />}
+        {tab === 2 ? <InvestingPath /> : tab === 0 ? <TutorialTab /> : <GuideTab />}
       </Container>
     </Box>
   );

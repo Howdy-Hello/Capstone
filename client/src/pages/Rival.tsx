@@ -44,7 +44,7 @@ function StatCard({ label, value, sub, accent, delay = 0 }: {
 
 export default function Rival() {
   const reduceMotion = useReducedMotion();
-  const { gameDay, gameMode, marketSeed } = useGame();
+  const { gameDay, gameMode } = useGame();
   const {
     rivalName, rivalNetWorth, playerNetWorth, playerAhead, gapPct, positions, equityCurve,
   } = useRivalTrader();
@@ -90,9 +90,7 @@ export default function Rival() {
                   {rivalName}
                 </Typography>
                 <Typography sx={{ fontSize: 13.5, color: D.t3, mt: 0.75 }}>
-                  A fixed {positions.length}-stock buy-and-hold basket, chosen from seed{" "}
-                  <Box component="span" sx={{ color: D.brandText, fontFamily: MONO }}>{marketSeed}</Box>
-                  {" "}and held since Day 1. Same market, same starting cash — no trading after the open.
+                  Your rival holds these stocks throughout the run.
                 </Typography>
               </Box>
               <Chip
@@ -195,9 +193,7 @@ export default function Rival() {
                 {rivalName}&rsquo;s equity curve
               </Typography>
               <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>
-                The basket is buy-and-hold, so its value on any past day comes straight from that
-                day&rsquo;s closes. Your own net worth isn&rsquo;t stored per day, so it&rsquo;s
-                shown as today&rsquo;s line rather than a history.
+                Rival history compared with your current net worth.
               </Typography>
               <Box sx={{ height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -346,7 +342,6 @@ export default function Rival() {
             <Divider sx={{ borderColor: D.border, mb: 2 }} />
             <Stack spacing={1.25}>
               {[
-                `Their basket is picked from your market seed, so every player on seed ${marketSeed} faces the same rival with the same holdings.`,
                 `They start with the same ${money(RIVAL_STARTING_CASH)} you do, split equally across ${positions.length} companies on Day 1.`,
                 "They never trade again — beating them means beating a disciplined buy-and-hold, which is harder than it sounds.",
                 gameMode === "limited_30"
