@@ -33,7 +33,7 @@ const STEPS = [
   { n: "04", title: "Review what happened", desc: "Separate the quality of your reasoning from a lucky gain or an unlucky loss." },
 ];
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 // The huge top margin counts anything above the viewport as "in view", so a
 // visitor who jumps past a section (End key, fast fling) still gets it revealed

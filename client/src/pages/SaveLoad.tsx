@@ -13,7 +13,7 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import CloseIcon from "@mui/icons-material/Close";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { supabase } from "../lib/supabase";
+import { isMissingDbObject, supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { GameMode, useGame } from "../context/GameContext";
 import { D, CARD, MONO, money } from "../theme/design";
@@ -103,10 +103,13 @@ export default function SaveLoad() {
     // Snapshotted server-side from the session itself: a slot is restored into
     // cash and holdings, so the client can't be the one to write it.
     try {
-      const { error } = await supabase.rpc("create_save_slot", {
+      let { error } = await supabase.rpc("create_save_slot", {
         target_session_id: trading.sessionId,
         slot_name: `Day ${trading.gameDay} Run`,
       });
+      if (isMissingDbObject(error)) {
+        ({ error } = await supabase.rpc("create_save_slot", { slot_name: `Day ${trading.gameDay} Run` }));
+      }
       if (error) {
         setMessage({ text: `Save failed: ${error.message}`, severity: "error" });
       } else {

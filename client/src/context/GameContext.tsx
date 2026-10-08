@@ -249,7 +249,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const reportError = useCallback((error: unknown) => {
     const message = errorMessage(error, "");
-    const safe = ["Not enough cash", "Not enough shares", "Your game has changed. Reload before trying again.", "Challenge complete. Start a new run to play.", "Market quote unavailable. Try again."];
+    const safe = ["Not enough cash", "Not enough shares", "Your game has changed. Reload before trying again.", "Challenge complete. Start a new run to play.", "The market is closed. Advance to the next day to trade.", "Market data for this day is not ready yet"];
     setError(error instanceof ApiError || safe.includes(message) ? message : "Your game could not be saved. Check your connection and try again.");
   }, []);
 
@@ -624,18 +624,28 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       stock = currentStock;
       const key = `${session.id}:${gameDay}:${stock.symbol}:${tradeType}:${quantity}`;
       if (pendingTrade.current?.key !== key) pendingTrade.current = { key, id: crypto.randomUUID() };
-      await ensureSessionMarket(session.id);
-      const { data, error: tradeError } = await supabase.rpc("execute_trade_checked", {
+      const tradeArgs = {
         target_session_id: session.id,
         target_symbol: stock.symbol,
         target_trade_type: tradeType,
         target_game_day: gameDay,
         target_quantity: quantity,
+      };
+      let { data, error: tradeError } = await supabase.rpc("execute_trade_checked", {
+        ...tradeArgs,
         operation_id: pendingTrade.current.id,
       });
+      if (isMissingDbObject(tradeError)) {
+        ({ data, error: tradeError } = await supabase.rpc("execute_trade", {
+          ...tradeArgs,
+          target_price: stock.currentPrice,
+        }));
+      }
       if (tradeError) throw tradeError;
       pendingTrade.current = null;
       const result = data as TradeResult;
+      const volumeKey = `${tradeType}:${stock.symbol}`;
+      setTradedToday((current) => ({ ...current, [volumeKey]: (current[volumeKey] ?? 0) + quantity }));
 
       setAccount((current) => {
         const existing = current.holdings.find(
@@ -677,8 +687,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         };
       });
 
+      let journalSaved = true;
       if (journal && (journal.thesis.trim() || journal.exitPlan.trim())) {
-        const journalSaved = await recordTradeJournalEntry({
+        journalSaved = await recordTradeJournalEntry({
           sessionId: session.id,
           userId: user.id,
           symbol: stock.symbol,
@@ -688,22 +699,31 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           gameDay,
           journal,
         });
-        if (!journalSaved) {
-          setError("The trade completed, but its decision journal could not be saved.");
-          return true;
-        }
       }
 
-      try { await loadOrCreateSession(); }
+      // The checked trade validates the prepared market. A trade only changes
+      // the account, so keep the already loaded prices, news and watchlist.
+      try {
+        const [holdings, refreshed] = await Promise.all([
+          loadHoldings(session.id),
+          supabase.from("game_sessions").select(SESSION_COLUMNS).eq("id", session.id).single(),
+        ]);
+        if (refreshed.error) throw refreshed.error;
+        const activeSession = refreshed.data as GameSession;
+        if (activeSession.current_day !== gameDayRef.current) throw new Error("Your game has changed. Reload before trying again.");
+        setSession(activeSession);
+        if (activeSession.market_phase) setMarketPhase(activeSession.market_phase);
+        setAccount({ cash: asNumber(activeSession.cash_balance), holdings, unpaidBills: asNumber(activeSession.unpaid_bills) });
+      }
       catch (error) {
         console.error("Trade saved, refresh failed", error);
         setError("Your trade was saved. Reload to refresh your account.");
         return true;
       }
-      setError(null);
+      setError(journalSaved ? null : "The trade completed, but its decision journal could not be saved.");
       return true;
     } catch (error) { reportError(error); return false; } finally { endAction(); }
-  }, [gameMode, stocks, gameDay, loadOrCreateSession, session, user, beginAction, endAction, reportError]);
+  }, [gameMode, stocks, gameDay, loadHoldings, session, user, beginAction, endAction, reportError]);
 
   const buyStock = useCallback(
     (stock: Stock, quantity = 1, journal?: TradeJournalInput) => executeTrade(stock, "buy", quantity, journal),

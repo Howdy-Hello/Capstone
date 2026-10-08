@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert, Box, Button, Checkbox, Container, Divider, FormControlLabel, Grid, IconButton,
   InputAdornment, Link, Stack, TextField, Typography,
@@ -56,6 +56,15 @@ const AuthPage: React.FC = () => {
   const [resending, setResending] = useState(false);
   // BUG-027: problems are shown under the field they belong to.
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const nameInput = useRef<HTMLInputElement>(null);
+  const emailInput = useRef<HTMLInputElement>(null);
+  const passwordInput = useRef<HTMLInputElement>(null);
+
+  const focusFirstError = (problems: FieldErrors) => {
+    if (problems.name) nameInput.current?.focus();
+    else if (problems.email) emailInput.current?.focus();
+    else if (problems.password) passwordInput.current?.focus();
+  };
 
   const throttleKey = `${mode === "reset" ? "login" : mode}:${email.trim().toLowerCase() || "anon"}`;
   const throttle = useAuthThrottle(throttleKey);
@@ -105,7 +114,10 @@ const AuthPage: React.FC = () => {
     }
     const problems = validate();
     setFieldErrors(problems);
-    if (Object.keys(problems).length) return;
+    if (Object.keys(problems).length) {
+      focusFirstError(problems);
+      return;
+    }
     setSubmitting(true);
     try {
       if (mode === "login") {
@@ -143,7 +155,10 @@ const AuthPage: React.FC = () => {
     } catch (err: any) {
       const message: string = err?.message ?? "Something went wrong. Try again.";
       const field = fieldForAuthError(message);
-      if (field) setFieldErrors({ [field]: message });
+      if (field) {
+        setFieldErrors({ [field]: message });
+        focusFirstError({ [field]: message });
+      }
       else setError(message);
     } finally {
       setSubmitting(false);
@@ -298,13 +313,13 @@ const AuthPage: React.FC = () => {
 
                 {mode === "signup" && (
                   <TextField label="Full name" value={name} onChange={(e) => { setName(e.target.value); clearFieldError("name"); }} autoComplete="name" required
-                    error={Boolean(fieldErrors.name)} helperText={fieldErrors.name} sx={field} />
+                    inputRef={nameInput} error={Boolean(fieldErrors.name)} helperText={fieldErrors.name} sx={field} />
                 )}
                 <TextField label="Email address" type="email" value={email} onChange={(e) => { setEmail(e.target.value); clearFieldError("email"); }} autoComplete="email" required
-                  error={Boolean(fieldErrors.email)} helperText={fieldErrors.email} sx={field} />
+                  inputRef={emailInput} error={Boolean(fieldErrors.email)} helperText={fieldErrors.email} sx={field} />
                 {mode !== "reset" && (
                   <TextField label="Password" type={showPw ? "text" : "password"} value={password} onChange={(e) => { setPassword(e.target.value); clearFieldError("password"); }}
-                    autoComplete={mode === "login" ? "current-password" : "new-password"} required
+                    inputRef={passwordInput} autoComplete={mode === "login" ? "current-password" : "new-password"} required
                     error={Boolean(fieldErrors.password)} helperText={fieldErrors.password ?? (mode === "signup" ? "At least 6 characters." : undefined)} sx={field}
                     InputProps={{ endAdornment: (
                       <InputAdornment position="end">
