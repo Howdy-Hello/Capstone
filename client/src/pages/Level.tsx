@@ -14,8 +14,10 @@ import {
   getLevelCashReward, getPlayerLevel, getTotalXpForLevel, getXpRequirement,
 } from "../data/levelSystem";
 import { CARD, D, MONO } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export default function Level() {
+  usePageTitle("Level");
   const { achievements, totalXP, loading } = useAchievements();
   const playerLevel = useMemo(() => getPlayerLevel(totalXP), [totalXP]);
   const remainingXp = playerLevel.xpForNextLevel - playerLevel.xpIntoLevel;
@@ -53,7 +55,7 @@ export default function Level() {
             <Box>
               <Chip label="PLAYER PROGRESSION" size="small"
                 sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
+              <Typography component="h1" sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
                 Level {playerLevel.level}
               </Typography>
               <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>

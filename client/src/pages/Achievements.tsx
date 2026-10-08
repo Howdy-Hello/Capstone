@@ -19,6 +19,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { D, CARD, MONO } from "../theme/design";
 import { useAchievements } from "../hooks/useAchievements";
 import { getPlayerLevel } from "../data/levelSystem";
+import { usePageTitle } from "../lib/usePageTitle";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -43,6 +44,7 @@ const ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function Achievements() {
+  usePageTitle("Achievements");
   const reduceMotion = useReducedMotion();
   const {
     achievements, totalXP, loading, persistenceError, retryPersistence,
@@ -74,7 +76,7 @@ export default function Achievements() {
               <Box>
                 <Chip label="ACHIEVEMENT SYSTEM" size="small"
                   sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-                <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Milestones</Typography>
+                <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Milestones</Typography>
                 <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
                   Achievements reward strong trading habits and portfolio growth.
                 </Typography>

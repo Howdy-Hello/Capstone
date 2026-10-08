@@ -18,6 +18,7 @@ import { useGame } from "../context/GameContext";
 import { useRivalTrader, RIVAL_STARTING_CASH } from "../hooks/useRivalTrader";
 import { useInboxMessages } from "../lib/inbox";
 import { D, MONO, money, pct } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 function StatCard({ label, value, sub, accent, delay = 0 }: {
   label: string; value: string; sub?: React.ReactNode; accent?: string; delay?: number;
@@ -43,6 +44,7 @@ function StatCard({ label, value, sub, accent, delay = 0 }: {
 }
 
 export default function Rival() {
+  usePageTitle("Rival");
   const reduceMotion = useReducedMotion();
   const { gameDay, gameMode } = useGame();
   const {
@@ -86,7 +88,7 @@ export default function Rival() {
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Chip label="RIVAL TRADER" size="small"
                   sx={{ bgcolor: D.amberBg, color: D.amber, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-                <Typography sx={{ fontWeight: 950, fontSize: { xs: 24, md: 30 }, color: D.t1, lineHeight: 1.05 }}>
+                <Typography component="h1" sx={{ fontWeight: 950, fontSize: { xs: 24, md: 30 }, color: D.t1, lineHeight: 1.05 }}>
                   {rivalName}
                 </Typography>
                 <Typography sx={{ fontSize: 13.5, color: D.t3, mt: 0.75 }}>

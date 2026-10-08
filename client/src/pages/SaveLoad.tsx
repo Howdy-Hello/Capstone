@@ -17,6 +17,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { GameMode, useGame } from "../context/GameContext";
 import { D, CARD, MONO, money } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -49,6 +50,7 @@ const UNRANKED_NOTE =
   "This run is now unranked: the save is from before the furthest day you've already played on this market, or from an unranked run. You can keep playing; it just won't appear on the leaderboards.";
 
 export default function SaveLoad() {
+  usePageTitle("Save & load");
   const reduceMotion = useReducedMotion();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -183,7 +185,7 @@ export default function SaveLoad() {
             <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
               <Box>
 
-                <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Save & Load</Typography>
+                <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Save & Load</Typography>
                 <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
                   Cloud saves persist across devices. Up to {MAX_SLOTS} slots.
                 </Typography>

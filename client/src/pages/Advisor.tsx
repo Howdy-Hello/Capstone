@@ -6,8 +6,10 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import { ADVISORS, AdvisorDefinition, useAdvisor } from "../hooks/useAdvisor";
 import { useGame } from "../context/GameContext";
 import { CARD, D, MONO, money } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export default function Advisor() {
+  usePageTitle("Advisor");
   const trading = useGame();
   const advisorState = useAdvisor();
   const [selected, setSelected] = useState<AdvisorDefinition | null>(null);
@@ -24,7 +26,7 @@ export default function Advisor() {
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh", py: { xs: 3, md: 5 } }}>
       <Container data-tour="advisor-page" maxWidth="lg">
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 1 }}>
-          <Box><Stack direction="row" spacing={1.2} alignItems="center"><SmartToyIcon sx={{ color: D.brandText }} /><Typography sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 950 }}>Advisor Marketplace</Typography></Stack><Typography sx={{ color: D.t3, mt: 1 }}>Hire specialists with game cash. Advisors remain available for the current run.</Typography></Box>
+          <Box><Stack direction="row" spacing={1.2} alignItems="center"><SmartToyIcon sx={{ color: D.brandText }} /><Typography component="h1" sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 950 }}>Advisor Marketplace</Typography></Stack><Typography sx={{ color: D.t3, mt: 1 }}>Hire specialists with game cash. Advisors remain available for the current run.</Typography></Box>
           <Chip icon={<AccountBalanceWalletIcon />} label={`${money(trading.account.cash)} available`} sx={{ alignSelf: { sm: "flex-start" }, bgcolor: D.greenBg, color: D.greenText, fontFamily: MONO, fontWeight: 900 }} />
         </Stack>
 

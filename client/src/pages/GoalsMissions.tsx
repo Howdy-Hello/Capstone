@@ -8,6 +8,7 @@ import { useDailyGoals } from "../hooks/useDailyGoals";
 import { useMissions } from "../hooks/useMissions";
 import { useGame } from "../context/GameContext";
 import { CARD, D } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const GoalList = ({ items }: { items: Array<{ id: string; title: string; description: string; kind?: LearningKind; progress: number; done: boolean }> }) => (
   <Stack spacing={1.2}>
@@ -28,6 +29,7 @@ const GoalList = ({ items }: { items: Array<{ id: string; title: string; descrip
 );
 
 export default function GoalsMissions() {
+  usePageTitle("Learning goals");
   const daily = useDailyGoals();
   const missions = useMissions();
   const { gameDay } = useGame();
@@ -35,7 +37,7 @@ export default function GoalsMissions() {
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh", py: { xs: 3, md: 5 } }}>
       <Container maxWidth="lg">
-        <Typography sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 950, mb: 1 }}>Learning Goals</Typography>
+        <Typography component="h1" sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 950, mb: 1 }}>Learning Goals</Typography>
         <Typography sx={{ color: D.t3, mb: 3 }}>Research, explain, and reflect. You can complete every daily goal without buying anything. Notes record practice; they do not certify decision quality.</Typography>
         {missions.persistenceError && <Alert severity="error" action={<Button onClick={missions.retryPersistence}>Retry</Button>}>{missions.persistenceError}</Alert>}
         {daily.persistenceError && <Alert severity="error" action={<Button onClick={daily.retryPersistence}>Retry</Button>}>{daily.persistenceError}</Alert>}

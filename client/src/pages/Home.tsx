@@ -10,6 +10,7 @@ import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const STOCKS = [
   { sym: "CAI", name: "Closed Ai",        price: 112.14, change: 3.21 },
@@ -40,6 +41,7 @@ const MotionBox = motion(Box);
 const REVEAL_VIEWPORT = { once: true, margin: "100000px 0px 0px 0px" };
 
 export default function Home() {
+  usePageTitle();
   const { user } = useAuth();
   return (
     <Box sx={{ bgcolor: D.bg, color: D.t1 }}>

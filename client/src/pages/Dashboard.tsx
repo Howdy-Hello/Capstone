@@ -28,6 +28,7 @@ import { useLevel } from "../hooks/useLevel";
 import { supabase } from "../lib/supabase";
 import { TradeJournalEntry } from "../lib/tradeJournal";
 import { D, CARD, MONO, money, pct } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -99,6 +100,7 @@ function StatTile({ label, value, icon, up, index = 0 }: { label: string; value:
 }
 
 export default function Dashboard() {
+  usePageTitle("Dashboard");
   const reduceMotion = useReducedMotion();
   const trading = useGame();
   const { user, profile } = useAuth();
@@ -274,7 +276,7 @@ export default function Dashboard() {
             <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
               <Box>
                 <Chip label={`DAY ${gameDay}`} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-                <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
+                <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
                   {playerName}&apos;s Dashboard
                 </Typography>
                 <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Live portfolio view for Game Day {gameDay} · {modeLabel}</Typography>

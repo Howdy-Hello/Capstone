@@ -5,8 +5,10 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useGame, WEEKLY_BILL_ITEMS, WEEKLY_BILL_TOTAL } from "../context/GameContext";
 import { CARD, D, MONO, money } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export default function LivingCosts() {
+  usePageTitle("Living costs");
   const trading = useGame();
   const nextBillDay = (Math.floor(trading.gameDay / 7) + 1) * 7;
   // A 30-day run never reaches day 35, 42...
@@ -25,7 +27,7 @@ export default function LivingCosts() {
       <Container maxWidth="lg">
         <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 1 }}>
           <ReceiptLongIcon sx={{ color: D.redText }} />
-          <Typography sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 950 }}>Living Costs</Typography>
+          <Typography component="h1" sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 950 }}>Living Costs</Typography>
         </Stack>
         <Typography sx={{ color: D.t3, mb: 3 }}>Plan ahead for the fixed expenses deducted from your cash every seven game days.</Typography>
 

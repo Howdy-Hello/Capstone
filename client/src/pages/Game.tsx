@@ -42,6 +42,7 @@ import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 import { TradeJournalInput } from "../lib/tradeJournal";
 import { getTutorialProgress, updateTutorialProgress } from "../lib/tutorial";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const DEV_CONSOLE_ENABLED = process.env.NODE_ENV !== "production";
 // Framer Motion 11 predates React 19's stricter JSX return type.
@@ -53,6 +54,7 @@ const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
 type MiniLeaderEntry = { rank: number; username: string; net_worth: number; user_id: string };
 
 export default function Game() {
+  usePageTitle("Market");
   const reduceMotion = useReducedMotion();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -475,7 +477,7 @@ export default function Game() {
                   label={`LEVEL ${level.level} · ${level.progressPercent}%`} size="small"
                   sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
               </Stack>
-              <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>Stock Market Simulator</Typography>
+              <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>Stock Market Simulator</Typography>
               <Typography sx={{ fontSize: 13, color: D.t2, mb: 2.5 }}>
                 {modeDescription}
               </Typography>

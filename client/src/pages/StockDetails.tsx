@@ -31,6 +31,7 @@ import { AlertCondition, describeAlert, useStockAlerts } from "../hooks/useStock
 import { useAdvisor } from "../hooks/useAdvisor";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 import { TradeJournalInput } from "../lib/tradeJournal";
+import { usePageTitle } from "../lib/usePageTitle";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -110,6 +111,7 @@ function CandleTooltip({ active, payload }: any) {
 export default function StockDetails() {
   const reduceMotion = useReducedMotion();
   const { symbol } = useParams();
+  usePageTitle(symbol ? `${symbol.toUpperCase()} stock` : "Stock");
   const navigate = useNavigate();
   const trading = useGame();
   const [tradeMsg, setTradeMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -159,7 +161,7 @@ export default function StockDetails() {
     return (
       <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Box sx={{ ...CARD, p: 4, maxWidth: 480, textAlign: "center" }}>
-          <Typography sx={{ fontWeight: 900, fontSize: 22, color: D.t1, mb: 1 }}>Stock not found</Typography>
+          <Typography component="h1" sx={{ fontWeight: 900, fontSize: 22, color: D.t1, mb: 1 }}>Stock not found</Typography>
           <Typography sx={{ fontSize: 14, color: D.t3, mb: 3 }}>The symbol does not exist in the market data.</Typography>
           <Button onClick={() => navigate("/game")} startIcon={<ArrowBackIcon />} variant="contained"
             sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
@@ -237,7 +239,7 @@ export default function StockDetails() {
                       sx={{ bgcolor: D.overlay, color: D.brandText, border: `1px solid ${D.border}`, fontWeight: 800, fontSize: 10.5, fontFamily: MONO }} />
                   ))}
                 </Stack>
-                <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>{stock.name}</Typography>
+                <Typography component="h1" sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>{stock.name}</Typography>
                 <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.7, maxWidth: 600 }}>{stock.description}</Typography>
                 <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} style={{ display: "inline-block", marginTop: 16 }}>
                   <Button onClick={() => trading.toggleWatchlist(stock)} startIcon={watchlisted ? <StarIcon /> : <StarBorderIcon />}

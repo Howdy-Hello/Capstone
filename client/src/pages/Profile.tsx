@@ -18,6 +18,7 @@ import { useAuth } from "../context/AuthContext";
 import ThemeSettingsPanel from "../components/ThemeSettingsPanel";
 import { D, MONO } from "../theme/design";
 import { getTutorialProgress } from "../lib/tutorial";
+import { usePageTitle } from "../lib/usePageTitle";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -63,6 +64,7 @@ const sectionSx = (accent?: string) => ({
 });
 
 export default function ProfilePage() {
+  usePageTitle("Profile");
   const reduceMotion = useReducedMotion();
   const { user, profile, profileLoading, profileError, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
@@ -246,7 +248,7 @@ export default function ProfilePage() {
             <Box>
               <Chip label={isSettings ? "SETTINGS" : "PROFILE"} size="small"
                 sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography sx={{ fontWeight: 950, fontSize: { xs: 22, md: 26 }, color: D.t1, lineHeight: 1.1 }}>
+              <Typography component="h1" sx={{ fontWeight: 950, fontSize: { xs: 22, md: 26 }, color: D.t1, lineHeight: 1.1 }}>
                 {isSettings ? "Account Settings" : "Your Profile"}
               </Typography>
             </Box>

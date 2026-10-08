@@ -4,8 +4,10 @@ import { Link as RouterLink } from "react-router-dom";
 import { useGame } from "../context/GameContext";
 import { getSharesOwned } from "../data/tradingState";
 import { CARD, D, MONO, money, pct } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export default function Watchlist() {
+  usePageTitle("Watchlist");
   const trading = useGame();
 
   return (
@@ -13,7 +15,7 @@ export default function Watchlist() {
       <Container data-tour="watchlist-page" maxWidth="lg">
         <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 1 }}>
           <StarIcon sx={{ color: D.amber }} />
-          <Typography sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 950 }}>Watchlist</Typography>
+          <Typography component="h1" sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 950 }}>Watchlist</Typography>
           <Chip label={trading.watchlistStocks.length} size="small" sx={{ bgcolor: D.overlay, color: D.t2, fontWeight: 900 }} />
         </Stack>
         <Typography sx={{ color: D.t3, mb: 3 }}>Track stocks you want to revisit without buying them.</Typography>

@@ -17,6 +17,7 @@ import { getSharesOwned } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
 import { resolveComparisonSymbols } from "../lib/routing";
 import { CARD, D, MONO, money, pct } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -32,6 +33,7 @@ type Metric = {
 };
 
 export default function CompareStocks() {
+  usePageTitle("Compare stocks");
   const reduceMotion = useReducedMotion();
   const trading = useGame();
   const { getHistory } = trading;
@@ -120,7 +122,7 @@ export default function CompareStocks() {
               <Box>
                 <Chip label="STOCK COMPARISON" size="small"
                   sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-                <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Compare Stocks</Typography>
+                <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Compare Stocks</Typography>
                 <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Review price action, fundamentals, risk, and ownership without changing your portfolio.</Typography>
               </Box>
               <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>

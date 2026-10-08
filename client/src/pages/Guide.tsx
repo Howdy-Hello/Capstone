@@ -23,6 +23,7 @@ import SavingsIcon from "@mui/icons-material/Savings";
 import ShieldIcon from "@mui/icons-material/Shield";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import { Link as RouterLink } from "react-router-dom";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const BRAND = {
   navy: "#2C3947",
@@ -193,6 +194,7 @@ const decisionFramework = [
 ];
 
 export default function Guide() {
+  usePageTitle("Market guide");
   return (
     <Box sx={{ bgcolor: BRAND.background, minHeight: "100vh" }}>
       <Box sx={{ bgcolor: BRAND.navy, color: "#fff", px: { xs: 3, md: 8 }, py: { xs: 5, md: 7 } }}>
@@ -210,6 +212,7 @@ export default function Guide() {
             />
 
             <Typography
+              component="h1"
               variant="h2"
               sx={{
                 fontWeight: 950,

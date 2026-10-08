@@ -4,6 +4,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { updateTutorialProgress } from "../lib/tutorial";
 import { CARD, D, money } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const scenarios = [
   { title: "Good news can already be priced in", facts: "Northstar Software is a fictional business selling subscriptions. Revenue grew 12%, but its share price already rose 25% before today's earnings announcement. P/E is 42. You have $2,000, including $100 needed for a bill.", news: "Earnings match the market's expectations. Tomorrow's scripted price falls from $100 to $96.", lesson: "A positive headline does not promise a price rise. Expectations and valuation matter; waiting for more evidence was reasonable." },
@@ -12,6 +13,7 @@ const scenarios = [
 ];
 
 export default function Practice() {
+  usePageTitle("Practice");
   const { user } = useAuth();
   const lessonHeading = useRef<HTMLHeadingElement>(null);
   const [index, setIndex] = useState(0);

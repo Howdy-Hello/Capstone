@@ -8,10 +8,12 @@ import SearchIcon from "@mui/icons-material/Search";
 import { useGame } from "../context/GameContext";
 import { getNewsCredibility, MarketNews } from "../data/mockStocks";
 import { CARD, D, MONO } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const all = "All";
 
 export default function News() {
+  usePageTitle("News");
   const { gameDay, marketPhase, newsHistory } = useGame();
   const [query, setQuery] = useState("");
   const [publisher, setPublisher] = useState(all);
@@ -50,7 +52,7 @@ export default function News() {
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box sx={{ width: 42, height: 42, borderRadius: 2, bgcolor: D.brandBg, color: D.brandText, display: "grid", placeItems: "center" }}><NewspaperIcon /></Box>
             <Box>
-              <Typography sx={{ color: D.t1, fontSize: 26, fontWeight: 950 }}>Market Newsroom</Typography>
+              <Typography component="h1" sx={{ color: D.t1, fontSize: 26, fontWeight: 950 }}>Market Newsroom</Typography>
               <Typography sx={{ color: D.t3, fontSize: 13 }}>Browse revealed reports by company, sector, publisher, and event type.</Typography>
             </Box>
           </Stack>

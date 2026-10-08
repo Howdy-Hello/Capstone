@@ -21,6 +21,7 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { Link as RouterLink } from "react-router-dom";
 import { D, CARD, MONO } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 /* ─── Data ─────────────────────────────────────────────────── */
 const tutorialSteps = [
@@ -362,6 +363,7 @@ function GuideTab() {
 
 /* ─── Page ───────────────────────────────────────────────── */
 export default function Learn() {
+  usePageTitle("Learn");
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get("tab") === "investing" ? 2 : searchParams.get("tab") === "guide" ? 1 : 0;
   const setTab = (value: number) => {
@@ -376,7 +378,7 @@ export default function Learn() {
             <Grid item xs={12} md={7}>
               <Chip label={tab === 0 ? "BEGINNER TUTORIAL" : "REAL MARKET GUIDE"} size="small"
                 sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1.5 }} />
-              <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, letterSpacing: -1, color: D.t1, lineHeight: 1.1, mb: 1.5 }}>
+              <Typography component="h1" sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, letterSpacing: -1, color: D.t1, lineHeight: 1.1, mb: 1.5 }}>
                 {tab === 2 ? "Build an investing plan." : tab === 0 ? "Learn to make a reasoned decision." : "How the stock market actually works."}
               </Typography>
               <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.7, maxWidth: 600 }}>

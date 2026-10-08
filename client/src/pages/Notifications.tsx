@@ -6,6 +6,7 @@ import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { clearNotificationHistory, markNotificationsSeen, useNotificationHistory } from "../lib/notifications";
 import { D, CARD, MONO } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 function timeLabel(value?: string) {
   if (!value) return "";
@@ -13,6 +14,7 @@ function timeLabel(value?: string) {
 }
 
 export default function Notifications() {
+  usePageTitle("Notifications");
   const notifications = useNotificationHistory();
 
   // Opening the list is what clears the header badge. Runs on every visit, not
@@ -27,7 +29,7 @@ export default function Notifications() {
         <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
           <Chip label="ACTIVITY" size="small"
             sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-          <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
+          <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
             Notifications & Activity
           </Typography>
           <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
