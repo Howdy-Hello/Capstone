@@ -1,3 +1,10 @@
+-- NOT APPLIED. Renamed from 202610070001_learning_and_account_breakdown.sql (version clash with the applied
+-- 202610060001_lock_profile_rewards_and_achievements.sql). Written against
+-- f3f4ab6: as it stands it re-creates a player-callable advance_game_day,
+-- prices trades from session_quotes, and drops the live ranked/seeded-run,
+-- bill-debt and run-cap logic. Do not run until it is reconciled with
+-- 202609250001..202610080002 (see qa-evidence report, "Fixes applied").
+
 begin;
 
 -- Learning credit records practice, not a certification of reasoning quality.

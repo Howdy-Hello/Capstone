@@ -14,7 +14,7 @@ The 24 numbered findings and the requested text cuts have code changes. The sepa
 
 ## Release requirements and compatibility
 
-Deploy the API and client together with `supabase/migrations/202610060001_gameplay_integrity.sql`. The gameplay API is now required: set `REACT_APP_API_URL` to the running API. There is deliberately no client-write fallback. Build the server from a full repository checkout; `server/scripts/sync-market.cjs` copies the canonical pure market modules from `client/src/data` before build/dev/test.
+Deploy the API and client together with `supabase/migrations/202610080003_gameplay_integrity.sql`. The gameplay API is now required: set `REACT_APP_API_URL` to the running API. There is deliberately no client-write fallback. Build the server from a full repository checkout; `scripts/sync-market-engine.cjs` copies the canonical pure market modules from `client/src/data` before build/dev/test.
 
 Historical state cannot be certified retroactively. Existing sessions and legacy saves remain playable as practice runs; new runs qualify for leaderboards and new achievement unlocks. Existing account achievements are retained. Previously completed scores are not imported into the verified results table. Old snapshots cannot reconstruct purchases, phase, histories, or reward claims they never recorded; new snapshots capture all of these. Riley ownership still present in the original browser is imported when that legacy practice run is opened, so it can then follow the run across devices and into new saves.
 

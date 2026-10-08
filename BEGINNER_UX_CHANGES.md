@@ -19,7 +19,7 @@ The first visit now leads to a public practice decision rather than registration
 
 ## Persistence and release
 
-Apply `supabase/migrations/202610070001_learning_and_account_breakdown.sql` after the existing gameplay integrity migration. Deploy the updated client with it. This migration was tested against a disposable PostgreSQL engine; it has not been applied to production.
+Apply `supabase/migrations/202610080004_learning_and_account_breakdown.sql` after the existing gameplay integrity migration. Deploy the updated client with it. This migration was tested against a disposable PostgreSQL engine; it has not been applied to production.
 
 Learning notes are owned by the user and scoped to the active session and day. Notes cannot refer to another run's trade journal. Daily goal completion requires the corresponding note (or two watched stocks). Learning credit does not add competitive XP or grant cash rewards.
 
