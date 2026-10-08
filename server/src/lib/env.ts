@@ -42,14 +42,14 @@ export function getServerEnvIssues(): EnvIssue[] {
   if (!hasAnyEnv(ANON_KEYS)) {
     issues.push({
       key: ANON_KEYS.join(" or "),
-      message: "An anon/publishable key is recommended so user-scoped API routes enforce RLS.",
+      message: "SUPABASE_ANON_KEY or SUPABASE_PUBLISHABLE_KEY is required for user-scoped API routes; account routes and game sync cannot work without it.",
     });
   }
 
   if (!getMarketSecret()) {
     issues.push({
       key: "MARKET_SEED_SECRET",
-      message: "Set MARKET_SEED_SECRET to at least 16 characters, or leave it unset to use the server-only Supabase credential in production.",
+      message: "Set a stable, server-only MARKET_SEED_SECRET of at least 16 characters. It is required in production and must stay unchanged for active runs.",
     });
   }
 
@@ -61,6 +61,11 @@ export function getServerEnvIssues(): EnvIssue[] {
   }
 
   return issues;
+}
+
+export function getServerConfigStatus(issues = getServerEnvIssues()): 200 | 503 {
+  const blocking = ["SUPABASE_URL", SERVICE_ROLE_KEYS.join(" or "), ANON_KEYS.join(" or "), "MARKET_SEED_SECRET"];
+  return issues.some((issue) => blocking.includes(issue.key)) ? 503 : 200;
 }
 
 // Deliberately no assertServerEnv()/throwing variant here. Config problems must

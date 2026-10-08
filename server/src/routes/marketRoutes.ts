@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { supabaseErrorResponse, supabaseHandler } from '../lib/supabaseServer';
-import { rateLimit, userRateLimit } from '../middleware/rateLimit';
+import { userRateLimit } from '../middleware/rateLimit';
 import {
   ensureMarketThrough,
   getMarketSecret,
@@ -15,16 +15,20 @@ import { clampRunDay } from '../market/sessionMarket';
 
 const router = Router();
 
-const marketLimiter = rateLimit({
+const marketLimiter = userRateLimit({
   windowMs: 60 * 1000,
   max: 120,
-  bucket: 'game-market',
-  message: 'Too many game updates — slow down and try again shortly.',
 });
 
-// BUG-009: the IP limit above is shared by a whole classroom and does nothing
-// against one player on several IPs, so day advances are also capped per user.
+// Both budgets use the verified user id, so classmates sharing an IP do not
+// consume each other's quota and changing IPs cannot bypass the limit.
 const advancesPerUser = userRateLimit({ windowMs: 60 * 1000, max: 30 });
+
+function marketLimitError(userId: string) {
+  return marketLimiter(userId) ? null : Response.json({
+    message: 'Too many game updates — slow down and try again shortly.',
+  }, { status: 429 });
+}
 
 /** Largest single jump; bounds how much one request can ask the server to generate. */
 export const MAX_ADVANCE_DAYS = 1;
@@ -65,7 +69,9 @@ export function resolveAdvanceTarget(
 // POST /api/game/market  { sessionId }
 // Generates any missing days up to the run's current day (first load, legacy
 // runs, restored saves) and refreshes the stored net worth.
-router.post('/game/market', marketLimiter, supabaseHandler({ auth: 'user' }, async (req, ctx) => {
+router.post('/game/market', supabaseHandler({ auth: 'user' }, async (req, ctx) => {
+  const limited = marketLimitError(ctx.userClaims!.id);
+  if (limited) return limited;
   const body = await req.json().catch(() => ({}));
   if (!isUuid(body?.sessionId)) {
     return Response.json({ message: 'sessionId must be a session id.' }, { status: 400 });
@@ -91,7 +97,9 @@ router.post('/game/market', marketLimiter, supabaseHandler({ auth: 'user' }, asy
 // POST /api/game/advance  { sessionId, day }
 // Generates the market through `day`, then moves the run there and settles
 // weekly living costs through the checked, user-scoped advance RPC.
-router.post('/game/advance', marketLimiter, supabaseHandler({ auth: 'user' }, async (req, ctx) => {
+router.post('/game/advance', supabaseHandler({ auth: 'user' }, async (req, ctx) => {
+  const limited = marketLimitError(ctx.userClaims!.id);
+  if (limited) return limited;
   if (!advancesPerUser(ctx.userClaims!.id)) {
     return Response.json({ message: 'Too many day advances — slow down and try again shortly.' }, { status: 429 });
   }
@@ -133,7 +141,9 @@ router.post('/game/advance', marketLimiter, supabaseHandler({ auth: 'user' }, as
 
 // Kept so older clients don't 404. Values in the body are ignored: net worth
 // is computed from stored prices now.
-router.post('/game/sync', marketLimiter, supabaseHandler({ auth: 'user' }, async (req, ctx) => {
+router.post('/game/sync', supabaseHandler({ auth: 'user' }, async (req, ctx) => {
+  const limited = marketLimitError(ctx.userClaims!.id);
+  if (limited) return limited;
   const body = await req.json().catch(() => ({}));
   if (!isUuid(body?.sessionId)) {
     return Response.json({ message: 'sessionId must be a session id.' }, { status: 400 });

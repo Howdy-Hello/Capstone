@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { rateLimit } from "../middleware/rateLimit";
 import { validateBody } from "../middleware/validate";
-import { getServerEnvIssues } from "../lib/env";
+import { getServerConfigStatus, getServerEnvIssues } from "../lib/env";
 
 type MockResponse = {
   statusCode: number;
@@ -80,20 +80,30 @@ async function testRateLimit() {
 }
 
 async function testEnvValidation() {
-  const KEYS = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY"];
+  const KEYS = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_ANON_KEY", "SUPABASE_PUBLISHABLE_KEY", "NODE_ENV", "MARKET_SEED_SECRET"];
   const original = new Map(KEYS.map((key) => [key, process.env[key]]));
   try {
+    KEYS.forEach(key => { delete process.env[key]; });
     delete process.env.SUPABASE_URL;
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     delete process.env.SUPABASE_SECRET_KEY;
     const missing = getServerEnvIssues();
     assert.ok(missing.some((issue) => issue.key === "SUPABASE_URL"));
     assert.ok(missing.some((issue) => issue.key.includes("SUPABASE_SERVICE_ROLE_KEY")));
+    assert.equal(getServerConfigStatus(missing), 503);
 
     process.env.SUPABASE_URL = "https://example.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service-key";
     const fixed = getServerEnvIssues();
     assert.ok(!fixed.some((issue) => issue.key === "SUPABASE_URL"));
+    assert.ok(fixed.some((issue) => issue.key.includes("SUPABASE_ANON_KEY") && issue.message.includes("required")));
+    assert.equal(getServerConfigStatus(fixed), 503, "a missing user-scoped key blocks readiness");
+    process.env.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_test";
+    assert.equal(getServerConfigStatus(), 200, "the publishable key is a valid alternative");
+    process.env.NODE_ENV = "production";
+    assert.equal(getServerConfigStatus(), 503, "production requires a stable dedicated market secret");
+    process.env.MARKET_SEED_SECRET = "stable-test-market-secret";
+    assert.equal(getServerConfigStatus(), 200);
   } finally {
     // Restore per-key: reassigning process.env wholesale replaces the special
     // host object that propagates changes to the environment.
@@ -241,13 +251,14 @@ async function testMarketSecretConfiguration() {
     process.env.SUPABASE_ANON_KEY = "public-key-0123456789";
     assert.equal(getMarketSecret(), null, "public credentials must never key production markets");
     process.env.SUPABASE_SERVICE_ROLE_KEY = "server-only-key-0123456789";
-    const derived = getMarketSecret();
-    assert.match(derived!, /^[0-9a-f]{64}$/);
-    assert.equal(getMarketSecret(), derived, "fallback must be stable across instances");
-    assert.notEqual(derived, process.env.SUPABASE_SERVICE_ROLE_KEY);
-    assert.ok(!getServerEnvIssues().some(issue => issue.key === "MARKET_SEED_SECRET"));
+    assert.equal(getMarketSecret(), null, "a service key cannot substitute for the production market secret");
+    process.env.SUPABASE_SECRET_KEY = "sb_secret_rotated-0123456789";
+    assert.equal(getMarketSecret(), null, "adding a new server key cannot seed production markets");
+    assert.ok(getServerEnvIssues().some(issue => issue.key === "MARKET_SEED_SECRET"));
     process.env.MARKET_SEED_SECRET = "existing-market-secret-0123456789";
     assert.equal(getMarketSecret(), process.env.MARKET_SEED_SECRET, "keep existing markets unchanged");
+    process.env.SUPABASE_SECRET_KEY = "another-rotated-server-key";
+    assert.equal(getMarketSecret(), process.env.MARKET_SEED_SECRET, "credential rotation leaves markets unchanged");
     process.env.MARKET_SEED_SECRET = "short";
     assert.equal(getMarketSecret(), null, "an invalid explicit secret is a configuration error");
     assert.ok(getServerEnvIssues().some(issue => issue.key === "MARKET_SEED_SECRET"));
@@ -369,6 +380,29 @@ async function testUserRateLimit() {
   assert.equal(allow("user-a"), true);
   assert.equal(allow("user-a"), false, "third request in the window is refused");
   assert.equal(allow("user-b"), true, "other users have their own budget");
+  const classroom = userRateLimit({ windowMs: 60_000, max: 120 });
+  for (let player = 0; player < 30; player += 1) {
+    for (let request = 0; request < 120; request += 1) assert.equal(classroom(`player-${player}`), true);
+    assert.equal(classroom(`player-${player}`), false);
+  }
+}
+
+async function testSessionSchemaCompatibility() {
+  const { loadOwnedSession } = await import("../lib/marketService");
+  let row: any = { id: "run-a", current_day: 1 };
+  let selected = "";
+  const query: any = {
+    select: (columns: string) => { selected = columns; return query; },
+    eq: () => query,
+    maybeSingle: async () => ({ data: row, error: null }),
+  };
+  const admin = { from: () => query } as any;
+  assert.equal((await loadOwnedSession(admin, "run-a", "user-a"))?.market_phase, "after_hours");
+  assert.equal(selected, "*", "pending columns must not be named in the select");
+  row.market_phase = "market_open";
+  assert.equal((await loadOwnedSession(admin, "run-a", "user-a"))?.market_phase, "market_open");
+  row = null;
+  assert.equal(await loadOwnedSession(admin, "run-a", "user-a"), null);
 }
 
 async function testSecretMatches() {
@@ -395,6 +429,7 @@ async function main() {
   await testSecretMatches();
   await testGenerationSeed();
   await testMarketSecretConfiguration();
+  await testSessionSchemaCompatibility();
   await testSessionPriceChunking();
   await testNewsSanitized();
   await testScriptlessInfiniteRuns();

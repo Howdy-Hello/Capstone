@@ -9,7 +9,7 @@ import supabaseRoutes from './routes/supabaseRoutes';
 import gameRoutes from './routes/gameRoutes';
 import marketRoutes from './routes/marketRoutes';
 import { rateLimit } from './middleware/rateLimit';
-import { getServerEnvIssues } from './lib/env';
+import { getServerConfigStatus, getServerEnvIssues } from './lib/env';
 import { secretMatches } from './lib/supabaseServer';
 
 const app = express();
@@ -63,8 +63,13 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', db: dbStatus });
 });
 
-// Global request cap per IP across the API.
-app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 300, bucket: 'global' }));
+// Game market routes enforce quotas after authentication using the player id.
+// Applying the global IP cap too would still throttle an entire classroom.
+const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, bucket: 'global' });
+app.use('/api', (req, res, next) => {
+  if (req.method === 'POST' && /^\/game\/(market|advance|sync)\/?$/i.test(req.path)) return next();
+  globalLimiter(req, res, next);
+});
 
 app.use('/api', supabaseRoutes);
 app.use('/api', gameRoutes);
@@ -72,10 +77,7 @@ app.use('/api', marketRoutes);
 
 app.get('/api/health/config', (req: Request, res: Response) => {
   const issues = getServerEnvIssues();
-  // Without these every data route fails, so report not-ready.
-  const blocking = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY'];
-  if (isProduction) blocking.push('MARKET_SEED_SECRET');
-  const status = issues.some((issue) => blocking.includes(issue.key)) ? 503 : 200;
+  const status = getServerConfigStatus(issues);
 
   // Which env keys are missing is reconnaissance for an unauthenticated caller
   // (BUG-019): the detail needs ADMIN_API_SECRET, and is never shown while that

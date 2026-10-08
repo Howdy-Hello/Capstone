@@ -31,8 +31,9 @@ export type MarketSession = {
   market_engine?: number | null;
 };
 
-export const SESSION_COLUMNS =
-  'id, user_id, status, market_phase, current_day, game_mode, game_seed, market_generated_through, market_fingerprint, market_seed_secret, market_engine';
+// Pending migrations add fields such as market_phase. Selecting all columns
+// keeps the server usable while the database is still on the earlier schema.
+export const SESSION_COLUMNS = '*';
 
 /**
  * Engine 1: infinite runs replay the shared 30-day database script (the same
@@ -66,13 +67,8 @@ export function marketFingerprint(
 export function getMarketSecret(): string | null {
   const secret = process.env.MARKET_SEED_SECRET;
   if (secret) return secret.length >= 16 ? secret : null;
-  if (process.env.NODE_ENV !== 'production') return DEV_FALLBACK_SECRET;
-  // Reuse the existing server-only credential when no separate market key was
-  // configured. Domain separation keeps the credential itself out of seeds.
-  const serverKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return serverKey && serverKey.length >= 16
-    ? createHmac('sha256', serverKey).update('stockpilot:market-seed:v1').digest('hex')
-    : null;
+  // Credential rotation must never silently change active runs' future prices.
+  return process.env.NODE_ENV === 'production' ? null : DEV_FALLBACK_SECRET;
 }
 
 /**
@@ -290,5 +286,5 @@ export async function loadOwnedSession(
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
-  return (data as MarketSession | null) ?? null;
+  return data ? { ...data, market_phase: data.market_phase ?? 'after_hours' } as MarketSession : null;
 }
