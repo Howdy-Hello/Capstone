@@ -93,11 +93,7 @@ export const MONO = "'Courier New', Courier, monospace" as const;
 
 // Format helpers
 export function money(n: number): string {
-<<<<<<< HEAD
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-=======
-  return `${n < 0 ? "-" : ""}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
+  return `${n < 0 ? "-" : ""}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function pct(n: number, decimals = 2): string {

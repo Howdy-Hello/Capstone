@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-=======
 import DecisionNote from "../components/learning/DecisionNote";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Avatar, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
   CircularProgress, Divider, Grid, IconButton, LinearProgress, Stack, TextField, Typography,
@@ -191,23 +187,8 @@ export default function Game() {
 
   // A dialog opened on one day must not trade on the next.
   useEffect(() => {
-<<<<<<< HEAD
     setTradeDialog(null);
   }, [gameDay]);
-=======
-    const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
-      if (e.key === "ArrowRight" && !isGameComplete && !tradeDialog && !trading.actionPending) {
-        e.preventDefault();
-        if (marketPhase === "market_open") closeMarket();
-        else void setGameDay((d) => d + 1);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [closeMarket, gameMode, isGameComplete, marketPhase, setGameDay, tradeDialog, trading.actionPending]);
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
 
   useEffect(() => {
     if (!DEV_CONSOLE_ENABLED) return;
@@ -383,15 +364,10 @@ export default function Game() {
       return `Seed ${trading.marketSeed} | Mode ${gameMode} | Day ${gameDay} | Arcs ${arcs}${trading.sessionId ? ` | Session ${trading.sessionId}` : ""}`;
     }
 
-<<<<<<< HEAD
     if (action === "cash" || action === "money" || action === "shares") {
       // Cash and holdings are server-authoritative; the dev console can't
       // write them any more than a player can.
       return "Disabled: cash and holdings are managed by the game server.";
-=======
-    if (["cash", "money", "shares"].includes(action)) {
-      return "Cash and holdings can only change through gameplay.";
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
     }
 
     if (action === "day") {
@@ -421,17 +397,8 @@ export default function Game() {
 
     if (action === "reset") {
       const target = arg1.toLowerCase();
-<<<<<<< HEAD
       if (target === "cash" || target === "day") {
         return "Rejected: start a new run with `reset all`.";
-=======
-      if (target === "cash") {
-        return "Start a new run to reset cash.";
-      }
-      if (target === "day") {
-        setGameDay(1);
-        return "Applied.";
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
       }
       if (target === "all") {
         void trading.resetAccount(gameMode);

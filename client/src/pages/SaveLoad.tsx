@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Alert, Box, Button, CircularProgress, Container, Dialog, DialogActions,
+  Alert, Box, Button, Chip, CircularProgress, Container, Dialog, DialogActions,
   DialogContent, DialogTitle, Grid, IconButton, Stack, Typography,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
@@ -45,12 +45,8 @@ type SaveSlot = {
   ranked?: boolean;
 };
 
-<<<<<<< HEAD
 const UNRANKED_NOTE =
   "This run is now unranked: the save is from before the furthest day you've already played on this market, or from an unranked run. You can keep playing; it just won't appear on the leaderboards.";
-=======
-
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
 
 export default function SaveLoad() {
   const reduceMotion = useReducedMotion();
@@ -102,16 +98,11 @@ export default function SaveLoad() {
 
     setSaving(true);
     setMessage(null);
-<<<<<<< HEAD
     // Snapshotted server-side from the session itself: a slot is restored into
     // cash and holdings, so the client can't be the one to write it.
     const { error } = await supabase.rpc("create_save_slot", {
-      p_slot_name: `Day ${trading.gameDay} Run`,
-=======
-    const { error } = await supabase.rpc("create_save_slot", {
       target_session_id: trading.sessionId,
       slot_name: `Day ${trading.gameDay} Run`,
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
     });
 
     try {

@@ -165,20 +165,8 @@ export default function GuidedTutorial() {
     setBurst(null);
   };
 
-<<<<<<< HEAD
-  const prepareGameRun = async () => {
-    if (preparing) return;
-    setPreparing(true);
-    navigate("/game", { replace: true });
-    const started = await resetAccount("limited_30");
-    setPreparing(false);
-    // On failure the old run is still loaded; its day, phase and holdings
-    // would satisfy the lesson's wait steps instantly, so stay on this step.
-    if (started) next();
-  };
 
-=======
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
+
   const choose = (option: TourDecision["options"][number]) => {
     setDecisionFeedback({ ok: option.correct, text: option.feedback });
     if (option.correct) window.setTimeout(next, reduceMotion ? 0 : 520);

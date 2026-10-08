@@ -8,13 +8,19 @@ const mockUser = { id: 'user-a' };
 let mockSession: any;
 let mockRpc: jest.Mock;
 jest.mock('./AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
-jest.mock('../lib/api', () => ({ syncGameState: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('../lib/api', () => ({
+  syncGameState: jest.fn().mockResolvedValue(undefined),
+  ensureSessionMarket: jest.fn().mockResolvedValue({ currentDay: 1 }),
+  advanceSessionDay: jest.fn(),
+}));
 jest.mock('../lib/supabase', () => ({ supabase: {
   from: (table: string) => {
     const query: any = {};
-    for (const name of ['select', 'eq', 'order', 'limit', 'gt', 'range']) query[name] = () => query;
+    for (const name of ['select', 'eq', 'order', 'limit', 'gt', 'gte', 'range']) query[name] = () => query;
     query.maybeSingle = query.single = async () => ({ data: mockSession, error: null });
-    query.then = (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve);
+    query.then = (resolve: any) => Promise.resolve({ data: table === 'session_stock_prices'
+      ? [{ game_day: 1, symbol: 'GVE', open_price: 100, high_price: 100, low_price: 100, close_price: 100, volume: 1000, event_impact: 0 }]
+      : [], error: null }).then(resolve);
     return query;
   },
   rpc: (...args: any[]) => mockRpc(...args),
@@ -55,6 +61,7 @@ test('rapid trade clicks share one in-flight guard and failed trades preserve ca
     expect(await first).toBe(false);
   });
   expect(mockRpc).toHaveBeenCalledTimes(1);
+  expect(mockRpc.mock.calls[0][0]).toBe('execute_trade_checked');
   expect(game.account.cash).toBe(2000);
   expect(game.error).toBe('Not enough cash');
   expect(game.actionPending).toBe(false);

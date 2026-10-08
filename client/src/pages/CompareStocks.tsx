@@ -84,22 +84,6 @@ export default function CompareStocks() {
   const metrics = useMemo<Metric[]>(() => {
     if (!left || !right) return [];
     return [
-<<<<<<< HEAD
-      { label: "Current Price", left: money(left.currentPrice), right: money(right.currentPrice), leftRaw: left.currentPrice, rightRaw: right.currentPrice },
-      { label: "Day Move", left: pct(left.dayChangePercent), right: pct(right.dayChangePercent), leftRaw: left.dayChangePercent, rightRaw: right.dayChangePercent, preference: "higher" },
-      { label: "P/E Ratio", left: left.fundamentals.peRatio.toFixed(1), right: right.fundamentals.peRatio.toFixed(1), leftRaw: left.fundamentals.peRatio, rightRaw: right.fundamentals.peRatio, preference: "lower" },
-      { label: "EPS", left: money(left.fundamentals.eps), right: money(right.fundamentals.eps), leftRaw: left.fundamentals.eps, rightRaw: right.fundamentals.eps, preference: "higher" },
-      { label: "Revenue Growth", left: pct(left.fundamentals.revenueGrowth), right: pct(right.fundamentals.revenueGrowth), leftRaw: left.fundamentals.revenueGrowth, rightRaw: right.fundamentals.revenueGrowth, preference: "higher" },
-      { label: "Profit Margin", left: pct(left.fundamentals.profitMargin), right: pct(right.fundamentals.profitMargin), leftRaw: left.fundamentals.profitMargin, rightRaw: right.fundamentals.profitMargin, preference: "higher" },
-      { label: "Debt / Equity", left: left.fundamentals.debtToEquity.toFixed(2), right: right.fundamentals.debtToEquity.toFixed(2), leftRaw: left.fundamentals.debtToEquity, rightRaw: right.fundamentals.debtToEquity, preference: "lower" },
-      { label: "Dividend Yield", left: pct(left.fundamentals.dividendYield), right: pct(right.fundamentals.dividendYield), leftRaw: left.fundamentals.dividendYield, rightRaw: right.fundamentals.dividendYield, preference: "higher" },
-      { label: "Volatility", left: pct(left.volatility * 100), right: pct(right.volatility * 100), leftRaw: left.volatility, rightRaw: right.volatility, preference: "lower" },
-      { label: "Volume", left: left.volume.toLocaleString("en-US"), right: right.volume.toLocaleString("en-US"), leftRaw: left.volume, rightRaw: right.volume, preference: "higher" },
-      { label: "Risk Level", left: left.riskLevel, right: right.riskLevel },
-      { label: "Sector", left: left.sector, right: right.sector },
-      { label: "Analyst Rating", left: left.fundamentals.analystRating, right: right.fundamentals.analystRating },
-      { label: "Shares Owned", left: getSharesOwned(trading.account, left.symbol).toString(), right: getSharesOwned(trading.account, right.symbol).toString() },
-=======
       { label: "Current Price", left: money(left.currentPrice), right: money(right.currentPrice), note: "A lower share price does not mean a cheaper business." },
       { label: "Day Move", left: pct(left.dayChangePercent), right: pct(right.dayChangePercent), note: "One-day movement describes a result; it does not recommend a purchase." },
       { label: "P/E Ratio", left: left.fundamentals.peRatio.toFixed(1), right: right.fundamentals.peRatio.toFixed(1), note: "Price \u00f7 annual earnings per share. Lower can reflect lower growth expectations or weaker earnings prospects, as well as a lower valuation." },
@@ -114,7 +98,6 @@ export default function CompareStocks() {
       { label: "Sector", left: left.sector, right: right.sector, note: "Compare similar businesses; sectors have different economics and exposures." },
       { label: "Analyst Rating", left: left.fundamentals.analystRating, right: right.fundamentals.analystRating, note: "An illustrative game opinion. Investigate the evidence and uncertainty yourself." },
       { label: "Shares Owned", left: getSharesOwned(trading.account, left.symbol).toString(), right: getSharesOwned(trading.account, right.symbol).toString(), note: "Your exposure matters alongside the business case." },
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
     ];
   }, [left, right, trading.account]);
 

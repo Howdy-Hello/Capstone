@@ -176,11 +176,6 @@ export default function ProfilePage() {
       return;
     }
 
-    // Collected before deletion (the sessions go with the account) so only this
-    // player's local keys are cleared below, not other accounts' on this browser.
-    const { data: ownSessions } = await supabase.from("game_sessions").select("id").eq("user_id", user.id);
-    const ownIds = [user.id, ...(ownSessions ?? []).map((row: { id: string }) => row.id)];
-
     try {
       const owned = await supabase.from("game_sessions").select("id").eq("user_id", user!.id);
       if (owned.error) throw owned.error;
@@ -201,11 +196,7 @@ export default function ProfilePage() {
       // Keys carry a "-<userId>" or ":<sessionId>" part; sweep only this
       // player's, since other accounts may share the browser.
       Object.keys(localStorage)
-<<<<<<< HEAD
-        .filter((key) => key.startsWith("stockpilot-") && ownIds.some((id) => key.includes(id)))
-=======
         .filter((key) => key.startsWith("stockpilot-") && ownedIds.some((id) => key.includes(id)))
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
         .forEach((key) => localStorage.removeItem(key));
       await signOut();
       navigate("/", { replace: true });

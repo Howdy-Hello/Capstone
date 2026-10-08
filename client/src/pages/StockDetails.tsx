@@ -187,7 +187,6 @@ export default function StockDetails() {
   // One trade at a time: a double click sent two execute_trade calls, which
   // also left the tutorial holding 2 CAI and waiting forever for 0.
   const handleBuy = async () => {
-<<<<<<< HEAD
     if (submitting) return;
     setSubmitting(true);
     try {
@@ -210,18 +209,6 @@ export default function StockDetails() {
     } finally {
       setSubmitting(false);
     }
-=======
-    const quote = trading.getTradeQuote(stock, "buy", quantity);
-    const ok = await trading.buyStock(stock, quantity, journalInput());
-    const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
-    setTradeMsg({ ok, text: ok ? `Bought ${shares} of ${stock.symbol} for ${money(quote.total)}.` : "Trade could not be completed. Try again." });
-  };
-  const handleSell = async () => {
-    const quote = trading.getTradeQuote(stock, "sell", quantity);
-    const ok = await trading.sellStock(stock, quantity, journalInput());
-    const shares = `${quantity} share${quantity === 1 ? "" : "s"}`;
-    setTradeMsg({ ok, text: ok ? `Sold ${shares} of ${stock.symbol} for ${money(quote.total)}.` : "Trade could not be completed. Try again." });
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
   };
   const handleCreateAlert = async () => {
     const value = needsThreshold(alertCondition) ? parseFloat(alertThreshold) : 0;
@@ -290,17 +277,10 @@ export default function StockDetails() {
         {/* Stat tiles */}
         <Grid data-tour="stock-values" container spacing={2} sx={{ mb: 3 }}>
           {[
-<<<<<<< HEAD
-            { label: "Current Price",   val: money(stock.currentPrice),                             icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: true },
-            { label: "P/E Ratio",       val: stock.fundamentals.peRatio.toFixed(1),                 icon: <AssessmentIcon sx={{ fontSize: 20 }} />,           up: true },
-            { label: "Revenue Growth",  val: `+${stock.fundamentals.revenueGrowth.toFixed(1)}%`,    icon: <TrendingUpIcon sx={{ fontSize: 20 }} />,            up: true },
-            { label: "Volume",          val: latestHistory ? latestHistory.volume.toLocaleString("en-US") : "-", icon: <QueryStatsIcon sx={{ fontSize: 20 }} />,      up: undefined },
-=======
             { label: "Current Price",   val: money(stock.currentPrice),                             icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: undefined, note: "Price for one share; it is not the value of the whole business." },
             { label: "P/E Ratio",       val: stock.fundamentals.peRatio.toFixed(1),                 icon: <AssessmentIcon sx={{ fontSize: 20 }} />,           up: undefined, note: "Price divided by annual earnings per share; compare similar businesses." },
             { label: "Revenue Growth",  val: `+${stock.fundamentals.revenueGrowth.toFixed(1)}%`,    icon: <TrendingUpIcon sx={{ fontSize: 20 }} />,            up: undefined, note: "Change in sales; investigate whether sales become sustainable profit." },
             { label: "Volume",          val: latestHistory ? latestHistory.volume.toLocaleString() : "-", icon: <QueryStatsIcon sx={{ fontSize: 20 }} />,      up: undefined, note: "Number of shares traded, not a measure of business quality." },
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
           ].map((s, i) => {
             const color = s.up === undefined ? D.brandText : D.greenText;
             const bg    = s.up === undefined ? D.brandBg   : D.greenBg;
@@ -555,21 +535,13 @@ export default function StockDetails() {
                 <Stack spacing={1}>
                   <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
                     <Button data-tour="tutorial-buy" fullWidth variant="contained" onClick={handleBuy}
-<<<<<<< HEAD
-                      disabled={submitting || trading.advancing || trading.account.cash < buyQuote.total}
-=======
-                      disabled={trading.actionPending || trading.isGameComplete || trading.account.cash < buyQuote.total}
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
+                      disabled={submitting || trading.advancing || trading.actionPending || trading.isGameComplete || trading.account.cash < buyQuote.total}
                       sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Buy {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>
                   </motion.div>
                   <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
-<<<<<<< HEAD
-                    <Button data-tour="tutorial-sell" fullWidth variant="contained" disabled={submitting || trading.advancing || sharesOwned < quantity} onClick={handleSell}
-=======
-                    <Button data-tour="tutorial-sell" fullWidth variant="contained" disabled={trading.actionPending || trading.isGameComplete || sharesOwned < quantity} onClick={handleSell}
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
+                    <Button data-tour="tutorial-sell" fullWidth variant="contained" disabled={submitting || trading.advancing || trading.actionPending || trading.isGameComplete || sharesOwned < quantity} onClick={handleSell}
                       sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Sell {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>

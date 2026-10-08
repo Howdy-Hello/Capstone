@@ -2,7 +2,6 @@ import { supabase } from "./supabase";
 
 // Base URL of the StockPilot API server. Same convention Profile.tsx already uses.
 const API_BASE_URL = process.env.REACT_APP_API_URL ?? "http://localhost:5000";
-<<<<<<< HEAD
 // Reads with a direct-Supabase fallback stay snappy. Market calls have no
 // fallback -- only the server may generate a run's market or move its day --
 // and catching up a long run can take a few seconds, so they get longer.
@@ -16,11 +15,6 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
-=======
-// Keep server calls snappy so we fall back to direct Supabase quickly when the
-// API server isn't running (e.g. the static GitHub Pages deployment).
-const REQUEST_TIMEOUT_MS = 30000;
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
 
 export type LeaderboardRow = {
   user_id: string;
@@ -46,7 +40,6 @@ async function authedFetch(path: string, init: RequestInit = {}, timeoutMs = REQ
     };
     if (token) headers.Authorization = `Bearer ${token}`;
 
-<<<<<<< HEAD
     let res: Response;
     try {
       res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers, signal: controller.signal });
@@ -58,12 +51,6 @@ async function authedFetch(path: string, init: RequestInit = {}, timeoutMs = REQ
       throw new ApiError(typeof json?.message === "string" ? json.message : `API ${path} failed: ${res.status}`, res.status);
     }
     return json;
-=======
-    const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers, signal: controller.signal });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.message ?? "Game service unavailable. Try again.");
-    return result;
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
   } finally {
     clearTimeout(timer);
   }
@@ -82,7 +69,6 @@ export async function fetchLeaderboard(limit = 50): Promise<LeaderboardRow[]> {
   return (data ?? []) as LeaderboardRow[];
 }
 
-<<<<<<< HEAD
 /**
  * Refresh the session's stored net worth. The server computes it from stored
  * prices; nothing the client reports is written.
@@ -90,20 +76,6 @@ export async function fetchLeaderboard(limit = 50): Promise<LeaderboardRow[]> {
 export async function syncGameState(sessionId: string): Promise<void> {
   const { error } = await supabase.rpc("sync_session_value", { target_session_id: sessionId });
   if (error) throw error;
-=======
-/** Ask the trusted API to derive quotes and value the persisted holdings. */
-export async function syncGameState(params: {
-  sessionId: string;
-  portfolioValue?: number;
-  netWorth?: number;
-  gameMode?: GameMode;
-  day?: number | null;
-}): Promise<void> {
-  await authedFetch("/api/game/sync", {
-    method: "POST",
-    body: JSON.stringify({ sessionId: params.sessionId, day: params.day }),
-  });
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
 }
 
 /** Generate any missing market days up to the run's current day. */

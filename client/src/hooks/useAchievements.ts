@@ -149,11 +149,7 @@ function getQueueSnapshot() {
 
 export function useAchievements() {
   const { user } = useAuth();
-<<<<<<< HEAD
-  const { account, stocks, gameDay, watchlistStocks, sessionId } = useGame();
-=======
   const { account, stocks, gameDay, watchlistStocks, sessionId, cashStreak, gainStreak, verifiedRun } = useGame();
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
 
   const [unlocks, setUnlocks]       = useState<Record<string, string>>({});
   const [tradeCount, setTradeCount] = useState(0);
@@ -364,12 +360,6 @@ export function useAchievements() {
       }
 
       const alreadyUnlocked = Boolean(unlocks[def.id]);
-<<<<<<< HEAD
-      const justHit100      = progress >= 100
-        && !suppressedUnlocks.has(def.id)
-        && !rejectedUnlocks.has(def.id);
-=======
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
 
       return {
         ...def,
@@ -381,12 +371,7 @@ export function useAchievements() {
     });
   }, [
     account.cash, account.holdings.length, gameDay, heldSectorCount, netWorth,
-<<<<<<< HEAD
-    rejectedUnlocks, streak, suppressedUnlocks, tradeCount, unlockRates, unlocks,
-    watchlistStocks.length,
-=======
     cashStreak, gainStreak, tradeCount, unlockRates, unlocks, watchlistStocks.length,
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
   ]);
 
   // The server checks each condition itself (claim_achievements) and returns
@@ -458,11 +443,7 @@ export function useAchievements() {
     );
 
     if (newlyUnlocked.length > 0) void persistUnlocks(newlyUnlocked);
-<<<<<<< HEAD
-  }, [achievements, loading, persistUnlocks, rejectedUnlocks, suppressedUnlocks, unlocks, user]);
-=======
-  }, [achievements, loading, persistUnlocks, suppressedUnlocks, unlocks, user, verifiedRun, persistenceError]);
->>>>>>> 607e372 (feat: add learning entries and account flows tracking)
+  }, [achievements, rejectedUnlocks, loading, persistUnlocks, suppressedUnlocks, unlocks, user, verifiedRun, persistenceError]);
 
   // Once the real condition falls below its target, a dev-cleared achievement
   // becomes eligible to unlock naturally again.
