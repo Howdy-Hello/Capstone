@@ -22,7 +22,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build && node -e \"const fs=require('fs'); fs.rmSync('../docs',{recursive:true,force:true}); fs.mkdirSync('../docs',{recursive:true}); fs.cpSync('build','../docs',{recursive:true});\"",
+    "build": "react-scripts build",
     "build:railway": "react-scripts build",
     "start:railway": "serve -s build -l tcp://0.0.0.0:${PORT:-3000}",
     "test": "react-scripts test",

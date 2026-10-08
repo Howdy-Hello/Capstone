@@ -121,7 +121,6 @@ URL `https://capstone-gamma-navy.vercel.app`.
 
 Each folder's `vercel.json` supplies the framework and build settings. Vercel
 detects `server/src/server.ts` and supports its existing `app.listen` entry point.
-The frontend build intentionally skips the GitHub Pages copy into `docs/`.
 
 1. Import the repository again for a backend project named `stockpilot-api`,
    selecting `server` as the Root Directory. Set its Production environment:

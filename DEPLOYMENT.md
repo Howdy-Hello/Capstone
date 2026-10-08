@@ -56,9 +56,8 @@ Required env vars (from **Supabase → Project Settings → API**):
    the build command, publish dir, `CI=false`, and the SPA redirect.
 2. Add the env vars above → Deploy.
 
-> The repo's default `npm run build` script moves output into `../docs` for
-> GitHub Pages. The Vercel/Netlify configs override that to publish the CRA
-> `build/` directory directly, so all three deploy targets coexist.
+> GitHub Pages is no longer used: `npm run build` writes the CRA `build/`
+> directory, which Vercel and Netlify publish.
 
 ---
 
