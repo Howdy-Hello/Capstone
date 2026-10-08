@@ -6,10 +6,11 @@ import Practice from "./Practice";
 
 // CRA's Jest resolver predates React Router 7's subpath exports. Navigation is
 // irrelevant to these lesson checks, so render links as anchors in this test.
+// `virtual` because the package's "main" points at a file v7 no longer ships.
 jest.mock("react-router-dom", () => {
   const React = require("react");
   return { MemoryRouter: ({ children }: any) => children, Link: React.forwardRef(({ to, ...props }: any, ref: any) => <a ref={ref} href={to} {...props} />) };
-});
+}, { virtual: true });
 const mockReset = jest.fn();
 jest.mock("../context/AuthContext", () => ({ useAuth: () => ({ user: null }) }));
 jest.mock("../context/GameContext", () => ({ useGame: () => ({ resetAccount: mockReset }) }));

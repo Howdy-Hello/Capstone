@@ -37,6 +37,13 @@ function expected(file) {
 const check = process.argv.includes("--check");
 let stale = 0;
 
+// A deploy that ships only server/ has no client sources; keep the committed
+// copies (the test suite already fails when they are stale).
+if (!fs.existsSync(SOURCE_DIR)) {
+  console.warn("sync-market-engine: client/src/data not found, keeping committed copies");
+  process.exit(0);
+}
+
 fs.mkdirSync(TARGET_DIR, { recursive: true });
 for (const file of FILES) {
   const target = path.join(TARGET_DIR, file);

@@ -77,7 +77,10 @@ type GameSession = {
   gain_streak?: number;
 };
 
-const SESSION_COLUMNS = "id, current_day, cash_balance, game_mode, game_seed, unpaid_bills, market_phase, advisor_ids, trusted_state, cash_streak, gain_streak";
+// "*" rather than a column list: naming a column a not-yet-applied migration
+// adds (unpaid_bills, market_phase, ...) made PostgREST reject the whole query
+// and the game would not load (BUG-038). Missing fields fall back to defaults.
+const SESSION_COLUMNS = "*";
 
 type TradeResult = {
   execution_price: number;
@@ -494,7 +497,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setAccount((current) => ({
         ...current,
         cash: asNumber(result.cash),
-        unpaidBills: asNumber(result.unpaid_bills),
+        // advance_game_day (incoming design) returns no unpaid_bills; the
+        // refreshed row always has it.
+        unpaidBills: asNumber(result.unpaid_bills ?? (refreshed.data as GameSession).unpaid_bills),
       }));
       // Also shown when only carried-over debt was collected.
       if (result.cycles_charged > 0 || asNumber(result.amount_paid) > 0) {
@@ -598,6 +603,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
 
         return {
+          ...current,
           cash: asNumber(result.cash),
           holdings,
         };

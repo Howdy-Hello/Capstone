@@ -7,9 +7,9 @@
     "build": "tsc",
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
     "test": "ts-node --transpile-only src/tests/run.ts",
-    "prebuild": "node scripts/sync-market.cjs",
-    "predev": "node scripts/sync-market.cjs",
-    "pretest": "node scripts/sync-market.cjs"
+    "prebuild": "node ../scripts/sync-market-engine.cjs",
+    "predev": "node ../scripts/sync-market-engine.cjs",
+    "pretest": "node ../scripts/sync-market-engine.cjs"
   },
   "keywords": [],
   "author": "",
