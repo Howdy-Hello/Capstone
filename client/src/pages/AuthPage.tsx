@@ -15,6 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import { useAuthThrottle } from "../lib/authThrottle";
 import { AuthMode, resolveAuthMode } from "../lib/routing";
 import { D, MONO } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const PERKS = [
   "Trade 21 fictional stocks in a realistic market",
@@ -23,6 +24,15 @@ const PERKS = [
   "Compete on a global leaderboard",
   "In-depth market education built-in",
 ];
+
+type FieldErrors = { name?: string; email?: string; password?: string };
+
+/** Which field a Supabase Auth error is about, if any. */
+export function fieldForAuthError(message: string): keyof FieldErrors | null {
+  if (/already (registered|been registered)|already exists|invalid.*email|email.*invalid|unable to validate email/i.test(message)) return "email";
+  if (/password/i.test(message) && !/invalid login credentials/i.test(message)) return "password";
+  return null;
+}
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +43,7 @@ const AuthPage: React.FC = () => {
   const requestedMode = qs.get("mode");
   const oauthError = qs.get("oauth_error");
   const mode = resolveAuthMode(requestedMode);
+  usePageTitle(mode === "signup" ? "Sign up" : mode === "reset" ? "Reset password" : "Log in");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -43,6 +54,8 @@ const AuthPage: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
+  // BUG-027: problems are shown under the field they belong to.
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const throttleKey = `${mode === "reset" ? "login" : mode}:${email.trim().toLowerCase() || "anon"}`;
   const throttle = useAuthThrottle(throttleKey);
@@ -60,6 +73,7 @@ const AuthPage: React.FC = () => {
 
   useEffect(() => {
     setError(oauthError);
+    setFieldErrors({});
   }, [mode, oauthError]);
 
   // Show the "password updated" message once on arrival, without clobbering a
@@ -72,12 +86,13 @@ const AuthPage: React.FC = () => {
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-  const validate = () => {
-    if (!email || !emailRegex.test(email.trim())) return "Enter a valid email address.";
-    if (mode === "reset") return null;
-    if (mode === "signup" && name.trim().length < 2) return "Enter your full name (2+ characters).";
-    if (password.length < 6) return "Password must be at least 6 characters.";
-    return null;
+  const validate = (): FieldErrors => {
+    const problems: FieldErrors = {};
+    if (!email || !emailRegex.test(email.trim())) problems.email = "Enter a valid email address.";
+    if (mode === "reset") return problems;
+    if (mode === "signup" && name.trim().length < 2) problems.name = "Enter your full name (2+ characters).";
+    if (password.length < 6) problems.password = "Password must be at least 6 characters.";
+    return problems;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,8 +103,9 @@ const AuthPage: React.FC = () => {
       setError(`Too many attempts. Try again in ${throttle.remainingSeconds}s.`);
       return;
     }
-    const err = validate();
-    if (err) { setError(err); return; }
+    const problems = validate();
+    setFieldErrors(problems);
+    if (Object.keys(problems).length) return;
     setSubmitting(true);
     try {
       if (mode === "login") {
@@ -125,11 +141,17 @@ const AuthPage: React.FC = () => {
         setSuccessMsg("Password reset email sent. Check your inbox.");
       }
     } catch (err: any) {
-      setError(err?.message ?? "Something went wrong. Try again.");
+      const message: string = err?.message ?? "Something went wrong. Try again.";
+      const field = fieldForAuthError(message);
+      if (field) setFieldErrors({ [field]: message });
+      else setError(message);
     } finally {
       setSubmitting(false);
     }
   };
+
+  const clearFieldError = (key: keyof FieldErrors) =>
+    setFieldErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
 
   const handleGoogleSignIn = async () => {
     setError(null);
@@ -183,7 +205,8 @@ const AuthPage: React.FC = () => {
       "& fieldset": { borderColor: D.border },
       "&:hover fieldset": { borderColor: D.borderHi },
       "&.Mui-focused fieldset": { borderColor: D.brand },
-      "& input": { color: D.t1, fontSize: 14 },
+      // 16px: iOS zooms the page into any smaller input on focus (BUG-026).
+      "& input": { color: D.t1, fontSize: 16 },
     },
     "& .MuiInputLabel-root": { color: D.t3, fontSize: 13.5, "&.Mui-focused": { color: D.brandText } },
   };
@@ -239,7 +262,7 @@ const AuthPage: React.FC = () => {
                 <Typography sx={{ fontSize: 12, color: D.t3 }}>Back to home</Typography>
               </Stack>
 
-              <Typography sx={{ fontWeight: 950, fontSize: 22, color: D.t1, letterSpacing: -0.5, mb: 0.5 }}>
+              <Typography component="h1" sx={{ fontWeight: 950, fontSize: 22, color: D.t1, letterSpacing: -0.5, mb: 0.5 }}>
                 {headings[mode].title}
               </Typography>
               <Typography sx={{ fontSize: 13.5, color: D.t2, mb: 3 }}>{headings[mode].sub}</Typography>
@@ -274,12 +297,15 @@ const AuthPage: React.FC = () => {
                 </Divider>
 
                 {mode === "signup" && (
-                  <TextField label="Full name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required sx={field} />
+                  <TextField label="Full name" value={name} onChange={(e) => { setName(e.target.value); clearFieldError("name"); }} autoComplete="name" required
+                    error={Boolean(fieldErrors.name)} helperText={fieldErrors.name} sx={field} />
                 )}
-                <TextField label="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required sx={field} />
+                <TextField label="Email address" type="email" value={email} onChange={(e) => { setEmail(e.target.value); clearFieldError("email"); }} autoComplete="email" required
+                  error={Boolean(fieldErrors.email)} helperText={fieldErrors.email} sx={field} />
                 {mode !== "reset" && (
-                  <TextField label="Password" type={showPw ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
-                    autoComplete={mode === "login" ? "current-password" : "new-password"} required sx={field}
+                  <TextField label="Password" type={showPw ? "text" : "password"} value={password} onChange={(e) => { setPassword(e.target.value); clearFieldError("password"); }}
+                    autoComplete={mode === "login" ? "current-password" : "new-password"} required
+                    error={Boolean(fieldErrors.password)} helperText={fieldErrors.password ?? (mode === "signup" ? "At least 6 characters." : undefined)} sx={field}
                     InputProps={{ endAdornment: (
                       <InputAdornment position="end">
                         <IconButton aria-label={showPw ? "Hide password" : "Show password"} onClick={() => setShowPw((s) => !s)} edge="end" sx={{ color: D.t3 }}>

@@ -11,8 +11,10 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import { CARD, D } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export default function UpdatePassword() {
+  usePageTitle("Update password");
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [password, setPassword] = useState("");
@@ -28,7 +30,7 @@ export default function UpdatePassword() {
       "& fieldset": { borderColor: D.border },
       "&:hover fieldset": { borderColor: D.borderHi },
       "&.Mui-focused fieldset": { borderColor: D.brand },
-      "& input": { color: D.t1, fontSize: 14 },
+      "& input": { color: D.t1, fontSize: 16 },
     },
     "& .MuiInputLabel-root": {
       color: D.t3,
@@ -79,7 +81,7 @@ export default function UpdatePassword() {
     return (
       <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "grid", placeItems: "center", px: 2 }}>
         <Box sx={{ ...CARD, p: 4, width: "100%", maxWidth: 460, textAlign: "center" }}>
-          <Typography sx={{ fontSize: 22, fontWeight: 950, color: D.t1, mb: 1 }}>
+          <Typography component="h1" sx={{ fontSize: 22, fontWeight: 950, color: D.t1, mb: 1 }}>
             Reset link unavailable
           </Typography>
           <Typography sx={{ fontSize: 13.5, color: D.t2, lineHeight: 1.7, mb: 3 }}>
@@ -102,7 +104,7 @@ export default function UpdatePassword() {
             <LockResetIcon />
           </Box>
 
-          <Typography sx={{ fontSize: 24, fontWeight: 950, color: D.t1, mb: 0.5 }}>
+          <Typography component="h1" sx={{ fontSize: 24, fontWeight: 950, color: D.t1, mb: 0.5 }}>
             Choose a new password
           </Typography>
           <Typography sx={{ fontSize: 13.5, color: D.t2, mb: 3 }}>

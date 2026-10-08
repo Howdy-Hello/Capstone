@@ -35,6 +35,7 @@ import {
 import { useGame } from "../context/GameContext";
 import { MarketNews } from "../data/mockStocks";
 import { D, MONO } from "../theme/design";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
   initial?: boolean; mode?: "sync" | "popLayout" | "wait";
@@ -139,6 +140,7 @@ function newsToMail(news: MarketNews, read: boolean): MailItem {
 }
 
 export default function Inbox() {
+  usePageTitle("Inbox");
   const reduceMotion = useReducedMotion();
   const messages = useInboxMessages();
   const readNewsIds = useReadNewsIds();
@@ -216,12 +218,12 @@ export default function Inbox() {
               <MailOutlineIcon sx={{ fontSize: 21 }} />
             </Box>
             <Box>
-              <Typography sx={{ fontWeight: 950, fontSize: 16, color: D.t1, lineHeight: 1.1 }}>StockPilot Mail</Typography>
+              <Typography component="h1" sx={{ fontWeight: 950, fontSize: 16, color: D.t1, lineHeight: 1.1 }}>StockPilot Mail</Typography>
               <Typography sx={{ fontSize: 10, color: D.t3, fontFamily: MONO }}>MARKET DESK</Typography>
             </Box>
           </Stack>
           <TextField value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search news, people, or messages" size="small" inputProps={{ "aria-label": "Search mail" }}
-            sx={{ flex: 1, maxWidth: 720, "& .MuiOutlinedInput-root": { bgcolor: D.elevated, borderRadius: 2.5, height: 46, "& fieldset": { borderColor: "transparent" }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand }, "& input": { color: D.t1, fontSize: 13.5 } } }}
+            sx={{ flex: 1, maxWidth: 720, "& .MuiOutlinedInput-root": { bgcolor: D.elevated, borderRadius: 2.5, height: 46, "& fieldset": { borderColor: "transparent" }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand }, "& input": { color: D.t1, fontSize: { xs: 16, sm: 13.5 } } } }}
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: D.t3 }} /></InputAdornment> }} />
           <Box sx={{ flex: 1 }} />
           <Tooltip title="More options"><IconButton sx={{ color: D.t3 }}><MoreVertIcon /></IconButton></Tooltip>

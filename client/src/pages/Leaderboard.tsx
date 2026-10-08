@@ -22,6 +22,7 @@ import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { D, CARD, MONO, money } from "../theme/design";
 import { getPlayerLevel } from "../data/levelSystem";
+import { usePageTitle } from "../lib/usePageTitle";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -85,6 +86,7 @@ function buildRanked(rows: LeaderboardRow[]): RankedPlayer[] {
 }
 
 export default function Leaderboard() {
+  usePageTitle("Leaderboard");
   const reduceMotion = useReducedMotion();
   const { user } = useAuth();
   const { syncSessionValue } = useGame();
@@ -175,7 +177,7 @@ export default function Leaderboard() {
             <Box>
               <Chip label="GLOBAL RANKINGS" size="small"
                 sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Leaderboard</Typography>
+              <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Leaderboard</Typography>
               <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
                 {isThirtyDay ? "Completed 30-day challenges ranked by final net worth." : "Infinite runs ranked by each player's current net worth."}
               </Typography>
@@ -428,7 +430,7 @@ export default function Leaderboard() {
                         "& fieldset": { borderColor: D.border },
                         "&:hover fieldset": { borderColor: D.borderHi },
                         "&.Mui-focused fieldset": { borderColor: D.brand },
-                        "& input": { fontSize: 13, py: 0.9 },
+                        "& input": { fontSize: { xs: 16, sm: 13 }, py: 0.9 },
                       },
                     }}
                   />
