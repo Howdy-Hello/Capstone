@@ -1,3 +1,5 @@
+import { getMarketSecret } from './marketService';
+
 type EnvIssue = {
   key: string;
   message: string;
@@ -44,10 +46,10 @@ export function getServerEnvIssues(): EnvIssue[] {
     });
   }
 
-  if (!process.env.MARKET_SEED_SECRET || process.env.MARKET_SEED_SECRET.length < 16) {
+  if (!getMarketSecret()) {
     issues.push({
       key: "MARKET_SEED_SECRET",
-      message: "A random secret of at least 16 characters is required to generate run markets (a dev-only fallback is used outside production).",
+      message: "Set MARKET_SEED_SECRET to at least 16 characters, or leave it unset to use the server-only Supabase credential in production.",
     });
   }
 

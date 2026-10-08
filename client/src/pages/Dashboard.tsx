@@ -307,7 +307,7 @@ export default function Dashboard() {
 
       <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
         {trading.error && (
-          <Alert severity="warning" sx={{ mb: 2.5, bgcolor: D.amberBg, color: D.t1, border: `1px solid ${D.border}`, fontSize: 13 }}>
+          <Alert severity="warning" action={<Button disabled={trading.actionPending} onClick={() => { void trading.reloadSession().catch(() => {}); }}>Retry</Button>} sx={{ mb: 2.5, bgcolor: D.amberBg, color: D.t1, border: `1px solid ${D.border}`, fontSize: 13 }}>
             {trading.error}
           </Alert>
         )}

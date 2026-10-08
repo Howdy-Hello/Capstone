@@ -94,7 +94,9 @@ export function getSlippageAdjustedPrice(
 ) {
   const slippage = getTradeSlippage(tradeValue, netWorth);
   if (slippage <= 0) return basePrice;
-  return tradeType === "buy"
+  const effectivePrice = tradeType === "buy"
     ? basePrice * (1 + slippage)
     : basePrice * (1 - slippage);
+  // Match the checked database fill: round each share before totaling the order.
+  return Math.round((effectivePrice + Number.EPSILON * effectivePrice) * 100) / 100;
 }

@@ -22,7 +22,7 @@ alter table public.save_slots
   add column journal_snapshot jsonb not null default '[]',
   add column goals_snapshot jsonb not null default '[]',
   add column reward_total numeric not null default 0;
-alter table public.user_daily_goal_completions add column session_id uuid references public.game_sessions(id) on delete cascade;
+alter table public.user_daily_goal_completions add column if not exists session_id uuid references public.game_sessions(id) on delete cascade;
 alter table public.user_daily_goal_completions drop constraint user_daily_goal_completions_pkey;
 -- Legacy rows have no reliable run identity. Keep them, without loading them into new runs.
 create unique index daily_goal_run_key on public.user_daily_goal_completions(user_id,session_id,game_day,goal_id);

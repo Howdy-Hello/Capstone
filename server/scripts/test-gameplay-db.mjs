@@ -37,8 +37,15 @@ const asUser = async (sql,params=[]) => {
 };
 const rejected = async (sql,params=[]) => assert.rejects(() => asUser(sql,params));
 let run = await asUser("select * from public.start_new_game_with_mode('infinite')");
-const quote = async (id,day,price=100) => db.query(`insert into public.session_quotes(session_id,game_day,symbol,price)
- values($1,$2,'CAI',$3) on conflict do nothing`,[id,day,price]);
+const quote = async (id,day,price=100) => {
+  await db.query(`insert into public.session_quotes(session_id,game_day,symbol,price)
+    values($1,$2,'CAI',$3) on conflict do nothing`,[id,day,price]);
+  await db.query(`insert into public.session_stock_prices(session_id,game_day,symbol,open_price,high_price,low_price,close_price,volume,event_impact)
+    values($1,$2,'CAI',$3,$3,$3,$3,1000,0) on conflict do nothing`,[id,day,price]);
+  await db.query(`insert into public.session_market_news(session_id,game_day,items) values($1,$2,'[]') on conflict do nothing`,[id,day]);
+  await db.query(`update public.game_sessions set market_generated_through=greatest(market_generated_through,$2),
+    market_fingerprint=public.market_fingerprint_for(game_mode,game_seed,market_engine) where id=$1`,[id,day]);
+};
 await quote(run.id,1);
 await rejected("select public.import_legacy_advisor($1)",[run.id]);
 await rejected('update public.game_sessions set cash_balance=999999 where id=$1',[run.id]);
@@ -79,10 +86,13 @@ const hiredSlot=await asUser("select * from public.create_save_slot($1,'Hired')"
 await asUser(`insert into public.trade_journal_entries(session_id,user_id,symbol,trade_type,quantity,execution_price,game_day,thesis)
  values($1,$2,'CAI','buy',1,100,1,'Abandoned thesis')`,[run.id,user]);
 await quote(run.id,2,110);
+assert.equal(Number((await asUser('select count(*) from public.session_quotes where session_id=$1 and game_day=2',[run.id])).count),0,
+  'Prepared future quotes must stay hidden until the day is committed');
 await asUser("select public.advance_game_day($1,2,'infinite')",[run.id]);
+assert.equal(Number((await asUser('select count(*) from public.session_quotes where session_id=$1 and game_day=2',[run.id])).count),1);
 await rejected("select public.execute_trade_checked($1,'CAI','sell',1,1,gen_random_uuid())",[run.id]);
 await rejected("select public.advance_game_day($1,1,'infinite')",[run.id]);
-await asUser("insert into public.user_achievement_unlocks(user_id,achievement_id) values($1,'first_trade')",[user]);
+await asUser("select public.claim_achievements($1,array['first_trade'])",[run.id]);
 const reward=await asUser('select public.process_level_cash_rewards($1) as result',[run.id]);
 assert.equal(reward.result.cash_reward,50);
 let restored=await asUser('select * from public.restore_save_slot($1)',[slot.id]);
@@ -90,6 +100,19 @@ assert.notEqual(restored.id,run.id);
 assert.equal(restored.current_day,1);
 assert.equal(Number(restored.cash_balance),1950);
 assert.equal(restored.market_phase,'after_hours');
+assert.equal(restored.market_engine,run.market_engine);
+assert.equal(restored.market_seed_secret,run.market_seed_secret);
+assert.equal(restored.market_fingerprint,`${run.game_mode}:${run.game_seed}:v2`);
+assert.equal(restored.market_generated_through,1);
+assert.equal(restored.ranked,false,'A rewind after seeing Day 2 is practice-only');
+assert.equal(restored.trusted_state,false,'Practice branches must not earn competitive achievements');
+assert.equal(Number((await scalar('select max_day from public.market_seed_progress where user_id=$1 and game_mode=$2 and game_seed=$3',[user,run.game_mode,run.game_seed])).max_day),2);
+assert.equal(Number((await scalar('select close_price from public.session_stock_prices where session_id=$1 and game_day=1',[restored.id])).close_price),100);
+assert.equal(Number((await scalar('select count(*) from public.session_stock_prices where session_id=$1 and game_day>1',[restored.id])).count),0);
+assert.equal(Number((await scalar('select price from public.session_quotes where session_id=$1 and game_day=1',[restored.id])).price),100);
+await rejected("insert into public.user_achievement_unlocks(user_id,achievement_id) values($1,'active_trader')",[user]);
+const practiceClaims=await asUser("select public.claim_achievements($1,array['active_trader','cash_discipline']) as earned",[restored.id]);
+assert.deepEqual(practiceClaims.earned,[]);
 assert.equal(Number((await scalar("select count(*) from public.learning_entries e join public.trade_journal_entries j on j.id=e.journal_id where e.session_id=$1 and j.session_id=$1 and e.kind='reflection'",[restored.id])).count),1);
 assert.equal(Number((await scalar('select count(*) from public.learning_entries where session_id=$1',[restored.id])).count),2);
 assert.equal(Number((await scalar("select sum(amount) as amount from public.account_flows where session_id=$1 and kind='reward'",[restored.id])).amount),50);
@@ -119,12 +142,21 @@ const finalBranch=await asUser('select * from public.restore_save_slot($1)',[fin
 await quote(finalBranch.id,30);
 await asUser('select public.refresh_session_value($1)',[finalBranch.id]);
 assert.equal(Number((await scalar('select count(*) from public.challenge_results')).count),1);
+const board=(await db.query('select * from public.get_30_day_leaderboard(50)')).rows;
+assert.equal(board.length,1,'Final save restores must not duplicate a leaderboard result');
+assert.equal(board[0].run_id,run.id);
 await asUser('select public.restore_save_slot($1)',[slot.id]);
 assert.equal(Number((await scalar('select count(*) from public.challenge_results')).count),1);
 console.log('Gameplay integrity checks passed: permissions, thresholds, quotes, idempotency, stale days, advisors, snapshots, rewards, and final results.');
 // A full cash-only learning session needs no stock purchases, and a flat
 // market bill is tracked as spending even when only part of it can be paid.
+const previousInfinite=await asUser("select * from public.start_new_game_with_mode('infinite')");
 const learningRun = await asUser("select * from public.start_new_game_with_mode('infinite')");
+assert.notEqual(learningRun.game_seed,previousInfinite.game_seed,'Each infinite run needs its own market');
+assert.equal(learningRun.market_engine,2);
+await db.query('update public.game_sessions set cash_streak=5,gain_streak=3 where id=$1',[learningRun.id]);
+const streakClaims=await asUser("select public.claim_achievements($1,array['cash_discipline','hot_streak']) as earned",[learningRun.id]);
+assert.deepEqual(streakClaims.earned,['cash_discipline','hot_streak']);
 for (const kind of ['research','compare','risk','plan','wait']) {
   await asUser("insert into public.learning_entries(user_id,session_id,game_day,kind,decision,evidence) values($1,$2,1,$3,'wait','I compared the evidence, preserved cash for bills, and will investigate before taking a position.')",[user,learningRun.id,kind]);
   await asUser("insert into public.user_daily_goal_completions(user_id,session_id,game_day,goal_id) values($1,$2,1,$3)",[user,learningRun.id,`learn_${kind}`]);
@@ -153,4 +185,11 @@ await db.query("select set_config('request.jwt.claim.sub',$1,false)",[other]);
 assert.equal(Number((await asUser('select count(*) from public.learning_entries where session_id=$1',[learningRun.id])).count),0);
 assert.equal(Number((await asUser('select count(*) from public.get_account_breakdown($1)',[learningRun.id])).count),0);
 console.log('Beginner learning checks passed: no-trade goals, note validation, spending, partial bills, restored notes and rewards, and cross-account access.');
+const roundingRun=await asUser("select * from public.start_new_game_with_mode('infinite')");
+await db.query('update public.game_sessions set cash_balance=333.2 where id=$1',[roundingRun.id]);
+await quote(roundingRun.id,1,37.19);
+const roundedFill=await asUser("select public.execute_trade_checked($1,'CAI','buy',1,8,gen_random_uuid()) as result",[roundingRun.id]);
+assert.equal(Number(roundedFill.result.execution_price),41.65);
+assert.equal(Number(roundedFill.result.cash),0,'The Max quote and checked fill must agree at the exact cash boundary');
+console.log('Rounded quote and database fill agree at the exact affordability boundary.');
 await db.close();

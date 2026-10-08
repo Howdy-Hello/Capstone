@@ -53,6 +53,15 @@ test("returns 0 when not even one share is affordable", () => {
   expect(getMaxAffordableQuantity(10, 100, quoteTotal(10, 100))).toBe(0);
 });
 
+test("quotes round each share like the database before checking affordability", () => {
+  expect(getSlippageAdjustedPrice(37.19, "buy", 37.19 * 25, 2000)).toBe(41.65);
+  expect(getSlippageAdjustedPrice(37.19, "sell", 37.19 * 25, 2000)).toBe(32.73);
+  const cash = 333.2;
+  const total = (q: number) => Number((getSlippageAdjustedPrice(37.19, "buy", 37.19 * q, cash) * q).toFixed(2));
+  expect(total(8)).toBe(cash);
+  expect(getMaxAffordableQuantity(cash, 37.19, total)).toBe(8);
+});
+
 test("rejects degenerate inputs instead of returning Infinity or NaN", () => {
   expect(getMaxAffordableQuantity(0, 100, () => 0)).toBe(0);
   expect(getMaxAffordableQuantity(-5, 100, () => 0)).toBe(0);

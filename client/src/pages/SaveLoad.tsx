@@ -100,18 +100,19 @@ export default function SaveLoad() {
     setMessage(null);
     // Snapshotted server-side from the session itself: a slot is restored into
     // cash and holdings, so the client can't be the one to write it.
-    const { error } = await supabase.rpc("create_save_slot", {
-      target_session_id: trading.sessionId,
-      slot_name: `Day ${trading.gameDay} Run`,
-    });
-
     try {
+      const { error } = await supabase.rpc("create_save_slot", {
+        target_session_id: trading.sessionId,
+        slot_name: `Day ${trading.gameDay} Run`,
+      });
       if (error) {
         setMessage({ text: `Save failed: ${error.message}`, severity: "error" });
       } else {
         setMessage({ text: "Game saved to cloud.", severity: "success" });
         await fetchSlots();
       }
+    } catch {
+      setMessage({ text: "Save could not be confirmed. Refresh your saves before trying again.", severity: "error" });
     } finally {
       setSaving(false);
     }
@@ -150,6 +151,8 @@ export default function SaveLoad() {
       }
       setMessage({ text: loaded, severity: "success" });
       setTimeout(() => navigate("/game"), 800);
+    } catch {
+      setMessage({ text: "The saved run could not be loaded. Retry loading the game from Market.", severity: "error" });
     } finally {
       setLoadingSlot(null);
     }

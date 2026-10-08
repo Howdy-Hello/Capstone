@@ -24,7 +24,7 @@ import {
   TradingAccount,
 } from "../data/tradingState";
 import { supabase } from "../lib/supabase";
-import { advanceSessionDay, ensureSessionMarket, syncGameState } from "../lib/api";
+import { advanceSessionDay, ApiError, ensureSessionMarket, syncGameState } from "../lib/api";
 import { recordTradeJournalEntry, TradeJournalInput } from "../lib/tradeJournal";
 import { useAuth } from "./AuthContext";
 
@@ -34,7 +34,6 @@ import { useAuth } from "./AuthContext";
 // calls the server; it no longer generates prices or writes cash itself.
 
 const STARTING_CASH = 2_000;
-const GAME_PHASE_STORAGE_KEY = "stockpilot-market-phase";
 export const LIMITED_GAME_DAYS = LIMITED_RUN_DAYS;
 export const MAX_GAME_DAY = MAX_RUN_DAY;
 export const WEEKLY_BILL_ITEMS = [
@@ -55,13 +54,6 @@ export type BillCharge = {
   shortfall: number;
   day: number;
 };
-
-// Value is "after_hours:<day>" so the phase only applies to the day it was set
-// on. A bare flag leaked into restored save slots (same session id, earlier
-// day) and into days advanced on another device, revealing news early.
-function marketPhaseStorageKey(sessionId: string) {
-  return `${GAME_PHASE_STORAGE_KEY}:${sessionId}`;
-}
 
 type GameSession = {
   id: string;
@@ -241,7 +233,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const reportError = useCallback((error: unknown) => {
     const message = errorMessage(error, "");
     const safe = ["Not enough cash", "Not enough shares", "Your game has changed. Reload before trying again.", "Challenge complete. Start a new run to play.", "Market quote unavailable. Try again."];
-    setError(safe.includes(message) ? message : "Your game could not be saved. Check your connection and try again.");
+    setError(error instanceof ApiError || safe.includes(message) ? message : "Your game could not be saved. Check your connection and try again.");
   }, []);
 
   useEffect(() => {
@@ -308,14 +300,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   /** Make the server catch the run's market up, then load it into state. */
   const applySession = useCallback(async (activeSession: GameSession) => {
     await ensureSessionMarket(activeSession.id);
-    const [holdings, market] = await Promise.all([
+    const [holdings, market, refreshed] = await Promise.all([
       loadHoldings(activeSession.id),
       fetchSessionMarket(activeSession.id, 1),
+      supabase.from("game_sessions").select(SESSION_COLUMNS).eq("id", activeSession.id).single(),
     ]);
+    if (refreshed.error) throw refreshed.error;
+    activeSession = refreshed.data as GameSession;
 
     const activeMode = normalizeGameMode(activeSession.game_mode);
     const currentDay = clampGameDayForMode(activeSession.current_day, activeMode);
-    const storedPhase = localStorage.getItem(marketPhaseStorageKey(activeSession.id));
 
     gameDayRef.current = currentDay;
     setSession(activeSession);
@@ -324,12 +318,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setPriceRows(market.rows);
     setNewsByDay(market.news);
     setGameDayState(currentDay);
+<<<<<<< HEAD
     setMarketPhase(activeSession.market_phase ?? (storedPhase === `after_hours:${currentDay}` ? "after_hours" : "market_open"));
     setAccount({
       cash: asNumber(activeSession.cash_balance),
       holdings,
       unpaidBills: asNumber(activeSession.unpaid_bills),
     });
+=======
+    setMarketPhase(activeSession.market_phase ?? "market_open");
+    setAccount({ cash: asNumber(activeSession.cash_balance), holdings });
+>>>>>>> 57be67a (feat: Enhance trading functionality and error handling)
   }, [loadHoldings]);
 
   const loadOrCreateSession = useCallback(async () => {
@@ -366,6 +365,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     await applySession(activeSession);
     await loadWatchlist();
   }, [applySession, loadWatchlist, user]);
+
+  const reloadSession = useCallback(async () => {
+    if (!beginAction()) return;
+    setLoading(true);
+    try {
+      await Promise.all([loadStocks(), loadOrCreateSession()]);
+    } catch (loadError) {
+      setError(errorMessage(loadError, "Could not load the game."));
+      throw loadError;
+    } finally {
+      setLoading(false);
+      endAction();
+    }
+  }, [beginAction, endAction, loadStocks, loadOrCreateSession]);
 
   useEffect(() => {
     let cancelled = false;
@@ -407,14 +420,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const stocks = useMemo(() => {
     if (gameMode === "limited_30") {
       return mockStockCompanies
-        .filter((company) => company.isActive)
+        .filter((company) => company.isActive && histories.get(company.symbol)?.some(point => point.gameDay === gameDay))
         .map((company) => stockFromCompanyHistory(company, histories.get(company.symbol) ?? []));
     }
 
     return databaseStocks
-      .filter((stock) => stock.is_active)
+      .filter((stock) => stock.is_active && histories.get(stock.symbol)?.some(point => point.gameDay === gameDay))
       .map((stock) => mapStockFromHistory(stock, histories.get(stock.symbol) ?? []));
-  }, [databaseStocks, gameMode, histories]);
+  }, [databaseStocks, gameDay, gameMode, histories]);
 
   // News for day D is published after the close on day D, so while the market
   // is open the newest visible day is the previous one.
@@ -479,18 +492,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     try {
       const result = await advanceSessionDay(session.id, next);
       const appliedDay = Number(result.day);
-      const market = await fetchSessionMarket(session.id, currentDay + 1);
-
-      setPriceRows((rows) => [...rows.filter((row) => row.game_day <= currentDay), ...market.rows]);
-      setNewsByDay((current) => {
-        const merged = new Map(Array.from(current).filter(([storedDay]) => storedDay <= currentDay));
-        market.news.forEach((items, storedDay) => merged.set(storedDay, items));
-        return merged;
-      });
-      setMarketPhase("market_open");
-      localStorage.setItem(marketPhaseStorageKey(session.id), "market_open");
+      // The advance is already committed. Keep its day/cash even if a later
+      // read fails, so Retry cannot submit yesterday's day or show old cash.
       gameDayRef.current = appliedDay;
       setGameDayState(appliedDay);
+<<<<<<< HEAD
       const refreshed = await supabase.from("game_sessions").select("*").eq("id", session.id).single();
       if (refreshed.error) throw refreshed.error;
       setSession(refreshed.data as GameSession);
@@ -503,6 +509,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }));
       // Also shown when only carried-over debt was collected.
       if (result.cycles_charged > 0 || asNumber(result.amount_paid) > 0) {
+=======
+      setMarketPhase("market_open");
+      setSession(current => current && ({ ...current, current_day: appliedDay, market_phase: "market_open", cash_balance: result.cash }));
+      setAccount((current) => ({ ...current, cash: asNumber(result.cash) }));
+      if (result.cycles_charged > 0) {
+>>>>>>> 57be67a (feat: Enhance trading functionality and error handling)
         setLatestBill({
           cycles: result.cycles_charged,
           total: asNumber(result.bill_total),
@@ -511,6 +523,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           day: appliedDay,
         });
       }
+      const market = await fetchSessionMarket(session.id, currentDay + 1);
+
+      setPriceRows((rows) => [...rows.filter((row) => row.game_day <= currentDay), ...market.rows]);
+      setNewsByDay((current) => {
+        const merged = new Map(Array.from(current).filter(([storedDay]) => storedDay <= currentDay));
+        market.news.forEach((items, storedDay) => merged.set(storedDay, items));
+        return merged;
+      });
+      const refreshed = await supabase.from("game_sessions").select("*").eq("id", session.id).single();
+      if (refreshed.error) throw refreshed.error;
+      setSession(refreshed.data as GameSession);
       setError(null);
     } catch (advanceError) {
       setError(errorMessage(advanceError, "Could not advance the day."));
@@ -536,7 +559,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       basePrice: live.currentPrice,
       effectivePrice,
       slippage: Math.abs(slippage),
-      total: effectivePrice * quantity,
+      total: Number((effectivePrice * quantity).toFixed(2)),
     };
   }, [account, stocks]);
 
@@ -660,7 +683,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (resetError) throw resetError;
 
       const nextSession = data as GameSession;
-      localStorage.setItem(marketPhaseStorageKey(nextSession.id), "market_open");
       await applySession(nextSession);
       setLatestBill(null);
       setError(null);
@@ -849,11 +871,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     loading,
     error,
     sessionId: session?.id ?? null,
-    reloadSession: loadOrCreateSession,
+    reloadSession,
     syncSessionValue,
   }), [actionPending, hireAdvisor,
     account, addCash, addToWatchlist, advancing, buyStock, closeMarket, error, gameDay, gameMode, getHistory,
-    getRelatedNews, getStock, getTradeQuote, loading, loadOrCreateSession, news, newsHistory, resetAccount,
+    getRelatedNews, getStock, getTradeQuote, loading, reloadSession, news, newsHistory, resetAccount,
     sellStock, marketSeed, setGameDay, session, stocks, storyArcs, syncSessionValue,
     marketPhase, maxGameDay, isGameComplete, isWatchlisted, removeFromWatchlist,
     latestBill, toggleWatchlist, watchlistStocks, watchlistSymbols,
