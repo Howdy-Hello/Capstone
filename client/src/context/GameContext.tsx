@@ -501,7 +501,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       });
       // Without the RPC the phase is tracked in this browser, as before.
       if (error && !isMissingDbObject(error)) throw error;
-      localStorage.setItem(marketPhaseStorageKey(session.id), `after_hours:${gameDayRef.current}`);
+      const closedDay = gameDayRef.current;
+      localStorage.setItem(marketPhaseStorageKey(session.id), `after_hours:${closedDay}`);
+      // Today's news is only readable after the close (BUG-044), so it
+      // wasn't in the market loaded while trading was open.
+      const { data: todaysNews } = await supabase
+        .from("session_market_news")
+        .select("game_day, items")
+        .eq("session_id", session.id)
+        .eq("game_day", closedDay);
+      if (todaysNews?.length) {
+        setNewsByDay((current) => {
+          const next = new Map(current);
+          for (const row of todaysNews) next.set(row.game_day, row.items ?? []);
+          return next;
+        });
+      }
       setMarketPhase("after_hours");
     } catch (error) { reportError(error); } finally { endAction(); }
   }, [session, beginAction, endAction, reportError]);

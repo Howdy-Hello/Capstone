@@ -175,8 +175,28 @@ grant execute on function public.get_account_breakdown(uuid) to authenticated;
 -- ── 5. Market phase ─────────────────────────────────────────────────────────
 -- Closing the market reveals the day's news; the next day's prices react to
 -- it, so trading is refused until the day advances.
+
+-- BUG-044: today's news moves tomorrow's prices, so players may read it only
+-- after the close (it was readable from 202609250001 on, market open or not).
+drop policy if exists "Players read own run news" on public.session_market_news;
+create policy "Players read own run news"
+on public.session_market_news for select to authenticated
+using (
+  exists (
+    select 1 from public.game_sessions s
+    where s.id = session_market_news.session_id
+      and s.user_id = (select auth.uid())
+      and (
+        session_market_news.game_day < s.current_day
+        or (session_market_news.game_day = s.current_day and s.market_phase = 'after_hours')
+      )
+  )
+);
+
 create or replace function public.close_market(target_session_id uuid, target_game_day integer)
 returns void language plpgsql security definer set search_path = '' as $$
+declare
+  closed public.game_sessions%rowtype;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required';
@@ -188,10 +208,21 @@ begin
     and user_id = auth.uid()
     and status = 'active'
     and current_day = target_game_day
-    and not (game_mode = 'limited_30' and current_day >= 30);
+    and not (game_mode = 'limited_30' and current_day >= 30)
+  returning * into closed;
 
   if not found then
     raise exception 'Your game has changed. Reload before trying again.';
+  end if;
+
+  -- BUG-045: the close reveals the news behind the next day's prices, so this
+  -- market counts as seen through the next day. Restoring a save from this
+  -- day (which reopens the market) then unranks the run, like any rewind.
+  if closed.game_seed is not null then
+    insert into public.market_seed_progress (user_id, game_mode, game_seed, max_day)
+    values (closed.user_id, closed.game_mode, closed.game_seed, closed.current_day + 1)
+    on conflict (user_id, game_mode, game_seed)
+    do update set max_day = greatest(public.market_seed_progress.max_day, excluded.max_day);
   end if;
 end;
 $$;
