@@ -719,6 +719,18 @@ begin
     end if;
   end if;
 
+  -- BUG-050: consume level-ups in ineligible runs even when the client never
+  -- calls process_level_cash_rewards. Include achievements unlocked above.
+  if session_row.game_mode <> 'infinite' or session_row.ranked is not true then
+    update public.profiles
+    set last_level_reward_processed = greatest(
+          last_level_reward_processed,
+          public.player_level_from_xp(public.player_total_xp(p_user_id))
+        ),
+        updated_at = now()
+    where id = p_user_id;
+  end if;
+
   return jsonb_build_object(
     'day', next_day,
     'cash', next_cash,

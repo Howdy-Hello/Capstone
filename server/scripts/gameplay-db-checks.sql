@@ -128,5 +128,51 @@ select public.create_save_slot('Old client save');
 reset role;
 insert into checks select 'create_save_slot(text) still works', (select count(*) = 2 from public.save_slots where user_id = '00000000-0000-0000-0000-00000000000a');
 
+-- BUG-050: skipping the client reward RPC in an ineligible run must not let
+-- a player defer cash until a ranked endless run. Test both ineligible modes.
+insert into public.user_achievement_unlocks (user_id, achievement_id)
+values ('00000000-0000-0000-0000-00000000000a', 'first_trade') on conflict do nothing;
+create temp table reward_cases (mode text, ranked boolean);
+insert into reward_cases values ('infinite', false), ('limited_30', true);
+do $$
+declare reward_case record; before_cash numeric; payout jsonb;
+begin
+  for reward_case in select * from reward_cases loop
+    update public.profiles set last_level_reward_processed = 1
+    where id = '00000000-0000-0000-0000-00000000000a';
+    update public.game_sessions g
+    set game_mode = reward_case.mode, ranked = reward_case.ranked,
+        current_day = 1, market_phase = 'after_hours',
+        market_fingerprint = public.market_fingerprint_for(reward_case.mode, g.game_seed, g.market_engine)
+    from run r where g.id = r.id;
+    select g.cash_balance into before_cash from public.game_sessions g join run r on r.id = g.id;
+    perform public.server_advance_game_day('00000000-0000-0000-0000-00000000000a', (select id from run), 2);
+    insert into checks select reward_case.mode || ': advance consumes pending levels without client RPC',
+      last_level_reward_processed = public.player_level_from_xp(public.player_total_xp(id))
+      and last_level_reward_processed > 1
+    from public.profiles where id = '00000000-0000-0000-0000-00000000000a';
+    insert into checks select reward_case.mode || ': consuming levels pays no cash', g.cash_balance = before_cash
+    from public.game_sessions g join run r on r.id = g.id;
+    update public.game_sessions g set game_mode = 'infinite', ranked = true
+    from run r where g.id = r.id;
+    payout := public.process_level_cash_rewards((select id from run));
+    insert into checks values (reward_case.mode || ': later ranked run cannot cash deferred levels', (payout->>'cash_reward')::numeric = 0);
+  end loop;
+end $$;
+
+-- Ranked endless runs still leave pending levels available for the cash RPC.
+update public.profiles set last_level_reward_processed = 1
+where id = '00000000-0000-0000-0000-00000000000a';
+update public.game_sessions g set game_mode = 'infinite', ranked = true,
+  market_phase = 'after_hours',
+  market_fingerprint = public.market_fingerprint_for('infinite', g.game_seed, g.market_engine)
+from run r where g.id = r.id;
+select public.server_advance_game_day('00000000-0000-0000-0000-00000000000a', (select id from run), 3);
+insert into checks select 'ranked endless advance preserves pending cash rewards', last_level_reward_processed = 1
+from public.profiles where id = '00000000-0000-0000-0000-00000000000a';
+set role authenticated;
+insert into checks select 'ranked endless reward still pays', (public.process_level_cash_rewards((select id from run))->>'cash_reward')::numeric > 0;
+reset role;
+
 select name, ok from checks;
 select count(*) filter (where not ok) as failed, count(*) as total from checks;

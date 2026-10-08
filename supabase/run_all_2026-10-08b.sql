@@ -448,6 +448,17 @@ alter function public.trade_journal_lock_columns() set search_path = '';
 
 commit;
 
+-- Record this manual application so a later CLI push cannot replay it.
+do $$
+begin
+  if to_regclass('supabase_migrations.schema_migrations') is not null then
+    insert into supabase_migrations.schema_migrations (version, name)
+    values ('202610080002', 'bug_hunt_integrity_fixes')
+    on conflict do nothing;
+  end if;
+end;
+$$;
+
 -- ── Checks (read-only; every row should say ok = true) ──────────────────────
 select 'game_sessions.started_mode exists and is filled' as item,
        exists (select 1 from information_schema.columns

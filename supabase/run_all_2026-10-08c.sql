@@ -712,6 +712,18 @@ begin
     end if;
   end if;
 
+  -- BUG-050: consume level-ups in ineligible runs even when the client never
+  -- calls process_level_cash_rewards. Include achievements unlocked above.
+  if session_row.game_mode <> 'infinite' or session_row.ranked is not true then
+    update public.profiles
+    set last_level_reward_processed = greatest(
+          last_level_reward_processed,
+          public.player_level_from_xp(public.player_total_xp(p_user_id))
+        ),
+        updated_at = now()
+    where id = p_user_id;
+  end if;
+
   return jsonb_build_object(
     'day', next_day,
     'cash', next_cash,
@@ -1059,6 +1071,17 @@ grant execute on function public.process_level_cash_rewards(uuid) to authenticat
 
 commit;
 
+-- Record this manual application so a later CLI push cannot replay it.
+do $$
+begin
+  if to_regclass('supabase_migrations.schema_migrations') is not null then
+    insert into supabase_migrations.schema_migrations (version, name)
+    values ('202610080005', 'reconcile_gameplay')
+    on conflict do nothing;
+  end if;
+end;
+$$;
+
 -- ── Checks: every row must say true ──────────────────────────────────────
 select 'market_phase and advisor_ids columns' as check,
        exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'game_sessions' and column_name = 'market_phase')
@@ -1116,4 +1139,8 @@ select 'today''s news hidden until the close (BUG-044)',
                  and qual like '%after_hours%')
 union all
 select 'closing the market records the news as seen (BUG-045)',
-       pg_get_functiondef('public.close_market(uuid, integer)'::regprocedure) like '%market_seed_progress%';
+       pg_get_functiondef('public.close_market(uuid, integer)'::regprocedure) like '%market_seed_progress%'
+union all
+select 'advance consumes ineligible level-ups (BUG-050)',
+       pg_get_functiondef('public.server_advance_game_day(uuid, uuid, integer)'::regprocedure) like '%last_level_reward_processed%'
+       and pg_get_functiondef('public.server_advance_game_day(uuid, uuid, integer)'::regprocedure) like '%public.player_total_xp(p_user_id)%';

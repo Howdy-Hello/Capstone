@@ -5,6 +5,19 @@ Three pieces: **Supabase** (database/auth), the **client** (React), and the
 stores each run's market and is the only thing that can advance a run's day,
 so the game can't be played without it.
 
+For the existing live installation (confirmed 2026-10-08), SQL b and c have
+not been applied. Herdy must run these updated files in the SQL editor:
+
+1. `supabase/run_all_2026-10-08b.sql` (202610080002).
+2. `supabase/run_all_2026-10-08c.sql` (202610080005).
+3. Deploy the API server from the same commit, with the required environment
+   variables below, then redeploy the client from that commit.
+
+The live client identified in BUG-043 is an older build that calls missing
+RPCs. Its trading fix requires the complete SQL b → SQL c → API → client
+sequence. Compatibility fallbacks support earlier schemas during rollout;
+the market close, checked trade retries and reward rules require SQL c.
+
 **Deploy order matters** when upgrading an existing install: apply the
 migrations, deploy the server (with its server-only Supabase credential), then deploy the
 client with `REACT_APP_API_URL`. An old client stops working as soon as the
@@ -26,6 +39,22 @@ supabase db push
 in filename order (they're timestamp-ordered). Make sure the `20260724...`
 migrations are included; they add daily goals, stock alerts, and beginner
 mission completion tables.
+
+### Record SQL-editor applications before using the CLI
+
+The updated b/c one-shot files record their migration versions automatically
+when `supabase_migrations.schema_migrations` exists. Their transaction bodies
+match the corresponding migrations; history recording and read-only checks
+follow the commit. Do not rerun b after c in a completed deployment: b
+replaces functions that c upgrades.
+
+The already-run `run_all_2026-10-08.sql` did not record history. Run
+`supabase/record_manual_migrations_2026-10-08.sql` by hand once to record the
+34 migrations already confirmed live through 202610080001. It changes only
+migration history and is safe to rerun. If an older copy of b/c was applied
+without recording history, insert versions `202610080002` /
+`bug_hunt_integrity_fixes` and `202610080005` / `reconcile_gameplay` by hand,
+with `on conflict do nothing`, before a later `supabase db push`.
 
 ### Enable email confirmation (optional)
 **Supabase → Authentication → Providers → Email → "Confirm email" = ON.**
@@ -71,8 +100,14 @@ Required env vars:
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (server-only secret) |
 | `SUPABASE_ANON_KEY` | anon key (so user-scoped routes run under RLS) |
 | `CLIENT_ORIGIN` | your deployed client origin, e.g. `https://your-app.vercel.app` |
-| `MARKET_SEED_SECRET` | Optional dedicated secret, 16+ characters. Existing configured values remain unchanged. When unset in production, the server derives a stable market key from `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY`; public keys are never used. |
+| `MARKET_SEED_SECRET` | Required in production: a stable, server-only secret of 16+ characters. Keep the value unchanged for active runs. Missing or short values block market generation and make `/api/health/config` return 503. Development/tests retain the dev-only fallback. |
 | `ADMIN_API_SECRET` | optional; guards `/api/admin/*` |
+
+`SUPABASE_SECRET_KEY` may replace `SUPABASE_SERVICE_ROLE_KEY`, and
+`SUPABASE_PUBLISHABLE_KEY` may replace `SUPABASE_ANON_KEY`. A user-scoped key
+is required; its absence makes `/api/health/config` return 503 because account
+routes and game sync cannot work without it. Detailed configuration messages
+require the matching `x-admin-secret` header.
 
 ### Vercel
 New Project → import the repo → **Root Directory: `server`** (picks up
@@ -125,12 +160,17 @@ The SQL below is no longer applied. Originally it preserved a restored run's mar
 observed prices, tracks the furthest played day, fixes achievement streak claims,
 and keeps prepared future quotes hidden. New infinite runs use distinct seeds.
 
-Do not change an existing `MARKET_SEED_SECRET`. When production has no dedicated
-key, keep the selected Supabase server credential stable. Before rotating it,
-freeze the current derived market key into `MARKET_SEED_SECRET`: the derivation is
+Do not change an existing `MARKET_SEED_SECRET`. This server now requires it in
+production and never derives a market key from a Supabase credential at runtime.
+If the previous production server used the credential fallback, preserve its
+market before deploying this version: freeze the previously derived key into
+`MARKET_SEED_SECRET` using the exact credential that old server selected. The derivation is
 HMAC-SHA256 of `stockpilot:market-seed:v1`, keyed by `SUPABASE_SECRET_KEY` if set,
 otherwise `SUPABASE_SERVICE_ROLE_KEY`, encoded as lowercase hex. Keep that value
-server-only. Changing the chosen market key changes future generated days.
+server-only. Generate it locally without printing credentials or the result to
+shared logs, and save the result in the API environment. A new random secret
+would change active runs' future prices. Once preserved, Supabase credentials
+can rotate independently of the market secret.
 
 A server-only deployment can build from the committed market modules. Full
 checkouts refresh all shared market modules during build/test; missing modules
