@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
-import { getPortfolioValue } from "../data/tradingState";
+import { getNetWorth } from "../data/tradingState";
 import { addInboxMessage } from "../lib/inbox";
 
 export type ComputedAchievement = {
@@ -269,10 +269,7 @@ export function useAchievements() {
     setStreak(user ? loadStreak(user.id) : DEFAULT_STREAK);
   }, [user]);
 
-  const netWorth = useMemo(() => {
-    const pv = getPortfolioValue(account, stocks);
-    return account.cash + pv;
-  }, [account, stocks]);
+  const netWorth = useMemo(() => getNetWorth(account, stocks), [account, stocks]);
   const heldSectorCount = useMemo(() => {
     const heldSymbols = new Set(account.holdings.map((holding) => holding.symbol));
     return new Set(

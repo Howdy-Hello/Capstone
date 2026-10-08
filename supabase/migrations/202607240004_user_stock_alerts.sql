@@ -22,6 +22,7 @@ create index if not exists user_stock_alerts_user_active_idx
 
 alter table public.user_stock_alerts enable row level security;
 
+drop policy if exists "Users own their stock alerts" on public.user_stock_alerts;
 create policy "Users own their stock alerts"
   on public.user_stock_alerts for all to authenticated
   using  (auth.uid() = user_id)

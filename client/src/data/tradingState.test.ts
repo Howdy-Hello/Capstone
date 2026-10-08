@@ -1,5 +1,6 @@
 import {
   getMaxAffordableQuantity,
+  getNetWorth,
   getSlippageAdjustedPrice,
   getTradeSlippage,
 } from "./tradingState";
@@ -69,4 +70,13 @@ test("small trades take no slippage, so max equals the naive divide there", () =
   expect(getMaxAffordableQuantity(cash, price, total)).toBeLessThanOrEqual(
     Math.floor(cash / price)
   );
+});
+
+// BUG-008: bills cash couldn't cover are a debt, as on the server.
+test("unpaid bills count against net worth, never below zero", () => {
+  const stocks = [{ symbol: "CAI", currentPrice: 50 }] as any;
+  const holdings = [{ symbol: "CAI", name: "Closed Ai", shares: 10, averageCost: 40 }];
+  expect(getNetWorth({ cash: 0, holdings }, stocks)).toBe(500);
+  expect(getNetWorth({ cash: 0, holdings, unpaidBills: 300 }, stocks)).toBe(200);
+  expect(getNetWorth({ cash: 0, holdings, unpaidBills: 900 }, stocks)).toBe(0);
 });

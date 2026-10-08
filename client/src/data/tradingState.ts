@@ -10,6 +10,8 @@ export type PortfolioHolding = {
 export type TradingAccount = {
   cash: number;
   holdings: PortfolioHolding[];
+  /** Living costs cash couldn't cover; collected on the next advance. */
+  unpaidBills?: number;
 };
 
 export function getSharesOwned(account: TradingAccount, symbol: string) {
@@ -25,8 +27,9 @@ export function getPortfolioValue(account: TradingAccount, stocks: Stock[]) {
   }, 0);
 }
 
+// Unpaid bills count as a debt, matching recompute_session_value (202610060003).
 export function getNetWorth(account: TradingAccount, stocks: Stock[]) {
-  return account.cash + getPortfolioValue(account, stocks);
+  return Math.max(0, account.cash + getPortfolioValue(account, stocks) - (account.unpaidBills ?? 0));
 }
 
 // ── Anti-snowball: diminishing returns on oversized trades ────────────────

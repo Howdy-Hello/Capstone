@@ -24,8 +24,14 @@ function header(file) {
   );
 }
 
+// Git on Windows (core.autocrlf) checks files out with CRLF, so compare and
+// write with LF only; otherwise every Windows checkout reads as stale.
+function lf(text) {
+  return text.replace(/\r\n/g, "\n");
+}
+
 function expected(file) {
-  return header(file) + fs.readFileSync(path.join(SOURCE_DIR, file), "utf8");
+  return lf(header(file) + fs.readFileSync(path.join(SOURCE_DIR, file), "utf8"));
 }
 
 const check = process.argv.includes("--check");
@@ -36,7 +42,7 @@ for (const file of FILES) {
   const target = path.join(TARGET_DIR, file);
   const want = expected(file);
   const have = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : null;
-  if (have === want) continue;
+  if (have !== null && lf(have) === want) continue;
   if (check) {
     console.error(`stale: server/src/market/${file}`);
     stale += 1;

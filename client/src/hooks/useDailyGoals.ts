@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
-import { getPortfolioValue } from "../data/tradingState";
+import { getNetWorth } from "../data/tradingState";
 import { supabase } from "../lib/supabase";
 
 export type DailyGoal = {
@@ -98,7 +98,7 @@ export function useDailyGoals() {
   const { account, stocks, watchlistSymbols, gameDay, marketSeed, sessionId } = useGame();
 
   const netWorth = useMemo(
-    () => account.cash + getPortfolioValue(account, stocks),
+    () => getNetWorth(account, stocks),
     [account, stocks]
   );
 

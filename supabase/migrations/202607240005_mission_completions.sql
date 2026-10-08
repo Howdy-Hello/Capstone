@@ -13,6 +13,7 @@ create table if not exists public.user_mission_completions (
 
 alter table public.user_mission_completions enable row level security;
 
+drop policy if exists "Users own their mission completions" on public.user_mission_completions;
 create policy "Users own their mission completions"
   on public.user_mission_completions for all to authenticated
   using  (auth.uid() = user_id)

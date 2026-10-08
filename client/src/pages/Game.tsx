@@ -581,7 +581,7 @@ export default function Game() {
                     <Typography sx={{ fontSize: 12.5, color: D.t2 }}>
                       {trading.latestBill.cycles > 1 ? `${trading.latestBill.cycles} weekly cycles were due. ` : ""}
                       {trading.latestBill.shortfall > 0
-                        ? `${money(trading.latestBill.shortfall)} could not be covered because your cash ran out.`
+                        ? `${money(trading.latestBill.shortfall)} is still owed: it counts against your net worth and is collected from your cash on the next day.`
                         : "Rent, food, and utilities were deducted from your cash."}
                     </Typography>
                   </Box>

@@ -130,6 +130,23 @@ export async function loadMarketScript(admin: SupabaseClient): Promise<MarketScr
   return script;
 }
 
+/**
+ * Last day a run generates from its plain, player-readable game_seed (BUG-006).
+ * Legacy runs (market_seed_secret = false) keep the plain seed for the days
+ * the player has already seen, so their history doesn't change. Infinite runs
+ * chain each day off the stored previous close, so every later day can come
+ * from the secret seed. A limited_30 run's prices are a function of the whole
+ * seed, not chained, so a legacy 30-day run stays plain (it is unranked since
+ * 202610060002).
+ */
+export function legacyPlainSeedThrough(
+  session: Pick<MarketSession, 'market_seed_secret' | 'current_day'>,
+  mode: SessionGameMode
+) {
+  if (session.market_seed_secret !== false) return 0;
+  return mode === 'infinite' ? Math.max(1, session.current_day) : Infinity;
+}
+
 /** What the generator gets for a run; see marketEngine(). */
 export async function scriptForRun(
   admin: SupabaseClient,
@@ -195,14 +212,17 @@ export async function ensureMarketThrough(
     if (resetError) throw resetError;
   }
 
-  const seed = session.market_seed_secret === false
-    ? session.game_seed ?? ''
-    : deriveGenerationSeed(secret, mode, session.game_seed ?? '');
+  const plainSeed = session.game_seed ?? '';
+  const secretSeed = deriveGenerationSeed(secret, mode, plainSeed);
+  const plainThrough = legacyPlainSeedThrough(session, mode);
+  let upgradedToSecret = false;
   const script = await scriptForRun(admin, mode, marketEngine(session));
 
   while (generated < target) {
     const fromDay = generated + 1;
-    const toDay = Math.min(target, fromDay + CHUNK_DAYS - 1);
+    const usePlain = fromDay <= plainThrough;
+    const toDay = Math.min(target, fromDay + CHUNK_DAYS - 1, usePlain ? plainThrough : Infinity);
+    const seed = usePlain ? plainSeed : secretSeed;
 
     const previousCloses: Record<string, number> = {};
     if (fromDay > 1) {
@@ -235,6 +255,15 @@ export async function ensureMarketThrough(
       .eq('id', session.id)
       .lt('market_generated_through', toDay);
     if (markError) throw markError;
+
+    if (!usePlain && session.market_seed_secret === false && !upgradedToSecret) {
+      const { error: upgradeError } = await admin
+        .from('game_sessions')
+        .update({ market_seed_secret: true })
+        .eq('id', session.id);
+      if (upgradeError) throw upgradeError;
+      upgradedToSecret = true;
+    }
 
     generated = toDay;
   }

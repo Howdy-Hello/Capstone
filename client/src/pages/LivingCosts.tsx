@@ -13,9 +13,11 @@ export default function LivingCosts() {
   const upcomingBillDays = [nextBillDay, nextBillDay + 7, nextBillDay + 14]
     .filter((day) => trading.maxGameDay === null || day <= trading.maxGameDay);
   const daysRemaining = nextBillDay - trading.gameDay;
-  const cashAfterBill = Math.max(0, trading.account.cash - WEEKLY_BILL_TOTAL);
-  const shortfall = Math.max(0, WEEKLY_BILL_TOTAL - trading.account.cash);
-  const coverage = Math.min(100, (trading.account.cash / WEEKLY_BILL_TOTAL) * 100);
+  const unpaidBills = trading.account.unpaidBills ?? 0;
+  const totalDue = WEEKLY_BILL_TOTAL + unpaidBills;
+  const cashAfterBill = Math.max(0, trading.account.cash - totalDue);
+  const shortfall = Math.max(0, totalDue - trading.account.cash);
+  const coverage = Math.min(100, (trading.account.cash / totalDue) * 100);
   const expenses = WEEKLY_BILL_ITEMS;
 
   return (
@@ -38,7 +40,10 @@ export default function LivingCosts() {
                 </Box>
                 <Box sx={{ textAlign: { sm: "right" } }}>
                   <Typography sx={{ color: D.t3, fontSize: 11, fontWeight: 900, letterSpacing: 1 }}>TOTAL DUE</Typography>
-                  <Typography sx={{ color: D.redText, fontFamily: MONO, fontSize: 26, fontWeight: 950 }}>{money(WEEKLY_BILL_TOTAL)}</Typography>
+                  <Typography sx={{ color: D.redText, fontFamily: MONO, fontSize: 26, fontWeight: 950 }}>{money(totalDue)}</Typography>
+                  {unpaidBills > 0 && (
+                    <Typography sx={{ color: D.t3, fontSize: 12 }}>includes {money(unpaidBills)} carried over</Typography>
+                  )}
                   <Chip label={shortfall === 0 ? "Fully covered" : `${money(shortfall)} short`} size="small" sx={{ mt: 0.5, bgcolor: shortfall === 0 ? D.greenBg : D.redBg, color: shortfall === 0 ? D.greenText : D.redText, fontWeight: 900 }} />
                 </Box>
               </Stack>
@@ -85,7 +90,7 @@ export default function LivingCosts() {
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}><AccountBalanceWalletIcon sx={{ color: D.brandText }} /><Typography sx={{ color: D.t1, fontWeight: 900 }}>After the next bill</Typography></Stack>
                 <Typography sx={{ color: D.t3, fontSize: 11, fontWeight: 900, letterSpacing: 1 }}>PROJECTED CASH</Typography>
                 <Typography sx={{ color: shortfall ? D.redText : D.t1, fontFamily: MONO, fontSize: 25, fontWeight: 950, mb: 1 }}>{money(cashAfterBill)}</Typography>
-                <Typography sx={{ color: D.t3, fontSize: 12, lineHeight: 1.6 }}>{shortfall ? "Your available cash will be used, but it will not cover the full bill." : `${money(WEEKLY_BILL_TOTAL)} will be deducted when you reach Day ${nextBillDay}.`}</Typography>
+                <Typography sx={{ color: D.t3, fontSize: 12, lineHeight: 1.6 }}>{shortfall ? "Your available cash will be used. What it does not cover is carried over as a debt that counts against your net worth until it is paid." : `${money(totalDue)} will be deducted when you reach Day ${nextBillDay}.`}</Typography>
               </Box>
 
               <Box sx={{ p: 2.5, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}`, borderRadius: 2 }}>
@@ -93,7 +98,7 @@ export default function LivingCosts() {
                 <Typography sx={{ color: D.t2, fontSize: 12, lineHeight: 1.7 }}>Bills are charged automatically as you advance across a 7-day boundary. If you skip across multiple billing days, all missed cycles are collected together. Charges use cash only; your stocks are never sold automatically.</Typography>
               </Box>
 
-              {trading.latestBill && <Box sx={{ p: 2.5, bgcolor: D.redBg, border: `1px solid ${D.redBd}`, borderRadius: 2 }}><Typography sx={{ color: D.redText, fontWeight: 900, mb: 0.5 }}>Latest payment · Day {trading.latestBill.day}</Typography><Typography sx={{ color: D.t2, fontSize: 13 }}>{trading.latestBill.cycles > 1 ? `${trading.latestBill.cycles} cycles were collected. ` : ""}{money(trading.latestBill.paid)} paid{trading.latestBill.shortfall > 0 ? `, with ${money(trading.latestBill.shortfall)} left uncovered.` : " in full."}</Typography></Box>}
+              {trading.latestBill && <Box sx={{ p: 2.5, bgcolor: D.redBg, border: `1px solid ${D.redBd}`, borderRadius: 2 }}><Typography sx={{ color: D.redText, fontWeight: 900, mb: 0.5 }}>Latest payment · Day {trading.latestBill.day}</Typography><Typography sx={{ color: D.t2, fontSize: 13 }}>{trading.latestBill.cycles > 1 ? `${trading.latestBill.cycles} cycles were collected. ` : ""}{money(trading.latestBill.paid)} paid{trading.latestBill.shortfall > 0 ? `, with ${money(trading.latestBill.shortfall)} carried over as debt.` : " in full."}</Typography></Box>}
             </Stack>
           </Grid>
         </Grid>

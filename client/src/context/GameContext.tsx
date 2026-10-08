@@ -69,9 +69,10 @@ type GameSession = {
   cash_balance: number | string;
   game_mode?: GameMode | null;
   game_seed?: string | null;
+  unpaid_bills?: number | string | null;
 };
 
-const SESSION_COLUMNS = "id, current_day, cash_balance, game_mode, game_seed";
+const SESSION_COLUMNS = "id, current_day, cash_balance, game_mode, game_seed, unpaid_bills";
 
 type TradeResult = {
   cash: number | string;
@@ -291,7 +292,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setNewsByDay(market.news);
     setGameDayState(currentDay);
     setMarketPhase(storedPhase === `after_hours:${currentDay}` ? "after_hours" : "market_open");
-    setAccount({ cash: asNumber(activeSession.cash_balance), holdings });
+    setAccount({
+      cash: asNumber(activeSession.cash_balance),
+      holdings,
+      unpaidBills: asNumber(activeSession.unpaid_bills),
+    });
   }, [loadHoldings]);
 
   const loadOrCreateSession = useCallback(async () => {
@@ -448,8 +453,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(marketPhaseStorageKey(session.id), "market_open");
       gameDayRef.current = appliedDay;
       setGameDayState(appliedDay);
-      setAccount((current) => ({ ...current, cash: asNumber(result.cash) }));
-      if (result.cycles_charged > 0) {
+      setAccount((current) => ({
+        ...current,
+        cash: asNumber(result.cash),
+        unpaidBills: asNumber(result.unpaid_bills),
+      }));
+      // Also shown when only carried-over debt was collected.
+      if (result.cycles_charged > 0 || asNumber(result.amount_paid) > 0) {
         setLatestBill({
           cycles: result.cycles_charged,
           total: asNumber(result.bill_total),

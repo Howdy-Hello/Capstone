@@ -98,6 +98,8 @@ export type AdvanceResult = {
   bill_total: number | string;
   amount_paid: number | string;
   shortfall: number | string;
+  /** Older API servers don't send it. */
+  unpaid_bills?: number | string;
 };
 
 /** Move the run forward to `day` (the server generates that market first). */

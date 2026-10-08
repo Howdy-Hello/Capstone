@@ -296,6 +296,29 @@ async function testScriptlessInfiniteRuns() {
   assert.equal(marketFingerprint({ game_mode: "infinite", game_seed: "ABC234" }), "infinite:ABC234");
 }
 
+// BUG-006: legacy runs keep the plain seed only for days already seen.
+async function testLegacySeedUpgrade() {
+  const { legacyPlainSeedThrough } = await import("../lib/marketService");
+  const { generateSessionPrices } = await import("../market/sessionMarket");
+  assert.equal(legacyPlainSeedThrough({ market_seed_secret: true, current_day: 40 }, "infinite"), 0);
+  assert.equal(legacyPlainSeedThrough({ market_seed_secret: null, current_day: 40 }, "infinite"), 0);
+  assert.equal(legacyPlainSeedThrough({ market_seed_secret: false, current_day: 40 }, "infinite"), 40);
+  assert.equal(legacyPlainSeedThrough({ market_seed_secret: false, current_day: 12 }, "limited_30"), Infinity);
+
+  // Switching seeds mid-run stays continuous: day 41 opens at day 40's close.
+  const script = fakeScript() as any;
+  const plain = generateSessionPrices({ mode: "infinite", seed: "PLAIN1", fromDay: 1, toDay: 40, script });
+  const previousCloses = Object.fromEntries(plain.filter((row) => row.game_day === 40)
+    .map((row) => [row.symbol, row.close_price]));
+  const secret = generateSessionPrices({ mode: "infinite", seed: "0123456789ABCDEF", fromDay: 41, toDay: 45, script, previousCloses });
+  for (const row of secret.filter((item) => item.game_day === 41)) {
+    assert.equal(row.open_price, previousCloses[row.symbol], `${row.symbol} gap at the seed switch`);
+  }
+  const plainOnward = generateSessionPrices({ mode: "infinite", seed: "PLAIN1", fromDay: 41, toDay: 45, script, previousCloses });
+  assert.notDeepEqual(secret.map((row) => row.close_price), plainOnward.map((row) => row.close_price),
+    "days after the switch must not be computable from the plain seed");
+}
+
 async function testNewsSanitized() {
   const { generateSessionNews, sanitizeNews } = await import("../market/sessionMarket");
   const news = generateSessionNews({ mode: "limited_30", seed: "0123456789ABCDEF", day: 1, script: fakeScript() as any });
@@ -323,6 +346,7 @@ async function main() {
   await testSessionPriceChunking();
   await testNewsSanitized();
   await testScriptlessInfiniteRuns();
+  await testLegacySeedUpgrade();
   console.log("Server tests passed.");
 }
 

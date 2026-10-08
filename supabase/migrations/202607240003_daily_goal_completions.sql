@@ -19,6 +19,7 @@ create index if not exists user_daily_goal_completions_user_idx
 
 alter table public.user_daily_goal_completions enable row level security;
 
+drop policy if exists "Users own their daily goal completions" on public.user_daily_goal_completions;
 create policy "Users own their daily goal completions"
   on public.user_daily_goal_completions for all to authenticated
   using  (auth.uid() = user_id)
