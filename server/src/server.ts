@@ -10,6 +10,7 @@ import gameRoutes from './routes/gameRoutes';
 import marketRoutes from './routes/marketRoutes';
 import { rateLimit } from './middleware/rateLimit';
 import { getServerEnvIssues } from './lib/env';
+import { secretMatches } from './lib/supabaseServer';
 
 const app = express();
 
@@ -76,11 +77,10 @@ app.get('/api/health/config', (req: Request, res: Response) => {
   if (isProduction) blocking.push('MARKET_SEED_SECRET');
   const status = issues.some((issue) => blocking.includes(issue.key)) ? 503 : 200;
 
-  // Which env keys are missing is reconnaissance for an unauthenticated caller.
-  // Once ADMIN_API_SECRET is configured, the detail requires it; without it the
-  // endpoint still reports healthy/unhealthy so the platform probe stays useful.
-  const adminSecret = process.env.ADMIN_API_SECRET;
-  const authorized = !adminSecret || req.get('x-admin-secret') === adminSecret;
+  // Which env keys are missing is reconnaissance for an unauthenticated caller
+  // (BUG-019): the detail needs ADMIN_API_SECRET, and is never shown while that
+  // secret is unset. Status and count stay public for the platform probe.
+  const authorized = secretMatches(req.get('x-admin-secret'), process.env.ADMIN_API_SECRET);
 
   res.status(status).json({
     status: issues.length === 0 ? 'ok' : 'warning',

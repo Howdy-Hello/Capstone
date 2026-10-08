@@ -340,6 +340,15 @@ async function testUserRateLimit() {
   assert.equal(allow("user-b"), true, "other users have their own budget");
 }
 
+async function testSecretMatches() {
+  const { secretMatches } = await import("../lib/supabaseServer");
+  assert.equal(secretMatches("correct-horse", "correct-horse"), true);
+  assert.equal(secretMatches("correct-hors", "correct-horse"), false, "prefix");
+  assert.equal(secretMatches("a much longer guess than the secret", "short"), false, "length differs without throwing");
+  assert.equal(secretMatches(undefined, "secret"), false);
+  assert.equal(secretMatches("", undefined), false, "no secret configured: nobody is authorized");
+}
+
 async function main() {
   await testValidateBody();
   await testRateLimit();
@@ -352,6 +361,7 @@ async function main() {
   await testMarketEngineInSync();
   await testAdvanceTarget();
   await testUserRateLimit();
+  await testSecretMatches();
   await testGenerationSeed();
   await testSessionPriceChunking();
   await testNewsSanitized();

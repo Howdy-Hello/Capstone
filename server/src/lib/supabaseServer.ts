@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
   NextFunction,
@@ -38,6 +39,14 @@ function unconfiguredClient(): SupabaseClient {
       throw new Error(
         'Supabase is not configured: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY).'
       );
+    },
+  });
+}
+
+function unconfiguredUserClient(): SupabaseClient {
+  return new Proxy({} as SupabaseClient, {
+    get() {
+      throw new Error('Set SUPABASE_ANON_KEY (or SUPABASE_PUBLISHABLE_KEY) for user-scoped requests.');
     },
   });
 }
@@ -97,10 +106,22 @@ function getBearerToken(req: ExpressRequest): string | null {
   return match ? match[1] : null;
 }
 
+/**
+ * Constant-time secret comparison (BUG-019). Hashing first gives both sides
+ * the same length, so neither the length nor a matching prefix leaks through
+ * timing. False when no secret is configured.
+ */
+export function secretMatches(provided: string | null | undefined, expected: string | null | undefined): boolean {
+  if (!expected || typeof provided !== 'string') return false;
+  const digest = (value: string) => createHash('sha256').update(value).digest();
+  return timingSafeEqual(digest(provided), digest(expected));
+}
+
 function userScopedClient(token: string): SupabaseClient {
-  // Prefer the anon key + user JWT so RLS applies; fall back to a service-role
-  // client still carrying the user's token if no anon key is configured.
-  return createClient(supabaseUrl as string, anonKey ?? (serviceRoleKey as string), {
+  // BUG-020: the anon key + the user's JWT, so RLS applies. Never fall back to
+  // the service-role key as `apikey`: requests would run with RLS bypassed.
+  if (!anonKey) return unconfiguredUserClient();
+  return createClient(supabaseUrl as string, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
@@ -126,7 +147,7 @@ async function buildContext(
 
   if (config.auth === 'secret') {
     const provided = req.get('x-admin-secret') ?? getBearerToken(req);
-    if (!adminSecret || provided !== adminSecret) {
+    if (!secretMatches(provided, adminSecret)) {
       return { ok: false, status: 403, message: 'Forbidden.' };
     }
     return { ok: true, ctx: { supabase: supabaseAdmin, supabaseAdmin, userClaims: null } };
