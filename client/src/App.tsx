@@ -42,19 +42,27 @@ import GoalsMissions from "./pages/GoalsMissions";
 import LivingCosts from "./pages/LivingCosts";
 import Advisor from "./pages/Advisor";
 import Tutorial from "./pages/Tutorial";
+import Privacy from "./pages/Privacy";
 import { useTradeDebriefs } from "./hooks/useTradeDebriefs";
+import { useNoIndex, usePageTitle } from "./lib/usePageTitle";
 
-const NotFound: React.FC = () => (
+// BUG-031: a missing page says so to search engines too (noindex), since a
+// single-page app answers every path with HTTP 200.
+const NotFound: React.FC = () => {
+  usePageTitle("Page not found");
+  useNoIndex();
+  return (
   <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 2, px: 2, textAlign: "center" }}>
     <Typography sx={{ fontSize: 72, fontWeight: 950, color: D.brandBd, lineHeight: 1 }}>404</Typography>
-    <Typography sx={{ fontSize: 22, fontWeight: 900, color: D.t1 }}>Page not found</Typography>
+    <Typography component="h1" sx={{ fontSize: 22, fontWeight: 900, color: D.t1 }}>Page not found</Typography>
     <Typography sx={{ fontSize: 14, color: D.t3, maxWidth: 320 }}>This route doesn't exist. Head back to the market.</Typography>
     <Button component={RouterLink} to="/" variant="contained"
       sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", mt: 1, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
       Back to Home
     </Button>
   </Box>
-);
+  );
+};
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -98,6 +106,7 @@ function AppLayout() {
           <Route path="/update-password" element={<UpdatePassword />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/practice" element={<Practice />} />
+          <Route path="/privacy" element={<Privacy />} />
 
           {/* Legacy redirects */}
           <Route path="/guide" element={<Navigate to="/learn?tab=guide" replace />} />
