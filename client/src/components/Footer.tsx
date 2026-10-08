@@ -11,9 +11,12 @@ const cols = {
   Account:  [{ l: "Log in",     h: "/auth?mode=login" }, { l: "Sign up",  h: "/auth?mode=signup" }, { l: "Settings", h: "/settings" }, { l: "Profile", h: "/profile" }],
 };
 
+// WCAG 2.5.8: every link gets a target at least 24px tall.
+const TARGET = { display: "inline-flex", alignItems: "center", minHeight: 24 } as const;
+
 const Footer: React.FC = () => {
   const { pathname } = useLocation();
-  if (pathname !== "/") return <Box component="footer" sx={{ p: 2, textAlign: "center", color: D.t3, borderTop: `1px solid ${D.border}` }}><Typography variant="caption">StockPilot · Simulation only · <Link component={RouterLink} to="/learn">Help</Link></Typography></Box>;
+  if (pathname !== "/") return <Box component="footer" sx={{ p: 2, textAlign: "center", color: D.t3, borderTop: `1px solid ${D.border}` }}><Typography variant="caption">StockPilot · Simulation only · <Link component={RouterLink} to="/learn" sx={TARGET}>Help</Link></Typography></Box>;
   return (
   <Box sx={{ bgcolor: D.surface, borderTop: `1px solid ${D.border}` }}>
     <Container maxWidth="xl" sx={{ py: { xs: 5, md: 6 } }}>
@@ -38,10 +41,10 @@ const Footer: React.FC = () => {
             <Typography sx={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1, color: D.t3, mb: 1.8, fontFamily: "'Courier New', monospace" }}>
               {section.toUpperCase()}
             </Typography>
-            <Stack spacing={0.9}>
+            <Stack spacing={0.4}>
               {items.map((item) => (
                 <Link key={item.l} component={RouterLink} to={item.h} underline="none"
-                  sx={{ color: D.t3, fontSize: 13, fontWeight: 600, transition: "color 120ms", "&:hover": { color: D.t1 } }}>
+                  sx={{ ...TARGET, color: D.t3, fontSize: 13, fontWeight: 600, transition: "color 120ms", "&:hover": { color: D.t1 } }}>
                   {item.l}
                 </Link>
               ))}

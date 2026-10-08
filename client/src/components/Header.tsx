@@ -142,7 +142,7 @@ const Header: React.FC = () => {
         <Toolbar sx={{ minHeight: 58, px: { xs: 2, md: 3 }, gap: 2 }}>
 
           {/* Logo */}
-          <Box component={RouterLink} to="/" sx={{ display: "flex", alignItems: "center", gap: 1, textDecoration: "none", flexShrink: 0 }}>
+          <Box component={RouterLink} to="/" aria-label="StockPilot home" sx={{ display: "flex", alignItems: "center", gap: 1, textDecoration: "none", flexShrink: 0 }}>
             <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: D.brand, display: "grid", placeItems: "center" }}>
               <CandlestickChartIcon sx={{ fontSize: 18, color: "#fff" }} />
             </Box>
