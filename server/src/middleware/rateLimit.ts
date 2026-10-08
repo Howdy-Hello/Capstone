@@ -59,3 +59,30 @@ export function rateLimit(options: RateLimitOptions) {
     next();
   };
 }
+
+/**
+ * Fixed-window limit per user id, for routes where many players share an IP
+ * (schools) or one player rotates IPs. Returns false once `max` is used up.
+ */
+export function userRateLimit(options: { windowMs: number; max: number }) {
+  const { windowMs, max } = options;
+  const hits = new Map<string, Bucket>();
+  let nextSweepAt = 0;
+
+  return (userId: string): boolean => {
+    const now = Date.now();
+    if (now >= nextSweepAt) {
+      nextSweepAt = now + Math.max(windowMs, 60_000);
+      for (const [key, entry] of hits) {
+        if (entry.resetAt <= now) hits.delete(key);
+      }
+    }
+    let entry = hits.get(userId);
+    if (!entry || entry.resetAt <= now) {
+      entry = { count: 0, resetAt: now + windowMs };
+      hits.set(userId, entry);
+    }
+    entry.count += 1;
+    return entry.count <= max;
+  };
+}

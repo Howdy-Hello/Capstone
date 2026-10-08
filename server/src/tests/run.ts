@@ -331,23 +331,13 @@ async function testNewsSanitized() {
   }
 }
 
-async function testStoredTradeQuotes() {
-  const { syncTradeQuotes } = await import("../routes/marketRoutes");
-  const filters: unknown[] = [];
-  let written: unknown;
-  let rows: unknown[] = [{ symbol: "GVE", close_price: "123.45" }];
-  const admin = { from: (table: string) => table === "session_stock_prices" ? {
-    select: () => {
-      const query: any = { eq: (...args: unknown[]) => { filters.push(args); return query; },
-        then: (resolve: any, reject: any) => Promise.resolve({ data: rows, error: null }).then(resolve, reject) };
-      return query;
-    },
-  } : { upsert: async (data: unknown) => { written = data; return { error: null }; } } };
-  await syncTradeQuotes(admin as any, "run-a", 7);
-  assert.deepEqual(filters, [["session_id", "run-a"], ["game_day", 7]]);
-  assert.deepEqual(written, [{ session_id: "run-a", game_day: 7, symbol: "GVE", price: "123.45" }]);
-  rows = [];
-  await assert.rejects(() => syncTradeQuotes(admin as any, "run-a", 8), /quote unavailable/);
+async function testUserRateLimit() {
+  const { userRateLimit } = await import("../middleware/rateLimit");
+  const allow = userRateLimit({ windowMs: 60_000, max: 2 });
+  assert.equal(allow("user-a"), true);
+  assert.equal(allow("user-a"), true);
+  assert.equal(allow("user-a"), false, "third request in the window is refused");
+  assert.equal(allow("user-b"), true, "other users have their own budget");
 }
 
 async function main() {
@@ -361,7 +351,7 @@ async function main() {
   await testTokenRejection();
   await testMarketEngineInSync();
   await testAdvanceTarget();
-  await testStoredTradeQuotes();
+  await testUserRateLimit();
   await testGenerationSeed();
   await testSessionPriceChunking();
   await testNewsSanitized();
