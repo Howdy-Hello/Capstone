@@ -18,15 +18,19 @@ import {
   stockFromCompanyHistory,
 } from "../data/sessionMarket";
 import {
+  getCumulativeTradeTotal,
   getPortfolioValue,
-  getSlippageAdjustedPrice,
   PortfolioHolding,
   TradingAccount,
 } from "../data/tradingState";
-import { supabase } from "../lib/supabase";
+import { isMissingDbObject, supabase } from "../lib/supabase";
 import { advanceSessionDay, ensureSessionMarket, syncGameState } from "../lib/api";
 import { recordTradeJournalEntry, TradeJournalInput } from "../lib/tradeJournal";
 import { useAuth } from "./AuthContext";
+import { ownershipKey, readOwnedAdvisorIds } from "../hooks/useAdvisor";
+
+// Riley's price; matches hire_advisor and ADVISORS in useAdvisor.
+const ADVISOR_COST = 100;
 
 // The run's market lives in Supabase: the API server generates each day's
 // prices and news into session_stock_prices / session_market_news, and is the
@@ -72,9 +76,9 @@ type GameSession = {
   unpaid_bills?: number | string | null;
   market_phase?: MarketPhase;
   advisor_ids?: string[];
-  trusted_state?: boolean;
-  cash_streak?: number;
-  gain_streak?: number;
+  ranked?: boolean;
+  cash_discipline_streak?: number;
+  hot_streak_days?: number;
 };
 
 // "*" rather than a column list: naming a column a not-yet-applied migration
@@ -213,6 +217,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [marketSeed, setMarketSeed] = useState(() => normalizeMarketSeed(null));
   const [gameDay, setGameDayState] = useState(1);
   const [marketPhase, setMarketPhase] = useState<MarketPhase>("market_open");
+  // Hires recorded in this browser when the database has no advisor_ids column.
+  const [localAdvisorIds, setLocalAdvisorIds] = useState<string[]>([]);
+  // Shares traded today per "buy:SYMBOL" / "sell:SYMBOL": slippage is charged
+  // on the day's cumulative quantity (BUG-016).
+  const [tradedToday, setTradedToday] = useState<Record<string, number>>({});
   const [databaseStocks, setDatabaseStocks] = useState<DatabaseStock[]>([]);
   const [priceRows, setPriceRows] = useState<SessionPriceRow[]>([]);
   const [newsByDay, setNewsByDay] = useState<Map<number, MarketNews[]>>(() => new Map());
@@ -308,10 +317,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   /** Make the server catch the run's market up, then load it into state. */
   const applySession = useCallback(async (activeSession: GameSession) => {
     await ensureSessionMarket(activeSession.id);
-    const [holdings, market] = await Promise.all([
+    const [holdings, market, todayTrades] = await Promise.all([
       loadHoldings(activeSession.id),
       fetchSessionMarket(activeSession.id, 1),
+      supabase
+        .from("trades")
+        .select("trade_type, quantity, stocks (symbol)")
+        .eq("session_id", activeSession.id)
+        .eq("game_day", activeSession.current_day),
     ]);
+    if (todayTrades.error) throw todayTrades.error;
+    const traded: Record<string, number> = {};
+    for (const row of (todayTrades.data ?? []) as any[]) {
+      const stock = Array.isArray(row.stocks) ? row.stocks[0] : row.stocks;
+      const key = `${row.trade_type}:${stock?.symbol}`;
+      traded[key] = (traded[key] ?? 0) + Number(row.quantity);
+    }
 
     const activeMode = normalizeGameMode(activeSession.game_mode);
     const currentDay = clampGameDayForMode(activeSession.current_day, activeMode);
@@ -324,6 +345,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setPriceRows(market.rows);
     setNewsByDay(market.news);
     setGameDayState(currentDay);
+    setLocalAdvisorIds(readOwnedAdvisorIds(activeSession.id, currentDay));
+    setTradedToday(traded);
     setMarketPhase(activeSession.market_phase ?? (storedPhase === `after_hours:${currentDay}` ? "after_hours" : "market_open"));
     setAccount({
       cash: asNumber(activeSession.cash_balance),
@@ -455,7 +478,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.rpc("close_market", {
         target_session_id: session.id, target_game_day: gameDayRef.current,
       });
-      if (error) throw error;
+      // Without the RPC the phase is tracked in this browser, as before.
+      if (error && !isMissingDbObject(error)) throw error;
+      localStorage.setItem(marketPhaseStorageKey(session.id), `after_hours:${gameDayRef.current}`);
       setMarketPhase("after_hours");
     } catch (error) { reportError(error); } finally { endAction(); }
   }, [session, beginAction, endAction, reportError]);
@@ -528,17 +553,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     // Price from the live market, not the Stock object the caller captured:
     // a trade dialog left open across a day change held yesterday's price.
     const live = stocks.find((item) => item.symbol === stock.symbol) ?? stock;
+    // Same inputs and rounding as execute_trade (BUG-024): net worth before
+    // debt, and the total rounded to cents.
     const netWorth = account.cash + getPortfolioValue(account, stocks);
-    const tradeValue = live.currentPrice * quantity;
-    const effectivePrice = getSlippageAdjustedPrice(live.currentPrice, tradeType, tradeValue, netWorth);
+    const prior = tradedToday[`${tradeType}:${live.symbol}`] ?? 0;
+    const total = quantity > 0
+      ? getCumulativeTradeTotal(live.currentPrice, prior, quantity, netWorth, tradeType)
+      : 0;
+    const effectivePrice = quantity > 0 ? total / quantity : live.currentPrice;
     const slippage = live.currentPrice > 0 ? (effectivePrice - live.currentPrice) / live.currentPrice : 0;
     return {
       basePrice: live.currentPrice,
       effectivePrice,
       slippage: Math.abs(slippage),
-      total: effectivePrice * quantity,
+      total,
     };
-  }, [account, stocks]);
+  }, [account, stocks, tradedToday]);
 
   const executeTrade = useCallback(async (
     stock: Stock,
@@ -701,6 +731,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.rpc("hire_advisor", {
         target_session_id: session.id, target_game_day: gameDayRef.current, advisor_id: advisorId,
       });
+      if (error && isMissingDbObject(error)) {
+        // Older schema: pay through spend_session_cash, record the hire locally.
+        const { data: cash, error: spendError } = await supabase.rpc("spend_session_cash", {
+          target_session_id: session.id, p_amount: ADVISOR_COST,
+        });
+        if (spendError) throw spendError;
+        const owned = readOwnedAdvisorIds(session.id, gameDayRef.current);
+        const stored = JSON.parse(localStorage.getItem(ownershipKey(session.id)) ?? "[]") as unknown[];
+        localStorage.setItem(ownershipKey(session.id), JSON.stringify([
+          ...stored, { id: advisorId, hiredDay: gameDayRef.current },
+        ]));
+        setLocalAdvisorIds([...owned, advisorId]);
+        setAccount(current => ({ ...current, cash: asNumber(cash as number | string) }));
+        return true;
+      }
       if (error) throw error;
       setSession(data as GameSession);
       setAccount(current => ({ ...current, cash: Number(data.cash_balance) }));
@@ -828,10 +873,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     marketPhase,
     closeMarket,
     actionPending,
-    advisorIds: session?.advisor_ids ?? [],
-    verifiedRun: session?.trusted_state ?? false,
-    cashStreak: session?.cash_streak ?? 0,
-    gainStreak: session?.gain_streak ?? 0,
+    advisorIds: session?.advisor_ids ?? localAdvisorIds,
+    // claim_achievements checks every unlock on the server, so any loaded
+    // run may claim. `ranked` only decides the leaderboards.
+    verifiedRun: Boolean(session),
+    cashStreak: session?.cash_discipline_streak ?? 0,
+    gainStreak: session?.hot_streak_days ?? 0,
     hireAdvisor,
     latestBill,
     clearLatestBill: () => setLatestBill(null),
@@ -851,7 +898,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     sessionId: session?.id ?? null,
     reloadSession: loadOrCreateSession,
     syncSessionValue,
-  }), [actionPending, hireAdvisor,
+  }), [actionPending, hireAdvisor, localAdvisorIds,
     account, addCash, addToWatchlist, advancing, buyStock, closeMarket, error, gameDay, gameMode, getHistory,
     getRelatedNews, getStock, getTradeQuote, loading, loadOrCreateSession, news, newsHistory, resetAccount,
     sellStock, marketSeed, setGameDay, session, stocks, storyArcs, syncSessionValue,

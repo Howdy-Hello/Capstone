@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { LEARNING_CHANGED, LearningEntry } from "../lib/learning";
-import { supabase } from "../lib/supabase";
+import { isMissingDbObject, supabase } from "../lib/supabase";
 
 export function useLearningProgress() {
   const { user } = useAuth();
@@ -20,7 +20,7 @@ export function useLearningProgress() {
     let cancelled = false;
     void supabase.from("learning_entries").select("*").eq("user_id", user.id).eq("session_id", sessionId)
       .order("created_at", { ascending: false }).limit(1000).then(({ data, error }) => {
-        if (!cancelled) setState({ scope, entries: (data ?? []) as LearningEntry[], error: error ? "Learning notes could not be loaded. Try again." : null });
+        if (!cancelled) setState({ scope, entries: (data ?? []) as LearningEntry[], error: error && !isMissingDbObject(error) ? "Learning notes could not be loaded. Try again." : null });
       });
     return () => { cancelled = true; };
   }, [user, sessionId, scope, revision, gameDay]);

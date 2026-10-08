@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { isMissingDbObject, supabase } from "./supabase";
 
 export type LearningKind = "research" | "compare" | "risk" | "plan" | "wait" | "reflection";
 export type LearningEntry = {
@@ -24,6 +24,7 @@ export async function saveLearningEntry(entry: {
     kind: entry.kind, symbol: entry.symbol ?? null, journal_id: entry.journalId ?? null,
     decision: entry.decision, evidence: entry.evidence.trim().slice(0, 1000), reflection: (entry.reflection ?? "").trim().slice(0, 1000),
   });
+  if (error && isMissingDbObject(error)) throw new Error("Learning notes aren't available yet. Your trades and progress still save.");
   if (error) throw new Error("Your note could not be saved. Keep it here and try again.");
   window.dispatchEvent(new Event(LEARNING_CHANGED));
 }

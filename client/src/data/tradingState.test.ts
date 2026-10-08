@@ -3,6 +3,8 @@ import {
   getNetWorth,
   getSlippageAdjustedPrice,
   getTradeSlippage,
+  getCumulativeTradeTotal,
+  getPortfolioValue,
 } from "./tradingState";
 
 // The "Max" buttons used to divide cash by the *base* price. Spending the whole
@@ -79,4 +81,23 @@ test("unpaid bills count against net worth, never below zero", () => {
   expect(getNetWorth({ cash: 0, holdings }, stocks)).toBe(500);
   expect(getNetWorth({ cash: 0, holdings, unpaidBills: 300 }, stocks)).toBe(200);
   expect(getNetWorth({ cash: 0, holdings, unpaidBills: 900 }, stocks)).toBe(0);
+});
+
+describe("getCumulativeTradeTotal (BUG-016, BUG-024)", () => {
+  it("charges the same for one order as for the same shares split in two", () => {
+    const whole = getCumulativeTradeTotal(100, 0, 12, 2000, "buy");
+    const split = getCumulativeTradeTotal(100, 0, 6, 2000, "buy") + getCumulativeTradeTotal(100, 6, 6, 2000, "buy");
+    expect(whole).toBe(1344); // 60% of net worth -> 12% cap
+    expect(split).toBeCloseTo(whole, 2);
+  });
+
+  it("rounds to cents like execute_trade", () => {
+    const total = getCumulativeTradeTotal(33.333, 0, 7, 100000, "sell");
+    expect(total).toBe(233.33);
+  });
+
+  it("values a holding without a price at cost basis", () => {
+    const account = { cash: 0, holdings: [{ symbol: "GONE", name: "Gone", shares: 3, averageCost: 10.5 }] };
+    expect(getPortfolioValue(account, [])).toBe(31.5);
+  });
 });

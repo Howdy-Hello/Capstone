@@ -23,7 +23,8 @@ export function getSharesOwned(account: TradingAccount, symbol: string) {
 export function getPortfolioValue(account: TradingAccount, stocks: Stock[]) {
   return account.holdings.reduce((total, holding) => {
     const stock = stocks.find((item) => item.symbol === holding.symbol);
-    return total + (stock ? stock.currentPrice * holding.shares : 0);
+    // Cost basis when the price is missing, as recompute_session_value does (BUG-024).
+    return total + (stock ? stock.currentPrice : holding.averageCost) * holding.shares;
   }, 0);
 }
 
@@ -97,4 +98,37 @@ export function getSlippageAdjustedPrice(
   return tradeType === "buy"
     ? basePrice * (1 + slippage)
     : basePrice * (1 - slippage);
+}
+
+/**
+ * Cash paid for (buy) or received from (sell) `quantity` shares after
+ * slippage. Mirrors public.slipped_trade_value (202610080005).
+ */
+export function getSlippedTradeValue(
+  basePrice: number,
+  quantity: number,
+  netWorth: number,
+  tradeType: "buy" | "sell"
+) {
+  const value = basePrice * quantity;
+  const slippage = getTradeSlippage(value, netWorth);
+  return value * (tradeType === "buy" ? 1 + slippage : 1 - slippage);
+}
+
+/**
+ * Total for the next order when `priorQuantity` shares of this stock were
+ * already traded on the same side today. Slippage applies to the day's
+ * cumulative quantity, so splitting an order doesn't avoid it (BUG-016).
+ * Rounded to cents like execute_trade.
+ */
+export function getCumulativeTradeTotal(
+  basePrice: number,
+  priorQuantity: number,
+  quantity: number,
+  netWorth: number,
+  tradeType: "buy" | "sell"
+) {
+  const after = getSlippedTradeValue(basePrice, priorQuantity + quantity, netWorth, tradeType);
+  const before = getSlippedTradeValue(basePrice, priorQuantity, netWorth, tradeType);
+  return Math.round((after - before) * 100) / 100;
 }

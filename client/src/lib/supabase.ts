@@ -90,3 +90,14 @@ const rememberAwareStorage = {
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: { storage: rememberAwareStorage },
 });
+
+/**
+ * True when PostgREST reports that a table or RPC doesn't exist. Some newer
+ * features (close_market, hire_advisor, learning_entries) ship ahead of their
+ * migrations, so callers fall back to the older client-side behaviour.
+ */
+export function isMissingDbObject(error: unknown) {
+  const { code, message } = (error ?? {}) as { code?: string; message?: string };
+  return code === "PGRST202" || code === "PGRST205" || code === "42883" || code === "42P01"
+    || /could not find the (function|table)|schema cache/i.test(message ?? "");
+}

@@ -614,7 +614,6 @@ export default function Game() {
           </Box>
         )}
 
-        {!trading.loading && !trading.verifiedRun && <Typography sx={{ color: D.t3, mb: 2 }}>This older run is practice-only. Start a new run to earn achievements and enter the leaderboards.</Typography>}
         <Box component="details" sx={{ ...CARD, p: 2, mb: 2, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText, fontWeight: 800 }}>My decision today · trading is optional</Box><Box sx={{ mt: 2 }}><DecisionNote kind="wait" /></Box></Box>
         <Typography sx={{ color: D.t2, fontSize: 12, mb: 2 }}>Fictional companies and synthetic prices. The after-hours news window pauses price reactions for learning; real markets may react immediately. Game risk scores and analyst ratings are illustrative.</Typography>
         {!isGameComplete && gameDay <= 3 && !getTutorialProgress(user?.id ?? "guest").gameComplete && (
