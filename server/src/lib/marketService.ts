@@ -21,6 +21,7 @@ export type MarketSession = {
   id: string;
   user_id: string;
   status: string;
+  market_phase: string;
   current_day: number;
   game_mode: string | null;
   game_seed: string | null;
@@ -31,7 +32,7 @@ export type MarketSession = {
 };
 
 export const SESSION_COLUMNS =
-  'id, user_id, status, current_day, game_mode, game_seed, market_generated_through, market_fingerprint, market_seed_secret, market_engine';
+  'id, user_id, status, market_phase, current_day, game_mode, game_seed, market_generated_through, market_fingerprint, market_seed_secret, market_engine';
 
 /**
  * Engine 1: infinite runs replay the shared 30-day database script (the same
@@ -64,8 +65,14 @@ export function marketFingerprint(
 
 export function getMarketSecret(): string | null {
   const secret = process.env.MARKET_SEED_SECRET;
-  if (secret && secret.length >= 16) return secret;
-  return process.env.NODE_ENV === 'production' ? null : DEV_FALLBACK_SECRET;
+  if (secret) return secret.length >= 16 ? secret : null;
+  if (process.env.NODE_ENV !== 'production') return DEV_FALLBACK_SECRET;
+  // Reuse the existing server-only credential when no separate market key was
+  // configured. Domain separation keeps the credential itself out of seeds.
+  const serverKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return serverKey && serverKey.length >= 16
+    ? createHmac('sha256', serverKey).update('stockpilot:market-seed:v1').digest('hex')
+    : null;
 }
 
 /**

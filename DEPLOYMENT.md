@@ -6,7 +6,7 @@ stores each run's market and is the only thing that can advance a run's day,
 so the game can't be played without it.
 
 **Deploy order matters** when upgrading an existing install: apply the
-migrations, deploy the server (with `MARKET_SEED_SECRET`), then deploy the
+migrations, deploy the server (with its server-only Supabase credential), then deploy the
 client with `REACT_APP_API_URL`. An old client stops working as soon as the
 `202609250001` migration is applied, because it wrote session state directly.
 
@@ -71,7 +71,7 @@ Required env vars:
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (server-only secret) |
 | `SUPABASE_ANON_KEY` | anon key (so user-scoped routes run under RLS) |
 | `CLIENT_ORIGIN` | your deployed client origin, e.g. `https://your-app.vercel.app` |
-| `MARKET_SEED_SECRET` | random string, 16+ characters. Keys each run's market so players can't compute future prices from the visible seed. **Never change it** once runs exist: already-stored days are safe, but days not yet generated would come out differently. Generate one with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `MARKET_SEED_SECRET` | Optional dedicated secret, 16+ characters. Existing configured values remain unchanged. When unset in production, the server derives a stable market key from `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY`; public keys are never used. |
 | `ADMIN_API_SECRET` | optional; guards `/api/admin/*` |
 
 ### Vercel
@@ -116,3 +116,22 @@ The server runs the same market generator as the client. The source lives in
 `client/src/data/{mockStocks,infiniteMarket,sessionMarket}.ts`; after editing
 any of them run `node scripts/sync-market-engine.cjs` to refresh the copies in
 `server/src/market/`. `npm test` in `server/` fails if they are out of date.
+
+## Market-key stability and October 7 repairs
+
+> **Superseded (2026-10-08):** `202610070002_market_restore_and_progress.sql` was never applied and was removed. It depended on objects that only exist in Howdy-Hello's unapplied design. Its gameplay pieces were rebuilt on the live schema in `supabase/migrations/202610080005_reconcile_gameplay.sql`; see `FIXES_APPLIED_2026-10-08.md`.
+
+The SQL below is no longer applied. Originally it preserved a restored run's market engine and
+observed prices, tracks the furthest played day, fixes achievement streak claims,
+and keeps prepared future quotes hidden. New infinite runs use distinct seeds.
+
+Do not change an existing `MARKET_SEED_SECRET`. When production has no dedicated
+key, keep the selected Supabase server credential stable. Before rotating it,
+freeze the current derived market key into `MARKET_SEED_SECRET`: the derivation is
+HMAC-SHA256 of `stockpilot:market-seed:v1`, keyed by `SUPABASE_SECRET_KEY` if set,
+otherwise `SUPABASE_SERVICE_ROLE_KEY`, encoded as lowercase hex. Keep that value
+server-only. Changing the chosen market key changes future generated days.
+
+A server-only deployment can build from the committed market modules. Full
+checkouts refresh all shared market modules during build/test; missing modules
+fail the build instead of shipping a broken generator.

@@ -230,6 +230,37 @@ async function testGenerationSeed() {
   assert.notEqual(a, deriveGenerationSeed("secret-one-0123456789", "infinite", "ABC234"));
 }
 
+async function testMarketSecretConfiguration() {
+  const { getMarketSecret } = await import("../lib/marketService");
+  const keys = ["NODE_ENV", "MARKET_SEED_SECRET", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY"];
+  const original = new Map(keys.map(key => [key, process.env[key]]));
+  try {
+    keys.forEach(key => { delete process.env[key]; });
+    process.env.NODE_ENV = "production";
+    assert.equal(getMarketSecret(), null);
+    process.env.SUPABASE_ANON_KEY = "public-key-0123456789";
+    assert.equal(getMarketSecret(), null, "public credentials must never key production markets");
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "server-only-key-0123456789";
+    const derived = getMarketSecret();
+    assert.match(derived!, /^[0-9a-f]{64}$/);
+    assert.equal(getMarketSecret(), derived, "fallback must be stable across instances");
+    assert.notEqual(derived, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    assert.ok(!getServerEnvIssues().some(issue => issue.key === "MARKET_SEED_SECRET"));
+    process.env.MARKET_SEED_SECRET = "existing-market-secret-0123456789";
+    assert.equal(getMarketSecret(), process.env.MARKET_SEED_SECRET, "keep existing markets unchanged");
+    process.env.MARKET_SEED_SECRET = "short";
+    assert.equal(getMarketSecret(), null, "an invalid explicit secret is a configuration error");
+    assert.ok(getServerEnvIssues().some(issue => issue.key === "MARKET_SEED_SECRET"));
+    delete process.env.MARKET_SEED_SECRET;
+    process.env.NODE_ENV = "development";
+    assert.equal(getMarketSecret(), "stockpilot-dev-only-market-secret", "preserve existing dev runs");
+  } finally {
+    for (const [key, value] of original) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
+}
+
 function fakeScript() {
   const stock = (id: number, symbol: string, sector: string) => ({
     id, symbol, company_name: symbol, sector, industry: sector, description: "",
@@ -363,6 +394,7 @@ async function main() {
   await testUserRateLimit();
   await testSecretMatches();
   await testGenerationSeed();
+  await testMarketSecretConfiguration();
   await testSessionPriceChunking();
   await testNewsSanitized();
   await testScriptlessInfiniteRuns();

@@ -24,7 +24,7 @@ import {
   TradingAccount,
 } from "../data/tradingState";
 import { isMissingDbObject, supabase } from "../lib/supabase";
-import { advanceSessionDay, ensureSessionMarket, syncGameState } from "../lib/api";
+import { advanceSessionDay, ApiError, ensureSessionMarket, syncGameState } from "../lib/api";
 import { recordTradeJournalEntry, TradeJournalInput } from "../lib/tradeJournal";
 import { useAuth } from "./AuthContext";
 import { ownershipKey, readOwnedAdvisorIds } from "../hooks/useAdvisor";
@@ -250,7 +250,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const reportError = useCallback((error: unknown) => {
     const message = errorMessage(error, "");
     const safe = ["Not enough cash", "Not enough shares", "Your game has changed. Reload before trying again.", "Challenge complete. Start a new run to play.", "Market quote unavailable. Try again."];
-    setError(safe.includes(message) ? message : "Your game could not be saved. Check your connection and try again.");
+    setError(error instanceof ApiError || safe.includes(message) ? message : "Your game could not be saved. Check your connection and try again.");
   }, []);
 
   useEffect(() => {
@@ -317,7 +317,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   /** Make the server catch the run's market up, then load it into state. */
   const applySession = useCallback(async (activeSession: GameSession) => {
     await ensureSessionMarket(activeSession.id);
-    const [holdings, market, todayTrades] = await Promise.all([
+    const [holdings, market, todayTrades, refreshed] = await Promise.all([
       loadHoldings(activeSession.id),
       fetchSessionMarket(activeSession.id, 1),
       supabase
@@ -325,8 +325,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         .select("trade_type, quantity, stocks (symbol)")
         .eq("session_id", activeSession.id)
         .eq("game_day", activeSession.current_day),
+      // Preparing the market can change the row (net worth, regenerated
+      // market), so use the fresh copy rather than the earlier snapshot.
+      supabase.from("game_sessions").select(SESSION_COLUMNS).eq("id", activeSession.id).single(),
     ]);
     if (todayTrades.error) throw todayTrades.error;
+    if (refreshed.error) throw refreshed.error;
+    activeSession = refreshed.data as GameSession;
     const traded: Record<string, number> = {};
     for (const row of (todayTrades.data ?? []) as any[]) {
       const stock = Array.isArray(row.stocks) ? row.stocks[0] : row.stocks;
@@ -390,6 +395,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     await loadWatchlist();
   }, [applySession, loadWatchlist, user]);
 
+  // Retry after a failed load: stock metadata, market rows, holdings,
+  // watchlist and session state.
+  const reloadSession = useCallback(async () => {
+    if (!beginAction()) return;
+    setLoading(true);
+    try {
+      await Promise.all([loadStocks(), loadOrCreateSession()]);
+    } catch (loadError) {
+      setError(errorMessage(loadError, "Could not load the game."));
+      throw loadError;
+    } finally {
+      setLoading(false);
+      endAction();
+    }
+  }, [beginAction, endAction, loadStocks, loadOrCreateSession]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -430,14 +451,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const stocks = useMemo(() => {
     if (gameMode === "limited_30") {
       return mockStockCompanies
-        .filter((company) => company.isActive)
+        .filter((company) => company.isActive && histories.get(company.symbol)?.some(point => point.gameDay === gameDay))
         .map((company) => stockFromCompanyHistory(company, histories.get(company.symbol) ?? []));
     }
 
     return databaseStocks
-      .filter((stock) => stock.is_active)
+      .filter((stock) => stock.is_active && histories.get(stock.symbol)?.some(point => point.gameDay === gameDay))
       .map((stock) => mapStockFromHistory(stock, histories.get(stock.symbol) ?? []));
-  }, [databaseStocks, gameMode, histories]);
+  }, [databaseStocks, gameDay, gameMode, histories]);
 
   // News for day D is published after the close on day D, so while the market
   // is open the newest visible day is the previous one.
@@ -504,27 +525,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     try {
       const result = await advanceSessionDay(session.id, next);
       const appliedDay = Number(result.day);
-      const market = await fetchSessionMarket(session.id, currentDay + 1);
-
-      setPriceRows((rows) => [...rows.filter((row) => row.game_day <= currentDay), ...market.rows]);
-      setNewsByDay((current) => {
-        const merged = new Map(Array.from(current).filter(([storedDay]) => storedDay <= currentDay));
-        market.news.forEach((items, storedDay) => merged.set(storedDay, items));
-        return merged;
-      });
-      setMarketPhase("market_open");
-      localStorage.setItem(marketPhaseStorageKey(session.id), "market_open");
+      // The advance is already committed. Keep its day, cash and bill even if
+      // a later read fails, so Retry cannot resubmit yesterday's day.
       gameDayRef.current = appliedDay;
       setGameDayState(appliedDay);
-      const refreshed = await supabase.from("game_sessions").select("*").eq("id", session.id).single();
-      if (refreshed.error) throw refreshed.error;
-      setSession(refreshed.data as GameSession);
+      setMarketPhase("market_open");
+      localStorage.setItem(marketPhaseStorageKey(session.id), "market_open");
+      setSession((current) => current && ({ ...current, current_day: appliedDay, market_phase: "market_open", cash_balance: result.cash }));
       setAccount((current) => ({
         ...current,
         cash: asNumber(result.cash),
-        // advance_game_day (incoming design) returns no unpaid_bills; the
-        // refreshed row always has it.
-        unpaidBills: asNumber(result.unpaid_bills ?? (refreshed.data as GameSession).unpaid_bills),
+        unpaidBills: asNumber(result.unpaid_bills ?? current.unpaidBills),
       }));
       // Also shown when only carried-over debt was collected.
       if (result.cycles_charged > 0 || asNumber(result.amount_paid) > 0) {
@@ -536,6 +547,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           day: appliedDay,
         });
       }
+
+      const market = await fetchSessionMarket(session.id, currentDay + 1);
+      setPriceRows((rows) => [...rows.filter((row) => row.game_day <= currentDay), ...market.rows]);
+      setNewsByDay((current) => {
+        const merged = new Map(Array.from(current).filter(([storedDay]) => storedDay <= currentDay));
+        market.news.forEach((items, storedDay) => merged.set(storedDay, items));
+        return merged;
+      });
+      setTradedToday({});
+      const refreshed = await supabase.from("game_sessions").select(SESSION_COLUMNS).eq("id", session.id).single();
+      if (refreshed.error) throw refreshed.error;
+      setSession(refreshed.data as GameSession);
       setError(null);
     } catch (advanceError) {
       setError(errorMessage(advanceError, "Could not advance the day."));
@@ -896,11 +919,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     loading,
     error,
     sessionId: session?.id ?? null,
-    reloadSession: loadOrCreateSession,
+    reloadSession,
     syncSessionValue,
   }), [actionPending, hireAdvisor, localAdvisorIds,
     account, addCash, addToWatchlist, advancing, buyStock, closeMarket, error, gameDay, gameMode, getHistory,
-    getRelatedNews, getStock, getTradeQuote, loading, loadOrCreateSession, news, newsHistory, resetAccount,
+    getRelatedNews, getStock, getTradeQuote, loading, reloadSession, news, newsHistory, resetAccount,
     sellStock, marketSeed, setGameDay, session, stocks, storyArcs, syncSessionValue,
     marketPhase, maxGameDay, isGameComplete, isWatchlisted, removeFromWatchlist,
     latestBill, toggleWatchlist, watchlistStocks, watchlistSymbols,

@@ -1,5 +1,7 @@
 # StockPilot beginner experience changes
 
+> **Superseded (2026-10-08):** The migration this file asks you to apply was never applied and was removed. It depended on objects that only exist in Howdy-Hello's unapplied design. Its gameplay pieces were rebuilt on the live schema in `supabase/migrations/202610080005_reconcile_gameplay.sql`; see `FIXES_APPLIED_2026-10-08.md`.
+
 October 7, 2026. Implemented in the existing React app and applied to the main Capstone checkout.
 
 The first visit now leads to a public practice decision rather than registration. A learner can research, choose a small purchase, wait, or avoid a stock, reveal a scripted result, and reflect. One decision is enough to finish; two extra scenarios are optional. Practice buys and sells reconcile inside a disposable account and never reset a saved run. Gameplay tutorial links open this isolated lesson. Website and advanced control tours remain available.

@@ -32,7 +32,7 @@ export const MAX_ADVANCE_DAYS = 1;
 function secretOrError() {
   const secret = getMarketSecret();
   if (!secret) {
-    console.error('[market] MARKET_SEED_SECRET is not set (min 16 chars); refusing to generate markets.');
+    console.error('[market] No valid server-only market secret is configured; refusing to generate markets.');
   }
   return secret;
 }
@@ -110,6 +110,9 @@ router.post('/game/advance', marketLimiter, supabaseHandler({ auth: 'user' }, as
 
     const target = resolveAdvanceTarget(session.current_day, session.game_mode, body.day);
     if ('error' in target) return Response.json({ message: target.error }, { status: 400 });
+    if (session.market_phase !== 'after_hours') {
+      return Response.json({ message: 'Close the market before advancing.' }, { status: 409 });
+    }
 
     await ensureMarketThrough(ctx.supabaseAdmin, session, target.day, secret);
 

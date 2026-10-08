@@ -1,5 +1,7 @@
 # Gameplay audit fixes — 2026-10-06
 
+> **Superseded (2026-10-08):** The migration this file asks you to apply was never applied and was removed. It depended on objects that only exist in Howdy-Hello's unapplied design. Its gameplay pieces were rebuilt on the live schema in `supabase/migrations/202610080005_reconcile_gameplay.sql`; see `FIXES_APPLIED_2026-10-08.md`.
+
 The 24 numbered findings and the requested text cuts have code changes. The separate balance/performance questions retain their existing rules.
 
 ## Behavior

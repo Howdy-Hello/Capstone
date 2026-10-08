@@ -524,10 +524,11 @@ export default function Game() {
 
       <Container maxWidth="xl" sx={{ py: 3 }}>
         {trading.error && (
-          <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
+          <Box role="alert" sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
             <Typography sx={{ color: D.redText, fontSize: 13, fontWeight: 800 }}>
               {trading.error}
             </Typography>
+            <Button disabled={trading.actionPending} onClick={() => { void trading.reloadSession().catch(() => {}); }}>Retry</Button>
           </Box>
         )}
 

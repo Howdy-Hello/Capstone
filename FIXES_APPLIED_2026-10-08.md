@@ -74,6 +74,29 @@ Not ported: `session_quotes`, `refresh_session_value`, player-callable
 `achievement_eligible`, the branching restore, their versions of
 `start_new_game_with_mode` and both leaderboards, `import_legacy_advisor`.
 
+## Merge of Howdy-Hello's 5bbdf95 (pushed while this work was in progress)
+
+Kept: production market key derived from the server-only Supabase key when
+`MARKET_SEED_SECRET` is unset (plus its test); the API refusing an advance
+before the market closes (409); Retry buttons that reload the whole game;
+save/load error handling; per-share cent rounding in
+`getSlippageAdjustedPrice`; GameContext re-reading the session after market
+preparation, hiding stocks with no price for the day, and keeping a committed
+advance's day/cash/bill even if a later read fails.
+
+Dropped: `202610070002_market_restore_and_progress.sql` (needs
+`session_quotes`, `trusted_state`, `lineage_id`, the branching restore and
+other unapplied objects; it also sorts before 202610080001); its edit to the
+deleted 080003; `server/scripts/sync-market.cjs` (duplicates
+`scripts/sync-market-engine.cjs`, which package.json runs and which already
+supports server-only builds; it also required a `databaseMarket.ts` the server
+does not use). Docs that told people to apply 080003/080004/070002 now say
+they are superseded.
+
+Follow-up worth deciding: live `claim_achievements` counts trades across all
+of a player's runs (`first_trade`, `active_trader`). That is account-level by
+design today; make it per run if achievements should be earned within one run.
+
 ## Verification
 
 - SQL: every migration applied to a disposable PostgreSQL (PGlite with
