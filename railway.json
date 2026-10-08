@@ -5,7 +5,8 @@
     "buildCommand": "cd server && npm ci && npm run build",
     "watchPatterns": [
       "server/**",
-      "railway.json"
+      "railway.json",
+      "client/src/data/**"
     ]
   },
   "deploy": {

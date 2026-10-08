@@ -17,6 +17,7 @@ interface AuthContextValue {
   profile: UserProfile | null;
   loading: boolean;
   profileLoading: boolean;
+  profileError: string | null;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextValue>({
   profile: null,
   loading: true,
   profileLoading: true,
+  profileError: null,
   refreshProfile: async () => {},
   signOut: async () => {},
 });
@@ -45,9 +47,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // avatar. Comparing the id makes "loaded" a fact about this user, not a
   // timing-dependent flag. It is tracked separately from `profile` because a
   // brand-new account legitimately has no row and must still count as loaded.
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
 
   const refreshProfile = useCallback(async () => {
+    setProfileError(null);
     const userId = session?.user.id;
     if (!userId) {
       setProfile(null);
@@ -55,18 +59,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, display_name, username, bio, avatar_url, updated_at")
-      .eq("id", userId)
-      .maybeSingle();
-
-    // Only mark the fetch settled when it actually succeeded. On failure the
-    // consumer keeps showing its loading state rather than seeding from null
-    // and offering to save the blanks.
-    if (!error) {
+    try {
+      const { data, error } = await supabase.from("profiles")
+        .select("id, display_name, username, bio, avatar_url, updated_at")
+        .eq("id", userId).maybeSingle();
+      if (error) throw error;
       setProfile((data as UserProfile | null) ?? null);
       setProfileUserId(userId);
+    } catch (error) {
+      console.error("Profile load failed", error);
+      setProfileError("Your profile could not be loaded. Try again.");
     }
   }, [session?.user.id]);
 
@@ -124,9 +126,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     profile,
     loading,
     profileLoading,
+    profileError,
     refreshProfile,
     signOut,
-  }), [user, session, profile, loading, profileLoading, refreshProfile, signOut]);
+  }), [user, session, profile, loading, profileLoading, profileError, refreshProfile, signOut]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -5,7 +5,6 @@ import {
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import CloudDoneIcon from "@mui/icons-material/CloudDone";
 import RestoreIcon from "@mui/icons-material/Restore";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
@@ -91,7 +90,7 @@ export default function SaveLoad() {
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveGame = async () => {
-    if (!user) return;
+    if (!user || trading.actionPending || saving || loadingSlot) return;
     if (slots.length >= MAX_SLOTS) {
       setMessage({ text: `Maximum ${MAX_SLOTS} save slots reached. Delete one first.`, severity: "error" });
       return;
@@ -102,7 +101,8 @@ export default function SaveLoad() {
     // Snapshotted server-side from the session itself: a slot is restored into
     // cash and holdings, so the client can't be the one to write it.
     const { error } = await supabase.rpc("create_save_slot", {
-      p_slot_name: `Day ${trading.gameDay} Run`,
+      target_session_id: trading.sessionId,
+      slot_name: `Day ${trading.gameDay} Run`,
     });
 
     try {
@@ -182,8 +182,7 @@ export default function SaveLoad() {
           <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
               <Box>
-                <Chip label="SAVE SYSTEM" size="small"
-                  sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
+
                 <Typography sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Save & Load</Typography>
                 <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
                   Cloud saves persist across devices. Up to {MAX_SLOTS} slots.
@@ -201,7 +200,7 @@ export default function SaveLoad() {
                 </Typography>
                 <Stack direction="row" spacing={1}>
                   <motion.div whileHover={reduceMotion || saving || !user ? undefined : { y: -2 }} whileTap={reduceMotion || saving || !user ? undefined : { scale: 0.96 }}>
-                    <Button onClick={saveGame} variant="contained" size="small" disabled={saving || !user}
+                    <Button onClick={saveGame} variant="contained" size="small" disabled={trading.actionPending || loadingSlot !== null || saving || !user}
                       startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon sx={{ fontSize: 14 }} />}
                       sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", fontSize: 12, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
                       {saving ? "Saving…" : "Save Game"}
@@ -261,14 +260,14 @@ export default function SaveLoad() {
 
         <Grid container spacing={3}>
           {/* Save slots list */}
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12}>
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Box>
                   <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Cloud Saves</Typography>
-                  <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Snapshots of your game state stored in the cloud.</Typography>
+
                 </Box>
-                <Button onClick={saveGame} variant="contained" size="small" disabled={saving || slots.length >= MAX_SLOTS || !user}
+                <Button onClick={saveGame} variant="contained" size="small" disabled={trading.actionPending || loadingSlot !== null || saving || slots.length >= MAX_SLOTS || !user}
                   startIcon={<SaveIcon sx={{ fontSize: 14 }} />}
                   sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", fontSize: 12, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
                   New Save
@@ -284,7 +283,7 @@ export default function SaveLoad() {
                   <Box sx={{ p: 4, borderRadius: 2, bgcolor: D.elevated, border: `1px dashed ${D.borderHi}`, textAlign: "center" }}>
                     <Typography sx={{ fontWeight: 800, fontSize: 16, color: D.t1, mb: 0.5 }}>No cloud saves yet.</Typography>
                     <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Save your current game to create your first cloud slot.</Typography>
-                    <Button onClick={saveGame} variant="contained" disabled={saving}
+                    <Button onClick={saveGame} variant="contained" disabled={trading.actionPending || loadingSlot !== null || saving}
                       sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
                       Save Game
                     </Button>
@@ -324,7 +323,7 @@ export default function SaveLoad() {
                               <Stack direction="row" spacing={0.8}>
                                 <motion.div style={{ flex: 1 }} whileHover={reduceMotion || isLoading ? undefined : { scale: 1.02 }} whileTap={reduceMotion || isLoading ? undefined : { scale: 0.96 }}>
                                   <Button fullWidth size="small" variant="contained"
-                                    disabled={isLoading}
+                                    disabled={trading.actionPending || saving || loadingSlot !== null}
                                     startIcon={isLoading ? <CircularProgress size={12} sx={{ color: "#fff" }} /> : <RestoreIcon sx={{ fontSize: 14 }} />}
                                     onClick={() => loadSlot(slot)}
                                     sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", fontSize: 12, "&:hover": { bgcolor: "#16A34A", boxShadow: "none" } }}>
@@ -348,41 +347,7 @@ export default function SaveLoad() {
             </Box>
           </Grid>
 
-          {/* Sidebar */}
-          <Grid item xs={12} md={4}>
-            <Stack spacing={2.5}>
-              <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.5 }}>Save Strategy</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Use saves before risky trades or after strong growth days.</Typography>
-                <Stack spacing={1}>
-                  {[
-                    "Save before spending most of your cash.",
-                    "Save after reaching a new net worth high.",
-                    "Load an earlier run to compare strategies.",
-                    "Up to 4 cloud saves per account.",
-                  ].map((tip) => (
-                    <Stack key={tip} direction="row" spacing={1} alignItems="flex-start">
-                      <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: D.brandText, mt: 0.8, flexShrink: 0 }} />
-                      <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.6 }}>{tip}</Typography>
-                    </Stack>
-                  ))}
-                </Stack>
-              </Box>
 
-              <Box sx={{ ...CARD, p: 3 }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.5 }}>Storage Status</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Saves are stored in Supabase and sync across devices.</Typography>
-                <Stack direction="row" spacing={1.5} alignItems="center"
-                  sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 2 }}>
-                  <CloudDoneIcon sx={{ color: D.greenText, fontSize: 20 }} />
-                  <Box>
-                    <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: D.t1 }}>Cloud Save Active</Typography>
-                    <Typography sx={{ fontSize: 12, color: D.t3 }}>{user ? `Signed in as ${user.email}` : "Sign in to use cloud saves."}</Typography>
-                  </Box>
-                </Stack>
-              </Box>
-            </Stack>
-          </Grid>
         </Grid>
       </Container>
 

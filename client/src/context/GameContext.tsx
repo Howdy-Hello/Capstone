@@ -70,11 +70,17 @@ type GameSession = {
   game_mode?: GameMode | null;
   game_seed?: string | null;
   unpaid_bills?: number | string | null;
+  market_phase?: MarketPhase;
+  advisor_ids?: string[];
+  trusted_state?: boolean;
+  cash_streak?: number;
+  gain_streak?: number;
 };
 
-const SESSION_COLUMNS = "id, current_day, cash_balance, game_mode, game_seed, unpaid_bills";
+const SESSION_COLUMNS = "id, current_day, cash_balance, game_mode, game_seed, unpaid_bills, market_phase, advisor_ids, trusted_state, cash_streak, gain_streak";
 
 type TradeResult = {
+  execution_price: number;
   cash: number | string;
   symbol: string;
   quantity: number;
@@ -104,7 +110,13 @@ type GameContextValue = {
   /** True while a day advance is in flight; trading and advancing are blocked. */
   advancing: boolean;
   marketPhase: MarketPhase;
-  closeMarket: () => void;
+  closeMarket: () => Promise<void>;
+  actionPending: boolean;
+  advisorIds: string[];
+  verifiedRun: boolean;
+  cashStreak: number;
+  gainStreak: number;
+  hireAdvisor: (advisorId: string) => Promise<boolean>;
   latestBill: BillCharge | null;
   clearLatestBill: () => void;
   gameMode: GameMode;
@@ -210,6 +222,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // One market mutation at a time: a trade sent mid-advance was priced
   // against the old day, and a double click could close and advance at once.
   const busyRef = useRef(false);
+  const [actionPending, setActionPending] = useState(false);
+  const pendingTrade = useRef<{ key: string; id: string } | null>(null);
+  const beginAction = useCallback(() => {
+    if (busyRef.current) return false;
+    busyRef.current = true;
+    setError(null);
+    setActionPending(true);
+    return true;
+  }, []);
+  const endAction = useCallback(() => {
+    busyRef.current = false;
+    setActionPending(false);
+  }, []);
+  const reportError = useCallback((error: unknown) => {
+    const message = errorMessage(error, "");
+    const safe = ["Not enough cash", "Not enough shares", "Your game has changed. Reload before trying again.", "Challenge complete. Start a new run to play.", "Market quote unavailable. Try again."];
+    setError(safe.includes(message) ? message : "Your game could not be saved. Check your connection and try again.");
+  }, []);
 
   useEffect(() => {
     gameDayRef.current = gameDay;
@@ -291,7 +321,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setPriceRows(market.rows);
     setNewsByDay(market.news);
     setGameDayState(currentDay);
-    setMarketPhase(storedPhase === `after_hours:${currentDay}` ? "after_hours" : "market_open");
+    setMarketPhase(activeSession.market_phase ?? (storedPhase === `after_hours:${currentDay}` ? "after_hours" : "market_open"));
     setAccount({
       cash: asNumber(activeSession.cash_balance),
       holdings,
@@ -416,11 +446,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     newsHistory.filter((event) => event.relatedTickers.includes(symbol)).reverse()
   ), [newsHistory]);
 
-  const closeMarket = useCallback(() => {
-    if (busyRef.current) return;
-    setMarketPhase("after_hours");
-    if (session) localStorage.setItem(marketPhaseStorageKey(session.id), `after_hours:${gameDayRef.current}`);
-  }, [session]);
+  const closeMarket = useCallback(async () => {
+    if (!session || !beginAction()) return;
+    try {
+      const { error } = await supabase.rpc("close_market", {
+        target_session_id: session.id, target_game_day: gameDayRef.current,
+      });
+      if (error) throw error;
+      setMarketPhase("after_hours");
+    } catch (error) { reportError(error); } finally { endAction(); }
+  }, [session, beginAction, endAction, reportError]);
 
   const setGameDay = useCallback(async (
     day: number | ((current: number) => number)
@@ -436,7 +471,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
     if (next === currentDay) return;
 
-    busyRef.current = true;
+    if (!beginAction()) return;
     setAdvancing(true);
     try {
       const result = await advanceSessionDay(session.id, next);
@@ -453,6 +488,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(marketPhaseStorageKey(session.id), "market_open");
       gameDayRef.current = appliedDay;
       setGameDayState(appliedDay);
+      const refreshed = await supabase.from("game_sessions").select("*").eq("id", session.id).single();
+      if (refreshed.error) throw refreshed.error;
+      setSession(refreshed.data as GameSession);
       setAccount((current) => ({
         ...current,
         cash: asNumber(result.cash),
@@ -472,10 +510,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } catch (advanceError) {
       setError(errorMessage(advanceError, "Could not advance the day."));
     } finally {
-      busyRef.current = false;
+      endAction();
       setAdvancing(false);
     }
-  }, [gameMode, session]);
+  }, [gameMode, session, beginAction, endAction]);
 
   const getTradeQuote = useCallback((
     stock: Stock,
@@ -503,99 +541,95 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     quantity = 1,
     journal?: TradeJournalInput,
   ) => {
-    if (!session || !user || busyRef.current) return false;
-
-    const quote = getTradeQuote(stock, tradeType, quantity);
-
-    if (tradeType === "buy" && account.cash < quote.total) return false;
-    if (tradeType === "sell") {
-      const holding = account.holdings.find((h) => h.symbol === stock.symbol);
-      if (!holding || holding.shares < quantity) return false;
-    }
-
-    busyRef.current = true;
-    const tradeDay = gameDayRef.current;
-    let result: TradeResult;
+    if (!session || !user || !beginAction()) return false;
     try {
-      // The server prices the trade from the stored market; target_price and
-      // target_game_day are kept only for the function's signature.
-      const { data, error: tradeError } = await supabase.rpc("execute_trade", {
+      if (gameMode === "limited_30" && gameDay >= LIMITED_GAME_DAYS) {
+        throw new Error("Challenge complete. Start a new run to play.");
+      }
+      const currentStock = stocks.find((current) => current.symbol === stock.symbol);
+      if (!currentStock || !Number.isInteger(quantity) || quantity <= 0) throw new Error("Invalid trade");
+      stock = currentStock;
+      const key = `${session.id}:${gameDay}:${stock.symbol}:${tradeType}:${quantity}`;
+      if (pendingTrade.current?.key !== key) pendingTrade.current = { key, id: crypto.randomUUID() };
+      await ensureSessionMarket(session.id);
+      const { data, error: tradeError } = await supabase.rpc("execute_trade_checked", {
         target_session_id: session.id,
         target_symbol: stock.symbol,
         target_trade_type: tradeType,
-        target_price: quote.effectivePrice,
-        target_game_day: tradeDay,
+        target_game_day: gameDay,
         target_quantity: quantity,
+        operation_id: pendingTrade.current.id,
+      });
+      if (tradeError) throw tradeError;
+      pendingTrade.current = null;
+      const result = data as TradeResult;
+
+      setAccount((current) => {
+        const existing = current.holdings.find(
+          (holding) => holding.symbol === result.symbol
+        );
+        const nextQuantity = Number(result.quantity);
+        let holdings = current.holdings;
+
+        if (nextQuantity === 0) {
+          holdings = holdings.filter(
+            (holding) => holding.symbol !== result.symbol
+          );
+        } else if (existing) {
+          holdings = holdings.map((holding) =>
+            holding.symbol === result.symbol
+              ? {
+                  ...holding,
+                  shares: nextQuantity,
+                  averageCost: asNumber(result.average_purchase_price),
+                }
+              : holding
+          );
+        } else {
+          holdings = [
+            ...holdings,
+            {
+              symbol: stock.symbol,
+              name: stock.name,
+              shares: nextQuantity,
+              averageCost: asNumber(result.average_purchase_price),
+            },
+          ];
+        }
+
+        return {
+          cash: asNumber(result.cash),
+          holdings,
+        };
       });
 
-      if (tradeError) {
-        setError(tradeError.message);
-        return false;
-      }
-      result = data as TradeResult;
-    } finally {
-      busyRef.current = false;
-    }
-
-    setAccount((current) => {
-      const existing = current.holdings.find(
-        (holding) => holding.symbol === result.symbol
-      );
-      const nextQuantity = Number(result.quantity);
-      let holdings = current.holdings;
-
-      if (nextQuantity === 0) {
-        holdings = holdings.filter(
-          (holding) => holding.symbol !== result.symbol
-        );
-      } else if (existing) {
-        holdings = holdings.map((holding) =>
-          holding.symbol === result.symbol
-            ? {
-                ...holding,
-                shares: nextQuantity,
-                averageCost: asNumber(result.average_purchase_price),
-              }
-            : holding
-        );
-      } else {
-        holdings = [
-          ...holdings,
-          {
-            symbol: stock.symbol,
-            name: stock.name,
-            shares: nextQuantity,
-            averageCost: asNumber(result.average_purchase_price),
-          },
-        ];
+      if (journal && (journal.thesis.trim() || journal.exitPlan.trim())) {
+        const journalSaved = await recordTradeJournalEntry({
+          sessionId: session.id,
+          userId: user.id,
+          symbol: stock.symbol,
+          tradeType,
+          quantity,
+          executionPrice: Number(result.execution_price),
+          gameDay,
+          journal,
+        });
+        if (!journalSaved) {
+          setError("The trade completed, but its decision journal could not be saved.");
+          return true;
+        }
       }
 
-      return {
-        cash: asNumber(result.cash),
-        holdings,
-      };
-    });
-
-    if (journal && (journal.thesis.trim() || journal.exitPlan.trim())) {
-      const journalSaved = await recordTradeJournalEntry({
-        sessionId: session.id,
-        userId: user.id,
-        symbol: stock.symbol,
-        tradeType,
-        quantity,
-        executionPrice: result.price !== undefined ? asNumber(result.price) : quote.effectivePrice,
-        gameDay: tradeDay,
-        journal,
-      });
-      if (!journalSaved) {
-        setError("The trade completed, but its decision journal could not be saved.");
+      try { await loadOrCreateSession(); }
+      catch (error) {
+        console.error("Trade saved, refresh failed", error);
+        setError("Your trade was saved. Reload to refresh your account.");
         return true;
       }
-    }
-
-    setError(null);
-    return true;
-  }, [account.cash, account.holdings, getTradeQuote, session, user]);
+      setError(null);
+      return true;
+    } catch (error) { reportError(error); return false; } finally { endAction(); }
+  }, [gameMode, stocks, gameDay, loadOrCreateSession, session, user, beginAction, endAction, reportError]);
 
   const buyStock = useCallback(
     (stock: Stock, quantity = 1, journal?: TradeJournalInput) => executeTrade(stock, "buy", quantity, journal),
@@ -608,10 +642,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   );
 
   const resetAccount = useCallback(async (mode: GameMode = gameMode) => {
-    if (!user || busyRef.current) return false;
+    if (!user || !beginAction()) return false;
     const nextMode = normalizeGameMode(mode);
 
-    busyRef.current = true;
     setLoading(true);
     try {
       // The server picks the new run's seed.
@@ -630,10 +663,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setError(errorMessage(resetError, "Could not start a new run."));
       return false;
     } finally {
-      busyRef.current = false;
+      endAction();
       setLoading(false);
     }
-  }, [applySession, gameMode, user]);
+  }, [applySession, gameMode, user, beginAction, endAction]);
 
   const addCash = useCallback(async (amount: number) => {
     if (!session) return false;
@@ -654,6 +687,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setAccount((current) => ({ ...current, cash: asNumber(data as number | string) }));
     return true;
   }, [session]);
+
+  const hireAdvisor = useCallback(async (advisorId: string) => {
+    if (!session || !beginAction()) return false;
+    try {
+      await ensureSessionMarket(session.id);
+      const { data, error } = await supabase.rpc("hire_advisor", {
+        target_session_id: session.id, target_game_day: gameDayRef.current, advisor_id: advisorId,
+      });
+      if (error) throw error;
+      setSession(data as GameSession);
+      setAccount(current => ({ ...current, cash: Number(data.cash_balance) }));
+      return true;
+    } catch (error) { reportError(error); return false; } finally { endAction(); }
+  }, [session, beginAction, endAction, reportError]);
 
   const isWatchlisted = useCallback((symbol: string) => (
     watchlistSymbols.some((item) => item.toLowerCase() === symbol.toLowerCase())
@@ -774,6 +821,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     advancing,
     marketPhase,
     closeMarket,
+    actionPending,
+    advisorIds: session?.advisor_ids ?? [],
+    verifiedRun: session?.trusted_state ?? false,
+    cashStreak: session?.cash_streak ?? 0,
+    gainStreak: session?.gain_streak ?? 0,
+    hireAdvisor,
     latestBill,
     clearLatestBill: () => setLatestBill(null),
     gameMode,
@@ -792,7 +845,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     sessionId: session?.id ?? null,
     reloadSession: loadOrCreateSession,
     syncSessionValue,
-  }), [
+  }), [actionPending, hireAdvisor,
     account, addCash, addToWatchlist, advancing, buyStock, closeMarket, error, gameDay, gameMode, getHistory,
     getRelatedNews, getStock, getTradeQuote, loading, loadOrCreateSession, news, newsHistory, resetAccount,
     sellStock, marketSeed, setGameDay, session, stocks, storyArcs, syncSessionValue,

@@ -18,6 +18,7 @@ import AdvisorEffects from "./components/AdvisorEffects";
 import GuidedTutorial from "./components/GuidedTutorial";
 
 import Home from "./pages/Home";
+import Practice from "./pages/Practice";
 import AuthPage from "./pages/AuthPage";
 import AuthCallback from "./pages/AuthCallback";
 import UpdatePassword from "./pages/UpdatePassword";
@@ -96,6 +97,7 @@ function AppLayout() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/update-password" element={<UpdatePassword />} />
           <Route path="/learn" element={<Learn />} />
+          <Route path="/practice" element={<Practice />} />
 
           {/* Legacy redirects */}
           <Route path="/guide" element={<Navigate to="/learn?tab=guide" replace />} />

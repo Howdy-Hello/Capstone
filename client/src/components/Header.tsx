@@ -34,20 +34,22 @@ import { getPlayerLevel } from "../data/levelSystem";
 import { useGame } from "../context/GameContext";
 import { supabase } from "../lib/supabase";
 
-const nav = [
-  { to: "/dashboard",   label: "Dashboard",   icon: <DashboardOutlinedIcon sx={{ fontSize: 17 }} /> },
+const extraNav = [
   { to: "/leaderboard", label: "Leaderboard",  icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/achievements", label: "Achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 17 }} /> },
-  { to: "/learn",       label: "Learn",        icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/news",        label: "News",         icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/inbox",       label: "Inbox",        icon: <MailOutlineIcon sx={{ fontSize: 17 }} /> },
+];
+
+const nav = [
+  { to: "/learn", label: "Learn", icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/dashboard", label: "Portfolio", icon: <DashboardOutlinedIcon sx={{ fontSize: 17 }} /> },
 ];
 
 const gameMenu = [
   { to: "/game", label: "Market", icon: <SportsEsportsOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/game/watchlist", label: "Watchlist", icon: <StarBorderOutlinedIcon sx={{ fontSize: 17 }} /> },
-  { to: "/level", label: "Player Level", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 17 }} /> },
-  { to: "/game/goals", label: "Goals & Missions", icon: <FlagOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/game/goals", label: "Learning Goals", icon: <FlagOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/game/living-costs", label: "Living Costs", icon: <ReceiptLongOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/game/advisor", label: "Advisors", icon: <SmartToyOutlinedIcon sx={{ fontSize: 17 }} /> },
 ];
@@ -65,11 +67,12 @@ const accountMenu = [
 const Header: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [menuAnchor, setMenuAnchor] = React.useState<null | HTMLElement>(null);
+  const [moreAnchor, setMoreAnchor] = React.useState<null | HTMLElement>(null);
   const [gameAnchor, setGameAnchor] = React.useState<null | HTMLElement>(null);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
-  const unreadCount = useUnreadInboxCount();
+  const unreadCount = useUnreadInboxCount(useGame().newsHistory);
   const unseenNotifications = useUnseenNotificationCount();
   const { totalXP, confirmedXP } = useAchievements();
   const { gameMode, sessionId, reloadSession } = useGame();
@@ -106,6 +109,8 @@ const Header: React.FC = () => {
 
   const handleSignOut = async () => {
     setMenuAnchor(null);
+    setGameAnchor(null);
+    setMoreAnchor(null);
     setDrawerOpen(false);
     await signOut();
     navigate("/", { replace: true });
@@ -151,14 +156,14 @@ const Header: React.FC = () => {
           {/* Desktop nav */}
           <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 0.5, flex: 1 }}>
             <Box data-tour="game-menu" sx={{ order: 1, display: "flex", alignItems: "center", borderRadius: 1.5, bgcolor: pathname === "/level" || pathname.startsWith("/game") ? D.overlay : "transparent", "&:hover": { bgcolor: D.overlay } }}>
-              <Button component={RouterLink} to="/game" size="small"
+              <Button component={RouterLink} to={user ? "/game" : "/practice"} size="small"
                 sx={{ minWidth: 0, color: pathname === "/level" || pathname.startsWith("/game") ? D.t1 : D.t2, fontWeight: pathname === "/level" || pathname.startsWith("/game") ? 800 : 600, fontSize: 13.5, textTransform: "none", pl: 1.5, pr: 0.6, py: 0.7, borderRadius: "6px 0 0 6px", "&:hover": { color: D.t1, bgcolor: "transparent" } }}>
-                Game
+                {user ? "Market" : "Practice"}
               </Button>
-              <IconButton data-tour="game-menu-arrow" size="small" onClick={(event) => setGameAnchor(event.currentTarget)} aria-label="Open Game menu" aria-haspopup="menu" aria-expanded={Boolean(gameAnchor)}
+              {user && <IconButton data-tour="game-menu-arrow" size="small" onClick={(event) => setGameAnchor(event.currentTarget)} aria-label="Open Market menu" aria-haspopup="menu" aria-expanded={Boolean(gameAnchor)}
                 sx={{ color: pathname === "/level" || pathname.startsWith("/game") ? D.t1 : D.t2, p: 0.55, borderRadius: "0 6px 6px 0", "&:hover": { color: D.t1, bgcolor: "transparent" } }}>
                 <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
-              </IconButton>
+              </IconButton>}
             </Box>
             <Menu anchorEl={gameAnchor} open={Boolean(gameAnchor)} onClose={() => setGameAnchor(null)}
               PaperProps={{ sx: { bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, minWidth: 210, mt: 0.5 } }}>
@@ -169,12 +174,12 @@ const Header: React.FC = () => {
                 </MenuItem>
               ))}
             </Menu>
-            {nav.map(({ to, label }) => {
+            {nav.filter(item => user || item.to === "/learn").map(({ to, label }) => {
               const active = isActive(to);
               return (
                 <Button key={to} component={RouterLink} to={to} size="small"
                   sx={{
-                    order: to === "/dashboard" ? 0 : 2,
+                    order: to === "/learn" ? 0 : 2,
                     color: active ? D.t1 : D.t2,
                     fontWeight: active ? 800 : 600,
                     fontSize: 13.5,
@@ -195,6 +200,12 @@ const Header: React.FC = () => {
                 </Button>
               );
             })}
+            {user && <>
+              <Button size="small" onClick={e => setMoreAnchor(e.currentTarget)} aria-haspopup="menu" aria-expanded={Boolean(moreAnchor)} endIcon={<KeyboardArrowDownIcon />} sx={{ order: 3, textTransform: "none", color: D.t2 }}>More{unreadCount > 0 ? ` (${unreadCount})` : ""}</Button>
+              <Menu anchorEl={moreAnchor} open={Boolean(moreAnchor)} onClose={() => setMoreAnchor(null)} PaperProps={{ sx: { bgcolor: D.elevated, color: D.t1 } }}>
+                {[...extraNav, { to: "/level", label: "Player Level", icon: <WorkspacePremiumOutlinedIcon /> }].map(item => <MenuItem key={item.to} component={RouterLink} to={item.to} onClick={() => setMoreAnchor(null)} sx={{ gap: 1 }}>{item.icon}{item.label}</MenuItem>)}
+              </Menu>
+            </>}
           </Box>
 
           <Box sx={{ flex: { xs: 1, md: 0 } }} />
@@ -312,8 +323,8 @@ const Header: React.FC = () => {
           </Stack>
 
           <List disablePadding sx={{ "& .MuiListItemButton-root": { borderRadius: 1.5, mb: 0.3, px: 1.5, py: 0.9 } }}>
-            <Typography sx={{ px: 1.5, pt: 0.5, pb: 0.7, color: D.t3, fontSize: 10, fontWeight: 900, letterSpacing: 1 }}>GAME</Typography>
-            {gameMenu.map(({ to, label, icon }) => (
+            <Typography sx={{ px: 1.5, pt: 0.5, pb: 0.7, color: D.t3, fontSize: 10, fontWeight: 900, letterSpacing: 1 }}>START HERE</Typography>
+            {(user ? [nav[0], gameMenu[0], nav[1]] : [{ to: "/practice", label: "Try practice", icon: <SportsEsportsOutlinedIcon /> }, nav[0]]).map(({ to, label, icon }) => (
               <ListItemButton key={to} component={RouterLink} to={to} onClick={() => setDrawerOpen(false)} selected={pathname === to}
                 sx={{ color: pathname === to ? D.t1 : D.t2, bgcolor: pathname === to ? D.overlay : "transparent", "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
                 <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>{icon}</ListItemIcon>
@@ -321,13 +332,7 @@ const Header: React.FC = () => {
               </ListItemButton>
             ))}
             <Divider sx={{ borderColor: D.border, my: 1 }} />
-            {nav.map(({ to, label, icon }) => (
-              <ListItemButton key={to} component={RouterLink} to={to} onClick={() => setDrawerOpen(false)} selected={isActive(to)}
-                sx={{ color: isActive(to) ? D.t1 : D.t2, bgcolor: isActive(to) ? D.overlay : "transparent", "&:hover": { color: D.t1, bgcolor: D.overlay }, "& .Mui-selected": {} }}>
-                <ListItemIcon sx={{ minWidth: 30, color: "inherit" }}>{icon}</ListItemIcon>
-                <ListItemText primary={label} primaryTypographyProps={{ fontWeight: 700, fontSize: 13.5 }} />
-              </ListItemButton>
-            ))}
+            {user && <Box component="details" sx={{ mt: 1 }}><Box component="summary" sx={{ p: 1.5, color: D.t2, cursor: "pointer", fontWeight: 700 }}>More tools & competition</Box>{[...gameMenu.slice(1), ...extraNav].map(item => <ListItemButton key={item.to} component={RouterLink} to={item.to} onClick={() => setDrawerOpen(false)}><ListItemIcon sx={{ minWidth: 30, color: D.t2 }}>{item.icon}</ListItemIcon><ListItemText primary={item.label} sx={{ color: D.t1 }} /></ListItemButton>)}</Box>}
           </List>
 
           <Divider sx={{ borderColor: D.border, my: 2 }} />

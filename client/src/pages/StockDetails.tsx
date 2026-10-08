@@ -1,3 +1,4 @@
+import DecisionNote from "../components/learning/DecisionNote";
 import React, { useEffect, useState } from "react";
 import {
   Box, Button, Chip, CircularProgress, Container, Divider, Grid, IconButton,
@@ -276,10 +277,10 @@ export default function StockDetails() {
         {/* Stat tiles */}
         <Grid data-tour="stock-values" container spacing={2} sx={{ mb: 3 }}>
           {[
-            { label: "Current Price",   val: money(stock.currentPrice),                             icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: true },
-            { label: "P/E Ratio",       val: stock.fundamentals.peRatio.toFixed(1),                 icon: <AssessmentIcon sx={{ fontSize: 20 }} />,           up: true },
-            { label: "Revenue Growth",  val: `+${stock.fundamentals.revenueGrowth.toFixed(1)}%`,    icon: <TrendingUpIcon sx={{ fontSize: 20 }} />,            up: true },
-            { label: "Volume",          val: latestHistory ? latestHistory.volume.toLocaleString("en-US") : "-", icon: <QueryStatsIcon sx={{ fontSize: 20 }} />,      up: undefined },
+            { label: "Current Price",   val: money(stock.currentPrice),                             icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: undefined, note: "Price for one share; it is not the value of the whole business." },
+            { label: "P/E Ratio",       val: stock.fundamentals.peRatio.toFixed(1),                 icon: <AssessmentIcon sx={{ fontSize: 20 }} />,           up: undefined, note: "Price divided by annual earnings per share; compare similar businesses." },
+            { label: "Revenue Growth",  val: `+${stock.fundamentals.revenueGrowth.toFixed(1)}%`,    icon: <TrendingUpIcon sx={{ fontSize: 20 }} />,            up: undefined, note: "Change in sales; investigate whether sales become sustainable profit." },
+            { label: "Volume",          val: latestHistory ? latestHistory.volume.toLocaleString() : "-", icon: <QueryStatsIcon sx={{ fontSize: 20 }} />,      up: undefined, note: "Number of shares traded, not a measure of business quality." },
           ].map((s, i) => {
             const color = s.up === undefined ? D.brandText : D.greenText;
             const bg    = s.up === undefined ? D.brandBg   : D.greenBg;
@@ -296,6 +297,7 @@ export default function StockDetails() {
                     </Box>
                     <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
                   </Stack>
+                  <Typography sx={{ color: D.t2, fontSize: 12, mt: 1 }}>{s.note}</Typography>
                 </Box>
               </Grid>
             );
@@ -320,6 +322,7 @@ export default function StockDetails() {
                   <Chip label={`${history.length} data points`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontSize: 11 }} />
                 </Stack>
               </Stack>
+              <Typography sx={{ px: 3, color: D.t2, fontSize: 12 }}>Candles show open, high, low, and close. The body spans open to close; the wick spans the day’s range. Up/down colours describe movement, not a recommendation.</Typography>
               <Box sx={{ p: 2.5, height: 360 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   {chartType === "area" ? (
@@ -353,12 +356,12 @@ export default function StockDetails() {
               <Box sx={{ p: 2.5 }}>
                 <Grid container spacing={2}>
                   {[
-                    { label: "P/E Ratio",        val: stock.fundamentals.peRatio.toFixed(1),            note: "Lower can mean cheaper valuation." },
-                    { label: "EPS",              val: `$${stock.fundamentals.eps.toFixed(2)}`,           note: "Profit earned per share." },
+                    { label: "P/E Ratio",        val: stock.fundamentals.peRatio.toFixed(1),            note: "Price ÷ annual earnings per share. Lower may mean weaker growth expectations or a lower valuation; investigate." },
+                    { label: "EPS",              val: `$${stock.fundamentals.eps.toFixed(2)}`,           note: "Earnings per share. Compare trends and earnings quality; share counts differ across companies." },
                     { label: "Revenue Growth",   val: `+${stock.fundamentals.revenueGrowth.toFixed(1)}%`, note: "Higher means faster growth." },
                     { label: "Profit Margin",    val: `${stock.fundamentals.profitMargin.toFixed(1)}%`, note: "Higher means better efficiency." },
                     { label: "Debt/Equity",      val: stock.fundamentals.debtToEquity.toFixed(2),        note: "Higher means more balance-sheet risk." },
-                    { label: "Dividend Yield",   val: `${stock.fundamentals.dividendYield.toFixed(1)}%`, note: "Cash return to shareholders." },
+                    { label: "Dividend Yield",   val: `${stock.fundamentals.dividendYield.toFixed(1)}%`, note: "Dividend relative to price. High yield can warn of a cut; payments are not guaranteed." },
                   ].map((m) => (
                     <Grid item xs={12} sm={6} md={4} key={m.label}>
                       <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, height: "100%" }}>
@@ -435,6 +438,8 @@ export default function StockDetails() {
                 </Stack>
               </Box>
 
+              <Box sx={{ ...CARD, p: 3 }}><DecisionNote key={stock.symbol} kind={stock.riskLevel === "High" ? "risk" : "research"} symbol={stock.symbol} /></Box>
+              <Box component="details" sx={{ ...CARD, p: 3, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText }}>Keep researching instead of trading</Box><Box sx={{ mt: 2 }}><DecisionNote key={`wait-${stock.symbol}`} kind="wait" symbol={stock.symbol} /></Box></Box>
               {/* Trading actions */}
               <Box data-tour="trade-panel" sx={{ ...CARD, p: 3 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
@@ -447,6 +452,7 @@ export default function StockDetails() {
                   <Typography sx={{ fontSize: 13, color: D.t3 }}>Owned: {sharesOwned}</Typography>
                 </Stack>
 
+                <Typography sx={{ color: D.t2, fontSize: 12, mb: 2 }}>Fictional company · synthetic prices · illustrative risk and analyst rating. Immediate orders only; try other order types in Learn.</Typography>
                 {/* Quantity stepper */}
                 <Box sx={{ mb: 2 }}>
                   <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 1 }}>QUANTITY</Typography>
@@ -499,16 +505,16 @@ export default function StockDetails() {
                   </Typography>
                   {(buyQuote.slippage > 0.001 || sellQuote.slippage > 0.001) && (
                     <Typography sx={{ fontSize: 11, color: D.amber, mt: 0.8 }}>
-                      This quantity is large relative to your net worth — buys cost more and sells return less per share until you trade smaller.
+                      Game rule: orders above 15% of net worth receive an account-size execution penalty, capped at 12%. This is a balancing rule, not how real brokers price your savings.
                     </Typography>
                   )}
                 </Box>
 
                 <Box data-tour="trade-journal" sx={{ mb: 2, p: 1.75, bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2 }}>
                   <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t1, mb: .35 }}>DECISION JOURNAL <Box component="span" sx={{ color: D.t3, fontWeight: 600 }}>(OPTIONAL)</Box></Typography>
-                  <Typography sx={{ fontSize: 11, color: D.t3, mb: 1.2 }}>Your advisor will review the decision after the market moves.</Typography>
-                  <TextField fullWidth size="small" multiline minRows={2} value={tradeThesis} onChange={(event) => setTradeThesis(event.target.value.slice(0, 500))} placeholder="What is your thesis?"
-                    inputProps={{ "aria-label": "Trade thesis" }} sx={{ mb: 1, "& .MuiOutlinedInput-root": { bgcolor: D.surface, color: D.t1, fontSize: 12, "& fieldset": { borderColor: D.border }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
+                  <Typography sx={{ fontSize: 11, color: D.t3, mb: 1.2 }}>A price-outcome review arrives at your horizon. Reflect on your plan in Portfolio.</Typography>
+                  <TextField fullWidth size="small" multiline minRows={2} value={tradeThesis} onChange={(event) => setTradeThesis(event.target.value.slice(0, 500))} label="Why am I making this decision?"
+                    inputProps={{ "aria-label": "Reason for this decision" }} sx={{ mb: 1, "& .MuiOutlinedInput-root": { bgcolor: D.surface, color: D.t1, fontSize: 12, "& fieldset": { borderColor: D.border }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
                   <Stack direction="row" spacing={.6} sx={{ mb: 1 }}>
                     {[3, 10, 30].map((days) => <Button key={days} size="small" onClick={() => setTradeHorizonDays(days)} sx={{ minWidth: 0, px: 1, py: .35, borderRadius: 99, textTransform: "none", fontSize: 10, fontWeight: 800, color: tradeHorizonDays === days ? D.brandText : D.t3, bgcolor: tradeHorizonDays === days ? D.brandBg : "transparent", border: `1px solid ${tradeHorizonDays === days ? D.brandBd : D.border}` }}>{days} days</Button>)}
                   </Stack>
@@ -516,6 +522,7 @@ export default function StockDetails() {
                     inputProps={{ "aria-label": "Trade exit rule" }} sx={{ "& .MuiOutlinedInput-root": { bgcolor: D.surface, color: D.t1, fontSize: 12, "& fieldset": { borderColor: D.border }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
                 </Box>
 
+                {trading.error && <Typography role="alert" sx={{ color: D.redText, mb: 1 }}>{trading.error}</Typography>}
                 <MotionPresence initial={false}>
                   {tradeMsg && (
                     <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 30 }}>
@@ -528,13 +535,13 @@ export default function StockDetails() {
                 <Stack spacing={1}>
                   <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
                     <Button data-tour="tutorial-buy" fullWidth variant="contained" onClick={handleBuy}
-                      disabled={submitting || trading.advancing || trading.account.cash < buyQuote.total}
+                      disabled={submitting || trading.advancing || trading.actionPending || trading.isGameComplete || trading.account.cash < buyQuote.total}
                       sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Buy {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>
                   </motion.div>
                   <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
-                    <Button data-tour="tutorial-sell" fullWidth variant="contained" disabled={submitting || trading.advancing || sharesOwned < quantity} onClick={handleSell}
+                    <Button data-tour="tutorial-sell" fullWidth variant="contained" disabled={submitting || trading.advancing || trading.actionPending || trading.isGameComplete || sharesOwned < quantity} onClick={handleSell}
                       sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Sell {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>

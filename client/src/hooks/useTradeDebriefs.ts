@@ -70,27 +70,23 @@ export function useTradeDebriefs() {
           }
 
           const outcome = `${outcomePct >= 0 ? "+" : ""}${outcomePct.toFixed(1)}%`;
-          const lesson = outcomePct > 2
-            ? "The move has supported your decision so far. Check whether the original reasoning still holds before adding risk."
-            : outcomePct < -2
-              ? "The move has gone against your decision so far. Revisit the evidence and the condition that would prove the idea wrong."
-              : "The price has not moved enough to confirm or reject the decision yet. Patience is part of the plan.";
+          const lesson = "Price movement alone cannot confirm or reject your reasoning. Review the evidence and your plan in Portfolio: did anything change, did you follow your exit rule, was the position appropriate, and what could have been luck?";
           addInboxMessage(user.id, {
             id: `trade-debrief-${raw.id}`,
             from: "Your Advisor",
-            subject: `Trade review: ${raw.symbol} ${outcome}`,
+            subject: `Price-outcome review: ${raw.symbol} ${outcome}`,
             body: [
               `On Day ${raw.game_day}, you ${raw.trade_type === "buy" ? "bought" : "sold"} ${raw.quantity} share${raw.quantity === 1 ? "" : "s"} at $${executionPrice.toFixed(2)}.`,
-              raw.thesis ? `Your thesis: “${raw.thesis}”` : "You did not record a thesis for this trade.",
+              raw.thesis ? `Your reason: “${raw.thesis}”` : "You did not record a reason for this trade.",
               raw.exit_plan ? `Your exit rule: “${raw.exit_plan}”` : "No exit rule was recorded.",
-              `Current decision outcome: ${outcome}. ${lesson}`,
+              `Directional price movement (not realized profit): ${outcome}. ${lesson}`,
             ].join("\n\n"),
-            category: "mission",
+            category: "advisor",
           });
           pushNotification({
             id: `trade-debrief-${raw.id}`,
             kind: "advisor",
-            title: `Advisor reviewed ${raw.symbol}`,
+            title: `Price-outcome review for ${raw.symbol}`,
             description: `${outcome} since your Day ${raw.game_day} ${raw.trade_type}.`,
           });
         }

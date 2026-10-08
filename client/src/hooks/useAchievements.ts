@@ -149,7 +149,7 @@ function getQueueSnapshot() {
 
 export function useAchievements() {
   const { user } = useAuth();
-  const { account, stocks, gameDay, watchlistStocks, sessionId } = useGame();
+  const { account, stocks, gameDay, watchlistStocks, sessionId, cashStreak, gainStreak, verifiedRun } = useGame();
 
   const [unlocks, setUnlocks]       = useState<Record<string, string>>({});
   const [tradeCount, setTradeCount] = useState(0);
@@ -202,10 +202,10 @@ export function useAchievements() {
     const { count, error } = await supabase
       .from("trades")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id);
+      .eq("session_id", sessionId ?? "00000000-0000-0000-0000-000000000000");
 
     if (!error && count !== null) setTradeCount(count);
-  }, [user]);
+  }, [user, sessionId]);
 
   const refreshUnlockRates = useCallback(async () => {
     if (!user) {
@@ -319,60 +319,56 @@ export function useAchievements() {
           progress = tradeCount > 0 ? 100 : 0;
           break;
         case "risk_taker":
-          progress = Math.min(100, Math.round((account.holdings.length / 3) * 100));
+          progress = Math.min(100, Math.floor((account.holdings.length / 3) * 100));
           break;
         case "active_trader":
-          progress = Math.min(100, Math.round((tradeCount / 10) * 100));
+          progress = Math.min(100, Math.floor((tradeCount / 10) * 100));
           break;
         case "diversified":
-          progress = Math.min(100, Math.round((account.holdings.length / 5) * 100));
+          progress = Math.min(100, Math.floor((account.holdings.length / 5) * 100));
           break;
         case "sector_scout":
-          progress = Math.min(100, Math.round((heldSectorCount / 3) * 100));
+          progress = Math.min(100, Math.floor((heldSectorCount / 3) * 100));
           break;
         case "watchlist_builder":
-          progress = Math.min(100, Math.round((watchlistStocks.length / 3) * 100));
+          progress = Math.min(100, Math.floor((watchlistStocks.length / 3) * 100));
           break;
         case "cash_builder":
-          progress = Math.min(100, Math.round((account.cash / 5000) * 100));
+          progress = Math.min(100, Math.floor((account.cash / 5000) * 100));
           break;
         case "market_regular":
-          progress = Math.min(100, Math.round((gameDay / 5) * 100));
+          progress = Math.min(100, Math.floor((gameDay / 5) * 100));
           break;
         case "closing_bell":
-          progress = Math.min(100, Math.round((gameDay / 30) * 100));
+          progress = Math.min(100, Math.floor((gameDay / 30) * 100));
           break;
         case "smart_investor":
-          progress = Math.min(100, Math.round((netWorth / 15000) * 100));
+          progress = Math.min(100, Math.floor((netWorth / 15000) * 100));
           break;
         case "cash_discipline":
-          progress = Math.min(100, Math.round((streak.cashDisciplineStreak / 5) * 100));
+          progress = Math.min(100, Math.floor((cashStreak / 5) * 100));
           break;
         case "hot_streak":
-          progress = Math.min(100, Math.round((streak.hotStreakDays / 3) * 100));
+          progress = Math.min(100, Math.floor((gainStreak / 3) * 100));
           break;
         case "market_master":
-          progress = Math.min(100, Math.round((netWorth / 50000) * 100));
+          progress = Math.min(100, Math.floor((netWorth / 50000) * 100));
           break;
       }
 
       const alreadyUnlocked = Boolean(unlocks[def.id]);
-      const justHit100      = progress >= 100
-        && !suppressedUnlocks.has(def.id)
-        && !rejectedUnlocks.has(def.id);
 
       return {
         ...def,
         progress,
-        unlocked:   alreadyUnlocked || justHit100,
+        unlocked:   alreadyUnlocked,
         unlockedAt: unlocks[def.id] ?? null,
         achievedByPercent: unlockRates[def.id] ?? 0,
       };
     });
   }, [
     account.cash, account.holdings.length, gameDay, heldSectorCount, netWorth,
-    rejectedUnlocks, streak, suppressedUnlocks, tradeCount, unlockRates, unlocks,
-    watchlistStocks.length,
+    cashStreak, gainStreak, tradeCount, unlockRates, unlocks, watchlistStocks.length,
   ]);
 
   // The server checks each condition itself (claim_achievements) and returns
@@ -433,7 +429,7 @@ export function useAchievements() {
   }, [claimUnlocks, refreshUnlockRates, refreshUnlocks, sessionId, user]);
 
   useEffect(() => {
-    if (!user || loading) return;
+    if (!user || loading || !verifiedRun || persistenceError) return;
 
     const newlyUnlocked = achievements.filter(
       (a) => a.progress >= 100
@@ -444,7 +440,7 @@ export function useAchievements() {
     );
 
     if (newlyUnlocked.length > 0) void persistUnlocks(newlyUnlocked);
-  }, [achievements, loading, persistUnlocks, rejectedUnlocks, suppressedUnlocks, unlocks, user]);
+  }, [achievements, rejectedUnlocks, loading, persistUnlocks, suppressedUnlocks, unlocks, user, verifiedRun, persistenceError]);
 
   // Once the real condition falls below its target, a dev-cleared achievement
   // becomes eligible to unlock naturally again.

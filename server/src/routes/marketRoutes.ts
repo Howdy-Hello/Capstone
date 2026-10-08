@@ -23,7 +23,7 @@ const marketLimiter = rateLimit({
 });
 
 /** Largest single jump; bounds how much one request can ask the server to generate. */
-export const MAX_ADVANCE_DAYS = 365;
+export const MAX_ADVANCE_DAYS = 1;
 
 function secretOrError() {
   const secret = getMarketSecret();
@@ -58,6 +58,19 @@ export function resolveAdvanceTarget(
   return { day };
 }
 
+// The checked trade RPC consumes quotes. Copy the run's persisted closes;
+// regenerating quotes from the public seed would disagree with its secret seed.
+export async function syncTradeQuotes(admin: Parameters<typeof ensureMarketThrough>[0], sessionId: string, day: number) {
+  const { data, error } = await admin.from('session_stock_prices')
+    .select('symbol, close_price').eq('session_id', sessionId).eq('game_day', day);
+  if (error) throw error;
+  if (!data?.length) throw new Error('Market quote unavailable. Try again.');
+  const saved = await admin.from('session_quotes').upsert(
+    data.map(row => ({ session_id: sessionId, game_day: day, symbol: row.symbol, price: row.close_price })),
+    { onConflict: 'session_id,game_day,symbol' });
+  if (saved.error) throw saved.error;
+}
+
 // POST /api/game/market  { sessionId }
 // Generates any missing days up to the run's current day (first load, legacy
 // runs, restored saves) and refreshes the stored net worth.
@@ -74,6 +87,7 @@ router.post('/game/market', marketLimiter, supabaseHandler({ auth: 'user' }, asy
     if (!session) return Response.json({ message: 'Session not found.' }, { status: 404 });
 
     const generatedThrough = await ensureMarketThrough(ctx.supabaseAdmin, session, session.current_day, secret);
+    await syncTradeQuotes(ctx.supabaseAdmin, session.id, session.current_day);
     const { data: netWorth, error } = await ctx.supabaseAdmin
       .rpc('recompute_session_value', { p_session_id: session.id });
     if (error) return supabaseErrorResponse('POST /game/market (value)', error);
@@ -86,7 +100,7 @@ router.post('/game/market', marketLimiter, supabaseHandler({ auth: 'user' }, asy
 
 // POST /api/game/advance  { sessionId, day }
 // Generates the market through `day`, then moves the run there and settles
-// weekly living costs (server_advance_game_day).
+// weekly living costs through the checked, user-scoped advance RPC.
 router.post('/game/advance', marketLimiter, supabaseHandler({ auth: 'user' }, async (req, ctx) => {
   const body = await req.json().catch(() => ({}));
   if (!isUuid(body?.sessionId)) {
@@ -106,10 +120,11 @@ router.post('/game/advance', marketLimiter, supabaseHandler({ auth: 'user' }, as
 
     await ensureMarketThrough(ctx.supabaseAdmin, session, target.day, secret);
 
-    const { data, error } = await ctx.supabaseAdmin.rpc('server_advance_game_day', {
-      p_user_id: ctx.userClaims!.id,
-      p_session_id: session.id,
-      p_target_day: target.day,
+    await syncTradeQuotes(ctx.supabaseAdmin, session.id, target.day);
+    const { data, error } = await ctx.supabase.rpc('advance_game_day', {
+      target_session_id: session.id,
+      target_game_day: target.day,
+      target_game_mode: normalizeMode(session.game_mode),
     });
     if (error) return supabaseErrorResponse('POST /game/advance', error);
 

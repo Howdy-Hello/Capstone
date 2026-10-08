@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
@@ -36,10 +36,8 @@ export type AdvisorReport = {
   advisorName: string;
 };
 
-// Scoped to the run: keyed by user alone, a report taken on day 4 of one run
-// put the same stock on cooldown on day 4 of the next.
-function cooldownKey(userId: string, sessionId: string | null, symbol: string) {
-  return `stockpilot-advisor-lastday-${userId}-${sessionId ?? "none"}-${symbol}`;
+function cooldownKey(userId: string, sessionId: string, symbol: string) {
+  return `stockpilot-advisor-lastday-${userId}-${sessionId}-${symbol}`;
 }
 
 function buildReport(
@@ -141,26 +139,16 @@ export function readOwnedAdvisorIds(sessionId: string, gameDay: number): string[
 
 export function useAdvisor() {
   const { user } = useAuth();
-  const { account, gameDay, sessionId, addCash, getHistory, getRelatedNews } = useGame();
+  const { account, gameDay, sessionId, advisorIds: ownedIds, hireAdvisor, getHistory, getRelatedNews } = useGame();
   const [report, setReport] = useState<AdvisorReport | null>(null);
   const [loading, setLoading] = useState(false);
-  const [ownedIds, setOwnedIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!sessionId) return setOwnedIds([]);
-    setOwnedIds(readOwnedAdvisorIds(sessionId, gameDay));
-  }, [gameDay, sessionId]);
-
   const ownedAdvisors = useMemo(() => ADVISORS.filter((advisor) => ownedIds.includes(advisor.id)), [ownedIds]);
   const activeAdvisor = ownedAdvisors[ownedAdvisors.length - 1] ?? null;
 
   const hire = useCallback(async (advisor: AdvisorDefinition) => {
     if (!user || !sessionId || advisor.id !== "riley" || ownedIds.includes(advisor.id) || account.cash < advisor.cost) return false;
-    if (!(await addCash(-advisor.cost))) return false;
-    const next = [...readOwnership(sessionId), { id: advisor.id, hiredDay: gameDay }];
-    localStorage.setItem(ownershipKey(sessionId), JSON.stringify(next));
-    setOwnedIds(next.map((entry) => entry.id));
-    pushNotification({ kind: "advisor", title: `${advisor.name} joined your team`, description: `${advisor.role} hired for $${advisor.cost.toLocaleString("en-US")}.` });
+    if (!await hireAdvisor(advisor.id)) return false;
+    pushNotification({ kind: "advisor", title: `${advisor.name} joined your team`, description: `${advisor.role} hired for $${advisor.cost.toLocaleString()}.` });
     addInboxMessage(user.id, {
       id: `advisor-welcome-${sessionId}-${advisor.id}`,
       from: `${advisor.name} · ${advisor.role}`,
@@ -169,16 +157,16 @@ export function useAdvisor() {
       category: "advisor",
     });
     return true;
-  }, [account.cash, addCash, gameDay, ownedIds, sessionId, user]);
+  }, [account.cash, hireAdvisor, ownedIds, sessionId, user]);
 
   const isOnCooldown = useCallback((symbol: string) => {
-    if (!user) return true;
+    if (!user || !sessionId) return true;
     const raw = localStorage.getItem(cooldownKey(user.id, sessionId, symbol));
     return raw !== null && Number(raw) === gameDay;
-  }, [user, gameDay, sessionId]);
+  }, [user, sessionId, gameDay]);
 
   const consult = useCallback(async (stock: Stock) => {
-    if (!user || !activeAdvisor || isOnCooldown(stock.symbol)) return null;
+    if (!user || !sessionId || !activeAdvisor || isOnCooldown(stock.symbol)) return null;
     setLoading(true);
     const history = getHistory(stock.symbol);
     const relatedNews = getRelatedNews(stock.symbol);
@@ -199,7 +187,7 @@ export function useAdvisor() {
       category: "advisor",
     });
     return built;
-  }, [user, activeAdvisor, isOnCooldown, getHistory, getRelatedNews, gameDay, sessionId]);
+  }, [user, sessionId, activeAdvisor, isOnCooldown, getHistory, getRelatedNews, gameDay]);
 
   return { report, loading, isOnCooldown, consult, hire, ownedIds, ownedAdvisors, activeAdvisor };
 }
