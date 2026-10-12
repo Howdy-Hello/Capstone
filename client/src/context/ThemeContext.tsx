@@ -1,5 +1,5 @@
 import React from "react";
-import { GlobalStyles } from "@mui/material";
+import { createTheme, CssBaseline, GlobalStyles, outlinedInputClasses, ThemeProvider as MuiThemeProvider } from "@mui/material";
 import { applyDesignColors, DEFAULT_COLORS, DesignColors } from "../theme/design";
 
 type CustomThemeInput = {
@@ -450,35 +450,78 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const dark = paletteMode(palette) === "dark";
 
+  // BUG-056: without a theme, MUI styles every component for its light
+  // default, and those styles are injected after GlobalStyles at the same
+  // specificity, so overriding labels, help text and outlines there never
+  // took effect: on a dark palette the labels measured 1.04:1. styleOverrides
+  // sit inside each component's own styles, so they win over MUI's defaults
+  // while per-field `sx` still wins over them.
+  const muiTheme = React.useMemo(() => createTheme({
+    palette: {
+      mode: dark ? "dark" : "light",
+      background: { default: palette.bg, paper: palette.surface },
+    },
+    components: {
+      // Dark-mode Paper adds a lightening gradient per elevation; the app's
+      // surfaces are flat colours from the palette.
+      MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            color: palette.t2,
+            "&.Mui-focused": { color: palette.brandText },
+            "&.Mui-error": { color: palette.redText },
+            "&.Mui-disabled": { color: palette.t4 },
+          },
+        },
+      },
+      MuiFormHelperText: {
+        styleOverrides: {
+          root: { color: palette.t2, "&.Mui-error": { color: palette.redText } },
+        },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          notchedOutline: { borderColor: palette.borderHi },
+          root: {
+            [`&:hover .${outlinedInputClasses.notchedOutline}`]: { borderColor: palette.t2 },
+            [`&.${outlinedInputClasses.focused} .${outlinedInputClasses.notchedOutline}`]: { borderColor: palette.brand },
+            [`&.${outlinedInputClasses.error} .${outlinedInputClasses.notchedOutline}`]: { borderColor: palette.red },
+            [`&.${outlinedInputClasses.disabled} .${outlinedInputClasses.notchedOutline}`]: { borderColor: palette.border },
+          },
+        },
+      },
+    },
+  }), [dark, palette]);
+
   return (
     <ThemeContext.Provider value={value}>
-      <GlobalStyles styles={{
-        ".learning .MuiButton-contained:not(.Mui-disabled)": { backgroundColor: palette.brand, color: "#fff" },
-        ".learning .MuiButton-outlined:not(.Mui-disabled)": { color: palette.brandText, borderColor: palette.brandBd },
-        ".learning .MuiButton-text:not(.Mui-disabled)": { color: palette.brandText },
-        ".learning .MuiSelect-icon": { color: palette.t2 },
-        ".learning .MuiAlert-standardInfo": { color: palette.t1, backgroundColor: palette.brandBg, border: `1px solid ${palette.brandBd}` },
-        ".learning .MuiAlert-standardInfo .MuiAlert-icon": { color: palette.brandText },
-        ".MuiInputLabel-root, .MuiFormHelperText-root": { color: palette.t2 },
-        ".MuiInputLabel-root.Mui-focused": { color: palette.brandText },
-        ".MuiOutlinedInput-notchedOutline": { borderColor: palette.borderHi },
-        ".MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": { borderColor: palette.t2 },
-        ".MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: palette.brand },
-        ".MuiMenu-paper": { backgroundColor: palette.elevated, color: palette.t1 },
-        ".MuiCheckbox-root": { color: palette.t2 },
-        ".MuiCheckbox-root.Mui-checked": { color: palette.brandText },
-        "main a": { color: palette.brandText },
-        "input, textarea, .MuiInputBase-input, .MuiSelect-select": {
-          color: dark ? "#FFFFFF" : palette.t1,
-          WebkitTextFillColor: dark ? "#FFFFFF" : palette.t1,
-        },
-        "input::placeholder, textarea::placeholder, .MuiInputBase-input::placeholder": {
-          color: palette.t3,
-          WebkitTextFillColor: palette.t3,
-          opacity: 1,
-        },
-      }} />
-      {children}
+      <MuiThemeProvider theme={muiTheme}>
+        {/* Inside the theme so the page background and text follow the palette. */}
+        <CssBaseline />
+        <GlobalStyles styles={{
+          ".learning .MuiButton-contained:not(.Mui-disabled)": { backgroundColor: palette.brand, color: "#fff" },
+          ".learning .MuiButton-outlined:not(.Mui-disabled)": { color: palette.brandText, borderColor: palette.brandBd },
+          ".learning .MuiButton-text:not(.Mui-disabled)": { color: palette.brandText },
+          ".learning .MuiSelect-icon": { color: palette.t2 },
+          ".learning .MuiAlert-standardInfo": { color: palette.t1, backgroundColor: palette.brandBg, border: `1px solid ${palette.brandBd}` },
+          ".learning .MuiAlert-standardInfo .MuiAlert-icon": { color: palette.brandText },
+          ".MuiMenu-paper": { backgroundColor: palette.elevated, color: palette.t1 },
+          ".MuiCheckbox-root": { color: palette.t2 },
+          ".MuiCheckbox-root.Mui-checked": { color: palette.brandText },
+          "main a": { color: palette.brandText },
+          "input, textarea, .MuiInputBase-input, .MuiSelect-select": {
+            color: dark ? "#FFFFFF" : palette.t1,
+            WebkitTextFillColor: dark ? "#FFFFFF" : palette.t1,
+          },
+          "input::placeholder, textarea::placeholder, .MuiInputBase-input::placeholder": {
+            color: palette.t3,
+            WebkitTextFillColor: palette.t3,
+            opacity: 1,
+          },
+        }} />
+        {children}
+      </MuiThemeProvider>
     </ThemeContext.Provider>
   );
 }

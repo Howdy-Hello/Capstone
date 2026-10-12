@@ -39,6 +39,8 @@ const ADVISOR_COST = 100;
 
 const STARTING_CASH = 2_000;
 const GAME_PHASE_STORAGE_KEY = "stockpilot-market-phase";
+/** The server's wording when a trade arrives after the close; the UI reuses it. */
+export const MARKET_CLOSED_MESSAGE = "The market is closed. Advance to the next day to trade.";
 export const LIMITED_GAME_DAYS = LIMITED_RUN_DAYS;
 export const MAX_GAME_DAY = MAX_RUN_DAY;
 export const WEEKLY_BILL_ITEMS = [
@@ -87,7 +89,8 @@ type GameSession = {
 const SESSION_COLUMNS = "*";
 
 type TradeResult = {
-  execution_price: number;
+  /** Absent from the legacy execute_trade, which only returns `price`. */
+  execution_price?: number | string;
   cash: number | string;
   symbol: string;
   quantity: number;
@@ -238,6 +241,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const busyRef = useRef(false);
   const [actionPending, setActionPending] = useState(false);
   const pendingTrade = useRef<{ key: string; id: string } | null>(null);
+  // BUG-060: set when another tab changes this run (see the storage listener
+  // below); cleared when a reload starts. Assigned once reloadSession exists.
+  const staleRunRef = useRef(false);
+  const reloadSessionRef = useRef<(() => Promise<void>) | null>(null);
   const beginAction = useCallback(() => {
     if (busyRef.current) return false;
     busyRef.current = true;
@@ -248,16 +255,39 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const endAction = useCallback(() => {
     busyRef.current = false;
     setActionPending(false);
+    // A change from another tab arrived mid-action: reload now, before the
+    // player can act on the stale copy.
+    if (staleRunRef.current) void reloadSessionRef.current?.().catch(() => { /* reloadSession reports it */ });
   }, []);
   const reportError = useCallback((error: unknown) => {
     const message = errorMessage(error, "");
-    const safe = ["Not enough cash", "Not enough shares", "Your game has changed. Reload before trying again.", "Challenge complete. Start a new run to play.", "The market is closed. Advance to the next day to trade.", "Market data for this day is not ready yet"];
+    const safe = ["Not enough cash", "Not enough shares", "Your game has changed. Reload before trying again.", "Challenge complete. Start a new run to play.", MARKET_CLOSED_MESSAGE, "Market data for this day is not ready yet"];
     setError(error instanceof ApiError || safe.includes(message) ? message : "Your game could not be saved. Check your connection and try again.");
   }, []);
 
   useEffect(() => {
     gameDayRef.current = gameDay;
   }, [gameDay]);
+
+  // BUG-060: another tab of this browser closed or advanced this run's market
+  // (closeMarket and setGameDay write this key; storage events only fire in
+  // the other tabs). Disable trading at once on a close, then reload the run
+  // so day, phase and cash match instead of acting on a stale copy. If an
+  // action is in flight the reload can't start yet; staleRunRef makes
+  // endAction run it as soon as that action finishes.
+  const activeSessionId = session?.id ?? null;
+  useEffect(() => {
+    if (!activeSessionId) return;
+    const key = marketPhaseStorageKey(activeSessionId);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== key || event.newValue === null || event.newValue === event.oldValue) return;
+      staleRunRef.current = true;
+      if (event.newValue === `after_hours:${gameDayRef.current}`) setMarketPhase("after_hours");
+      void reloadSessionRef.current?.().catch(() => { /* reloadSession reports the error */ });
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [activeSessionId]);
 
   const loadStocks = useCallback(async () => {
     const { data, error: stocksError } = await supabase
@@ -401,6 +431,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // watchlist and session state.
   const reloadSession = useCallback(async () => {
     if (!beginAction()) return;
+    // Cleared up front, so a failed reload shows its error and Retry rather
+    // than endAction starting it again.
+    staleRunRef.current = false;
     setLoading(true);
     try {
       await Promise.all([loadStocks(), loadOrCreateSession()]);
@@ -412,6 +445,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       endAction();
     }
   }, [beginAction, endAction, loadStocks, loadOrCreateSession]);
+  reloadSessionRef.current = reloadSession;
 
   useEffect(() => {
     let cancelled = false;
@@ -621,6 +655,19 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (gameMode === "limited_30" && gameDay >= LIMITED_GAME_DAYS) {
         throw new Error("Challenge complete. Start a new run to play.");
       }
+      // Another tab changed this run and the reload hasn't happened yet; this
+      // action's endAction starts it.
+      if (staleRunRef.current) throw new Error("Your game has changed. Reload before trying again.");
+      // BUG-060: no trades after the close. SQL c's trade RPCs refuse them on
+      // the server; an older schema has no market_phase column and its
+      // execute_trade never checks, so the close another tab of this browser
+      // recorded is honoured here too.
+      const closedElsewhere = session.market_phase === undefined
+        && localStorage.getItem(marketPhaseStorageKey(session.id)) === `after_hours:${gameDay}`;
+      if (marketPhase === "after_hours" || closedElsewhere) {
+        if (closedElsewhere) setMarketPhase("after_hours");
+        throw new Error(MARKET_CLOSED_MESSAGE);
+      }
       const currentStock = stocks.find((current) => current.symbol === stock.symbol);
       if (!currentStock || !Number.isInteger(quantity) || quantity <= 0) throw new Error("Invalid trade");
       stock = currentStock;
@@ -697,7 +744,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           symbol: stock.symbol,
           tradeType,
           quantity,
-          executionPrice: Number(result.execution_price),
+          // The legacy execute_trade returns `price`; its oldest versions return
+          // neither field and fill at the target_price this call sent.
+          executionPrice: Number(result.execution_price ?? result.price ?? stock.currentPrice),
           gameDay,
           journal,
         });
@@ -725,7 +774,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setError(journalSaved ? null : "The trade completed, but its decision journal could not be saved.");
       return true;
     } catch (error) { reportError(error); return false; } finally { endAction(); }
-  }, [gameMode, stocks, gameDay, loadHoldings, session, user, beginAction, endAction, reportError]);
+  }, [gameMode, stocks, gameDay, marketPhase, loadHoldings, session, user, beginAction, endAction, reportError]);
 
   const buyStock = useCallback(
     (stock: Stock, quantity = 1, journal?: TradeJournalInput) => executeTrade(stock, "buy", quantity, journal),
