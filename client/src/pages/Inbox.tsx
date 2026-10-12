@@ -30,7 +30,7 @@ import SmartToyIcon from "@mui/icons-material/SmartToy";
 
 import {
   InboxCategory, InboxMessage, markAllRead, markMessageRead,
-  markNewsRead, markNewsReadBatch, useInboxMessages, useReadNewsIds,
+  markNewsRead, markNewsReadBatch, newsReadKey, useInboxMessages, useReadNewsIds,
 } from "../lib/inbox";
 import { useGame } from "../context/GameContext";
 import { MarketNews } from "../data/mockStocks";
@@ -148,7 +148,7 @@ export default function Inbox() {
   // News ids repeat across runs (news_CAI_5 exists in every run), so read
   // state is kept per run: otherwise "mark all read" in one run marked the
   // next run's different stories as read too.
-  const readKey = useCallback((newsId: string) => `${sessionId ?? "none"}:${newsId}`, [sessionId]);
+  const readKey = useCallback((newsId: string) => newsReadKey(sessionId, newsId), [sessionId]);
 
   const [folder, setFolder] = useState<MailFolder | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);

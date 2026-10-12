@@ -11,6 +11,7 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ShieldIcon from "@mui/icons-material/Shield";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import CloseIcon from "@mui/icons-material/Close";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { isMissingDbObject, supabase } from "../lib/supabase";
@@ -18,6 +19,7 @@ import { useAuth } from "../context/AuthContext";
 import { GameMode, useGame } from "../context/GameContext";
 import { D, CARD, MONO, money } from "../theme/design";
 import { usePageTitle } from "../lib/usePageTitle";
+import { normalizeMarketSeed } from "../data/mockStocks";
 
 // Framer Motion 11 predates React 19's stricter JSX return type.
 const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
@@ -44,6 +46,7 @@ type SaveSlot = {
   holdings_snapshot: HoldingSnapshot[];
   created_at: string;
   ranked?: boolean;
+  market_engine?: number | null;
 };
 
 const UNRANKED_NOTE =
@@ -62,6 +65,7 @@ export default function SaveLoad() {
   const [loadingSlot, setLoadingSlot] = useState<string | null>(null);
   const [message, setMessage]     = useState<{ text: string; severity: "success" | "error" } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<SaveSlot | null>(null);
+  const [loadConfirm, setLoadConfirm] = useState<SaveSlot | null>(null);
 
 
   // Load slots from Supabase
@@ -108,7 +112,7 @@ export default function SaveLoad() {
         slot_name: `Day ${trading.gameDay} Run`,
       });
       if (isMissingDbObject(error)) {
-        ({ error } = await supabase.rpc("create_save_slot", { slot_name: `Day ${trading.gameDay} Run` }));
+        ({ error } = await supabase.rpc("create_save_slot", { p_slot_name: `Day ${trading.gameDay} Run` }));
       }
       if (error) {
         setMessage({ text: `Save failed: ${error.message}`, severity: "error" });
@@ -124,10 +128,13 @@ export default function SaveLoad() {
   };
 
   const loadSlot = async (slot: SaveSlot) => {
+    if (trading.actionPending || saving || loadingSlot !== null) return;
     if (!trading.sessionId) {
+      setLoadConfirm(null);
       setMessage({ text: "No active session to restore into.", severity: "error" });
       return;
     }
+    setLoadConfirm(null);
     setLoadingSlot(slot.id);
 
     try {
@@ -333,7 +340,7 @@ export default function SaveLoad() {
                                   <Button fullWidth size="small" variant="contained"
                                     disabled={trading.actionPending || saving || loadingSlot !== null}
                                     startIcon={isLoading ? <CircularProgress size={12} sx={{ color: "#fff" }} /> : <RestoreIcon sx={{ fontSize: 14 }} />}
-                                    onClick={() => loadSlot(slot)}
+                                    onClick={() => setLoadConfirm(slot)}
                                     sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", fontSize: 12, "&:hover": { bgcolor: "#16A34A", boxShadow: "none" } }}>
                                     Load
                                   </Button>
@@ -358,6 +365,48 @@ export default function SaveLoad() {
 
         </Grid>
       </Container>
+
+      {loadConfirm && (() => {
+        const slot = loadConfirm;
+        const sameMarket = slot.game_mode === trading.gameMode
+          && normalizeMarketSeed(slot.game_seed) === trading.marketSeed;
+        const definitelyUnranked = slot.ranked === false
+          || (slot.game_mode === "infinite" && (slot.market_engine ?? 2) < 2)
+          || (sameMarket && (slot.game_day < trading.gameDay
+            || (slot.game_day === trading.gameDay && trading.marketPhase === "after_hours")));
+        const conditionalUnranked = !definitelyUnranked && trading.ranked === true;
+        return (
+          <ConfirmDialog
+            open
+            title={`Load "${slot.slot_name}"?`}
+            confirmLabel={`Load Day ${slot.game_day} save`}
+            tone="primary"
+            pending={trading.actionPending || saving || loadingSlot !== null}
+            onConfirm={() => { void loadSlot(slot); }}
+            onClose={() => setLoadConfirm(null)}
+          >
+            <Stack spacing={1.5}>
+              <Typography sx={{ fontSize: 14, color: D.t2 }}>
+                Day {slot.game_day} · {slot.game_mode === "limited_30" ? "30-Day" : "Infinite"} · {money(slot.net_worth)} net worth
+              </Typography>
+              <Typography sx={{ fontSize: 14, color: D.t2 }}>
+                {slot.game_day >= trading.gameDay
+                  ? `Loading replaces your current run (Day ${trading.gameDay}) with this save.`
+                  : `Your current run is on Day ${trading.gameDay}. Loading replaces it with this save; progress since Day ${slot.game_day} will be lost.`}
+              </Typography>
+              {definitelyUnranked ? (
+                <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.amber }}>
+                  Loading this save will remove this run from the leaderboards (unranked).
+                </Typography>
+              ) : conditionalUnranked ? (
+                <Typography sx={{ fontSize: 14, color: D.t2 }}>
+                  If you&apos;ve already played past Day {slot.game_day} on that save&apos;s market, the run will leave the leaderboards.
+                </Typography>
+              ) : null}
+            </Stack>
+          </ConfirmDialog>
+        );
+      })()}
 
       {/* Delete confirmation dialog */}
       <Dialog open={Boolean(deleteConfirm)} onClose={() => setDeleteConfirm(null)} maxWidth="xs" fullWidth
