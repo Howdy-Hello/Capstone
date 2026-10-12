@@ -107,6 +107,10 @@ export function markNewsReadBatch(newsIds: string[]) {
   emit();
 }
 
+export function newsReadKey(sessionId: string | null | undefined, newsId: string): string {
+  return `${sessionId ?? "none"}:${newsId}`;
+}
+
 function getReadNewsSnapshot() {
   return readNews;
 }
@@ -163,8 +167,9 @@ export function useInboxMessages() {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
-export function useUnreadInboxCount(news: { newsId: string }[] = []) {
+export function useUnreadInboxCount(news: { newsId: string }[] = [], sessionId?: string | null) {
   const list = useInboxMessages();
   const read = useReadNewsIds();
-  return list.filter((message) => !message.read).length + news.filter((item) => !read.has(item.newsId)).length;
+  return list.filter((message) => !message.read).length
+    + news.filter((item) => !read.has(newsReadKey(sessionId, item.newsId))).length;
 }

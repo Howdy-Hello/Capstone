@@ -72,10 +72,11 @@ const Header: React.FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
-  const unreadCount = useUnreadInboxCount(useGame().newsHistory);
+  const trading = useGame();
+  const unreadCount = useUnreadInboxCount(trading.newsHistory, trading.sessionId);
   const unseenNotifications = useUnseenNotificationCount();
   const { totalXP, confirmedXP } = useAchievements();
-  const { gameMode, sessionId, reloadSession } = useGame();
+  const { gameMode, sessionId, reloadSession } = trading;
   const playerLevel = React.useMemo(() => getPlayerLevel(totalXP), [totalXP]);
   const [levelReward, setLevelReward] = React.useState<{ level: number; amount: number } | null>(null);
   const processedXpRef = React.useRef<number | null>(null);
