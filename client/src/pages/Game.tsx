@@ -1,4 +1,5 @@
 import DecisionNote from "../components/learning/DecisionNote";
+import ConfirmDialog from "../components/ConfirmDialog";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Avatar, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
@@ -29,7 +30,7 @@ import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-d
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { getNewsCredibility, STORY_DAYS, Stock } from "../data/mockStocks";
 import { getMaxAffordableQuantity, getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
-import { GameMode, useGame } from "../context/GameContext";
+import { GameMode, MARKET_CLOSED_MESSAGE, useGame } from "../context/GameContext";
 import { useAchievements } from "../hooks/useAchievements";
 import { useDailyGoals } from "../hooks/useDailyGoals";
 import { useStockAlerts } from "../hooks/useStockAlerts";
@@ -62,6 +63,8 @@ export default function Game() {
   const [devConsoleOpen, setDevConsoleOpen] = useState(false);
   const [tradeMessage, setTradeMessage] = useState("");
   const [tradeDialog, setTradeDialog] = useState<{ stock: Stock; mode: "buy" | "sell" } | null>(null);
+  // BUG-054: starting a run pauses the current one for good, so it is confirmed.
+  const [newRunConfirm, setNewRunConfirm] = useState<GameMode | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedSector = searchParams.get("sector") ?? "All";
   const setSelectedSector = useCallback((sector: string) => {
@@ -119,6 +122,8 @@ export default function Game() {
     return { gainers, losers, averageMove };
   }, [stocks]);
   const modeLabel = gameMode === "limited_30" ? "30-Day Challenge" : "Infinite";
+  // BUG-060: after the close, trades are refused until the next day.
+  const marketClosed = marketPhase === "after_hours";
   const modeDescription = gameMode === "limited_30"
     ? "A focused 30-day scoring run. Rankings use your final net worth at the finish."
     : "An open-ended sandbox. Keep advancing days as long as you want.";
@@ -239,7 +244,7 @@ export default function Game() {
       // Held keys auto-repeat and would step close -> advance -> close...;
       // an open dialog (focus on its container div) must not move the day
       // underneath the trade it is quoting.
-      if (e.repeat || tradeDialog || advancing) return;
+      if (e.repeat || tradeDialog || newRunConfirm || advancing) return;
       if (e.key === "ArrowRight" && !isGameComplete) {
         e.preventDefault();
         handleNextDayRef.current();
@@ -247,7 +252,7 @@ export default function Game() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [advancing, isGameComplete, tradeDialog]);
+  }, [advancing, isGameComplete, newRunConfirm, tradeDialog]);
 
   if (trading.loading) {
     return (
@@ -262,7 +267,15 @@ export default function Game() {
     : marketPhase === "market_open"
       ? "Close Market & Reveal News"
       : "Advance to Next Day →";
-  const handleNewRun = (mode: GameMode) => {
+  // No new run while nothing is loaded: after a failed load the page shows a
+  // placeholder Day 1 account, and a new run would pause the real one.
+  const newRunDisabled = trading.loading || trading.actionPending || !trading.sessionId;
+  const confirmNewRun = () => {
+    if (!newRunConfirm) return;
+    const mode = newRunConfirm;
+    // Close first: resetAccount puts the page into its loading state, and a
+    // refusal (e.g. the daily run cap) is shown in the page's error banner.
+    setNewRunConfirm(null);
     void trading.resetAccount(mode);
   };
   const dismissTutorial = () => {
@@ -440,11 +453,29 @@ export default function Game() {
           mode={tradeDialog.mode}
           cash={trading.account.cash}
           sharesOwned={getSharesOwned(trading.account, tradeDialog.stock.symbol)}
+          marketClosed={marketClosed}
           getQuote={(qty) => trading.getTradeQuote(tradeDialog.stock, tradeDialog.mode, qty)}
           onClose={() => setTradeDialog(null)}
           onConfirm={(qty, journal) => handleTradeConfirm(tradeDialog.stock, tradeDialog.mode, qty, journal)}
         />
       )}
+      <ConfirmDialog
+        open={newRunConfirm !== null}
+        title={newRunConfirm === "limited_30" ? "Start a new 30-Day run?" : "Start a new Infinite run?"}
+        confirmLabel="Start new run"
+        tone="danger"
+        secondaryAction={{ label: "Save first", onClick: () => { setNewRunConfirm(null); navigate("/save-load"); } }}
+        onConfirm={confirmNewRun}
+        onClose={() => setNewRunConfirm(null)}
+      >
+        <Typography component="p" sx={{ fontSize: 14, color: D.t2, mb: 1.5 }}>
+          Your current {modeLabel} run ends here and can't be resumed:{" "}
+          <Box component="strong" sx={{ color: D.t1 }}>Day {gameDay}, net worth {money(netWorth)}</Box>.
+        </Typography>
+        <Typography component="p" sx={{ fontSize: 14, color: D.t2 }}>
+          Save it first if you might want to come back to it. The new run starts on Day 1 with fresh cash and uses one of today's run starts.
+        </Typography>
+      </ConfirmDialog>
       {DEV_CONSOLE_ENABLED && (
         <CommandConsole
           open={devConsoleOpen}
@@ -489,13 +520,13 @@ export default function Game() {
                     {isGameComplete ? "Run Complete" : advanceLabel}
                   </Button>
                 </motion.div>
-                <Button onClick={() => handleNewRun("infinite")} startIcon={<AllInclusiveIcon />}
-                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
-                  Infinite
+                <Button onClick={() => setNewRunConfirm("infinite")} disabled={newRunDisabled} startIcon={<AllInclusiveIcon />}
+                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay }, "&.Mui-disabled": { color: D.t4 } }}>
+                  New Infinite run
                 </Button>
-                <Button onClick={() => handleNewRun("limited_30")} startIcon={<TimerIcon />}
-                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
-                  30-Day
+                <Button onClick={() => setNewRunConfirm("limited_30")} disabled={newRunDisabled} startIcon={<TimerIcon />}
+                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay }, "&.Mui-disabled": { color: D.t4 } }}>
+                  New 30-Day run
                 </Button>
               </Stack>
             </Grid>
@@ -603,12 +634,13 @@ export default function Game() {
                 <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.greenText }}>30-Day Challenge Complete</Typography>
                 <Typography sx={{ fontSize: 13, color: D.t2 }}>Your Day 30 net worth is ready for the leaderboard. Start another challenge or switch to Infinite mode.</Typography>
               </Box>
+              {/* A finished challenge has nothing left to lose, so these start the run directly. */}
               <Stack direction="row" spacing={1}>
-                <Button onClick={() => handleNewRun("limited_30")} startIcon={<RestartAltIcon />}
+                <Button onClick={() => { void trading.resetAccount("limited_30"); }} disabled={newRunDisabled} startIcon={<RestartAltIcon />}
                   sx={{ color: D.greenText, border: `1px solid ${D.greenBd}`, fontWeight: 800, textTransform: "none", borderRadius: 1.5 }}>
                   New 30-Day
                 </Button>
-                <Button onClick={() => handleNewRun("infinite")} startIcon={<AllInclusiveIcon />}
+                <Button onClick={() => { void trading.resetAccount("infinite"); }} disabled={newRunDisabled} startIcon={<AllInclusiveIcon />}
                   sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, textTransform: "none", borderRadius: 1.5, bgcolor: D.brandBg }}>
                   Infinite Run
                 </Button>
@@ -624,7 +656,7 @@ export default function Game() {
             <Typography sx={{ color: D.t1, fontSize: 14, fontWeight: 800 }}>Your next step</Typography>
             <Typography sx={{ color: D.t2, fontSize: 14, lineHeight: 1.6 }}>
               {marketPhase === "after_hours"
-                ? "Read the news brief, open a related stock to check its risk and fundamentals, then decide whether to trade before advancing the day."
+                ? "Read the news brief and open a related stock to check its risk and fundamentals. Trading reopens when you advance to the next day."
                 : "Open a stock to review its chart and risk. Decide whether to trade or hold cash, then close the market to reveal tomorrow’s news."}
             </Typography>
             {gameDay <= STORY_DAYS && <Button component={RouterLink} to="/learn" size="small" sx={{ color: D.brandText, textTransform: "none", px: 0 }}>Review how a turn works →</Button>}
@@ -684,6 +716,11 @@ export default function Game() {
                   <Typography sx={{ fontSize: 12.5, color: D.t3 }}>
                     {filteredStocks.length} of {stocks.length} stocks shown. Click any stock to view details and chart.
                   </Typography>
+                  {marketClosed && (
+                    <Typography role="status" sx={{ fontSize: 12.5, color: D.amber, fontWeight: 800, mt: 0.5 }}>
+                      {MARKET_CLOSED_MESSAGE}
+                    </Typography>
+                  )}
                 </Box>
                 <Button onClick={handleNextDay} variant="contained" size="small" disabled={isGameComplete || advancing}
                   sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
@@ -726,6 +763,7 @@ export default function Game() {
                     {filteredStocks.map((stock, index) => (
                       <StockRow key={stock.stockId} stock={stock} gameDay={gameDay}
                         animationIndex={index}
+                        marketClosed={marketClosed}
                         sharesOwned={getSharesOwned(trading.account, stock.symbol)}
                         watchlisted={trading.isWatchlisted(stock.symbol)}
                         onToggleWatchlist={() => trading.toggleWatchlist(stock)}
@@ -1081,8 +1119,8 @@ function CommandConsole({ open, onClose, onRun }: {
   );
 }
 
-function StockRow({ stock, gameDay, animationIndex, sharesOwned, watchlisted, onBuy, onSell, onToggleWatchlist, onOpen }: {
-  stock: Stock; gameDay: number; animationIndex: number; sharesOwned: number; watchlisted: boolean; onBuy: () => void; onSell: () => void; onToggleWatchlist: () => void; onOpen: () => void;
+function StockRow({ stock, gameDay, animationIndex, marketClosed, sharesOwned, watchlisted, onBuy, onSell, onToggleWatchlist, onOpen }: {
+  stock: Stock; gameDay: number; animationIndex: number; marketClosed: boolean; sharesOwned: number; watchlisted: boolean; onBuy: () => void; onSell: () => void; onToggleWatchlist: () => void; onOpen: () => void;
 }) {
   const reduceMotion = useReducedMotion();
   const up = stock.dayChangePercent >= 0;
@@ -1145,11 +1183,11 @@ function StockRow({ stock, gameDay, animationIndex, sharesOwned, watchlisted, on
       </Box>
 
       <Stack direction="row" spacing={1} justifyContent={{ xs: "flex-start", md: "flex-end" }}>
-        <Button size="small" variant="contained" onClick={(e) => { e.stopPropagation(); onBuy(); }}
-          sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 1.5, boxShadow: "none", minWidth: 52, "&:hover": { bgcolor: "#16A34A", boxShadow: "none" } }}>
+        <Button size="small" variant="contained" disabled={marketClosed} onClick={(e) => { e.stopPropagation(); onBuy(); }}
+          sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 1.5, boxShadow: "none", minWidth: 52, "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
           Buy
         </Button>
-        <Button size="small" variant="contained" disabled={sharesOwned === 0} onClick={(e) => { e.stopPropagation(); onSell(); }}
+        <Button size="small" variant="contained" disabled={marketClosed || sharesOwned === 0} onClick={(e) => { e.stopPropagation(); onSell(); }}
           sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 1.5, boxShadow: "none", minWidth: 52, "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
           Sell
         </Button>
@@ -1158,10 +1196,11 @@ function StockRow({ stock, gameDay, animationIndex, sharesOwned, watchlisted, on
   );
 }
 
-function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConfirm, error }: {
+function TradeDialog({ stock, mode, cash, sharesOwned, marketClosed, getQuote, onClose, onConfirm, error }: {
   error: string | null;
   stock: Stock;
   mode: "buy" | "sell";
+  marketClosed: boolean;
   cash: number;
   sharesOwned: number;
   getQuote: (quantity: number) => { basePrice: number; effectivePrice: number; slippage: number; total: number };
@@ -1333,11 +1372,16 @@ function TradeDialog({ stock, mode, cash, sharesOwned, getQuote, onClose, onConf
       </DialogContent>
 
       <DialogActions sx={{ bgcolor: D.elevated, borderTop: `1px solid ${D.border}`, p: 2 }}>
+        {marketClosed && (
+          <Typography role="status" sx={{ mr: "auto", fontSize: 12.5, color: D.amber, fontWeight: 800 }}>
+            {MARKET_CLOSED_MESSAGE}
+          </Typography>
+        )}
         <Button onClick={onClose}
           sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
           Cancel
         </Button>
-        <Button variant="contained" disabled={!canConfirm || submitting}
+        <Button variant="contained" disabled={!canConfirm || submitting || marketClosed}
           onClick={async () => {
             if (submitting) return;
             setSubmitting(true);

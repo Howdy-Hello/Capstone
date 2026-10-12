@@ -2,9 +2,10 @@
 /* eslint-disable testing-library/no-unnecessary-act, testing-library/no-render-in-setup */
 import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import { GameProvider, useGame } from './GameContext';
+import { GameProvider, MARKET_CLOSED_MESSAGE, useGame } from './GameContext';
 import { advanceSessionDay, ApiError, ensureSessionMarket } from '../lib/api';
 import { getCumulativeTradeTotal, getPortfolioValue } from '../data/tradingState';
+import { recordTradeJournalEntry } from '../lib/tradeJournal';
 
 const mockUser = { id: 'user-a' };
 let mockSession: any;
@@ -13,6 +14,10 @@ let mockMarketError: unknown;
 let mockHoldings: any[];
 const mockFrom = jest.fn();
 jest.mock('./AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
+jest.mock('../lib/tradeJournal', () => ({
+  ...jest.requireActual('../lib/tradeJournal'),
+  recordTradeJournalEntry: jest.fn().mockResolvedValue(true),
+}));
 jest.mock('../lib/api', () => ({
   ...jest.requireActual('../lib/api'),
   syncGameState: jest.fn().mockResolvedValue(undefined),
@@ -134,6 +139,114 @@ test('a missing checked RPC falls back to the legacy trade with the live base pr
     target_game_day: 1, target_quantity: 2, target_price: stock.currentPrice,
   }]);
   expect(game.error).toBe('Not enough cash');
+});
+
+test('BUG-060: trades are refused after the close without calling a trade RPC', async () => {
+  mockSession = { ...mockSession, market_phase: 'after_hours' };
+  await act(async () => { await game.reloadSession(); });
+  expect(game.marketPhase).toBe('after_hours');
+  await act(async () => { expect(await game.buyStock(game.stocks[0])).toBe(false); });
+  expect(game.error).toBe(MARKET_CLOSED_MESSAGE);
+  expect(mockRpc).not.toHaveBeenCalled();
+});
+
+test('BUG-060: without a market_phase column, a close recorded by another tab blocks trading', async () => {
+  const { market_phase: _phase, ...legacySession } = mockSession;
+  mockSession = legacySession;
+  await act(async () => { await game.reloadSession(); });
+  expect(game.marketPhase).toBe('market_open');
+  localStorage.setItem('stockpilot-market-phase:run-a', 'after_hours:1');
+  await act(async () => { expect(await game.sellStock(game.stocks[0])).toBe(false); });
+  expect(game.error).toBe(MARKET_CLOSED_MESSAGE);
+  expect(game.marketPhase).toBe('after_hours');
+  expect(mockRpc).not.toHaveBeenCalled();
+});
+
+test('BUG-060: a stale after-hours key does not block a run whose server phase is open', async () => {
+  localStorage.setItem('stockpilot-market-phase:run-a', 'after_hours:1');
+  await act(async () => { expect(await game.buyStock(game.stocks[0])).toBe(false); });
+  expect(mockRpc).toHaveBeenCalledTimes(1);
+  expect(game.error).toBe('Not enough cash');
+});
+
+test('BUG-060: the legacy trade result still records the journal at its fill price', async () => {
+  const stock = game.stocks[0];
+  mockRpc
+    .mockResolvedValueOnce({ data: null, error: { code: 'PGRST202' } })
+    .mockResolvedValueOnce({ data: { symbol: stock.symbol, cash: 1898.5, quantity: 1, average_purchase_price: 101.5, price: 101.5 }, error: null });
+  const journal = { thesis: 'Grid contract adds revenue', horizonDays: 3, exitPlan: 'Sell if margins fall' };
+  await act(async () => { expect(await game.buyStock(stock, 1, journal)).toBe(true); });
+  expect(recordTradeJournalEntry).toHaveBeenCalledWith(expect.objectContaining({ executionPrice: 101.5 }));
+});
+
+test('BUG-060: a legacy result with no price field records the price the trade was sent at', async () => {
+  const stock = game.stocks[0];
+  (recordTradeJournalEntry as jest.Mock).mockClear();
+  mockRpc
+    .mockResolvedValueOnce({ data: null, error: { code: 'PGRST202' } })
+    .mockResolvedValueOnce({ data: { symbol: stock.symbol, cash: 1900, quantity: 1, average_purchase_price: stock.currentPrice }, error: null });
+  const journal = { thesis: 'Steady demand', horizonDays: 10, exitPlan: '' };
+  await act(async () => { expect(await game.buyStock(stock, 1, journal)).toBe(true); });
+  expect(recordTradeJournalEntry).toHaveBeenCalledWith(expect.objectContaining({ executionPrice: stock.currentPrice }));
+});
+
+// Another tab's write: it lands in shared storage, then this tab gets the event.
+function otherTabWrites(key: string, value: string) {
+  const oldValue = localStorage.getItem(key);
+  localStorage.setItem(key, value);
+  window.dispatchEvent(new StorageEvent('storage', { key, oldValue, newValue: value }));
+}
+
+test('BUG-060: without a market_phase column, another tab closing the market disables trading here', async () => {
+  const { market_phase: _phase, ...legacySession } = mockSession;
+  mockSession = legacySession;
+  await act(async () => { await game.reloadSession(); });
+  expect(game.marketPhase).toBe('market_open');
+  await act(async () => { otherTabWrites('stockpilot-market-phase:run-a', 'after_hours:1'); });
+  expect(game.marketPhase).toBe('after_hours');
+});
+
+test('BUG-060: with a server-side phase, another tab closing the market also disables trading here', async () => {
+  mockSession = { ...mockSession, market_phase: 'after_hours' };
+  await act(async () => { otherTabWrites('stockpilot-market-phase:run-a', 'after_hours:1'); });
+  expect(game.marketPhase).toBe('after_hours');
+  expect(game.loading).toBe(false);
+});
+
+test('BUG-060: another tab advancing the run reloads it here instead of staying after hours', async () => {
+  mockSession = { ...mockSession, market_phase: 'after_hours' };
+  await act(async () => { otherTabWrites('stockpilot-market-phase:run-a', 'after_hours:1'); });
+  expect(game.marketPhase).toBe('after_hours');
+  mockSession = { ...mockSession, current_day: 2, market_phase: 'market_open' };
+  await act(async () => { otherTabWrites('stockpilot-market-phase:run-a', 'market_open'); });
+  expect(game.gameDay).toBe(2);
+  expect(game.marketPhase).toBe('market_open');
+});
+
+test('BUG-060: a change from another tab during an action reloads as soon as the action ends', async () => {
+  let finishTrade!: (value: unknown) => void;
+  mockRpc.mockImplementationOnce(() => new Promise((resolve) => { finishTrade = resolve; }));
+  let trade!: Promise<boolean>;
+  await act(async () => { trade = game.buyStock(game.stocks[0]); });
+  mockSession = { ...mockSession, current_day: 2 };
+  (ensureSessionMarket as jest.Mock).mockClear();
+  await act(async () => { otherTabWrites('stockpilot-market-phase:run-a', 'market_open'); });
+  expect(ensureSessionMarket).not.toHaveBeenCalled(); // The trade still holds the action lock.
+  await act(async () => {
+    finishTrade({ data: null, error: { message: 'Not enough cash' } });
+    await trade;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  });
+  expect(ensureSessionMarket).toHaveBeenCalled();
+  expect(game.gameDay).toBe(2);
+  expect(game.actionPending).toBe(false);
+});
+
+test('BUG-060: storage events for another run are ignored', async () => {
+  (ensureSessionMarket as jest.Mock).mockClear();
+  await act(async () => { otherTabWrites('stockpilot-market-phase:run-b', 'after_hours:1'); });
+  expect(game.marketPhase).toBe('market_open');
+  expect(ensureSessionMarket).not.toHaveBeenCalled();
 });
 
 test.each([

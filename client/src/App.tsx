@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Link as RouterLink, useLocation } from "react-router-dom";
-import { Box, Button, CssBaseline, Typography } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { GameProvider } from "./context/GameContext";
@@ -149,7 +149,6 @@ function AppLayout() {
 export default function App() {
   return (
     <BrowserRouter>
-      <CssBaseline />
       <ScrollToTop />
       <ThemeProvider>
         <AuthProvider>

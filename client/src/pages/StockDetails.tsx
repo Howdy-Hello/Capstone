@@ -26,7 +26,7 @@ import StarBorderIcon from "@mui/icons-material/StarBorder";
 
 import { Stock, StockPriceHistory } from "../data/mockStocks";
 import { getMaxAffordableQuantity, getSharesOwned } from "../data/tradingState";
-import { useGame } from "../context/GameContext";
+import { MARKET_CLOSED_MESSAGE, useGame } from "../context/GameContext";
 import { AlertCondition, describeAlert, useStockAlerts } from "../hooks/useStockAlerts";
 import { useAdvisor } from "../hooks/useAdvisor";
 import { D, CARD, MONO, money, pct } from "../theme/design";
@@ -176,6 +176,8 @@ export default function StockDetails() {
   const riskScore = getRiskScore(stock.riskLevel);
   const latestHistory = history[history.length - 1];
   const sharesOwned = getSharesOwned(trading.account, stock.symbol);
+  // BUG-060: after the close, trades are refused until the next day.
+  const marketClosed = trading.marketPhase === "after_hours";
   const watchlisted = trading.isWatchlisted(stock.symbol);
   const buyQuote = trading.getTradeQuote(stock, "buy", quantity);
   const sellQuote = trading.getTradeQuote(stock, "sell", quantity);
@@ -535,15 +537,20 @@ export default function StockDetails() {
                   )}
                 </MotionPresence>
                 <Stack spacing={1}>
+                  {marketClosed && (
+                    <Typography role="status" sx={{ fontSize: 12.5, color: D.amber, fontWeight: 800 }}>
+                      {MARKET_CLOSED_MESSAGE}
+                    </Typography>
+                  )}
                   <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
                     <Button data-tour="tutorial-buy" fullWidth variant="contained" onClick={handleBuy}
-                      disabled={submitting || trading.advancing || trading.actionPending || trading.isGameComplete || trading.account.cash < buyQuote.total}
+                      disabled={submitting || marketClosed || trading.advancing || trading.actionPending || trading.isGameComplete || trading.account.cash < buyQuote.total}
                       sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Buy {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>
                   </motion.div>
                   <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
-                    <Button data-tour="tutorial-sell" fullWidth variant="contained" disabled={submitting || trading.advancing || trading.actionPending || trading.isGameComplete || sharesOwned < quantity} onClick={handleSell}
+                    <Button data-tour="tutorial-sell" fullWidth variant="contained" disabled={submitting || marketClosed || trading.advancing || trading.actionPending || trading.isGameComplete || sharesOwned < quantity} onClick={handleSell}
                       sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Sell {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>
