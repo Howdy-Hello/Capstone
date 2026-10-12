@@ -121,6 +121,8 @@ type GameContextValue = {
   actionPending: boolean;
   advisorIds: string[];
   verifiedRun: boolean;
+  /** Whether the loaded run counts for the leaderboards; null before a run loads or on a schema without the column. */
+  ranked: boolean | null;
   cashStreak: number;
   gainStreak: number;
   hireAdvisor: (advisorId: string) => Promise<boolean>;
@@ -935,6 +937,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     // claim_achievements checks every unlock on the server, so any loaded
     // run may claim. `ranked` only decides the leaderboards.
     verifiedRun: Boolean(session),
+    ranked: session?.ranked ?? null,
     cashStreak: session?.cash_discipline_streak ?? 0,
     gainStreak: session?.hot_streak_days ?? 0,
     hireAdvisor,
