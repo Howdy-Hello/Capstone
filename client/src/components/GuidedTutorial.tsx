@@ -28,7 +28,7 @@ const stock = (symbol: string) => `/stocks/${symbol}`;
 
 const uiSteps: TourStep[] = [
   { route: () => "/dashboard", selector: "[data-tour='market-movers']", title: "Start on your dashboard", body: "The dashboard summarizes your portfolio, sector exposure, market movers, and current news. Use it as your quick daily overview." },
-  { route: game, selector: "[data-tour='game-menu']", title: "Explore the Market menu", body: "Market opens the stock list. Use its arrow for Watchlist, Learning Goals, Living Costs, and Advisors. Other tools are in More." },
+  { route: game, selector: "[data-tour='game-menu']", title: "Explore the Game menu", body: "Game opens the Market directly. Use its arrow for Watchlist, Player Level, Goals & Missions, Living Costs, Advisors, and Guest Practice." },
   { route: game, selector: "[data-tour='market-list']", title: "Browse the Market", body: "Sector filters narrow the list. Every stock row opens a detailed page, while the buttons on the right let you trade directly." },
   { route: game, selector: "[data-tour='first-stock'], [data-tour='tutorial-stock']", title: "Open Stock Details", body: "Click this stock row to see its chart, fundamentals, news, alerts, trading controls, and advisor report.", requireAction: true, actionHint: "Click the highlighted stock" },
   { route: stock, selector: "[data-tour='chart-toggle']", title: "Use view controls", body: "Controls beside section titles change how information is displayed. This one switches between area and candlestick charts.", requireAction: true, actionHint: "Switch the chart view" },
@@ -43,7 +43,7 @@ const advancedSteps: TourStep[] = [
   { route: stock, selector: "[data-tour='chart-toggle']", title: "Read OHLC candles", body: "A green candle closes above its open; red closes below. The wick spans the full high-to-low range for that day.", requireAction: true, actionHint: "Switch to Candles to continue" },
   { route: stock, selector: "[data-tour='price-alerts']", title: "Monitor without staring", body: "Create alerts for price thresholds, percentage moves, or new highs and lows. Alerts report an event—they do not recommend a trade." },
   { route: () => "/game/advisor", selector: "[data-tour='advisor-page']", title: "Hire an advisor", body: "Riley costs game cash and adds beginner reports, risk warnings, and daily briefings for the current run." },
-  { route: stock, selector: "[data-tour='trade-journal']", title: "Record your reasoning", body: "Write your reason, time horizon, and exit rule before trading. Later price-outcome reviews describe the move; reflect on your plan in Portfolio." },
+  { route: stock, selector: "[data-tour='trade-journal']", title: "Record your reasoning", body: "Write your reason, time horizon, and exit rule before trading. Later price-outcome reviews describe the move; reflect on your plan on the Dashboard." },
 ];
 
 function visibleTarget(selector: string) {

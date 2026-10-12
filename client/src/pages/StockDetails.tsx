@@ -2,7 +2,7 @@ import DecisionNote from "../components/learning/DecisionNote";
 import React, { useEffect, useState } from "react";
 import {
   Box, Button, Chip, CircularProgress, Container, Divider, Grid, IconButton,
-  LinearProgress, MenuItem, Select, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography,
+  LinearProgress, MenuItem, Select, Tooltip, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -294,14 +294,13 @@ export default function StockDetails() {
                   sx={{ ...CARD, p: 2.5 }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                     <Box>
-                      <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
+                      <Tooltip title={s.note} enterTouchDelay={0}><Typography tabIndex={0} sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography></Tooltip>
                       <motion.div key={s.val} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
                         <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
                       </motion.div>
                     </Box>
                     <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
                   </Stack>
-                  <Typography sx={{ color: D.t2, fontSize: 12, mt: 1 }}>{s.note}</Typography>
                 </Box>
               </Grid>
             );
@@ -442,8 +441,6 @@ export default function StockDetails() {
                 </Stack>
               </Box>
 
-              <Box sx={{ ...CARD, p: 3 }}><DecisionNote key={stock.symbol} kind={stock.riskLevel === "High" ? "risk" : "research"} symbol={stock.symbol} /></Box>
-              <Box component="details" sx={{ ...CARD, p: 3, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText }}>Keep researching instead of trading</Box><Box sx={{ mt: 2 }}><DecisionNote key={`wait-${stock.symbol}`} kind="wait" symbol={stock.symbol} /></Box></Box>
               {/* Trading actions */}
               <Box data-tour="trade-panel" sx={{ ...CARD, p: 3 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
@@ -695,6 +692,8 @@ export default function StockDetails() {
                   </Stack>
                 )}
               </Box>
+              <Box component="details" sx={{ ...CARD, p: 3, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText }}>Record a research or risk note</Box><Box sx={{ mt: 2 }}><DecisionNote key={stock.symbol} kind={stock.riskLevel === "High" ? "risk" : "research"} symbol={stock.symbol} /></Box></Box>
+              <Box component="details" sx={{ ...CARD, p: 3, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText }}>Keep researching instead of trading</Box><Box sx={{ mt: 2 }}><DecisionNote key={`wait-${stock.symbol}`} kind="wait" symbol={stock.symbol} /></Box></Box>
             </Stack>
           </Grid>
         </Grid>

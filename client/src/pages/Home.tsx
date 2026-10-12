@@ -22,15 +22,15 @@ const STOCKS = [
 const FEATURES = [
   { icon: <BarChartIcon sx={{ fontSize: 22 }} />,           title: "Portfolio Simulation",   desc: "Trade 21 stocks for as many simulated days as you want with a $2,000 starting stake." },
   { icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 22 }} />, title: "Learn the Concepts",    desc: "Explore company research, long-term investing, diversification, order types, and fees." },
-  { icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 22 }} />, title: "Optional Competition", desc: "Try a 30-day challenge if you enjoy competition. Your rank is separate from learning progress." },
+  { icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 22 }} />, title: "Compete on Leaderboard", desc: "Try a 30-day challenge if you enjoy competition. Your rank is separate from learning progress." },
   { icon: <ShieldOutlinedIcon sx={{ fontSize: 22 }} />,      title: "Risk-Free Practice",    desc: "Experiment with virtual money, fictional companies, and synthetic prices. Your real savings stay untouched." },
 ];
 
 const STEPS = [
-  { n: "01", title: "Try a practice decision", desc: "No signup. Research, choose, and reflect in a disposable lesson." },
-  { n: "02", title: "Save your progress", desc: "Create an account when you want your own virtual portfolio and journal." },
-  { n: "03", title: "Research before acting", desc: "Compare evidence and risk. Waiting is a valid decision." },
-  { n: "04", title: "Review what happened", desc: "Separate the quality of your reasoning from a lucky gain or an unlucky loss." },
+  { n: "01", title: "Create an account", desc: "Sign up free for your own trading desk and saved progress." },
+  { n: "02", title: "Get your $2,000 stake", desc: "Every new game starts with $2,000 in simulated cash." },
+  { n: "03", title: "Trade stocks each day", desc: "Research, buy, sell, or wait in a turn-based market." },
+  { n: "04", title: "See how you rank", desc: "Try the optional 30-day challenge and compare your final account value." },
 ];
 
 const MotionBox = motion.create(Box);
@@ -57,22 +57,23 @@ export default function Home() {
               <MotionBox initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                 <Chip label="SIMULATION PLATFORM" size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, fontSize: 10, letterSpacing: 1, mb: 2.5, fontFamily: MONO }} />
                 <Typography variant="h1" sx={{ fontSize: { xs: 36, md: 52, lg: 60 }, fontWeight: 950, lineHeight: 1.08, letterSpacing: -2, color: D.t1, mb: 2 }}>
-                  Understand the market.<br />
-                  <Box component="span" sx={{ color: D.brandText }}>Practice with purpose.</Box>
+                  Trade the market.<br />
+                  <Box component="span" sx={{ color: D.brandText }}>Risk nothing.</Box>
                 </Typography>
                 <Typography sx={{ fontSize: { xs: 15, md: 17 }, color: D.t2, lineHeight: 1.8, mb: 3.5, maxWidth: 480 }}>
-                  Start with a short practice decision, then explore a fictional market with $2,000 of virtual cash. Learn to research, manage risk, and explain when to invest or wait.
+                  StockPilot puts $2,000 of simulated capital in your hands. Keep advancing the market, build your portfolio, and learn what separates disciplined traders from the rest.
                 </Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                  <Button component={RouterLink} to={user ? "/game" : "/practice"} variant="contained"
+                  <Button component={RouterLink} to={user ? "/game" : "/auth?mode=signup"} variant="contained"
                     sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 14, textTransform: "none", borderRadius: 2, px: 3.5, py: 1.4, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-                    {user ? "Continue learning" : "Try a practice decision"}
+                    {user ? "Continue trading" : "Start trading free"}
                   </Button>
                   <Button component={RouterLink} to="/learn" variant="outlined"
                     sx={{ color: D.t2, borderColor: D.border, fontWeight: 700, fontSize: 14, textTransform: "none", borderRadius: 2, px: 3, py: 1.4, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
                     See how it works
                   </Button>
                 </Stack>
+                <Button component={RouterLink} to="/practice" size="small" sx={{ color: D.brandText, textTransform: "none", mt: 1.5, px: 0 }}>Try guest practice without an account →</Button>
               </MotionBox>
             </Grid>
 
@@ -84,7 +85,7 @@ export default function Home() {
                     {["#EF4444", "#F59E0B", "#22C55E"].map((c) => (
                       <Box key={c} sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: c }} />
                     ))}
-                    <Typography sx={{ fontSize: 11, color: D.t3, ml: 1, fontFamily: MONO }}>Fictional portfolio example</Typography>
+                    <Typography sx={{ fontSize: 11, color: D.t3, ml: 1, fontFamily: MONO }}>portfolio_terminal.exe</Typography>
                   </Box>
                   <Box sx={{ px: 2.5, pt: 2.5, pb: 1.5, borderBottom: `1px solid ${D.border}` }}>
                     <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO, mb: 0.5 }}>PORTFOLIO VALUE</Typography>
@@ -157,7 +158,7 @@ export default function Home() {
         <Container maxWidth="xl" sx={{ py: { xs: 6, md: 8 } }}>
           <Box sx={{ textAlign: "center", mb: 5 }}>
             <Typography sx={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.5, color: D.t3, mb: 1.5, fontFamily: MONO }}>HOW IT WORKS</Typography>
-            <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Your first steps</Typography>
+            <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Up and running in 60 seconds</Typography>
           </Box>
           <Grid container spacing={2} sx={{ maxWidth: 900, mx: "auto" }}>
             {STEPS.map((s, i) => (
@@ -181,14 +182,14 @@ export default function Home() {
       <Box sx={{ bgcolor: D.surface, borderTop: `1px solid ${D.border}` }}>
         <Container maxWidth="md" sx={{ py: { xs: 6, md: 8 }, textAlign: "center" }}>
           <Typography sx={{ fontSize: { xs: 26, md: 38 }, fontWeight: 950, color: D.t1, letterSpacing: -1.5, mb: 1.5 }}>
-            {user ? "Ready for your next move?" : "Ready to try one decision?"}
+            {user ? "Ready for your next move?" : "Ready to start trading?"}
           </Typography>
           <Typography sx={{ fontSize: 15, color: D.t2, mb: 3.5 }}>
             Free practice with virtual money. Build your understanding one decision at a time.
           </Typography>
-          <Button component={RouterLink} to={user ? "/game" : "/practice"} variant="contained"
+          <Button component={RouterLink} to={user ? "/game" : "/auth?mode=signup"} variant="contained"
             sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 15, textTransform: "none", borderRadius: 2, px: 4, py: 1.6, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-            {user ? "Continue learning" : "Try free practice"}
+            {user ? "Continue trading" : "Create free account"}
           </Button>
         </Container>
       </Box>

@@ -284,7 +284,7 @@ export default function Game() {
   };
   const startTutorial = () => {
     dismissTutorial();
-    navigate("/practice");
+    navigate("/tutorial?course=ui");
   };
 
   const handleBuyStock = (stock: Stock) => setTradeDialog({ stock, mode: "buy" });
@@ -439,11 +439,12 @@ export default function Game() {
         <DialogContent sx={{ p: { xs: 3, md: 4 }, textAlign: "center" }}>
           <Box sx={{ width: 58, height: 58, mx: "auto", mb: 2, borderRadius: 3, bgcolor: D.brandBg, color: D.brandText, display: "grid", placeItems: "center" }}><ShowChartIcon sx={{ fontSize: 30 }} /></Box>
           <Typography sx={{ color: D.t1, fontSize: 24, fontWeight: 950 }}>Welcome to StockPilot</Typography>
-          <Typography sx={{ color: D.t3, fontSize: 13.5, lineHeight: 1.7, mt: 1 }}>Learn by making one practice decision. Research a fictional company, choose whether to invest or wait, then review what happened. Your current game stays safe.</Typography>
+          <Typography sx={{ color: D.t3, fontSize: 13.5, lineHeight: 1.7, mt: 1 }}>Take a short guided tour through the website’s navigation, pages, controls, and information. Guest practice is also available whenever you want a safe lesson.</Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, justifyContent: "center" }}>
-          <Button onClick={() => { dismissTutorial(); navigate("/tutorial?course=ui"); }} sx={{ color: D.t3, textTransform: "none", fontWeight: 700 }}>Tour the controls</Button>
-          <Button onClick={startTutorial} variant="contained" sx={{ bgcolor: D.brand, textTransform: "none", fontWeight: 900, boxShadow: "none" }}>Try a practice decision</Button>
+        <DialogActions sx={{ px: 3, pb: 3, justifyContent: "center", flexWrap: "wrap", gap: 1 }}>
+          <Button onClick={dismissTutorial} sx={{ color: D.t3, textTransform: "none", fontWeight: 700 }}>Skip for now</Button>
+          <Button onClick={() => { dismissTutorial(); navigate("/practice"); }} sx={{ color: D.brandText, textTransform: "none", fontWeight: 700 }}>Try guest practice</Button>
+          <Button onClick={startTutorial} variant="contained" sx={{ bgcolor: D.brand, textTransform: "none", fontWeight: 900, boxShadow: "none" }}>Start website tour</Button>
         </DialogActions>
       </Dialog>
       {tradeDialog && (
@@ -649,8 +650,13 @@ export default function Game() {
           </Box>
         )}
 
+<<<<<<< HEAD
         <Box component="details" sx={{ ...CARD, p: 2, mb: 2, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText, fontWeight: 800 }}>My decision today · trading is optional</Box><Box sx={{ mt: 2 }}><DecisionNote kind="wait" /></Box></Box>
         <Typography sx={{ color: D.t2, fontSize: 12, mb: 2 }}>Fictional companies and synthetic prices. The after-hours news window pauses price reactions for learning; real markets may react immediately. Game risk scores and analyst ratings are illustrative.</Typography>
+=======
+        {!trading.loading && !trading.verifiedRun && <Typography sx={{ color: D.t3, mb: 2 }}>This older run is practice-only. Start a new run to earn achievements and enter the leaderboards.</Typography>}
+
+>>>>>>> 24bce45 (feat: enhance navigation and user guidance across components)
         {!isGameComplete && gameDay <= 3 && !getTutorialProgress(user?.id ?? "guest").gameComplete && (
           <Box sx={{ mb: 2, pl: 2, borderLeft: `3px solid ${D.brand}` }}>
             <Typography sx={{ color: D.t1, fontSize: 14, fontWeight: 800 }}>Your next step</Typography>
@@ -934,6 +940,8 @@ export default function Game() {
             </Stack>
           </Grid>
         </Grid>
+        <Box component="details" sx={{ ...CARD, p: 2, mb: 2, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText, fontWeight: 800 }}>My decision today · trading is optional</Box><Box sx={{ mt: 2 }}><DecisionNote kind="wait" /></Box></Box>
+        <Typography sx={{ color: D.t2, fontSize: 12, mb: 2 }}>Fictional companies and synthetic prices. The after-hours news window pauses price reactions for learning; real markets may react immediately. Game risk scores and analyst ratings are illustrative.</Typography>
       </Container>
     </Box>
   );

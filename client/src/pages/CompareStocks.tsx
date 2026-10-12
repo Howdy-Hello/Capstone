@@ -2,7 +2,7 @@ import DecisionNote from "../components/learning/DecisionNote";
 import React, { useEffect, useMemo } from "react";
 import {
   Box, Button, Chip, CircularProgress, Container, Grid, MenuItem,
-  Stack, TextField, Typography,
+  Stack, TextField, Tooltip, Typography,
 } from "@mui/material";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import StarIcon from "@mui/icons-material/Star";
@@ -235,7 +235,7 @@ export default function CompareStocks() {
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Attribute Matrix</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>These are differences to investigate. No metric makes one stock automatically better; start with similar businesses and your own goal.</Typography>
+                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Compare differences, not automatic winners. Hover, focus, or tap a metric label for its explanation.</Typography>
               </Box>
               <Box sx={{ p: 2.5 }}>
                 <Stack spacing={1}>
@@ -245,8 +245,7 @@ export default function CompareStocks() {
                       sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                       <Grid container spacing={1.5} alignItems="center">
                         <Grid item xs={12} md={4}>
-                          <Typography sx={{ fontSize: 11, color: D.t3, fontWeight: 900, fontFamily: MONO }}>{metric.label.toUpperCase()}</Typography>
-                          <Typography sx={{ fontSize: 12, color: D.t2, mt: .5 }}>{metric.note}</Typography>
+                          <Tooltip title={metric.note} enterTouchDelay={0}><Typography tabIndex={0} sx={{ fontSize: 11, color: D.t3, fontWeight: 900, fontFamily: MONO }}>{metric.label.toUpperCase()}</Typography></Tooltip>
                         </Grid>
                         <Grid item xs={6} md={4}>
                           <Typography sx={{ fontSize: 13, color: D.t3, mb: 0.2 }}>{left.symbol}</Typography>
@@ -266,7 +265,7 @@ export default function CompareStocks() {
                 </Stack>
               </Box>
             </Box>
-            {!sameStock && <Box sx={{ ...CARD, p: 3, mt: 3 }}><DecisionNote key={`${left.symbol}:${right.symbol}`} kind="compare" symbol={`${left.symbol} / ${right.symbol}`} /></Box>}
+            {!sameStock && <Box component="details" sx={{ ...CARD, p: 3, mt: 3, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText }}>Record my comparison</Box><Box sx={{ mt: 2 }}><DecisionNote key={`${left.symbol}:${right.symbol}`} kind="compare" symbol={`${left.symbol} / ${right.symbol}`} /></Box></Box>}
           </>
         )}
       </Container>

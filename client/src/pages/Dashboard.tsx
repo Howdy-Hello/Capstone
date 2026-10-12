@@ -353,6 +353,9 @@ export default function Dashboard() {
             ))}
           </Grid>
           <Box sx={{ px: 3, py: 2.25 }}>
+            <Box component="details" sx={{ mb: 2, color: D.t1 }}>
+              <Box component="summary" sx={{ cursor: "pointer", fontSize: 13, fontWeight: 800, color: D.brandText }}>Account breakdown · gains, expenses, and rewards</Box>
+              <Box sx={{ mt: 2 }}>
             <Typography sx={{ color: D.t2, fontSize: 13, mb: 2 }}>Net-worth change includes bills, advisor spending, and game rewards. The market figure is an equal-weight average of stock price changes from Day 1, with no cash, fees, dividends, or spending; it is context, not a like-for-like performance comparison. Realized P/L uses up to 500 recent trades and can be incomplete in long runs.</Typography>
             <Typography sx={{ fontWeight: 900, color: D.t1, mb: 1 }}>Where did my balance go?</Typography>
             {flowError && <Alert severity="error" action={<Button onClick={() => setFlowRetry(n => n + 1)}>Retry</Button>}>{flowError}</Alert>}
@@ -364,6 +367,8 @@ export default function Dashboard() {
               ].map(([label, amount]) => <Stack key={String(label)} direction="row" justifyContent="space-between" gap={2}><Typography sx={{ color: D.t2, fontSize: 13 }}>{label}</Typography><Typography sx={{ color: D.t1, fontFamily: MONO, fontSize: 13 }}>{money(Number(amount))}</Typography></Stack>)}</Stack>
             </> : !flowError && <Typography sx={{ color: D.t2, fontSize: 13, mb: 2 }}>Account tracking is not available yet. No investment result is inferred from spending.</Typography>}
 
+              </Box>
+            </Box>
             <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6, mb: 1.5 }}>
               Higher balance scores mean fewer concentration warnings. The score considers your largest holding, sector exposure,
               high-risk stocks, and cash reserve. It measures portfolio balance, not returns or the chance of profit.
