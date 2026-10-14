@@ -11,7 +11,7 @@ jest.mock("react-router-dom", () => {
     useLocation: () => ({ pathname: mockPath }),
     Link: React.forwardRef(({ to, ...props }: any, ref: any) => <a ref={ref} href={to} {...props} />),
   };
-});
+}, { virtual: true }); // v7's "main" points at a file it no longer ships
 
 function footerAt(path: string, signedIn: boolean) {
   mockPath = path;
