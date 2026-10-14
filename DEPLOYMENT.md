@@ -5,18 +5,19 @@ Three pieces: **Supabase** (database/auth), the **client** (React), and the
 stores each run's market and is the only thing that can advance a run's day,
 so the game can't be played without it.
 
-For the existing live installation (confirmed 2026-10-08), SQL b and c have
-not been applied. Herdy must run these updated files in the SQL editor:
+For the existing live installation (checked 2026-10-14), SQL b
+(202610080002) is applied and SQL c is not. Herdy must:
 
-1. `supabase/run_all_2026-10-08b.sql` (202610080002).
-2. `supabase/run_all_2026-10-08c.sql` (202610080005).
-3. Deploy the API server from the same commit, with the required environment
+1. Run `supabase/run_all_2026-10-08c.sql` (202610080005) in the SQL editor.
+2. Deploy the API server from the same commit, with the required environment
    variables below, then redeploy the client from that commit.
 
-The live client identified in BUG-043 is an older build that calls missing
-RPCs. Its trading fix requires the complete SQL b → SQL c → API → client
-sequence. Compatibility fallbacks support earlier schemas during rollout;
-the market close, checked trade retries and reward rules require SQL c.
+The live client already expects SQL c. Its fallbacks keep the game playable
+without it, but the Dashboard's account breakdown stays unavailable, the
+closed market is remembered only in that browser (another browser shows it
+open again and allows trading after the news), and today's news can be read
+before the close. The market close, checked trade retries and reward rules
+require SQL c.
 
 **Deploy order matters** when upgrading an existing install: apply the
 migrations, deploy the server (with its server-only Supabase credential), then deploy the
