@@ -1,4 +1,5 @@
 import DecisionNote from "../components/learning/DecisionNote";
+import RunProgressBar from "../components/RunProgressBar";
 import { useLearningProgress } from "../hooks/useLearningProgress";
 import { AccountFlow, accountPerformance } from "../lib/accountPerformance";
 import React, { useEffect, useMemo, useState } from "react";
@@ -298,8 +299,7 @@ export default function Dashboard() {
                     <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO }}>SESSION STATUS</Typography>
                     <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>DAY {gameDay}{trading.maxGameDay ? `/${trading.maxGameDay}` : ""}</Typography>
                   </Stack>
-                  <LinearProgress variant={trading.maxGameDay ? "determinate" : "indeterminate"} value={trading.maxGameDay ? (gameDay / trading.maxGameDay) * 100 : undefined}
-                    sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+                  <RunProgressBar day={gameDay} maxDay={trading.maxGameDay} height={6} color={D.brand} />
                 </Box>
               </Stack>
             </Stack>

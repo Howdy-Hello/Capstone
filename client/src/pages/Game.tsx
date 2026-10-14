@@ -1,9 +1,10 @@
 import DecisionNote from "../components/learning/DecisionNote";
 import ConfirmDialog from "../components/ConfirmDialog";
+import RunProgressBar from "../components/RunProgressBar";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Avatar, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
-  CircularProgress, Divider, Grid, IconButton, LinearProgress, Stack, TextField, Typography,
+  CircularProgress, Divider, Grid, IconButton, Stack, TextField, Typography,
 } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
@@ -545,8 +546,7 @@ export default function Game() {
                   <Typography sx={{ fontSize: 12, color: D.t3 }}>{modeLabel}</Typography>
                   <Typography sx={{ fontSize: 12, color: D.t3 }}>Day {gameDay}{maxGameDay ? `/${maxGameDay}` : ""}</Typography>
                 </Stack>
-                <LinearProgress variant={maxGameDay ? "determinate" : "indeterminate"} value={maxGameDay ? (gameDay / maxGameDay) * 100 : undefined}
-                  sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: isGameComplete ? D.green : D.brand, borderRadius: 99 } }} />
+                <RunProgressBar day={gameDay} maxDay={maxGameDay} height={5} color={isGameComplete ? D.green : D.brand} />
               </Box>
             </Grid>
           </Grid>
