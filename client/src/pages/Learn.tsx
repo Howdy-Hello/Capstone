@@ -1,4 +1,5 @@
 import React from "react";
+import { useAuth } from "../context/AuthContext";
 import InvestingPath from "../components/learning/InvestingPath";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -146,6 +147,7 @@ function NumberedPoint({ number, text }: { number: number; text: string }) {
 
 /* ─── Tutorial Tab ───────────────────────────────────────── */
 function TutorialTab() {
+  const { user } = useAuth();
   return (
     <Grid container spacing={3}>
       {tutorialSteps.map((step) => (
@@ -199,12 +201,12 @@ function TutorialTab() {
         <Box sx={{ ...CARD, p: 3 }}>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={2}>
             <Box>
-              <Typography sx={{ fontWeight: 950, fontSize: 17, color: D.t1 }}>Try your first practice decision</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t3 }}>Research, decide, and reflect. No account required; your saved game stays safe.</Typography>
+              <Typography sx={{ fontWeight: 950, fontSize: 17, color: D.t1 }}>{user ? "Ready to test your strategy?" : "Try your first practice decision"}</Typography>
+              <Typography sx={{ fontSize: 13, color: D.t3 }}>{user ? "Open the simulator to research stocks and manage your portfolio." : "Research, decide, and reflect. No account required; your saved game stays safe."}</Typography>
             </Box>
-            <Button variant="contained" component={RouterLink} to="/practice"
+            <Button variant="contained" component={RouterLink} to={user ? "/game" : "/practice"}
               sx={{ bgcolor: D.brand, fontWeight: 900, textTransform: "none", borderRadius: 1.5, px: 4, whiteSpace: "nowrap", boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-              Try practice
+              {user ? "Open Simulator" : "Try practice"}
             </Button>
           </Stack>
         </Box>

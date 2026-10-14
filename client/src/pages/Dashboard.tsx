@@ -304,7 +304,21 @@ export default function Dashboard() {
               </Stack>
             </Stack>
           </motion.div>
-        </Container>
+          <Box sx={{ ...CARD, p: 3, mt: 3 }}>
+          <Typography sx={{ color: D.t1, fontWeight: 900, mb: 2 }}>Account breakdown</Typography>
+            <Typography sx={{ color: D.t2, fontSize: 13, mb: 2 }}>Net-worth change includes bills, advisor spending, and game rewards. The market figure is an equal-weight average of stock price changes from Day 1, with no cash, fees, dividends, or spending; it is context, not a like-for-like performance comparison. Realized P/L uses up to 500 recent trades and can be incomplete in long runs.</Typography>
+            <Typography sx={{ fontWeight: 900, color: D.t1, mb: 1 }}>Where did my balance go?</Typography>
+            {flowError && <Alert severity="error" action={<Button onClick={() => setFlowRetry(n => n + 1)}>Retry</Button>}>{flowError}</Alert>}
+            {performance ? <>
+              <Typography sx={{ fontSize: 12, color: D.t2, mb: 1 }}>Tracking from Day {performance.startDay}. New saves preserve this breakdown. Older runs begin at their first tracked value; saves made before tracking began start at their restored value. Earlier spending is not reconstructed.</Typography>
+              <Stack spacing={.8} sx={{ mb: 2 }}>{[
+                ["Opening account value", performance.start], ["Investment gain / loss (including execution costs)", performance.investmentGain],
+                ["Living expenses paid", -performance.livingCosts], ["Advisor spending", -performance.advisorCosts], ["Game rewards", performance.rewards], ["Ending account value", netWorth],
+              ].map(([label, amount]) => <Stack key={String(label)} direction="row" justifyContent="space-between" gap={2}><Typography sx={{ color: D.t2, fontSize: 13 }}>{label}</Typography><Typography sx={{ color: D.t1, fontFamily: MONO, fontSize: 13 }}>{money(Number(amount))}</Typography></Stack>)}</Stack>
+            </> : !flowError && <Typography sx={{ color: D.t2, fontSize: 13, mb: 2 }}>Account tracking is not available yet. No investment result is inferred from spending.</Typography>}
+
+        </Box>
+      </Container>
       </Box>
 
       <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
@@ -339,10 +353,10 @@ export default function Dashboard() {
           </Stack>
           <Grid container sx={{ borderBottom: `1px solid ${D.border}` }}>
             {[
-              { label: "Investment gain / loss · tracked period", value: performance ? money(performance.investmentGain) : "Unavailable", color: performance && performance.investmentGain < 0 ? D.redText : D.t1 },
-              { label: "Market price change · since Day 1", value: pct(benchmarkReturnPct), color: benchmarkReturnPct >= 0 ? D.greenText : D.redText },
-              { label: "Net-worth change · since Day 1", value: pct(returnPct), color: D.t1 },
-              { label: "Realized P/L · recorded trades", value: tradeHistoryLoading || tradeHistoryError ? "Unavailable" : `${review.realizedPnL >= 0 ? "+" : ""}${money(review.realizedPnL)}`, color: review.realizedPnL >= 0 ? D.greenText : D.redText },
+              { label: "Investment P/L", value: performance ? money(performance.investmentGain) : "Unavailable", color: performance && performance.investmentGain < 0 ? D.redText : D.t1 },
+              { label: "Market change", value: pct(benchmarkReturnPct), color: benchmarkReturnPct >= 0 ? D.greenText : D.redText },
+              { label: "Account change", value: pct(returnPct), color: D.t1 },
+              { label: "Realized P/L", value: tradeHistoryLoading || tradeHistoryError ? "Unavailable" : `${review.realizedPnL >= 0 ? "+" : ""}${money(review.realizedPnL)}`, color: review.realizedPnL >= 0 ? D.greenText : D.redText },
             ].map((item) => (
               <Grid item xs={6} md={3} key={item.label} sx={{ borderRight: `1px solid ${D.border}`, borderBottom: { xs: `1px solid ${D.border}`, md: 0 } }}>
                 <Box sx={{ p: 2.5 }}>
@@ -353,22 +367,6 @@ export default function Dashboard() {
             ))}
           </Grid>
           <Box sx={{ px: 3, py: 2.25 }}>
-            <Box component="details" sx={{ mb: 2, color: D.t1 }}>
-              <Box component="summary" sx={{ cursor: "pointer", fontSize: 13, fontWeight: 800, color: D.brandText }}>Account breakdown · gains, expenses, and rewards</Box>
-              <Box sx={{ mt: 2 }}>
-            <Typography sx={{ color: D.t2, fontSize: 13, mb: 2 }}>Net-worth change includes bills, advisor spending, and game rewards. The market figure is an equal-weight average of stock price changes from Day 1, with no cash, fees, dividends, or spending; it is context, not a like-for-like performance comparison. Realized P/L uses up to 500 recent trades and can be incomplete in long runs.</Typography>
-            <Typography sx={{ fontWeight: 900, color: D.t1, mb: 1 }}>Where did my balance go?</Typography>
-            {flowError && <Alert severity="error" action={<Button onClick={() => setFlowRetry(n => n + 1)}>Retry</Button>}>{flowError}</Alert>}
-            {performance ? <>
-              <Typography sx={{ fontSize: 12, color: D.t2, mb: 1 }}>Tracking from Day {performance.startDay}. New saves preserve this breakdown. Older runs begin at their first tracked value; saves made before tracking began start at their restored value. Earlier spending is not reconstructed.</Typography>
-              <Stack spacing={.8} sx={{ mb: 2 }}>{[
-                ["Opening account value", performance.start], ["Investment gain / loss (including execution costs)", performance.investmentGain],
-                ["Living expenses paid", -performance.livingCosts], ["Advisor spending", -performance.advisorCosts], ["Game rewards", performance.rewards], ["Ending account value", netWorth],
-              ].map(([label, amount]) => <Stack key={String(label)} direction="row" justifyContent="space-between" gap={2}><Typography sx={{ color: D.t2, fontSize: 13 }}>{label}</Typography><Typography sx={{ color: D.t1, fontFamily: MONO, fontSize: 13 }}>{money(Number(amount))}</Typography></Stack>)}</Stack>
-            </> : !flowError && <Typography sx={{ color: D.t2, fontSize: 13, mb: 2 }}>Account tracking is not available yet. No investment result is inferred from spending.</Typography>}
-
-              </Box>
-            </Box>
             <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6, mb: 1.5 }}>
               Higher balance scores mean fewer concentration warnings. The score considers your largest holding, sector exposure,
               high-risk stocks, and cash reserve. It measures portfolio balance, not returns or the chance of profit.

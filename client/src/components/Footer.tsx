@@ -1,4 +1,5 @@
 import React from "react";
+import { useAuth } from "../context/AuthContext";
 import { Box, Container, Divider, Grid, Link, Stack, Typography } from "@mui/material";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
@@ -7,13 +8,8 @@ import { D } from "../theme/design";
 const cols = {
   Product:  [{ l: "Dashboard",   h: "/dashboard"   }, { l: "Game",         h: "/game"        }, { l: "News",      h: "/news"        }, { l: "Inbox",     h: "/inbox"       }],
   Play:     [{ l: "Leaderboard", h: "/leaderboard" }, { l: "Achievements", h: "/achievements"}, { l: "Save & Load", h: "/save-load" }],
-<<<<<<< HEAD
-  Learn:    [{ l: "Tutorial",    h: "/learn"        }, { l: "Guide",       h: "/learn?tab=guide" }],
-  Account:  [{ l: "Log in",     h: "/auth?mode=login" }, { l: "Sign up",  h: "/auth?mode=signup" }, { l: "Settings", h: "/settings" }, { l: "Profile", h: "/profile" }, { l: "Privacy", h: "/privacy" }],
-=======
-  Learn:    [{ l: "Tutorial",    h: "/learn"        }, { l: "Guide",       h: "/learn?tab=guide" }, { l: "Guest Practice", h: "/practice" }, { l: "Investing Path", h: "/learn?tab=investing" }],
-  Account:  [{ l: "Log in",     h: "/auth?mode=login" }, { l: "Sign up",  h: "/auth?mode=signup" }, { l: "Settings", h: "/settings" }, { l: "Profile", h: "/profile" }],
->>>>>>> 24bce45 (feat: enhance navigation and user guidance across components)
+  Learn:    [{ l: "Tutorial", h: "/learn" }, { l: "Guide", h: "/learn?tab=guide" }, { l: "Guest Practice", h: "/practice" }, { l: "Investing Path", h: "/learn?tab=investing" }],
+  Account:  [{ l: "Log in", h: "/auth?mode=login" }, { l: "Sign up", h: "/auth?mode=signup" }, { l: "Settings", h: "/settings" }, { l: "Profile", h: "/profile" }, { l: "Privacy", h: "/privacy" }],
 };
 
 // WCAG 2.5.8: every link gets a target at least 24px tall.
@@ -21,7 +17,8 @@ const TARGET = { display: "inline-flex", alignItems: "center", minHeight: 24 } a
 
 const Footer: React.FC = () => {
   const { pathname } = useLocation();
-  if (pathname !== "/") return <Box component="footer" sx={{ p: 2, textAlign: "center", color: D.t3, borderTop: `1px solid ${D.border}` }}><Typography variant="caption">StockPilot · Simulation only · <Link component={RouterLink} to="/learn" sx={TARGET}>Help</Link> · <Link component={RouterLink} to="/privacy" sx={TARGET}>Privacy</Link></Typography></Box>;
+  const { user } = useAuth();
+  if (!user && pathname !== "/") return <Box component="footer" sx={{ p: 2, textAlign: "center", color: D.t3, borderTop: `1px solid ${D.border}` }}><Typography variant="caption">StockPilot · Simulation only · <Link component={RouterLink} to="/learn" sx={TARGET}>Help</Link> · <Link component={RouterLink} to="/privacy" sx={TARGET}>Privacy</Link></Typography></Box>;
   return (
   <Box sx={{ bgcolor: D.surface, borderTop: `1px solid ${D.border}` }}>
     <Container maxWidth="xl" sx={{ py: { xs: 5, md: 6 } }}>
