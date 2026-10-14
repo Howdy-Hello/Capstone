@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { getNetWorth } from "../data/tradingState";
 import { addInboxMessage } from "../lib/inbox";
+import { sharedRead } from "../lib/sharedRead";
 
 export type ComputedAchievement = {
   id: string;
@@ -168,16 +169,21 @@ export function useAchievements() {
   // until the game state changes, so the unlock effect doesn't retry every render.
   const [rejectedUnlocks, setRejectedUnlocks] = useState<Set<string>>(() => new Set());
 
-  const refreshUnlocks = useCallback(async () => {
+  // Each instance used to send its own copy of these reads: one Game page load
+  // fired 9 unlock reads, 6 rate reads and 16 trade counts. shareKey lets other
+  // instances in the same state join a read; a read after this instance's own
+  // write passes none, so it sees that write.
+  const refreshUnlocks = useCallback(async (shareKey?: string) => {
     if (!user) {
       setUnlocks({});
       return false;
     }
 
-    const { data, error } = await supabase
+    const read = () => supabase
       .from("user_achievement_unlocks")
       .select("achievement_id, unlocked_at")
       .eq("user_id", user.id);
+    const { data, error } = shareKey ? await sharedRead(`unlocks:${user.id}:${shareKey}`, read) : await read();
 
     if (error) {
       setPersistenceError(`Could not load achievements: ${error.message}`);
@@ -193,27 +199,30 @@ export function useAchievements() {
     return true;
   }, [user]);
 
-  const refreshTradeCount = useCallback(async () => {
-    if (!user) {
+  const refreshTradeCount = useCallback(async (shareKey?: string) => {
+    // Before the run has loaded there is nothing to count.
+    if (!user || !sessionId) {
       setTradeCount(0);
       return;
     }
 
-    const { count, error } = await supabase
+    const read = () => supabase
       .from("trades")
       .select("id", { count: "exact", head: true })
-      .eq("session_id", sessionId ?? "00000000-0000-0000-0000-000000000000");
+      .eq("session_id", sessionId);
+    const { count, error } = shareKey ? await sharedRead(`trades:${sessionId}:${shareKey}`, read) : await read();
 
     if (!error && count !== null) setTradeCount(count);
   }, [user, sessionId]);
 
-  const refreshUnlockRates = useCallback(async () => {
+  const refreshUnlockRates = useCallback(async (shareKey?: string) => {
     if (!user) {
       setUnlockRates({});
       return {};
     }
 
-    const { data, error } = await supabase.rpc("get_achievement_unlock_rates");
+    const read = () => supabase.rpc("get_achievement_unlock_rates");
+    const { data, error } = shareKey ? await sharedRead(`rates:${user.id}:${shareKey}`, read) : await read();
     if (error) {
       setPersistenceError(`Could not load achievement statistics: ${error.message}`);
       return {};
@@ -236,7 +245,7 @@ export function useAchievements() {
     pendingUnlocksRef.current.clear();
 
     (async () => {
-      await Promise.all([refreshUnlocks(), refreshTradeCount(), refreshUnlockRates()]);
+      await Promise.all([refreshUnlocks("hydrate"), refreshTradeCount("hydrate"), refreshUnlockRates("hydrate")]);
       if (!cancelled) setLoading(false);
     })();
 
@@ -258,7 +267,7 @@ export function useAchievements() {
     .sort()
     .join("|");
   useEffect(() => {
-    if (!loading) void refreshTradeCount();
+    if (!loading) void refreshTradeCount(`${account.cash}|${holdingsSignature}`);
   }, [account.cash, holdingsSignature, loading, refreshTradeCount]);
 
   useEffect(() => {
@@ -302,7 +311,7 @@ export function useAchievements() {
     if (gameDay === prevDayRef.current) return;
     prevDayRef.current = gameDay;
     // The day advance awards the streak achievements on the server.
-    void refreshUnlocks();
+    void refreshUnlocks(`day-${gameDay}`);
 
     const next = nextStreakState(streak, gameDay, account.cash, netWorth);
     if (!next) return;
