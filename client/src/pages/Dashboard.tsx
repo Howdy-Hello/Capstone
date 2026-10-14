@@ -26,7 +26,7 @@ import { getNetWorth, getPortfolioValue } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
 import { useLevel } from "../hooks/useLevel";
-import { supabase } from "../lib/supabase";
+import { isMissingDbObject, supabase } from "../lib/supabase";
 import { TradeJournalEntry } from "../lib/tradeJournal";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 import { usePageTitle } from "../lib/usePageTitle";
@@ -169,7 +169,9 @@ export default function Dashboard() {
     let cancelled = false;
     void supabase.rpc("get_account_breakdown", { target_session_id: trading.sessionId }).then(({ data, error }) => {
       if (cancelled) return;
-      if (error) setFlowError("The account breakdown could not be loaded. Try again.");
+      // Before 202610080005 the RPC doesn't exist, and Retry can't change that:
+      // show the "not available yet" note instead of an error.
+      if (error) setFlowError(isMissingDbObject(error) ? null : "The account breakdown could not be loaded. Try again.");
       else setFlows((data ?? []) as AccountFlow[]);
     });
     return () => { cancelled = true; };

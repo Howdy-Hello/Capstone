@@ -513,7 +513,7 @@ export default function StockDetails() {
 
                 <Box data-tour="trade-journal" sx={{ mb: 2, p: 1.75, bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2 }}>
                   <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t1, mb: .35 }}>DECISION JOURNAL <Box component="span" sx={{ color: D.t3, fontWeight: 600 }}>(OPTIONAL)</Box></Typography>
-                  <Typography sx={{ fontSize: 11, color: D.t3, mb: 1.2 }}>A price-outcome review arrives at your horizon. Reflect on your plan in Portfolio.</Typography>
+                  <Typography sx={{ fontSize: 11, color: D.t3, mb: 1.2 }}>A price-outcome review arrives at your horizon. Reflect on your plan on the Dashboard.</Typography>
                   <TextField fullWidth size="small" multiline minRows={2} value={tradeThesis} onChange={(event) => setTradeThesis(event.target.value.slice(0, 500))} label="Why am I making this decision?"
                     inputProps={{ "aria-label": "Reason for this decision" }} sx={{ mb: 1, "& .MuiOutlinedInput-root": { bgcolor: D.surface, color: D.t1, fontSize: 12, "& fieldset": { borderColor: D.border }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
                   <Stack direction="row" spacing={.6} sx={{ mb: 1 }}>

@@ -516,7 +516,7 @@ export default function Game() {
               <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
                 <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
                   <Button data-tour="next-day" onClick={handleNextDay} variant="contained" disabled={isGameComplete || advancing}
-                    title={isGameComplete ? undefined : "Advance to next day (→)"}
+                    title={isGameComplete ? undefined : marketPhase === "market_open" ? "Close the market and reveal news (→)" : "Advance to next day (→)"}
                     sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: `0 8px 24px ${D.brandBg}` }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                     {isGameComplete ? "Run Complete" : advanceLabel}
                   </Button>
@@ -1348,7 +1348,7 @@ function TradeDialog({ stock, mode, cash, sharesOwned, marketClosed, getQuote, o
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.25 }}>
               <Box>
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t1 }}>Decision journal</Typography>
-                <Typography sx={{ fontSize: 11, color: D.t3 }}>Optional · a price-outcome review arrives at your horizon. Reflect on your plan in Portfolio.</Typography>
+                <Typography sx={{ fontSize: 11, color: D.t3 }}>Optional · a price-outcome review arrives at your horizon. Reflect on your plan on the Dashboard.</Typography>
               </Box>
               <Chip size="small" label="LEARNING" sx={{ bgcolor: D.brandBg, color: D.brandText, fontSize: 9, fontWeight: 900, fontFamily: MONO }} />
             </Stack>
