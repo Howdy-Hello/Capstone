@@ -5,19 +5,12 @@ import {
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import PieChartIcon from "@mui/icons-material/PieChart";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import ShieldIcon from "@mui/icons-material/Shield";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import BusinessIcon from "@mui/icons-material/Business";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import SavingsIcon from "@mui/icons-material/Savings";
-import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { Link as RouterLink } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { D, CARD, MONO } from "../theme/design";
 import { useAchievements } from "../hooks/useAchievements";
+import { ACHIEVEMENT_ICONS } from "../components/AchievementIcons";
 import { getPlayerLevel } from "../data/levelSystem";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -27,21 +20,11 @@ const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
   mode?: "sync" | "popLayout" | "wait";
 }>>;
 
-const ICONS: Record<string, React.ReactNode> = {
-  first_trade:     <TrendingUpIcon />,
-  smart_investor:  <AccountBalanceWalletIcon />,
-  risk_taker:      <PieChartIcon />,
-  active_trader:   <SwapHorizIcon />,
-  diversified:     <PieChartIcon />,
-  sector_scout:    <BusinessIcon />,
-  watchlist_builder: <VisibilityIcon />,
-  cash_builder:    <SavingsIcon />,
-  market_regular:  <CalendarMonthIcon />,
-  closing_bell:    <EmojiEventsIcon />,
-  cash_discipline: <ShieldIcon />,
-  market_master:   <EmojiEventsIcon />,
-  hot_streak:      <LocalFireDepartmentIcon />,
-};
+// Custom set drawn for StockPilot (Codex); every achievement has its own motif.
+function AchievementIcon({ id, size = 24 }: { id: string; size?: number }) {
+  const Icon = ACHIEVEMENT_ICONS[id];
+  return Icon ? <Icon size={size} /> : <EmojiEventsIcon />;
+}
 
 export default function Achievements() {
   usePageTitle("Achievements");
@@ -178,7 +161,7 @@ export default function Achievements() {
                               bgcolor: a.unlocked ? D.greenBg : D.overlay,
                               color:   a.unlocked ? D.greenText : D.t3,
                             }}>
-                              {ICONS[a.id] ?? <EmojiEventsIcon />}
+                              <AchievementIcon id={a.id} />
                             </Box>
                             {a.unlocked && (
                               <CheckCircleIcon sx={{
@@ -238,7 +221,7 @@ export default function Achievements() {
                   <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}`, mb: 2 }}>
                     <Stack direction="row" spacing={1.5} alignItems="center">
                       <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: D.brandBg, color: D.brandText, display: "grid", placeItems: "center", flexShrink: 0 }}>
-                        {ICONS[nextGoal.id]}
+                        <AchievementIcon id={nextGoal.id} size={22} />
                       </Box>
                       <Box>
                         <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1 }}>{nextGoal.title}</Typography>
