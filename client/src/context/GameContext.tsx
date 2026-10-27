@@ -24,7 +24,7 @@ import {
   TradingAccount,
 } from "../data/tradingState";
 import { isMissingDbObject, supabase } from "../lib/supabase";
-import { advanceSessionDay, ApiError, ensureSessionMarket, syncGameState } from "../lib/api";
+import { advanceSessionDay, ApiError, closeSessionMarket, ensureSessionMarket, syncGameState } from "../lib/api";
 import { recordTradeJournalEntry, TradeJournalInput } from "../lib/tradeJournal";
 import { useAuth } from "./AuthContext";
 import { ownershipKey, readOwnedAdvisorIds } from "../hooks/useAdvisor";
@@ -137,6 +137,7 @@ type GameContextValue = {
   maxGameDay: number | null;
   isGameComplete: boolean;
   stocks: Stock[];
+  /** The newest brief: the previous day's while the market is open, today's after the close. */
   news: MarketNews[];
   newsHistory: MarketNews[];
   getStock: (symbol: string) => Stock | undefined;
@@ -500,9 +501,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // is open the newest visible day is the previous one.
   const visibleNewsDay = gameDay - (marketPhase === "market_open" ? 1 : 0);
 
-  const news = useMemo(() => (
-    marketPhase === "market_open" ? [] : newsByDay.get(gameDay) ?? []
-  ), [gameDay, marketPhase, newsByDay]);
+  // The newest published brief: yesterday's while trading (the stories the
+  // player is trading on), today's after the close. Testers had to close the
+  // market every day just to see any news.
+  const news = useMemo(() => newsByDay.get(visibleNewsDay) ?? [], [newsByDay, visibleNewsDay]);
 
   // Every story the player could have seen so far, newest first. The inbox
   // renders news as mail alongside the in-game messages, and a mailbox holding
@@ -532,26 +534,33 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const closeMarket = useCallback(async () => {
     if (!session || !beginAction()) return;
     try {
-      const { error } = await supabase.rpc("close_market", {
-        target_session_id: session.id, target_game_day: gameDayRef.current,
-      });
-      // Without the RPC the phase is tracked in this browser, as before.
-      if (error && !isMissingDbObject(error)) throw error;
       const closedDay = gameDayRef.current;
-      localStorage.setItem(marketPhaseStorageKey(session.id), `after_hours:${closedDay}`);
       // Today's news is only readable after the close (BUG-044), so it
       // wasn't in the market loaded while trading was open.
-      const { data: todaysNews } = await supabase
-        .from("session_market_news")
-        .select("game_day, items")
-        .eq("session_id", session.id)
-        .eq("game_day", closedDay);
-      if (todaysNews?.length) {
-        setNewsByDay((current) => {
-          const next = new Map(current);
-          for (const row of todaysNews) next.set(row.game_day, row.items ?? []);
-          return next;
+      let todaysNews: MarketNews[] | null = null;
+      try {
+        // One round trip, and the server starts building tomorrow's market.
+        ({ news: todaysNews } = await closeSessionMarket(session.id, closedDay));
+      } catch (serverError) {
+        // Only an unreachable or older server (no route yet) falls back to
+        // closing directly; a refused close is reported as before.
+        if (!(serverError instanceof ApiError) || (serverError.status !== null && serverError.status !== 404)) throw serverError;
+        const { error } = await supabase.rpc("close_market", {
+          target_session_id: session.id, target_game_day: closedDay,
         });
+        // Without the RPC the phase is tracked in this browser, as before.
+        if (error && !isMissingDbObject(error)) throw error;
+        const { data } = await supabase
+          .from("session_market_news")
+          .select("items")
+          .eq("session_id", session.id)
+          .eq("game_day", closedDay)
+          .maybeSingle();
+        todaysNews = (data?.items as MarketNews[] | null) ?? null;
+      }
+      localStorage.setItem(marketPhaseStorageKey(session.id), `after_hours:${closedDay}`);
+      if (todaysNews?.length) {
+        setNewsByDay((current) => new Map(current).set(closedDay, todaysNews ?? []));
       }
       setMarketPhase("after_hours");
     } catch (error) { reportError(error); } finally { endAction(); }
@@ -919,14 +928,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   }, [addToWatchlist, isWatchlisted, removeFromWatchlist]);
 
+  // Keyed on the id, not the session object: an advance replaces the object
+  // twice, and each new identity re-ran every caller's sync and leaderboard read.
+  const activeSessionId = session?.id ?? null;
   const syncSessionValue = useCallback(async () => {
-    if (!session || loading) return;
+    if (!activeSessionId || loading) return;
     try {
-      await syncGameState(session.id);
+      await syncGameState(activeSessionId);
     } catch (syncError) {
       setError(errorMessage(syncError, "Could not sync session value."));
     }
-  }, [loading, session]);
+  }, [loading, activeSessionId]);
 
   const maxGameDay = gameMode === "limited_30" ? LIMITED_GAME_DAYS : null;
   const isGameComplete = maxGameDay !== null && gameDay >= maxGameDay;

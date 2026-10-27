@@ -140,7 +140,10 @@ export default function Game() {
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
+    // An advance moves cash and prices in separate renders; waiting for net
+    // worth to settle saves it and reads the leaderboard once per day, not
+    // once per render, while the next day is still loading.
+    const timer = window.setTimeout(async () => {
       await syncSessionValue();
       if (cancelled) return;
 
@@ -160,10 +163,11 @@ export default function Game() {
       })));
       const myIdx = user ? rows.findIndex((r) => r.user_id === user.id) : -1;
       setMyRank(myIdx >= 0 ? myIdx + 1 : null);
-    })();
+    }, 800);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [netWorth, syncSessionValue, user]);
 
@@ -183,7 +187,8 @@ export default function Game() {
   // flavor email — a persistent record of "why did the market do that"
   // alongside the mission/bill/rival/achievement messages.
   useEffect(() => {
-    if (!user || todayNews.length === 0) return;
+    // While trading, `todayNews` is yesterday's brief, already filed under yesterday.
+    if (!user || !marketClosed || todayNews.length === 0) return;
     const top = [...todayNews].sort((a, b) => (a.importance === b.importance ? 0 : a.importance === "High" ? -1 : 1))[0];
     addInboxMessage(user.id, {
       id: `news-digest-${user.id}-day-${gameDay}`,
@@ -192,7 +197,7 @@ export default function Game() {
       body: `${top.body}\n\n${todayNews.length > 1 ? `${todayNews.length - 1} more stor${todayNews.length - 1 === 1 ? "y" : "ies"} may affect the next session — check the News page.` : ""}`,
       category: "system",
     });
-  }, [todayNews, gameDay, user]);
+  }, [todayNews, gameDay, marketClosed, user]);
 
   // A dialog opened on one day must not trade on the next.
   useEffect(() => {
@@ -685,7 +690,7 @@ export default function Game() {
               <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
                 <Typography component="span" sx={{ fontWeight: 800, fontSize: 15 }}>
                   <NewspaperIcon sx={{ fontSize: 18, verticalAlign: "text-bottom", mr: 0.8, color: D.brandText }} />
-                  News for Day {gameDay + 1} · {todayNews.length} {todayNews.length === 1 ? "story" : "stories"}
+                  News for Day {marketClosed ? gameDay + 1 : gameDay} · {todayNews.length} {todayNews.length === 1 ? "story" : "stories"}
                 </Typography>
                 <Typography component="span" sx={{ color: D.brandText, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
                   {newsCollapsed ? "Show" : "Hide"}

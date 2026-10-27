@@ -1,3 +1,4 @@
+import type { MarketNews } from "../data/mockStocks";
 import { supabase } from "./supabase";
 
 // Base URL of the StockPilot API server. Same convention Profile.tsx already uses.
@@ -101,6 +102,17 @@ export type AdvanceResult = {
   /** Older API servers don't send it. */
   unpaid_bills?: number | string;
 };
+
+/**
+ * Close today's market and get its news in one round trip. The server also
+ * starts building tomorrow's market, so the next advance is quicker.
+ */
+export async function closeSessionMarket(sessionId: string, day: number): Promise<{ day: number; news: MarketNews[] }> {
+  return authedFetch("/api/game/close", {
+    method: "POST",
+    body: JSON.stringify({ sessionId, day }),
+  });
+}
 
 /** Move the run forward to `day` (the server generates that market first). */
 export async function advanceSessionDay(sessionId: string, day: number): Promise<AdvanceResult> {

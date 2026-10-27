@@ -139,6 +139,64 @@ router.post('/game/advance', supabaseHandler({ auth: 'user' }, async (req, ctx) 
   }
 }));
 
+function isMissingDbObject(error: { code?: string; message?: string }) {
+  return ['PGRST202', 'PGRST205', '42883', '42P01'].includes(error.code ?? '')
+    || /could not find the (function|table)|schema cache/i.test(error.message ?? '');
+}
+
+// POST /api/game/close  { sessionId, day }
+// Closes the market and returns the day's news in one round trip, then builds
+// tomorrow's market in the background so the next advance only moves the day.
+// Tomorrow's rows stay hidden: RLS limits reads to the run's current day.
+router.post('/game/close', supabaseHandler({ auth: 'user' }, async (req, ctx) => {
+  const limited = marketLimitError(ctx.userClaims!.id);
+  if (limited) return limited;
+  const body = await req.json().catch(() => ({}));
+  if (!isUuid(body?.sessionId) || typeof body?.day !== 'number' || !Number.isInteger(body.day)) {
+    return Response.json({ message: 'sessionId and day are required.' }, { status: 400 });
+  }
+
+  try {
+    const session = await loadOwnedSession(ctx.supabaseAdmin, body.sessionId, ctx.userClaims!.id);
+    if (!session || session.status !== 'active') {
+      return Response.json({ message: 'Active session not found.' }, { status: 404 });
+    }
+    if (session.current_day !== body.day) {
+      return Response.json({ message: 'Your game has changed. Reload before trying again.' }, { status: 409 });
+    }
+
+    // As the player, so close_market's own checks apply. Without the RPC the
+    // phase is tracked in the browser, as the client did before this route.
+    const { error: closeError } = await ctx.supabase.rpc('close_market', {
+      target_session_id: session.id, target_game_day: body.day,
+    });
+    if (closeError && !isMissingDbObject(closeError)) {
+      if (closeError.code === 'P0001') return Response.json({ message: closeError.message }, { status: 409 });
+      return supabaseErrorResponse('POST /game/close', closeError);
+    }
+
+    const { data: newsRow, error: newsError } = await ctx.supabaseAdmin
+      .from('session_market_news')
+      .select('items')
+      .eq('session_id', session.id)
+      .eq('game_day', body.day)
+      .maybeSingle();
+    if (newsError) return supabaseErrorResponse('POST /game/close (news)', newsError);
+
+    const secret = getMarketSecret();
+    if (secret) {
+      // Not awaited: the advance generates the day itself if this is still
+      // running or failed, and both write the same rows with upserts.
+      void ensureMarketThrough(ctx.supabaseAdmin, session, session.current_day + 1, secret)
+        .catch((error) => console.error('[POST /game/close] Preparing the next day failed:', error));
+    }
+
+    return Response.json({ day: body.day, news: newsRow?.items ?? [] });
+  } catch (error) {
+    return supabaseErrorResponse('POST /game/close', error as { message?: string; code?: string });
+  }
+}));
+
 // Kept so older clients don't 404. Values in the body are ignored: net worth
 // is computed from stored prices now.
 router.post('/game/sync', supabaseHandler({ auth: 'user' }, async (req, ctx) => {
