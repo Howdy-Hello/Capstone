@@ -81,7 +81,7 @@ test("opening news predicts the following session instead of explaining an exist
   expect(day3?.dayChangePercent).toBeLessThan(0);
   expect(day1News?.marketTone).toBe("Bullish");
   expect(day2News?.marketTone).toBe("Bearish");
-  expect(day3News?.headline).toContain("stabilizes");
+  expect(day3News?.headline).toContain("Independent review");
 });
 
 test("news exposes useful forecast metadata without exact future returns", () => {
