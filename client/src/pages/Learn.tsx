@@ -217,6 +217,7 @@ function TutorialTab() {
 
 /* ─── Guide Tab ──────────────────────────────────────────── */
 function GuideTab() {
+  const { user } = useAuth();
   return (
     <Grid container spacing={3}>
       {quickLessons.map((item) => (
@@ -347,9 +348,10 @@ function GuideTab() {
               <Typography sx={{ fontSize: 13, color: D.t3 }}>Use the Game page to practise, then review the Dashboard to see how your positions behave.</Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
-              <Button variant="contained" component={RouterLink} to="/practice"
+              {/* Guest Practice is for signed-out visitors; players go to their run. */}
+              <Button variant="contained" component={RouterLink} to={user ? "/game" : "/practice"}
                 sx={{ bgcolor: D.brand, fontWeight: 900, textTransform: "none", borderRadius: 1.5, px: 3, whiteSpace: "nowrap", boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
-                Try practice
+                {user ? "Open Simulator" : "Try practice"}
               </Button>
               <Button component={RouterLink} to="/inbox"
                 sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, px: 3, whiteSpace: "nowrap", "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
@@ -423,9 +425,9 @@ export default function Learn() {
               "& .Mui-selected": { color: D.t1 },
               "& .MuiTabs-indicator": { bgcolor: D.brand, height: 3, borderRadius: "2px 2px 0 0" },
             }}>
-              <Tab label="Tutorial — How to Play"        icon={<SchoolIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
-              <Tab label="Market Guide — Real Concepts" icon={<AutoStoriesIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
-              <Tab label="Investing Path — Goals & Practice" icon={<SavingsIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+              <Tab label="How to play"        icon={<SchoolIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+              <Tab label="Market basics" icon={<AutoStoriesIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+              <Tab label="Investing path" icon={<SavingsIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
             </Tabs>
           </Box>
         </Container>
