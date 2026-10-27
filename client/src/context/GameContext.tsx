@@ -930,7 +930,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   // Keyed on the id, not the session object: an advance replaces the object
   // twice, and each new identity re-ran every caller's sync and leaderboard read.
-  const activeSessionId = session?.id ?? null;
   const syncSessionValue = useCallback(async () => {
     if (!activeSessionId || loading) return;
     try {
