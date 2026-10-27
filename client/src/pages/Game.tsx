@@ -9,7 +9,6 @@ import {
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import ShieldIcon from "@mui/icons-material/Shield";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
@@ -26,7 +25,6 @@ import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
-import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { getNewsCredibility, STORY_DAYS, Stock } from "../data/mockStocks";
@@ -53,7 +51,9 @@ const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
   mode?: "sync" | "popLayout" | "wait";
 }>>;
 
-type MiniLeaderEntry = { rank: number; username: string; net_worth: number; user_id: string };
+const NEWS_COLLAPSED_KEY = "stockpilot:news-collapsed";
+
+type MiniLeaderEntry ={ rank: number; username: string; net_worth: number; user_id: string };
 
 export default function Game() {
   usePageTitle("Market");
@@ -88,7 +88,8 @@ export default function Game() {
   useMissions();
   const rival = useRivalTrader();
   useStockAlerts();
-  const level = useLevel();
+  // Kept mounted for its level-up side effects; the level chip moved off this page.
+  useLevel();
   const {
     advancing, gameDay, gameMode, isGameComplete, marketPhase, maxGameDay, setGameDay, closeMarket,
     stocks, news: todayNews, syncSessionValue,
@@ -224,13 +225,24 @@ export default function Game() {
   // without a pause a double click closed the market and skipped the
   // after-hours window in one go.
   const lastAdvanceClickRef = useRef(0);
+  const [closing, setClosing] = useState(false);
+  // Testers had to reopen the brief every day; it now stays as they left it.
+  const [newsCollapsed, setNewsCollapsed] = useState(() => {
+    try { return localStorage.getItem(NEWS_COLLAPSED_KEY) === "1"; } catch { return false; }
+  });
+  const toggleNews = () => setNewsCollapsed((was) => {
+    try { localStorage.setItem(NEWS_COLLAPSED_KEY, was ? "0" : "1"); } catch { /* per-browser preference only */ }
+    return !was;
+  });
   const handleNextDay = () => {
-    if (isGameComplete || advancing) return;
+    if (isGameComplete || advancing || closing) return;
     const now = Date.now();
     if (now - lastAdvanceClickRef.current < 600) return;
     lastAdvanceClickRef.current = now;
     if (marketPhase === "market_open") {
-      closeMarket();
+      // The close has its own server wait; without a label the button looked frozen.
+      setClosing(true);
+      void closeMarket().finally(() => setClosing(false));
       return;
     }
     void setGameDay((d) => d + 1);
@@ -265,7 +277,9 @@ export default function Game() {
 
   const advanceLabel = advancing
     ? "Advancing…"
-    : marketPhase === "market_open"
+    : closing
+      ? "Closing market…"
+      : marketPhase === "market_open"
       ? "Close Market & Reveal News"
       : "Advance to Next Day →";
   // No new run while nothing is loaded: after a failed load the page shows a
@@ -501,21 +515,16 @@ export default function Game() {
                     sx={{ bgcolor: gameDay <= STORY_DAYS ? D.redBg : D.brandBg, color: gameDay <= STORY_DAYS ? D.redText : D.brandText, border: `1px solid ${gameDay <= STORY_DAYS ? D.redBd : D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
                 </motion.div>
                 <Chip icon={gameMode === "limited_30" ? <TimerIcon sx={{ fontSize: 14 }} /> : <AllInclusiveIcon sx={{ fontSize: 14 }} />}
-                  label={modeLabel} size="small"
+                  label={modeLabel} size="small" title={modeDescription}
                   sx={{ bgcolor: D.elevated, color: D.t2, border: `1px solid ${D.border}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
                 <Chip label={marketPhase === "market_open" ? "MARKET OPEN" : "AFTER HOURS"} size="small"
                   sx={{ bgcolor: marketPhase === "market_open" ? D.greenBg : D.amberBg, color: marketPhase === "market_open" ? D.greenText : D.amber, border: `1px solid ${marketPhase === "market_open" ? D.greenBd : D.amber}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
-                <Chip icon={<MilitaryTechIcon sx={{ fontSize: 14 }} />}
-                  label={`LEVEL ${level.level} · ${level.progressPercent}%`} size="small"
-                  sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
               </Stack>
               <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>Stock Market Simulator</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mb: 2.5 }}>
-                {modeDescription}
-              </Typography>
+              <Box sx={{ mb: 1.5 }} />
               <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
                 <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
-                  <Button data-tour="next-day" onClick={handleNextDay} variant="contained" disabled={isGameComplete || advancing}
+                  <Button data-tour="next-day" onClick={handleNextDay} variant="contained" disabled={isGameComplete || advancing || closing}
                     title={isGameComplete ? undefined : marketPhase === "market_open" ? "Close the market and reveal news (→)" : "Advance to next day (→)"}
                     sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: `0 8px 24px ${D.brandBg}` }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                     {isGameComplete ? "Run Complete" : advanceLabel}
@@ -542,10 +551,6 @@ export default function Game() {
                 <Chip size="small" icon={marketSummary.averageMove >= 0 ? <TrendingUpIcon sx={{ fontSize: 14 }} /> : <TrendingDownIcon sx={{ fontSize: 14 }} />}
                   label={marketSummary.averageMove >= 0 ? "Positive Day" : "Negative Day"}
                   sx={{ bgcolor: marketSummary.averageMove >= 0 ? D.greenBg : D.redBg, color: marketSummary.averageMove >= 0 ? D.greenText : D.redText, border: `1px solid ${marketSummary.averageMove >= 0 ? D.greenBd : D.redBd}`, fontWeight: 800, mb: 2 }} />
-                <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.8 }}>
-                  <Typography sx={{ fontSize: 12, color: D.t3 }}>{modeLabel}</Typography>
-                  <Typography sx={{ fontSize: 12, color: D.t3 }}>Day {gameDay}{maxGameDay ? `/${maxGameDay}` : ""}</Typography>
-                </Stack>
                 <RunProgressBar day={gameDay} maxDay={maxGameDay} height={5} color={isGameComplete ? D.green : D.brand} />
               </Box>
             </Grid>
@@ -567,11 +572,11 @@ export default function Game() {
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
             { label: "Cash",      val: money(trading.account.cash), icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: true },
-            { label: "Portfolio", val: money(portfolioValue),        icon: <StorefrontIcon sx={{ fontSize: 20 }} />,          up: true },
-            { label: "Total Return", val: pct(((netWorth - 2000) / 2000) * 100), icon: <TrendingUpIcon sx={{ fontSize: 20 }} />, up: netWorth >= 2000 },
-            { label: "Net Worth", val: money(netWorth),              icon: <NewspaperIcon sx={{ fontSize: 20 }} />,           up: netWorth >= 2000 },
+            { label: "Shares",    val: money(portfolioValue),        icon: <StorefrontIcon sx={{ fontSize: 20 }} />,          up: true },
+            { label: "Net Worth", val: money(netWorth),              icon: netWorth >= 2000 ? <TrendingUpIcon sx={{ fontSize: 20 }} /> : <TrendingDownIcon sx={{ fontSize: 20 }} />, up: netWorth >= 2000,
+              sub: `${pct(((netWorth - 2000) / 2000) * 100)} since Day 1` },
           ].map((s) => (
-            <Grid item xs={6} md={3} key={s.label}>
+            <Grid item xs={s.sub ? 12 : 6} sm={4} key={s.label}>
               <Box data-tour={s.label === "Net Worth" ? "net-worth" : undefined} sx={{ ...CARD, p: 2.5, transition: "transform 180ms ease, border-color 180ms ease", "&:hover": { transform: reduceMotion ? "none" : "translateY(-3px)", borderColor: D.borderHi } }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                   <Box>
@@ -579,6 +584,7 @@ export default function Game() {
                     <motion.div key={s.val} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
                       <Typography sx={{ fontSize: { xs: 17, sm: 20 }, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
                     </motion.div>
+                    {s.sub && <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: s.up ? D.greenText : D.redText }}>{s.sub}</Typography>}
                   </Box>
                   <Box sx={{ display: { xs: "none", sm: "grid" }, width: 36, height: 36, borderRadius: 2, bgcolor: s.up ? D.greenBg : D.redBg, color: s.up ? D.greenText : D.redText, placeItems: "center", flexShrink: 0 }}>
                     {s.icon}
@@ -651,7 +657,8 @@ export default function Game() {
 
         {!trading.loading && !trading.verifiedRun && <Typography sx={{ color: D.t3, mb: 2 }}>This older run is practice-only. Start a new run to earn achievements and enter the leaderboards.</Typography>}
 
-        {!isGameComplete && (
+        {/* New players get the turn explained; after the story days it is noise. */}
+        {!isGameComplete && gameDay <= STORY_DAYS && (
           <Box sx={{ mb: 2, pl: 2, borderLeft: `3px solid ${D.brand}` }}>
             <Typography sx={{ color: D.t1, fontSize: 14, fontWeight: 800 }}>Your next step</Typography>
             <Typography sx={{ color: D.t2, fontSize: 14, lineHeight: 1.6 }}>
@@ -659,48 +666,58 @@ export default function Game() {
                 ? "Read the news brief and open a related stock to check its risk and fundamentals. Trading reopens when you advance to the next day."
                 : "Open a stock to review its chart and risk. Decide whether to trade or hold cash, then close the market to reveal tomorrow’s news."}
             </Typography>
-            {gameDay <= STORY_DAYS && <Button component={RouterLink} to="/learn" size="small" sx={{ color: D.brandText, textTransform: "none", px: 0 }}>Review how a turn works →</Button>}
+            <Button component={RouterLink} to="/learn" size="small" sx={{ color: D.brandText, textTransform: "none", px: 0 }}>Review how a turn works →</Button>
           </Box>
         )}
         {todayNews.length > 0 && (
-          <Box component="details" key={`news-${gameDay}`} data-tour="today-news" sx={{ ...CARD, p: 0, mb: 2.5,
-            "& > summary": { cursor: "pointer", p: 2, color: D.t1 },
-            "& > summary:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: 2 },
-          }}>
+          // Open by default and kept open across days: testers found reopening
+          // it every turn tedious. The tour still opens it via `details.open`.
+          <Box component="details" open={!newsCollapsed} data-tour="today-news"
+            onToggle={(e: React.SyntheticEvent<HTMLDetailsElement>) => {
+              if (e.currentTarget.open === newsCollapsed) toggleNews();
+            }}
+            sx={{ ...CARD, p: 0, mb: 2.5,
+              "& > summary": { cursor: "pointer", p: 2, color: D.t1, listStyle: "none" },
+              "& > summary::-webkit-details-marker": { display: "none" },
+              "& > summary:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: 2 },
+            }}>
             <Box component="summary">
-              <Typography component="span" sx={{ fontWeight: 800, fontSize: 15 }}>News brief · {todayNews.length} reports for Day {gameDay + 1}</Typography>
-              <Typography sx={{ color: D.t2, fontSize: 14, mt: .5 }}>Latest: {todayNews[0].headline}</Typography>
-              <Typography component="span" sx={{ color: D.brandText, fontSize: 13 }}>Expand or collapse reports</Typography>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                <Typography component="span" sx={{ fontWeight: 800, fontSize: 15 }}>
+                  <NewspaperIcon sx={{ fontSize: 18, verticalAlign: "text-bottom", mr: 0.8, color: D.brandText }} />
+                  News for Day {gameDay + 1} · {todayNews.length} {todayNews.length === 1 ? "story" : "stories"}
+                </Typography>
+                <Typography component="span" sx={{ color: D.brandText, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                  {newsCollapsed ? "Show" : "Hide"}
+                </Typography>
+              </Stack>
+              {newsCollapsed && <Typography sx={{ color: D.t2, fontSize: 14, mt: .5 }}>Latest: {todayNews[0].headline}</Typography>}
             </Box>
-            <Box sx={{ p: 2.5 }}>
-              <Typography sx={{ color: D.t2, fontSize: 14, lineHeight: 1.6, mb: 2 }}>
-                Importance describes the event’s significance. Bullish signals point up; bearish signals point down.
-                Confidence describes signal strength. Credibility is an estimated report-reliability score based on the publisher and rumor status, not a probability of profit.
-              </Typography>
+            <Box sx={{ px: 2.5, pb: 2.5 }}>
               <Grid container spacing={2}>
-                {todayNews.map((n) => (
+                {todayNews.map((n) => {
+                  const c = getNewsCredibility(n);
+                  const toneFg = n.marketTone === "Bullish" ? D.greenText : n.marketTone === "Bearish" ? D.redText : D.t2;
+                  const toneBg = n.marketTone === "Bullish" ? D.greenBg : n.marketTone === "Bearish" ? D.redBg : D.overlay;
+                  const toneLabel = n.marketTone === "Bullish" ? "Likely up" : n.marketTone === "Bearish" ? "Likely down" : "Unclear";
+                  return (
                     <Grid item xs={12} md={6} key={n.newsId}>
-                      <Box data-tour={n.relatedTickers.includes("CAI") ? "tutorial-news" : undefined} sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
-                          <Chip size="small" label={`${n.importance} importance`}
-                            sx={{ bgcolor: n.importance === "High" ? D.redBg : D.greenBg, color: n.importance === "High" ? D.redText : D.greenText, fontWeight: 800, fontSize: 12 }} />
-                          <Chip size="small" label={`${n.marketTone} · ${n.confidence ?? "Medium"} confidence`}
-                            sx={{ bgcolor: D.brandBg, color: D.brandText, fontWeight: 800, fontSize: 12 }} />
-                          <Chip size="small" label={n.horizon ?? "Next session"}
-                            sx={{ bgcolor: D.overlay, color: D.t2, fontWeight: 800, fontSize: 12 }} />
-                          {(() => {
-                            const c = getNewsCredibility(n);
-                            const fg = c.rating === "high" ? D.greenText : c.rating === "medium" ? D.amber : D.redText;
-                            const bg = c.rating === "high" ? D.greenBg : c.rating === "medium" ? D.amberBg : D.redBg;
-                            return <Chip size="small" label={`Credibility ${c.score}/100 · ${c.label}`} sx={{ bgcolor: bg, color: fg, fontWeight: 800, fontSize: 12 }} />;
-                          })()}
+                      <Box data-tour={n.relatedTickers.includes("CAI") ? "tutorial-news" : undefined} sx={{ p: 2, height: "100%", boxSizing: "border-box", borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${n.importance === "High" ? D.amber : D.border}` }}>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mb: 1 }}>
+                          <Chip size="small" label={toneLabel} title={`${n.marketTone} signal · ${n.confidence ?? "Medium"} confidence · ${n.horizon ?? "Next session"}`}
+                            sx={{ bgcolor: toneBg, color: toneFg, fontWeight: 800, fontSize: 12 }} />
+                          {n.importance === "High" && <Typography component="span" sx={{ fontSize: 12, fontWeight: 800, color: D.amber }}>Big news</Typography>}
+                          <Typography component="span" title="How reliable the source is, not a chance of profit" sx={{ fontSize: 12, color: c.rating === "low" ? D.redText : D.t3, ml: "auto !important" }}>
+                            {c.rating === "low" ? "Unreliable source" : c.rating === "medium" ? "Fairly reliable" : "Reliable source"}
+                          </Typography>
                         </Stack>
                         <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.5 }}>{n.headline}</Typography>
                         <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6, mb: 1 }}>{n.body}</Typography>
-                        <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>Related: {n.relatedTickers.join(", ")}</Typography>
+                        <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>Affects: {n.relatedTickers.join(", ")}</Typography>
                       </Box>
                     </Grid>
-                ))}
+                  );
+                })}
               </Grid>
             </Box>
           </Box>
@@ -714,7 +731,7 @@ export default function Game() {
                 <Box>
                   <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Market</Typography>
                   <Typography sx={{ fontSize: 12.5, color: D.t3 }}>
-                    {filteredStocks.length} of {stocks.length} stocks shown. Click any stock to view details and chart.
+                    {filteredStocks.length} of {stocks.length} stocks shown. Click a stock for its chart, P/E and growth.
                   </Typography>
                   {marketClosed && (
                     <Typography role="status" sx={{ fontSize: 12.5, color: D.amber, fontWeight: 800, mt: 0.5 }}>
@@ -722,7 +739,7 @@ export default function Game() {
                     </Typography>
                   )}
                 </Box>
-                <Button onClick={handleNextDay} variant="contained" size="small" disabled={isGameComplete || advancing}
+                <Button onClick={handleNextDay} variant="contained" size="small" disabled={isGameComplete || advancing || closing}
                   sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                   {isGameComplete ? "Complete" : advanceLabel}
                 </Button>
@@ -761,7 +778,7 @@ export default function Game() {
                 ) : (
                   <MotionPresence mode="popLayout" initial={false}>
                     {filteredStocks.map((stock, index) => (
-                      <StockRow key={stock.stockId} stock={stock} gameDay={gameDay}
+                      <StockRow key={stock.stockId} stock={stock}
                         animationIndex={index}
                         marketClosed={marketClosed}
                         sharesOwned={getSharesOwned(trading.account, stock.symbol)}
@@ -835,9 +852,6 @@ export default function Game() {
                 </Box>
               </Box>
 
-
-
-
               {/* Rival trader */}
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.8 }}>
@@ -868,26 +882,6 @@ export default function Game() {
                 </Stack>
               </Box>
 
-              {/* Risk guide */}
-              <Box sx={{ ...CARD, p: 3 }}>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-                  <ShieldIcon sx={{ fontSize: 18, color: D.brandText }} />
-                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Risk Guide</Typography>
-                </Stack>
-                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Higher-risk stocks move more aggressively.</Typography>
-                <Stack spacing={1}>
-                  {[
-                    { level: "Low",    text: "Stable movement, smaller upside and downside." },
-                    { level: "Medium", text: "Balanced movement with moderate volatility." },
-                    { level: "High",   text: "Bigger moves, higher profit and loss potential." },
-                  ].map((r) => (
-                    <Box key={r.level} sx={{ p: 1.5, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                      <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1 }}>{r.level} Risk</Typography>
-                      <Typography sx={{ fontSize: 12.5, color: D.t3 }}>{r.text}</Typography>
-                    </Box>
-                  ))}
-                </Stack>
-              </Box>
 
               {/* Mini Leaderboard */}
               <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
@@ -1121,11 +1115,14 @@ function CommandConsole({ open, onClose, onRun }: {
   );
 }
 
-function StockRow({ stock, gameDay, animationIndex, marketClosed, sharesOwned, watchlisted, onBuy, onSell, onToggleWatchlist, onOpen }: {
-  stock: Stock; gameDay: number; animationIndex: number; marketClosed: boolean; sharesOwned: number; watchlisted: boolean; onBuy: () => void; onSell: () => void; onToggleWatchlist: () => void; onOpen: () => void;
+function StockRow({ stock, animationIndex, marketClosed, sharesOwned, watchlisted, onBuy, onSell, onToggleWatchlist, onOpen }: {
+  stock: Stock; animationIndex: number; marketClosed: boolean; sharesOwned: number; watchlisted: boolean; onBuy: () => void; onSell: () => void; onToggleWatchlist: () => void; onOpen: () => void;
 }) {
   const reduceMotion = useReducedMotion();
   const up = stock.dayChangePercent >= 0;
+  const risk = stock.riskLevel === "High" ? { fg: D.redText, bg: D.redBg }
+    : stock.riskLevel === "Medium" ? { fg: D.amber, bg: D.amberBg }
+    : { fg: D.greenText, bg: D.greenBg };
   return (
     <Box data-tour={stock.symbol === "CAI" ? "tutorial-stock" : animationIndex === 0 ? "first-stock" : undefined} component={motion.div} layout={!reduceMotion} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }} transition={{ duration: 0.22, delay: Math.min(animationIndex * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
       onClick={onOpen} role="button" tabIndex={0}
@@ -1166,13 +1163,15 @@ function StockRow({ stock, gameDay, animationIndex, marketClosed, sharesOwned, w
               </motion.span>
             </MotionPresence>
           </IconButton>
-          <Box sx={{ width: 38, height: 38, borderRadius: 2, bgcolor: up ? D.greenBg : D.redBg, color: up ? D.greenText : D.redText, display: "grid", placeItems: "center", flexShrink: 0 }}>
-            <ShowChartIcon sx={{ fontSize: 18 }} />
-          </Box>
+          {/* Testers found the old row's P/E, growth and day labels confusing;
+              those figures live on the stock's page now. */}
           <Box>
-            <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{stock.symbol}</Typography>
-            <Typography sx={{ fontSize: 14, color: D.t2 }}>{stock.name} · {stock.sector} · {stock.riskLevel} Risk</Typography>
-            <Typography sx={{ fontSize: 12, color: D.t2, fontFamily: MONO }}>P/E {stock.fundamentals.peRatio} · Growth {stock.fundamentals.revenueGrowth}% · Day {gameDay}</Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{stock.symbol}</Typography>
+              <Chip size="small" label={`${stock.riskLevel} risk`} title="How much this stock's price tends to swing"
+                sx={{ height: 20, fontSize: 11, fontWeight: 800, bgcolor: risk.bg, color: risk.fg }} />
+            </Stack>
+            <Typography sx={{ fontSize: 14, color: D.t2 }}>{stock.name} · {stock.sector}</Typography>
             {sharesOwned > 0 && <Typography sx={{ fontSize: 11.5, color: D.brandText, fontWeight: 800 }}>You own {sharesOwned} share{sharesOwned === 1 ? "" : "s"}</Typography>}
           </Box>
         </Stack>

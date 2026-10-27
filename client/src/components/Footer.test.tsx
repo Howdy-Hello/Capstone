@@ -39,7 +39,14 @@ test("guest practice keeps the existing compact footer", () => {
 test("signed-in screens restore the original full footer without losing new pages", () => {
   const page = footerAt("/game", true);
   expect(page.textContent).toContain("PRODUCT");
-  for (const route of ["/game", "/dashboard", "/practice", "/learn?tab=investing", "/privacy"]) {
+  for (const route of ["/game", "/dashboard", "/learn?tab=investing", "/privacy"]) {
     expect(page.querySelector(`a[href="${route}"]`)).not.toBeNull();
+  }
+});
+
+test("signed-in footer drops the guest-only links", () => {
+  const page = footerAt("/game", true);
+  for (const route of ["/practice", "/auth?mode=login", "/auth?mode=signup"]) {
+    expect(page.querySelector(`a[href="${route}"]`)).toBeNull();
   }
 });

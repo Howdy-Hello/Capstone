@@ -28,7 +28,7 @@ const stock = (symbol: string) => `/stocks/${symbol}`;
 
 const uiSteps: TourStep[] = [
   { route: () => "/dashboard", selector: "[data-tour='market-movers']", title: "Start on your dashboard", body: "The dashboard summarizes your portfolio, sector exposure, market movers, and current news. Use it as your quick daily overview." },
-  { route: game, selector: "[data-tour='game-menu']", title: "Explore the Game menu", body: "Game opens the Market directly. Use its arrow for Watchlist, Player Level, Goals & Missions, Living Costs, Advisors, and Guest Practice." },
+  { route: game, selector: "[data-tour='game-menu']", title: "Explore the Game menu", body: "Game opens the Market directly. Use its arrow for Watchlist, Player Level, Goals & Missions, Living Costs, and Advisors." },
   { route: game, selector: "[data-tour='market-list']", title: "Browse the Market", body: "Sector filters narrow the list. Every stock row opens a detailed page, while the buttons on the right let you trade directly." },
   { route: game, selector: "[data-tour='first-stock'], [data-tour='tutorial-stock']", title: "Open Stock Details", body: "Click this stock row to see its chart, fundamentals, news, alerts, trading controls, and advisor report.", requireAction: true, actionHint: "Click the highlighted stock" },
   { route: stock, selector: "[data-tour='chart-toggle']", title: "Use view controls", body: "Controls beside section titles change how information is displayed. This one switches between area and candlestick charts.", requireAction: true, actionHint: "Switch the chart view" },

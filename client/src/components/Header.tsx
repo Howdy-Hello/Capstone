@@ -11,6 +11,7 @@ import CandlestickChartIcon from "@mui/icons-material/CandlestickChart";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import SportsEsportsOutlinedIcon from "@mui/icons-material/SportsEsportsOutlined";
 import AutoStoriesOutlinedIcon from "@mui/icons-material/AutoStoriesOutlined";
+import NewspaperOutlinedIcon from "@mui/icons-material/NewspaperOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
@@ -39,7 +40,7 @@ const nav = [
   { to: "/leaderboard", label: "Leaderboard",  icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/achievements", label: "Achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/learn",       label: "Learn",        icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
-  { to: "/news",        label: "News",         icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 17 }} /> },
+  { to: "/news",        label: "News",         icon: <NewspaperOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/inbox",       label: "Inbox",        icon: <MailOutlineIcon sx={{ fontSize: 17 }} /> },
 ];
 
@@ -50,16 +51,13 @@ const gameMenu = [
   { to: "/game/goals", label: "Goals & Missions", icon: <FlagOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/game/living-costs", label: "Living Costs", icon: <ReceiptLongOutlinedIcon sx={{ fontSize: 17 }} /> },
   { to: "/game/advisor", label: "Advisors", icon: <SmartToyOutlinedIcon sx={{ fontSize: 17 }} /> },
-  { to: "/practice", label: "Guest Practice", icon: <SportsEsportsOutlinedIcon sx={{ fontSize: 17 }} /> },
 ];
 
+// Dashboard, Achievements and Level are already in the top bar and Game menu.
 const accountMenu = [
   { label: "Settings",      to: "/settings",     icon: <SettingsOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "My Profile",    to: "/profile",      icon: <AccountCircleOutlinedIcon sx={{ fontSize: 16 }} /> },
-  { label: "My Level",      to: "/level",        icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Rival Trader",  to: "/rival",        icon: <SportsMmaOutlinedIcon sx={{ fontSize: 16 }} /> },
-  { label: "Dashboard",     to: "/dashboard",    icon: <DashboardOutlinedIcon sx={{ fontSize: 16 }} /> },
-  { label: "Achievements",  to: "/achievements", icon: <WorkspacePremiumOutlinedIcon sx={{ fontSize: 16 }} /> },
   { label: "Save & Load",   to: "/save-load",    icon: <SaveOutlinedIcon sx={{ fontSize: 16 }} /> },
 ];
 

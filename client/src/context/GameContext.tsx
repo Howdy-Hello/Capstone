@@ -599,7 +599,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
-      const market = await fetchSessionMarket(session.id, currentDay + 1);
+      // Independent reads: fetched together so the new day appears after one
+      // round trip instead of two.
+      const [market, refreshed] = await Promise.all([
+        fetchSessionMarket(session.id, currentDay + 1),
+        supabase.from("game_sessions").select(SESSION_COLUMNS).eq("id", session.id).single(),
+      ]);
       setPriceRows((rows) => [...rows.filter((row) => row.game_day <= currentDay), ...market.rows]);
       setNewsByDay((current) => {
         const merged = new Map(Array.from(current).filter(([storedDay]) => storedDay <= currentDay));
@@ -607,7 +612,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         return merged;
       });
       setTradedToday({});
-      const refreshed = await supabase.from("game_sessions").select(SESSION_COLUMNS).eq("id", session.id).single();
       if (refreshed.error) throw refreshed.error;
       setSession(refreshed.data as GameSession);
       setError(null);
