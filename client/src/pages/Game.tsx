@@ -1,6 +1,8 @@
 import DecisionNote from "../components/learning/DecisionNote";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RunProgressBar from "../components/RunProgressBar";
+import DayRecapCard from "../components/DayRecapCard";
+import TodayGoalCard from "../components/TodayGoalCard";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Avatar, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
@@ -25,11 +27,15 @@ import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
+import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
+import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { getNewsCredibility, STORY_DAYS, Stock } from "../data/mockStocks";
 import { getMaxAffordableQuantity, getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
-import { GameMode, MARKET_CLOSED_MESSAGE, useGame } from "../context/GameContext";
+import { GameMode, MARKET_CLOSED_MESSAGE, useGame, WEEKLY_BILL_TOTAL } from "../context/GameContext";
+import { buildDayRecap, overnightShares, positionChangeToday } from "../lib/dayRecap";
 import { useAchievements } from "../hooks/useAchievements";
 import { useDailyGoals } from "../hooks/useDailyGoals";
 import { useStockAlerts } from "../hooks/useStockAlerts";
@@ -52,6 +58,7 @@ const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
 }>>;
 
 const NEWS_COLLAPSED_KEY = "stockpilot:news-collapsed";
+const RECAP_DISMISSED_KEY = "stockpilot:recap-dismissed";
 
 type MiniLeaderEntry ={ rank: number; username: string; net_worth: number; user_id: string };
 
@@ -84,8 +91,9 @@ export default function Game() {
   } = useAchievements();
   // Goals and missions are presented on /game/goals, but their progress is
   // earned here, so the hooks stay mounted for the completions they record.
-  useDailyGoals();
-  useMissions();
+  // Today's next goal is also shown on this page.
+  const daily = useDailyGoals();
+  const missions = useMissions();
   const rival = useRivalTrader();
   useStockAlerts();
   // Kept mounted for its level-up side effects; the level chip moved off this page.
@@ -114,6 +122,39 @@ export default function Game() {
     }, 0),
     [trading.account.holdings, stocks],
   );
+  // Testers read the since-purchase figure as today's move; both are shown,
+  // labelled. Shares bought today were bought at today's price, so only the
+  // shares held overnight count toward today's move.
+  const portfolioToday = useMemo(() =>
+    trading.account.holdings.reduce((sum, h) => (
+      sum + positionChangeToday(h, stocks.find((s) => s.symbol === h.symbol), trading.tradedToday)
+    ), 0),
+    [trading.account.holdings, stocks, trading.tradedToday],
+  );
+
+  // Start-of-day recap, so each advance has a result to react to. While the
+  // market is open, `todayNews` is yesterday's brief: the news behind today's prices.
+  const dayRecap = useMemo(() => buildDayRecap({
+    day: gameDay,
+    holdings: trading.account.holdings,
+    stocks,
+    tradedToday: trading.tradedToday,
+    news: todayNews,
+    // The server's figure when this browser made the advance; otherwise the
+    // weekly schedule (one cycle on arrival at every 7th day).
+    bill: trading.latestBill?.day === gameDay ? trading.latestBill.total : gameDay % 7 === 0 ? WEEKLY_BILL_TOTAL : 0,
+    rivalCurve: rival.equityCurve,
+  }), [gameDay, trading.account.holdings, stocks, trading.tradedToday, todayNews, trading.latestBill, rival.equityCurve]);
+  const recapKey = `${trading.sessionId}:${gameDay}`;
+  const [recapDismissed, setRecapDismissed] = useState(() => {
+    try { return localStorage.getItem(RECAP_DISMISSED_KEY) ?? ""; } catch { return ""; }
+  });
+  const dismissRecap = () => {
+    setRecapDismissed(recapKey);
+    try { localStorage.setItem(RECAP_DISMISSED_KEY, recapKey); } catch { /* per-browser preference only */ }
+  };
+  const showRecap = dayRecap !== null && marketPhase === "market_open" && !advancing && recapDismissed !== recapKey;
+  const showGoals = !isGameComplete && daily.goals.length > 0;
 
   const marketSummary = useMemo(() => {
     const gainers = stocks.filter((s) => s.dayChangePercent >= 0).length;
@@ -663,6 +704,22 @@ export default function Game() {
         {!trading.loading && !trading.verifiedRun && <Typography sx={{ color: D.t3, mb: 2 }}>This older run is practice-only. Start a new run to earn achievements and enter the leaderboards.</Typography>}
 
         {/* New players get the turn explained; after the story days it is noise. */}
+        {/* Testers couldn't find these behind the Game menu's arrow. */}
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }} component="nav" aria-label="Game shortcuts">
+          {[
+            { to: "/game/watchlist", label: `Watchlist${trading.watchlistStocks.length ? ` (${trading.watchlistStocks.length})` : ""}`, icon: <StarBorderIcon sx={{ fontSize: 17 }} /> },
+            { to: "/game/goals", label: `Goals & Missions${missions.loaded && missions.totalCount ? ` (${missions.completedCount}/${missions.totalCount})` : ""}`, icon: <FlagOutlinedIcon sx={{ fontSize: 17 }} /> },
+            { to: "/game/advisor", label: "Advisors", icon: <SmartToyOutlinedIcon sx={{ fontSize: 17 }} /> },
+            { to: "/game/living-costs", label: "Living Costs", icon: <ReceiptLongOutlinedIcon sx={{ fontSize: 17 }} /> },
+          ].map((link) => (
+            <Button key={link.to} component={RouterLink} to={link.to} startIcon={link.icon} size="small"
+              sx={{ color: D.t2, bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 1.5, px: 1.5, fontWeight: 700, fontSize: 13, textTransform: "none",
+                "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
+              {link.label}
+            </Button>
+          ))}
+        </Stack>
+
         {!isGameComplete && gameDay <= STORY_DAYS && (
           <Box sx={{ mb: 2, pl: 2, borderLeft: `3px solid ${D.brand}` }}>
             <Typography sx={{ color: D.t1, fontSize: 14, fontWeight: 800 }}>Your next step</Typography>
@@ -674,6 +731,25 @@ export default function Game() {
             <Button component={RouterLink} to="/learn" size="small" sx={{ color: D.brandText, textTransform: "none", px: 0 }}>Review how a turn works →</Button>
           </Box>
         )}
+        {(showRecap || showGoals) && (
+          <Grid container spacing={2} sx={{ mb: 2.5 }}>
+            {showRecap && dayRecap && (
+              <Grid item xs={12} md={showGoals ? 7 : 12}>
+                <DayRecapCard recap={dayRecap}
+                  rival={{ name: rival.rivalName, playerAhead: rival.playerAhead, gap: Math.abs(rival.playerNetWorth - rival.rivalNetWorth) }}
+                  onOpenStock={(symbol) => navigate(`/stocks/${symbol}`, { state: { gameDay } })}
+                  onDismiss={dismissRecap} />
+              </Grid>
+            )}
+            {showGoals && (
+              <Grid item xs={12} md={showRecap ? 5 : 12}>
+                <TodayGoalCard day={gameDay} goals={daily.goals} completedCount={daily.completedCount}
+                  error={daily.persistenceError} onRetry={daily.retryPersistence} />
+              </Grid>
+            )}
+          </Grid>
+        )}
+
         {todayNews.length > 0 && (
           // Open by default and kept open across days: testers found reopening
           // it every turn tedious. The tour still opens it via `details.open`.
@@ -808,9 +884,14 @@ export default function Game() {
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                   <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Portfolio</Typography>
                   {trading.account.holdings.length > 0 && (
-                    <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: portfolioPnL >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
-                      {portfolioPnL >= 0 ? "+" : ""}{money(portfolioPnL)} P/L
-                    </Typography>
+                    <Box sx={{ textAlign: "right" }}>
+                      <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: portfolioToday >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
+                        {portfolioToday >= 0 ? "+" : ""}{money(portfolioToday)} today
+                      </Typography>
+                      <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: portfolioPnL >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
+                        {portfolioPnL >= 0 ? "+" : ""}{money(portfolioPnL)} since bought
+                      </Typography>
+                    </Box>
                   )}
                 </Stack>
                 <Box sx={{ p: 2.5 }}>
@@ -827,7 +908,9 @@ export default function Game() {
                         const val = currentPrice * h.shares;
                         const pnl = (currentPrice - h.averageCost) * h.shares;
                         const pnlPct = h.averageCost > 0 ? ((currentPrice - h.averageCost) / h.averageCost) * 100 : 0;
-                        const up = pnl >= 0;
+                        const heldOvernight = Math.min(h.shares, overnightShares(h.symbol, h.shares, trading.tradedToday));
+                        const today = (live?.dayChange ?? 0) * heldOvernight;
+                        const up = today >= 0;
                         return (
                           <Box key={h.symbol} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${up ? D.greenBd : D.redBd}` }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
@@ -840,8 +923,15 @@ export default function Game() {
                               </Box>
                               <Box sx={{ textAlign: "right" }}>
                                 <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1, fontFamily: MONO }}>{money(val)}</Typography>
-                                <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: up ? D.greenText : D.redText }}>
-                                  {pnl >= 0 ? "+" : ""}{money(pnl)} ({pct(pnlPct, 1)})
+                                {heldOvernight > 0 ? (
+                                  <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: up ? D.greenText : D.redText }}>
+                                    {today >= 0 ? "+" : ""}{money(today)} today ({pct(live?.dayChangePercent ?? 0, 1)})
+                                  </Typography>
+                                ) : (
+                                  <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: D.t3 }}>Bought today</Typography>
+                                )}
+                                <Typography sx={{ fontSize: 11, fontWeight: 700, color: pnl >= 0 ? D.greenText : D.redText }}>
+                                  {pnl >= 0 ? "+" : ""}{money(pnl)} since bought ({pct(pnlPct, 1)})
                                 </Typography>
                               </Box>
                             </Stack>

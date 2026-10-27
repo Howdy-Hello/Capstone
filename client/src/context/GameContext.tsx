@@ -131,6 +131,8 @@ type GameContextValue = {
   hireAdvisor: (advisorId: string) => Promise<boolean>;
   latestBill: BillCharge | null;
   clearLatestBill: () => void;
+  /** Shares traded today per "buy:SYMBOL" / "sell:SYMBOL"; tells which shares were held overnight. */
+  tradedToday: Record<string, number>;
   gameMode: GameMode;
   marketSeed: string;
   storyArcs: string[];
@@ -188,6 +190,10 @@ async function fetchAllPages<T>(
 }
 
 type SessionMarket = { rows: SessionPriceRow[]; news: Map<number, MarketNews[]> };
+
+function fetchSessionRow(sessionId: string) {
+  return supabase.from("game_sessions").select(SESSION_COLUMNS).eq("id", sessionId).single();
+}
 
 /** The run's stored prices and news from `fromDay` up to its current day. */
 async function fetchSessionMarket(sessionId: string, fromDay: number): Promise<SessionMarket> {
@@ -588,39 +594,52 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       // The advance is already committed. Keep its day, cash and bill even if
       // a later read fails, so Retry cannot resubmit yesterday's day.
       gameDayRef.current = appliedDay;
-      setGameDayState(appliedDay);
-      setMarketPhase("market_open");
       localStorage.setItem(marketPhaseStorageKey(session.id), "market_open");
-      setSession((current) => current && ({ ...current, current_day: appliedDay, market_phase: "market_open", cash_balance: result.cash }));
-      setAccount((current) => ({
-        ...current,
-        cash: asNumber(result.cash),
-        unpaidBills: asNumber(result.unpaid_bills ?? current.unpaidBills),
-      }));
-      // Also shown when only carried-over debt was collected.
-      if (result.cycles_charged > 0 || asNumber(result.amount_paid) > 0) {
-        setLatestBill({
-          cycles: result.cycles_charged,
-          total: asNumber(result.bill_total),
-          paid: asNumber(result.amount_paid),
-          shortfall: asNumber(result.shortfall),
-          day: appliedDay,
-        });
-      }
+      const applyAdvance = () => {
+        setGameDayState(appliedDay);
+        setMarketPhase("market_open");
+        setSession((current) => current && ({ ...current, current_day: appliedDay, market_phase: "market_open", cash_balance: result.cash }));
+        setAccount((current) => ({
+          ...current,
+          cash: asNumber(result.cash),
+          unpaidBills: asNumber(result.unpaid_bills ?? current.unpaidBills),
+        }));
+        // Also shown when only carried-over debt was collected.
+        if (result.cycles_charged > 0 || asNumber(result.amount_paid) > 0) {
+          setLatestBill({
+            cycles: result.cycles_charged,
+            total: asNumber(result.bill_total),
+            paid: asNumber(result.amount_paid),
+            shortfall: asNumber(result.shortfall),
+            day: appliedDay,
+          });
+        }
+        setTradedToday({});
+      };
 
       // Independent reads: fetched together so the new day appears after one
       // round trip instead of two.
-      const [market, refreshed] = await Promise.all([
-        fetchSessionMarket(session.id, currentDay + 1),
-        supabase.from("game_sessions").select(SESSION_COLUMNS).eq("id", session.id).single(),
-      ]);
+      let market: SessionMarket;
+      let refreshed: Awaited<ReturnType<typeof fetchSessionRow>>;
+      try {
+        [market, refreshed] = await Promise.all([
+          fetchSessionMarket(session.id, currentDay + 1),
+          fetchSessionRow(session.id),
+        ]);
+      } catch (readError) {
+        applyAdvance();
+        throw readError;
+      }
+      // The new day and its prices land in one render. Setting the day first
+      // emptied the market list until the prices arrived, and every row then
+      // animated back in, which read as lag.
+      applyAdvance();
       setPriceRows((rows) => [...rows.filter((row) => row.game_day <= currentDay), ...market.rows]);
       setNewsByDay((current) => {
         const merged = new Map(Array.from(current).filter(([storedDay]) => storedDay <= currentDay));
         market.news.forEach((items, storedDay) => merged.set(storedDay, items));
         return merged;
       });
-      setTradedToday({});
       if (refreshed.error) throw refreshed.error;
       setSession(refreshed.data as GameSession);
       setError(null);
@@ -1023,7 +1042,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     sessionId: session?.id ?? null,
     reloadSession,
     syncSessionValue,
-  }), [actionPending, hireAdvisor, localAdvisorIds,
+    tradedToday,
+  }), [actionPending, hireAdvisor, localAdvisorIds, tradedToday,
     account, addCash, addToWatchlist, advancing, buyStock, closeMarket, error, gameDay, gameMode, getHistory,
     getRelatedNews, getStock, getTradeQuote, loading, reloadSession, news, newsHistory, resetAccount,
     sellStock, marketSeed, setGameDay, session, stocks, storyArcs, syncSessionValue,
