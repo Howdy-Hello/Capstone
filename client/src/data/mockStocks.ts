@@ -760,9 +760,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day1_cai_ai_demand",
     gameDay: 1,
     source: NEWS_PUBLISHERS.techInsider,
-    headline: "Closed Ai jumps as AI software demand improves",
+    headline: "Closed Ai reports more paying AI software customers",
     body:
-      "Closed Ai says enterprise customers are expanding AI workflow subscriptions after a stronger pilot-conversion quarter. Traders are watching whether new contracts can offset high research spending.",
+      "Closed Ai's company update says more businesses are paying for its software after trial periods, and existing customers are buying larger subscriptions. That could add regular sales income. Research spending remains high, so more customers will not necessarily mean more profit.",
     importance: "High",
     marketTone: "Bullish",
     relatedTickers: ["CAI"],
@@ -776,9 +776,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day1_cyb_security_spending",
     gameDay: 1,
     source: NEWS_PUBLISHERS.techInsider,
-    headline: "CyberFort rallies as cybersecurity spending rises",
+    headline: "Company survey points to larger cybersecurity budgets",
     body:
-      "A sector survey shows security budgets rising after several large companies approved cloud-protection upgrades. CyberFort may benefit because most of its revenue comes from recurring enterprise contracts.",
+      "A survey of business customers reports larger budgets for protecting cloud software. CyberFort sells security subscriptions and could gain new or larger contracts. Budgets are spending plans, however; customers still need to choose suppliers and sign orders.",
     importance: "High",
     marketTone: "Bullish",
     relatedTickers: ["CYB"],
@@ -792,9 +792,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day1_sky_fuel_pressure",
     gameDay: 1,
     source: NEWS_PUBLISHERS.expedition,
-    headline: "SkyBridge falls as fuel costs pressure airline margins",
+    headline: "SkyBridge faces higher fuel bills and weather delays",
     body:
-      "Jet fuel prices moved higher while winter weather delayed several major routes. Investors worry SkyBridge may need to discount fares even as operating costs rise.",
+      "Fuel-price reports show jet fuel becoming more expensive, while weather delays affect several SkyBridge routes. Fuel and disruption costs could leave less profit from each ticket. Raising fares might cover some costs, but could also discourage customers from flying.",
     importance: "High",
     marketTone: "Bearish",
     relatedTickers: ["SKY"],
@@ -808,9 +808,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day1_itc_chip_orders",
     gameDay: 1,
     source: NEWS_PUBLISHERS.techInsider,
-    headline: "Inter Corporation gains after server-chip order report",
+    headline: "Suppliers report larger Inter Corporation chip orders",
     body:
-      "Component suppliers say Inter Corporation increased production reservations for its next AI accelerator. The report improves confidence in near-term chip demand, although capacity constraints remain a risk.",
+      "Component suppliers say Inter Corporation has reserved more factory capacity for its next AI chip. This suggests the company expects more customer orders. Reservations are not completed sales, and shortages or production delays could still limit deliveries.",
     importance: "High",
     marketTone: "Bullish",
     relatedTickers: ["ITC"],
@@ -824,9 +824,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day1_frx_port_delays",
     gameDay: 1,
     source: NEWS_PUBLISHERS.expedition,
-    headline: "FreightFlex slips as port delays slow shipments",
+    headline: "FreightFlex warns customers of delivery delays",
     body:
-      "FreightFlex warned customers that port congestion and driver shortages could extend delivery times. The update raises concern that contract penalties may weigh on quarterly margins.",
+      "FreightFlex's customer notice warns that busy ports and driver shortages could delay deliveries. Missed delivery deadlines may trigger penalties, leaving less profit from its contracts. The size of the cost depends on how long the delays last.",
     importance: "Medium",
     marketTone: "Bearish",
     relatedTickers: ["FRX"],
@@ -840,9 +840,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day2_cai_customer_pause",
     gameDay: 2,
     source: NEWS_PUBLISHERS.cynTimes,
-    headline: "Closed Ai drops as major customer pauses rollout",
+    headline: "Closed Ai's largest customer pauses a planned expansion",
     body:
-      "Closed Ai's largest enterprise customer paused a planned expansion while it reviews costs and data controls. The original contracts remain active, but the delay weakens the near-term growth case that lifted the shares yesterday.",
+      "Closed Ai confirms that its largest business customer has paused a planned expansion to review costs and data protection. Existing subscriptions remain active, but expected new sales may arrive later. This weakens yesterday's growth story without cancelling all of the customer's business.",
     importance: "High",
     marketTone: "Bearish",
     relatedTickers: ["CAI"],
@@ -856,9 +856,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day2_mch_product_approval",
     gameDay: 2,
     source: NEWS_PUBLISHERS.cynTimes,
-    headline: "MediCore rises after new diagnostic product approval",
+    headline: "MediCore receives approval for a new diagnostic scanner",
     body:
-      "MediCore received approval for a diagnostic scanner aimed at regional clinics. The product may improve long-term sales, but investors are still watching launch costs and hospital purchasing cycles.",
+      "A regulatory approval allows MediCore to sell a diagnostic scanner to regional clinics. The product could create new sales, but clinics have not yet placed enough orders to establish demand. Launch costs will also affect how much profit MediCore earns.",
     importance: "High",
     marketTone: "Bullish",
     relatedTickers: ["MCH"],
@@ -874,7 +874,7 @@ const hardcodedOpeningNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.cynTimes,
     headline: "AquaLife wins city water infrastructure contract",
     body:
-      "AquaLife won a multi-year city water infrastructure contract that adds predictable project revenue. The deal also gives the company a stronger reference customer for future municipal bids.",
+      "A city contract announcement names AquaLife as the supplier for a multi-year water project. The signed deal adds expected sales and could help it win other city contracts. Equipment and labour costs will determine how much of that income becomes profit.",
     importance: "Medium",
     marketTone: "Bullish",
     relatedTickers: ["AQL"],
@@ -888,9 +888,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day2_gve_demand_warning",
     gameDay: 2,
     source: NEWS_PUBLISHERS.cynTimes,
-    headline: "GreenVolt slips as renewable demand forecast weakens",
+    headline: "Utility customers delay GreenVolt project purchases",
     body:
-      "Analysts lowered near-term demand expectations for renewable energy storage projects after utilities delayed purchasing decisions. GreenVolt may still grow long term, but traders are reacting to slower order timing.",
+      "Utility customers have delayed decisions on energy-storage projects, prompting analysts to lower GreenVolt sales forecasts. Fewer immediate orders could reduce income while development costs continue. The customers have delayed purchases rather than ruled out future projects.",
     importance: "Medium",
     marketTone: "Bearish",
     relatedTickers: ["GVE"],
@@ -904,9 +904,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day2_agr_grocery_contract",
     gameDay: 2,
     source: NEWS_PUBLISHERS.cynTimes,
-    headline: "AgriPure rises after private-label grocery deal",
+    headline: "AgriPure signs a grocery-chain supply agreement",
     body:
-      "AgriPure signed a supply agreement with a national grocery chain for frozen meals and pantry staples. The contract is not flashy, but it may support steady volume during a cautious consumer market.",
+      "AgriPure announced a signed agreement to supply frozen meals and pantry staples to a national grocery chain. Regular food orders could support steadier sales while shoppers cut optional purchases. Ingredient and delivery costs will still affect profit.",
     importance: "Medium",
     marketTone: "Bullish",
     relatedTickers: ["AGR"],
@@ -920,9 +920,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day2_sld_grid_delay",
     gameDay: 2,
     source: NEWS_PUBLISHERS.cynTimes,
-    headline: "SolarDawn dips after grid-connection delay",
+    headline: "SolarDawn projects wait longer for grid approval",
     body:
-      "SolarDawn disclosed that two utility-scale projects are waiting longer for grid-connection approval. The assets are still expected to proceed, but delayed revenue recognition may pressure the stock.",
+      "SolarDawn disclosed approval delays for connecting two large projects to the electricity grid. Until connected, the projects cannot begin their planned power sales, while financing costs may continue. The projects are delayed, not cancelled; watch for a revised connection date.",
     importance: "Medium",
     marketTone: "Bearish",
     relatedTickers: ["SLD"],
@@ -936,9 +936,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day3_cai_audit_update",
     gameDay: 3,
     source: NEWS_PUBLISHERS.techInsider,
-    headline: "Closed Ai stabilizes after independent controls audit",
+    headline: "Independent review finds no major Closed Ai data-control failures",
     body:
-      "An independent review found no material data-control failures in Closed Ai's platform. The update does not immediately restore the paused rollout, but it reduces one risk behind yesterday's selloff.",
+      "An independent review found no major data-protection failures in Closed Ai's platform. That addresses one concern behind the customer pause reported yesterday. The customer has not restarted its expansion, so the review improves the evidence without restoring the delayed sales yet.",
     importance: "Medium",
     marketTone: "Bullish",
     relatedTickers: ["CAI"],
@@ -954,7 +954,7 @@ const hardcodedOpeningNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.techInsider,
     headline: "RoboWorks wins warehouse automation deal",
     body:
-      "RoboWorks signed a warehouse automation deal with a large logistics operator. The contract includes robotic picking systems and maintenance services, giving investors more confidence in recurring revenue.",
+      "RoboWorks announced a signed contract to supply warehouse robots and ongoing maintenance to a large delivery operator. Equipment sales could add income now and maintenance could add regular income later. Installation costs and delivery deadlines remain important.",
     importance: "High",
     marketTone: "Bullish",
     relatedTickers: ["RBT"],
@@ -968,25 +968,25 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day3_pap_product_cycle",
     gameDay: 3,
     source: NEWS_PUBLISHERS.reddot,
-    headline: "PineApple gains ahead of product cycle optimism",
+    headline: "Unnamed suppliers suggest stronger PineApple device demand",
     body:
-      "Supplier checks point to stronger device demand ahead of PineApple's next product cycle. Investors are also watching whether premium pricing can hold if consumer spending weakens.",
+      "Unnamed suppliers claim orders are increasing ahead of PineApple's next device launch. Neither PineApple nor the suppliers have publicly confirmed the order figures. More demand could help sales if the report is true, but high prices may deter customers whose household budgets are tight.",
     importance: "Medium",
     marketTone: "Bullish",
     relatedTickers: ["PAP"],
     expectedImpact: 0.04,
     actualImpact: 0.032,
     isAccurate: true,
-    isRumor: false,
+    isRumor: true,
     category: "product",
   },
   {
     newsId: "story_day3_omg_content_costs",
     gameDay: 3,
     source: NEWS_PUBLISHERS.cynTimes,
-    headline: "OmniMedia weakens after content cost concerns",
+    headline: "OmniMedia faces higher costs for films and programmes",
     body:
-      "Analysts warned that rising content costs may pressure OmniMedia's margins. Subscriber growth remains positive, but investors worry that more spending is needed to compete for major releases.",
+      "Analysts reviewing OmniMedia's spending plans warn that producing and buying programmes is becoming more expensive. Subscriber numbers are still growing, but extra spending may consume that additional income. Watch whether subscription sales grow faster than content costs.",
     importance: "Medium",
     marketTone: "Bearish",
     relatedTickers: ["OMG"],
@@ -1000,9 +1000,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day3_hlw_production_costs",
     gameDay: 3,
     source: NEWS_PUBLISHERS.cynTimes,
-    headline: "Mount. Para Pictures slides as production costs rise",
+    headline: "Mount. Para Pictures reports higher film-production costs",
     body:
-      "Mount. Para Pictures reported higher production and marketing costs for its upcoming release slate. Strong audience interest could still support ticket sales, but investors are concerned about pressure on studio margins.",
+      "Mount. Para Pictures reports higher filming and advertising costs for upcoming releases. It will need stronger ticket sales to keep the same profit. Audience interest is encouraging, but interest before release does not guarantee enough paying viewers.",
     importance: "Medium",
     marketTone: "Bearish",
     relatedTickers: ["HLW"],
@@ -1016,9 +1016,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day3_bcl_trial_update",
     gameDay: 3,
     source: NEWS_PUBLISHERS.cynTimes,
-    headline: "BioCloud climbs after early trial data improves",
+    headline: "BioCloud reports encouraging results from a small trial",
     body:
-      "BioCloud released early-stage therapy data showing stronger patient response rates than its prior study. The trial is still small, so traders are balancing optimism with biotech execution risk.",
+      "BioCloud's study release reports more patients responding to its experimental treatment than in an earlier trial. This supports further research, but the study is small and does not establish that the therapy will succeed in larger trials or receive approval. Future treatment sales remain uncertain.",
     importance: "High",
     marketTone: "Bullish",
     relatedTickers: ["BCL"],
@@ -1032,9 +1032,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day3_sld_tax_credit_report",
     gameDay: 3,
     source: NEWS_PUBLISHERS.cynTimes,
-    headline: "SolarDawn rebounds on tax-credit clarification",
+    headline: "Policy clarification may preserve SolarDawn tax credits",
     body:
-      "A new policy clarification suggests SolarDawn's delayed projects may still qualify for clean-energy credits. The update reduces some financing concern after yesterday's grid-connection delay.",
+      "A published policy clarification suggests SolarDawn's delayed projects may still qualify for clean-energy tax credits. Keeping that support could reduce the amount the company must finance itself. The grid-connection delays reported yesterday remain unresolved, and eligibility still needs confirmation.",
     importance: "Medium",
     marketTone: "Bullish",
     relatedTickers: ["SLD"],
@@ -1048,9 +1048,9 @@ const hardcodedOpeningNews: MarketNews[] = [
     newsId: "story_day3_frx_retail_volume_warning",
     gameDay: 3,
     source: NEWS_PUBLISHERS.expedition,
-    headline: "FreightFlex falls after retail shipment warning",
+    headline: "Retail customers lower FreightFlex shipment forecasts",
     body:
-      "Several retail customers lowered shipment volume forecasts for the next month. FreightFlex may need to run its network with lower utilization, which can pressure profit margins.",
+      "Several retail customers lowered the number of deliveries they expect to need next month. FreightFlex could earn less while still paying for warehouses, vehicles, and staff. Finding replacement customers or reducing costs could soften the impact.",
     importance: "Medium",
     marketTone: "Bearish",
     relatedTickers: ["FRX"],
@@ -1069,7 +1069,7 @@ const gasPriceStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.cynTimes,
     headline: "Oil supply warning pushes fuel markets higher",
     body:
-      "Refinery issues and shipping delays raised concern that fuel supplies could tighten over the next several weeks. Energy names attracted buyers, while airlines and freight operators came under pressure from higher expected operating costs.",
+      "Fuel distributors report refinery problems and shipping delays that could limit supply for several weeks. Higher fuel prices increase airline and freight costs. GreenVolt and SolarDawn could attract customers seeking alternatives, but new energy projects take time to deliver.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["GVE", "SLD", "SKY", "FRX"],
@@ -1091,7 +1091,7 @@ const gasPriceStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.expedition,
     headline: "Drivers face higher gas prices as travel demand grows",
     body:
-      "Gas prices climbed across several regions as summer travel demand met tighter fuel supply. Travel shares weakened, delivery companies warned about route costs, and consumer names slipped as households prepared for higher weekly expenses.",
+      "Fuel-price surveys show higher prices as travel demand meets limited supply. SkyBridge and FreightFlex would spend more running their routes. Households may cut clothing and other purchases to cover fuel bills, while demand for alternative energy could help GreenVolt and SolarDawn.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["GVE", "SLD", "SKY", "FRX", "LUX", "FDM", "AGR"],
@@ -1116,7 +1116,7 @@ const gasPriceStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.expedition,
     headline: "Fuel costs put pressure on travel companies",
     body:
-      "Airlines warned that sustained fuel increases could force higher ticket prices or weaker margins. Investors marked down SkyBridge sharply while fuel-sensitive logistics firms stayed volatile.",
+      "Airlines warn that higher fuel bills will consume more ticket revenue unless fares rise. Higher fares could also discourage travel. SkyBridge faces the clearest cost pressure, FreightFlex faces a similar delivery-cost problem, and alternative-energy suppliers may benefit if customers seek cheaper options.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["SKY", "FRX", "GVE"],
@@ -1137,7 +1137,7 @@ const gasPriceStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.cynTimes,
     headline: "Delivery firms add fuel surcharges as gas prices rise",
     body:
-      "Freight and delivery companies added temporary fuel surcharges to protect margins. The move may help profits later, but customers pushed back and retailers warned that shipping costs could weigh on demand.",
+      "Delivery companies announced extra fuel charges, but customer contracts limit how quickly they can recover higher costs. FreightFlex may still keep less profit per delivery. FoodMart, AgriPure, and LuxeWear also face higher shipping bills and may lose sales if they pass the cost to customers.",
     importance: "Medium",
     marketTone: "Unclear",
     relatedTickers: ["FRX", "FDM", "AGR", "LUX"],
@@ -1159,7 +1159,7 @@ const gasPriceStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.cynTimes,
     headline: "Officials weigh emergency measures to cool gas prices",
     body:
-      "Officials discussed emergency fuel reserves and temporary tax relief to slow the rise in gas prices. Energy stocks cooled as traders priced in policy pressure, while travel and consumer shares recovered part of their losses.",
+      "Officials are considering releasing fuel reserves and temporarily cutting fuel taxes. If adopted, the measures could lower SkyBridge and FreightFlex operating costs and leave households more spending money. Cheaper fuel could also reduce interest in GreenVolt and SolarDawn alternatives. The measures have not been approved.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["GVE", "SLD", "SKY", "FRX", "LUX"],
@@ -1182,7 +1182,7 @@ const gasPriceStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.cynTimes,
     headline: "Gas prices begin to ease after weeks of pressure",
     body:
-      "Fuel prices stabilized as supply improved and emergency measures reduced market anxiety. Travel and logistics shares rebounded, but energy names gave back some earlier gains as the spike faded.",
+      "Fuel-price surveys and distributor reports show supplies improving and pump prices easing. SkyBridge and FreightFlex could spend less on fuel, while households would have more room for food and clothing purchases. Cheaper fuel may weaken demand for GreenVolt and SolarDawn alternatives. Continued supply recovery remains important.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["SKY", "FRX", "LUX", "FDM", "AGR", "GVE", "SLD"],
@@ -1210,7 +1210,7 @@ const cyberBreachStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.techInsider,
     headline: "Payment breach raises cybersecurity spending expectations",
     body:
-      "A payment network breach at several retailers pushed boards to accelerate security reviews. Cybersecurity vendors gained as investors expected emergency software spending, while consumer and banking names slipped on fraud and remediation risk.",
+      "Retailers confirmed a payment-network breach and began security reviews. FoodMart, LuxeWear, and UrbanBank could face refunds, fraud losses, and repair costs. CyberFort could receive more security-software orders, although reviews do not automatically turn into signed contracts.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["CYB", "FDM", "URB", "LUX"],
@@ -1232,7 +1232,7 @@ const cyberBreachStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.techInsider,
     headline: "Companies rush to sign new security contracts",
     body:
-      "Retailers, banks, and media platforms began signing short-cycle cybersecurity contracts after the breach widened. CyberFort and Closed Ai benefited from demand for monitoring tools, while OmniMedia faced scrutiny over account-protection costs.",
+      "Company announcements confirm new security contracts after the payment breach widened. CyberFort and Closed Ai may gain sales from monitoring tools. OmniMedia and UrbanBank face additional account-protection costs. Watch whether software suppliers can deliver the work profitably and affected firms can limit further damage.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["CYB", "CAI", "OMG", "URB"],
@@ -1254,7 +1254,7 @@ const cyberBreachStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.cynTimes,
     headline: "Breach fallout eases as firms report containment",
     body:
-      "Investigators said the payment breach appeared contained, reducing the risk of a broader consumer pullback. Retail and banking shares recovered some losses, while cybersecurity stocks cooled after a sharp run-up.",
+      "Investigators report that the payment breach appears contained. FoodMart, LuxeWear, and UrbanBank may face fewer additional losses and less disruption to customer spending. CyberFort and Closed Ai could receive fewer emergency orders than previously expected. Firms still need to disclose the final cost of repairs.",
     importance: "Medium",
     marketTone: "Unclear",
     relatedTickers: ["FDM", "URB", "LUX", "CYB", "CAI"],
@@ -1280,7 +1280,7 @@ const rateCycleStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.cynTimes,
     headline: "Hot inflation data pressures rate-sensitive stocks",
     body:
-      "Inflation came in above forecasts, raising expectations that borrowing costs could stay elevated. Banks gained on higher rate assumptions, while real estate, solar projects, and expensive growth stocks sold off.",
+      "The latest inflation release is above forecasts, making an early interest-rate cut less likely. Higher borrowing costs can make Century 22 property and SolarDawn projects harder to finance, and leave PineApple and Inter Corporation customers less money for purchases. UrbanBank may earn more interest on loans, but could also face more missed repayments.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["URB", "C22", "SLD", "PAP", "ITC"],
@@ -1303,7 +1303,7 @@ const rateCycleStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.cynTimes,
     headline: "Mortgage demand slows as financing costs bite",
     body:
-      "Mortgage applications and home-tour traffic weakened after rate expectations moved higher. Century 22 fell on rental-growth concerns, while defensive utilities and grocery stocks held up better than the broader market.",
+      "Mortgage and housing-visit data show weaker demand as financing costs rise. Slower property activity could reduce Century 22 growth and UrbanBank lending revenue. FoodMart groceries and AquaLife water services may retain steadier demand because households still need essentials. These businesses remain exposed to their own costs.",
     importance: "Medium",
     marketTone: "Unclear",
     relatedTickers: ["C22", "AQL", "FDM", "URB"],
@@ -1325,7 +1325,7 @@ const rateCycleStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.cynTimes,
     headline: "Policy makers signal patience after growth cools",
     body:
-      "Officials suggested they could pause further tightening if inflation continues to moderate. Real estate and solar shares bounced as financing fears eased, while banks gave back part of their rate-driven gains.",
+      "Officials say they could pause further rate increases if inflation keeps slowing. That would ease financing concerns for Century 22 and SolarDawn and spending pressure on technology customers. UrbanBank might earn less extra interest than previously expected. A pause has not yet been promised.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["C22", "SLD", "PAP", "ITC", "URB"],
@@ -1351,7 +1351,7 @@ const healthcareTrialStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.cynTimes,
     headline: "Medical trial data lifts health innovation stocks",
     body:
-      "BioCloud released encouraging trial data for a targeted therapy platform, lifting healthcare risk appetite. Medical device supplier MediCore rose in sympathy as investors looked for follow-on diagnostic demand.",
+      "BioCloud's trial release reports encouraging patient results for a new therapy. Success in larger studies could create future sales for BioCloud and diagnostic orders for MediCore. EduSpark may attract interest in its health-training services if development expands. The therapy is not approved, and larger trials could produce different results.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["BCL", "MCH", "EDU"],
@@ -1372,7 +1372,7 @@ const healthcareTrialStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.cynTimes,
     headline: "Regulators ask follow-up questions on trial design",
     body:
-      "Regulators requested additional detail on patient selection and monitoring in BioCloud's trial. The request did not stop the program, but traders marked down biotech risk and rotated toward steadier healthcare revenue.",
+      "Regulators have asked BioCloud for more detail about patient selection and monitoring. Answering could take time and add research costs, although the trial has not been stopped. MediCore may receive more diagnostic-monitoring work, while AquaLife's water-service income is less tied to trial approvals.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["BCL", "MCH", "AQL"],
@@ -1393,7 +1393,7 @@ const healthcareTrialStoryNews: MarketNews[] = [
     source: NEWS_PUBLISHERS.techInsider,
     headline: "BioCloud secures partner funding for next trial phase",
     body:
-      "BioCloud announced partner funding to support the next phase of its trial program. The deal reduced dilution concerns, helped MediCore on diagnostics expectations, and lifted risk appetite across smaller growth names.",
+      "BioCloud announced a funding agreement for its next trial phase. This reduces the immediate need to sell more shares, which would shrink existing investors' ownership percentage. MediCore may gain diagnostic work, with possible training and software demand for EduSpark and Closed Ai. Funding does not guarantee a successful trial.",
     importance: "High",
     marketTone: "Unclear",
     relatedTickers: ["BCL", "MCH", "EDU", "CAI"],
@@ -1421,34 +1421,34 @@ function arcEvent(
   }]));
   return {
     newsId, gameDay, source, headline, body, importance: "High", marketTone: "Unclear",
-    relatedTickers, expectedImpact: 0, actualImpact: 0, isAccurate: true, isRumor: false,
+    relatedTickers, expectedImpact: 0, actualImpact: 0, isAccurate: true, isRumor: source === NEWS_PUBLISHERS.reddot,
     category, impactByTicker,
   };
 }
 
 const consumerSlowdownStoryNews = [
-  arcEvent("arc_consumer_day7_spending", 7, "Household spending loses momentum", "Card and retail data point to more cautious discretionary spending, pressuring premium brands while staples remain steadier.", "macro", { LUX: -0.035, FDM: 0.012, AGR: 0.01 }),
-  arcEvent("arc_consumer_day12_discounting", 12, "Retailers turn to discounts as demand softens", "Promotions may protect sales volumes but put margins at risk across consumer businesses.", "operations", { LUX: -0.04, FDM: -0.012, AGR: -0.008 }),
+  arcEvent("arc_consumer_day7_spending", 7, "Household spending loses momentum", "Card and retail data show households cutting optional purchases. LuxeWear could sell less clothing, while FoodMart and AgriPure may retain customers buying essential food. Essential demand is steadier, but higher costs could still reduce profits.", "macro", { LUX: -0.035, FDM: 0.012, AGR: 0.01 }),
+  arcEvent("arc_consumer_day12_discounting", 12, "Retailers turn to discounts as demand softens", "Retailers announced price cuts to attract cautious shoppers. LuxeWear, FoodMart, and AgriPure may sell more units but keep less profit from each sale. Watch whether additional customers make up for the lower selling prices.", "operations", { LUX: -0.04, FDM: -0.012, AGR: -0.008 }),
 ];
 const supplyChainStoryNews = [
-  arcEvent("arc_supply_day9_delays", 9, "Port congestion disrupts component deliveries", "Manufacturers and freight operators warn that delayed inputs could push revenue into later periods.", "supply", { ITC: -0.034, PAP: -0.022, FRX: 0.018 }),
-  arcEvent("arc_supply_day15_normalizes", 15, "Shipping backlogs begin to clear", "Improving delivery times ease production risk and reduce emergency freight costs.", "supply", { ITC: 0.03, PAP: 0.02, FRX: -0.012 }),
+  arcEvent("arc_supply_day9_delays", 9, "Port congestion disrupts component deliveries", "Port operators report longer delivery queues. Inter Corporation and PineApple may receive parts later, delaying finished-product sales. FreightFlex may charge more for scarce shipping capacity, though extra handling costs could reduce that benefit.", "supply", { ITC: -0.034, PAP: -0.022, FRX: 0.018 }),
+  arcEvent("arc_supply_day15_normalizes", 15, "Shipping backlogs begin to clear", "Port reports show delivery queues shrinking. Inter Corporation and PineApple could finish orders sooner and spend less on emergency shipping. FreightFlex may lose some of the extra fees it earned when capacity was scarce. Watch whether the improvement lasts.", "supply", { ITC: 0.03, PAP: 0.02, FRX: -0.012 }),
 ];
 const takeoverStoryNews = [
-  arcEvent("arc_takeover_day11_report", 11, "Takeover talks emerge around OmniMedia", "Sources say a larger entertainment group is studying a bid, though no agreement has been announced.", "merger", { OMG: 0.045, HLW: 0.012 }, NEWS_PUBLISHERS.reddot),
-  arcEvent("arc_takeover_day17_update", 17, "OmniMedia board opens formal deal talks", "The board confirmed discussions while warning that financing and regulatory review could still derail a transaction.", "merger", { OMG: 0.055, HLW: -0.012 }, NEWS_PUBLISHERS.officialWire),
+  arcEvent("arc_takeover_day11_report", 11, "Takeover talks emerge around OmniMedia", "Unnamed sources claim a larger entertainment group is considering buying OmniMedia. Neither company has confirmed the report, and no price or financed offer has been announced. A buyer might pay a premium, while speculation could spread to rival Mount. Para Pictures. Talks alone do not create a deal.", "merger", { OMG: 0.045, HLW: 0.012 }, NEWS_PUBLISHERS.reddot),
+  arcEvent("arc_takeover_day17_update", 17, "OmniMedia board opens formal deal talks", "OmniMedia's board confirmed deal discussions, strengthening the evidence behind the earlier rumour. A completed deal could bring a payment to shareholders and create a stronger rival for Mount. Para Pictures. Financing and regulatory approval remain unresolved; there is no completed sale.", "merger", { OMG: 0.055, HLW: -0.012 }, NEWS_PUBLISHERS.officialWire),
 ];
 const laborStrikeStoryNews = [
-  arcEvent("arc_labor_day8_vote", 8, "Transport workers authorize strike action", "Airline and freight unions authorize leaders to call a strike if negotiations fail.", "labor", { SKY: -0.028, FRX: -0.022 }),
-  arcEvent("arc_labor_day14_talks", 14, "Contract talks enter final mediation", "A last round of mediation lowers immediate disruption risk but leaves wage pressure unresolved.", "labor", { SKY: 0.02, FRX: 0.018 }),
+  arcEvent("arc_labor_day8_vote", 8, "Transport workers authorize strike action", "Union voting results authorize leaders to call a strike if negotiations fail. Cancelled SkyBridge flights and delayed FreightFlex deliveries could reduce sales while some costs continue. A vote authorizes a strike; it does not mean one has begun.", "labor", { SKY: -0.028, FRX: -0.022 }),
+  arcEvent("arc_labor_day14_talks", 14, "Contract talks enter final mediation", "Union and company statements confirm another round of talks with a mediator. Continuing negotiations reduce the immediate chance of cancelled flights and deliveries, helping SkyBridge and FreightFlex keep serving customers. No agreement is signed, and higher wages could still raise costs.", "labor", { SKY: 0.02, FRX: 0.018 }),
 ];
 const regulationStoryNews = [
-  arcEvent("arc_regulation_day10_proposal", 10, "Officials propose tighter digital-platform rules", "The proposal could raise compliance costs for technology and media firms if adopted.", "regulatory", { CAI: -0.02, OMG: -0.025, CYB: 0.012 }),
-  arcEvent("arc_regulation_day23_revision", 23, "Revised technology rules narrow compliance burden", "Lawmakers removed several costly provisions while retaining stronger security requirements.", "regulatory", { CAI: 0.018, OMG: 0.015, CYB: 0.01 }),
+  arcEvent("arc_regulation_day10_proposal", 10, "Officials propose tighter digital-platform rules", "The published proposal would require more data controls and reporting from digital platforms. Closed Ai and OmniMedia may need extra staff and software, while CyberFort could sell more security tools. The rules are proposed, not enacted; the final requirements may change.", "regulatory", { CAI: -0.02, OMG: -0.025, CYB: 0.012 }),
+  arcEvent("arc_regulation_day23_revision", 23, "Revised technology rules narrow compliance burden", "Lawmakers removed several expensive reporting requirements but kept stronger security rules. Closed Ai and OmniMedia would face less extra spending than under the earlier draft. CyberFort may still receive security orders. The proposal needs final approval before companies know their obligations.", "regulatory", { CAI: 0.018, OMG: 0.015, CYB: 0.01 }),
 ];
 const weatherStoryNews = [
-  arcEvent("arc_weather_day6_warning", 6, "Severe weather threatens travel and power networks", "Forecasts raise cancellation risk for airlines while increasing demand for resilient utilities.", "macro", { SKY: -0.032, AQL: 0.015, GVE: 0.012 }),
-  arcEvent("arc_weather_day9_damage", 9, "Storm damage disrupts routes and local infrastructure", "Initial assessments show transport delays but manageable utility damage.", "operations", { SKY: -0.025, FRX: -0.018, AQL: 0.02 }),
+  arcEvent("arc_weather_day6_warning", 6, "Severe weather threatens travel and power networks", "Weather forecasts warn of severe conditions that could cancel SkyBridge flights. AquaLife and GreenVolt may receive more requests for resilient water and energy services. Forecasts can change, and any extra orders must be weighed against damage to their own equipment.", "macro", { SKY: -0.032, AQL: 0.015, GVE: 0.012 }),
+  arcEvent("arc_weather_day9_damage", 9, "Storm damage disrupts routes and local infrastructure", "Initial local assessments report closed transport routes but manageable damage to utility equipment. SkyBridge and FreightFlex may lose sales while routes are blocked. AquaLife could receive emergency water-system repair orders. The full repair timeline and costs remain unknown.", "operations", { SKY: -0.025, FRX: -0.018, AQL: 0.02 }),
 ];
 
 const storyArcDefinitions = [
@@ -1486,7 +1486,7 @@ const bullishTemplates = [
     importance: "High" as Importance,
     headline: "reports stronger-than-expected earnings",
     body:
-      "The company beat analyst expectations after stronger customer demand and better operating discipline. Traders are watching whether management can repeat the performance next quarter.",
+      "The company's earnings release reports sales and profit above analyst forecasts. More customer orders and better cost control helped. The next question is whether demand will last beyond this quarter.",
     impactMin: 0.035,
     impactMax: 0.09,
     isRumor: false,
@@ -1496,7 +1496,7 @@ const bullishTemplates = [
     importance: "High" as Importance,
     headline: "wins a major new contract",
     body:
-      "Investors reacted positively after the company announced a multi-year contract that may increase future revenue visibility. The market is still weighing the cost of delivering the project.",
+      "A company announcement confirms a signed multi-year customer contract. It adds expected sales over several years, but hiring, equipment, and delivery costs could reduce how much profit the company keeps.",
     impactMin: 0.025,
     impactMax: 0.075,
     isRumor: false,
@@ -1506,7 +1506,7 @@ const bullishTemplates = [
     importance: "Medium" as Importance,
     headline: "sees strong demand after product update",
     body:
-      "The latest product update improved investor confidence after early customers reported better performance and reliability. Strong adoption could support revenue growth if supply and service costs stay controlled.",
+      "The company reports more orders after a product update, and early customers describe better reliability. More sales could help earnings, but the company still needs to deliver the orders without a large rise in costs.",
     impactMin: 0.015,
     impactMax: 0.055,
     isRumor: false,
@@ -1516,7 +1516,7 @@ const bullishTemplates = [
     importance: "Medium" as Importance,
     headline: "is reportedly close to a strategic partnership",
     body:
-      "Sources suggest the company may announce a strategic partnership soon. The report is not confirmed, so traders may react quickly if the company denies or delays the announcement.",
+      "Unnamed sources claim the company is discussing a partnership that could bring new customers. Neither company has confirmed the talks or announced a signed deal. Sales would benefit only if an agreement is reached and produces new business.",
     impactMin: 0.01,
     impactMax: 0.045,
     isRumor: true,
@@ -1526,7 +1526,7 @@ const bullishTemplates = [
     importance: "High" as Importance,
     headline: "raises full-year guidance",
     body:
-      "Management lifted its revenue and profit outlook for the year, citing durable demand and improving margins. Guidance raises often matter more than a single quarter because they reset expectations for several periods ahead.",
+      "In its company update, management raised its forecast for annual sales and profit because orders are stronger and costs are better controlled. This is a forecast, not money already earned; weaker demand could still cause the company to miss it.",
     impactMin: 0.03,
     impactMax: 0.08,
     isRumor: false,
@@ -1536,7 +1536,7 @@ const bullishTemplates = [
     importance: "Medium" as Importance,
     headline: "receives an analyst upgrade to Buy",
     body:
-      "A major brokerage upgraded the stock, arguing the market underappreciates the company's growth runway. Upgrades can attract momentum buyers, though the move fades if fundamentals don't follow.",
+      "A brokerage research note changed its recommendation to Buy, arguing that future sales could grow faster than investors expect. This is the analyst's opinion, not a new customer order or a company promise. Check whether later sales and profit support the argument.",
     impactMin: 0.012,
     impactMax: 0.05,
     isRumor: false,
@@ -1546,7 +1546,7 @@ const bullishTemplates = [
     importance: "Medium" as Importance,
     headline: "announces a share buyback and dividend increase",
     body:
-      "The board approved a buyback and a higher dividend, signalling confidence in cash flow. Returning capital can support the share price, but it also means less cash reinvested in growth.",
+      "A company filing says the board approved purchases of its own shares and a larger cash payment to shareholders. Fewer shares can increase each remaining share's portion of earnings, but the spending leaves less cash for expansion or unexpected costs.",
     impactMin: 0.01,
     impactMax: 0.04,
     isRumor: false,
@@ -1556,7 +1556,7 @@ const bullishTemplates = [
     importance: "High" as Importance,
     headline: "wins regulatory approval for a key product",
     body:
-      "Regulators cleared a flagship product, removing a major overhang and opening a new revenue line. Approval-driven moves can be large because the outcome was previously uncertain.",
+      "A published regulatory decision allows the company to sell a key product. This removes an approval barrier and creates a possible new source of sales. Launch costs, customer demand, and competing products will still determine whether it earns a profit.",
     impactMin: 0.035,
     impactMax: 0.085,
     isRumor: false,
@@ -1569,7 +1569,7 @@ const bearishTemplates = [
     importance: "High" as Importance,
     headline: "faces pressure after legal concerns emerge",
     body:
-      "Investors became cautious after reports of a legal issue that may create settlement costs, management distraction, or reputational damage. The company has not yet provided detailed financial guidance.",
+      "A court filing describes a legal claim against the company. A settlement or legal defence could cost money and distract management, but the filing is an allegation, not a finding that the company is liable. The possible financial cost is not yet known.",
     impactMin: -0.095,
     impactMax: -0.035,
     isRumor: false,
@@ -1579,7 +1579,7 @@ const bearishTemplates = [
     importance: "High" as Importance,
     headline: "warns of short-term supply delays",
     body:
-      "The company warned that supplier delays may push some shipments into a later quarter. Demand has not disappeared, but delayed deliveries can still reduce near-term revenue expectations.",
+      "A company update warns that supplier delays will push some customer deliveries into a later quarter. The orders have not been cancelled, but the company may receive payment later and face extra delivery costs. Watch for a revised delivery schedule.",
     impactMin: -0.075,
     impactMax: -0.025,
     isRumor: false,
@@ -1587,9 +1587,9 @@ const bearishTemplates = [
   {
     category: "macro" as EventCategory,
     importance: "Medium" as Importance,
-    headline: "falls as sector outlook weakens",
+    headline: "faces weaker demand across its sector",
     body:
-      "Analysts lowered expectations for the broader sector after new economic data suggested slower demand. The company may remain volatile until investors see whether its own results can resist the trend.",
+      "New economic data show customers spending less across the company's industry. Analysts have lowered their sales forecasts as a result. This company could lose orders too, although its own next sales report may show it is holding up better than competitors.",
     impactMin: -0.055,
     impactMax: -0.015,
     isRumor: false,
@@ -1597,9 +1597,9 @@ const bearishTemplates = [
   {
     category: "rumor" as EventCategory,
     importance: "Medium" as Importance,
-    headline: "drops after an unconfirmed negative report",
+    headline: "faces unconfirmed claims of a major order cancellation",
     body:
-      "An unconfirmed report created uncertainty around the company's near-term outlook. Because management has not released an official statement, the move may reverse if the rumor proves exaggerated.",
+      "An anonymous online post claims that a major customer cancelled an order. Neither the company nor the customer has confirmed the claim, and the post supplies no documents. A cancellation could reduce sales if true; look for a company statement or independent reporting before treating it as fact.",
     impactMin: -0.045,
     impactMax: -0.01,
     isRumor: true,
@@ -1609,7 +1609,7 @@ const bearishTemplates = [
     importance: "High" as Importance,
     headline: "misses earnings and cuts guidance",
     body:
-      "The company missed estimates and lowered its outlook, a combination the market treats harshly because it questions both execution and the forward story. Recovery usually depends on the next quarter's results.",
+      "The company's earnings release reports profit below analyst forecasts, and management now expects lower sales for the year. That weakens both the recent results and the future outlook. Watch whether demand recovers or costs fall in the next update.",
     impactMin: -0.1,
     impactMax: -0.04,
     isRumor: false,
@@ -1619,7 +1619,7 @@ const bearishTemplates = [
     importance: "High" as Importance,
     headline: "faces a regulatory investigation",
     body:
-      "Regulators opened an investigation into the company's practices. Even before any finding, the uncertainty and potential fines can weigh on the stock until the scope becomes clearer.",
+      "A regulator's public notice confirms an investigation into the company's practices. Legal costs, possible fines, or operating restrictions could reduce profit. No wrongdoing has been established yet, so the scope and eventual findings matter.",
     impactMin: -0.085,
     impactMax: -0.03,
     isRumor: false,
@@ -1629,7 +1629,7 @@ const bearishTemplates = [
     importance: "High" as Importance,
     headline: "issues a product recall over safety concerns",
     body:
-      "A recall raises direct costs and reputational risk. The market weighs whether it's a contained, one-off issue or a sign of deeper quality problems.",
+      "A company recall notice asks customers to return a product over safety concerns. Refunds and repairs will cost money, and some customers may delay new purchases. The key uncertainty is whether the problem affects one batch or a wider range of products.",
     impactMin: -0.08,
     impactMax: -0.025,
     isRumor: false,
@@ -1637,9 +1637,9 @@ const bearishTemplates = [
   {
     category: "management" as EventCategory,
     importance: "Medium" as Importance,
-    headline: "slides after a surprise executive departure",
+    headline: "announces an unexpected executive departure",
     body:
-      "A senior leader is leaving unexpectedly. Departures can spook investors when they suggest internal disagreement or trouble that isn't yet public.",
+      "A company announcement says a senior executive is leaving earlier than planned, without a permanent replacement named. The gap could delay decisions and projects. The announcement does not establish financial trouble; watch for a replacement and a clearer explanation.",
     impactMin: -0.05,
     impactMax: -0.015,
     isRumor: false,
@@ -1647,64 +1647,14 @@ const bearishTemplates = [
   {
     category: "capital" as EventCategory,
     importance: "Medium" as Importance,
-    headline: "falls after announcing a dilutive share sale",
+    headline: "plans to raise cash by issuing more shares",
     body:
-      "The company plans to raise capital by issuing new shares, diluting existing holders. It shores up the balance sheet but signals the business needs cash on hand.",
+      "A company filing proposes selling new shares to raise cash. The cash could help pay debts or fund operations, but existing investors would own a smaller percentage of the company. Whether the tradeoff helps them depends on the sale price and how the money is used.",
     impactMin: -0.055,
     impactMax: -0.02,
     isRumor: false,
   },
 ];
-
-const sectorEventCopy: Partial<Record<string, {
-  bullish: Array<{ headline: string; body: string }>;
-  bearish: Array<{ headline: string; body: string }>;
-}>> = {
-  Technology: {
-    bullish: [
-      { headline: "reports accelerating enterprise adoption", body: "Customer usage and recurring software demand improved, strengthening expectations for future revenue." },
-      { headline: "unveils a more efficient platform", body: "Early benchmarks suggest the new platform could improve performance while lowering customer operating costs." },
-    ],
-    bearish: [
-      { headline: "investigates a service outage", body: "A service disruption raised reliability concerns and may trigger customer credits or delayed deployments." },
-      { headline: "faces tighter component availability", body: "Limited supply may constrain shipments even though underlying customer demand remains intact." },
-    ],
-  },
-  Healthcare: {
-    bullish: [
-      { headline: "reports encouraging clinical evidence", body: "New patient data improved confidence in the program, though larger studies are still required." },
-      { headline: "wins clearance for a medical product", body: "Regulatory clearance removes a key uncertainty and allows commercial launch preparations to begin." },
-    ],
-    bearish: [
-      { headline: "pauses enrollment after a safety review", body: "The review may delay development while investigators determine whether the issue is isolated." },
-      { headline: "receives additional regulator questions", body: "The request extends the review timeline and increases uncertainty around approval." },
-    ],
-  },
-  Finance: {
-    bullish: [{ headline: "reports improving credit quality", body: "Lower delinquencies reduced expected loan losses and supported the earnings outlook." }],
-    bearish: [{ headline: "raises provisions for loan losses", body: "Management increased reserves as borrowers showed more financial stress." }],
-  },
-  Travel: {
-    bullish: [{ headline: "sees stronger booking demand", body: "Forward bookings improved while capacity discipline supported ticket pricing." }],
-    bearish: [{ headline: "warns of higher fuel and route costs", body: "Operating costs rose faster than fares, putting near-term margins under pressure." }],
-  },
-  Industrials: {
-    bullish: [{ headline: "expands its order backlog", body: "New customer orders improved factory visibility and future service revenue." }],
-    bearish: [{ headline: "faces production and delivery delays", body: "Parts shortages and logistics problems may postpone customer acceptance and revenue." }],
-  },
-  Consumer: {
-    bullish: [{ headline: "gains market share as demand improves", body: "Sales data show stronger customer traffic and resilient pricing." }],
-    bearish: [{ headline: "turns to promotions as demand cools", body: "Discounting may support volume but creates new pressure on profit margins." }],
-  },
-  Communication: {
-    bullish: [{ headline: "draws a larger audience for new releases", body: "Engagement and advertising demand improved around the latest content slate." }],
-    bearish: [{ headline: "faces rising content and subscriber costs", body: "Higher spending may be needed to defend audience share in a competitive market." }],
-  },
-  Energy: {
-    bullish: [{ headline: "adds a major project to its development pipeline", body: "The project expands future capacity, subject to financing and connection timelines." }],
-    bearish: [{ headline: "reports a permitting setback", body: "A delayed permit pushes expected construction and revenue milestones further out." }],
-  },
-};
 
 export function hashString(input: string) {
   let hash = 2166136261;
@@ -1785,6 +1735,49 @@ function getArcKey(newsId: string) {
   return undefined;
 }
 
+const storyArcSetbacks: Record<string, { headline: string; body: string }> = {
+  gas_prices: {
+    headline: "Fuel relief stalls as supply problems return",
+    body: "Fuel distributors report renewed refinery delays, interrupting the expected fall in gas prices. Airlines and freight companies still face high fuel bills, while households have less money for other purchases. Energy suppliers may retain some pricing power. Watch whether deliveries actually recover.",
+  },
+  cyber_breach: {
+    headline: "New breach evidence challenges earlier containment claims",
+    body: "Investigators found additional affected payment accounts after firms reported that the breach was contained. Retailers and banks may face more fraud losses and repair costs. CyberFort and Closed Ai could see further demand for security tools, but new contracts are not guaranteed.",
+  },
+  rate_cycle: {
+    headline: "Officials keep further rate increases on the table",
+    body: "A new policy statement says inflation remains too high to promise a pause in rate increases. Borrowing costs could stay elevated for Century 22, SolarDawn, PineApple, and Inter Corporation. UrbanBank may earn more interest on loans, although borrowers could also struggle to repay them.",
+  },
+  healthcare_trial: {
+    headline: "BioCloud partner delays funding for next trial phase",
+    body: "BioCloud says its partner has delayed the planned funding while it reviews trial requirements. The company may need to issue more shares or postpone research. MediCore could receive fewer diagnostic orders, and other smaller growth companies may face more cautious investors. The trial has not been cancelled.",
+  },
+  consumer_slowdown: {
+    headline: "Retail sales improve without another round of discounts",
+    body: "New retailer sales reports show customer demand recovering while selling prices hold steadier than expected. That reduces the pressure to cut prices at LuxeWear, FoodMart, and AgriPure. Keeping more of each sale could help profits, but one update does not establish a lasting recovery.",
+  },
+  supply_chain: {
+    headline: "Fresh port delays interrupt the expected shipping recovery",
+    body: "Port operators report new delays after an initial improvement in delivery times. Inter Corporation and PineApple may wait longer for parts and customer payments. FreightFlex could collect higher fees for scarce shipping capacity, although extra handling costs could absorb some of that revenue.",
+  },
+  takeover: {
+    headline: "OmniMedia deal talks stall over financing",
+    body: "OmniMedia's board says discussions have stalled because the buyer has not secured financing. The hoped-for takeover payment is now less likely, although talks have not formally ended. Rival Mount. Para Pictures may face less pressure from a combined competitor. Watch for a financed offer rather than another report of talks.",
+  },
+  labor_strike: {
+    headline: "Transport mediation ends without an agreement",
+    body: "Union and company statements confirm that the latest talks ended without a deal. A strike could cancel SkyBridge flights and delay FreightFlex deliveries, reducing sales while some operating costs continue. Workers have not yet announced a strike date.",
+  },
+  industry_regulation: {
+    headline: "Lawmakers restore costly technology requirements",
+    body: "A revised proposal restores compliance and security requirements that had been removed. Closed Ai and OmniMedia may need to spend more to meet them. CyberFort also faces implementation costs under this version, which could outweigh new security sales. The proposal still needs final approval.",
+  },
+  extreme_weather: {
+    headline: "Transport routes reopen as storm repair demand eases",
+    body: "Transport operators report faster-than-expected repairs and fewer continuing closures. SkyBridge and FreightFlex can resume more flights and deliveries, reducing lost sales. AquaLife may receive fewer emergency repair orders than expected. Further weather damage could still disrupt the recovery.",
+  },
+};
+
 function branchArcEvents(arcKey: string, events: MarketNews[], marketSeed?: string | null) {
   const branch = seededRandom(`story-arc-branch-${arcKey}`, marketSeed) < 0.5 ? "resolution" : "setback";
   if (branch === "resolution" || events.length === 0) {
@@ -1802,8 +1795,7 @@ function branchArcEvents(arcKey: string, events: MarketNews[], marketSeed?: stri
     return {
       ...event,
       newsId: `${event.newsId}_setback`,
-      headline: `${event.headline} — expected resolution falters`,
-      body: `${event.body} New evidence challenges the expected resolution, reversing part of the market's earlier assumption.`,
+      ...storyArcSetbacks[arcKey],
       marketTone: "Unclear" as MarketTone,
       impactByTicker,
       arcKey,
@@ -2012,10 +2004,10 @@ function generateEarningsEvent(
     : `${company.name} reports in-line quarterly results`;
 
   const body = outcome === "beat"
-    ? "Quarterly results beat analyst expectations on both revenue and profit, with management pointing to strong underlying demand."
+    ? "The company's earnings release reports sales and profit above analyst forecasts. Management attributes the improvement to stronger customer demand. Check whether orders remain strong and whether the extra sales cover the company's costs."
     : outcome === "miss"
-    ? "Quarterly results fell short of analyst expectations, with management citing softer demand and margin pressure."
-    : "Quarterly results landed roughly in line with analyst expectations, with no major surprises on revenue or profit.";
+    ? "The company's earnings release reports sales and profit below analyst forecasts. Management says customers bought less and costs consumed more of each sale. A recovery would need stronger demand or better cost control."
+    : "The company's earnings release reports sales and profit close to analyst forecasts. There is little new information to change the outlook. Future orders and costs still matter; matching forecasts does not promise a flat share price.";
 
   return {
     newsId: `news_earnings_${company.symbol.toLowerCase()}_${gameDay}`,
@@ -2153,17 +2145,12 @@ function generateEventForCompany(
   );
 
   const marketTone: MarketTone = actualImpact >= 0 ? "Bullish" : "Bearish";
-  const sectorPool = sectorEventCopy[company.sector]?.[actualImpact >= 0 ? "bullish" : "bearish"];
-  const sectorCopy = sectorPool?.[
-    Math.floor(seededRandom(`sector-copy-${company.symbol}-${gameDay}`, marketSeed) * sectorPool.length)
-  ];
-
   return {
     newsId: `news_${company.symbol.toLowerCase()}_${gameDay}`,
     gameDay,
     source: getNewsSource(company, template, gameDay, marketSeed),
-    headline: `${company.name} ${sectorCopy?.headline ?? template.headline}`,
-    body: sectorCopy?.body ?? template.body,
+    headline: `${company.name} ${template.headline}`,
+    body: template.body,
     importance: template.importance,
     marketTone,
     relatedTickers: [company.symbol],
@@ -2194,11 +2181,11 @@ function generateFollowUpForCompany(
     gameDay,
     source: NEWS_PUBLISHERS.officialWire,
     headline: confirmed
-      ? `${company.name} confirms key details in developing report`
-      : `${company.name} challenges earlier report as facts change`,
+      ? `${company.name} confirms the Day ${original.gameDay} report`
+      : `${company.name} disputes the Day ${original.gameDay} report`,
     body: confirmed
-      ? "An official update supports the central claim in yesterday's report, although execution risk remains."
-      : "The company supplied new evidence that contradicts the earlier account, increasing the chance of a price reversal.",
+      ? `The Day ${original.gameDay} report was: “${original.headline}”. A company statement now confirms the central claim. This strengthens the evidence behind that report, but the size and timing of its effect on sales or costs remain uncertain.`
+      : `The Day ${original.gameDay} report was: “${original.headline}”. A company statement now disputes that claim and supplies information contradicting the earlier account. The business impact described in that report may therefore be smaller than first thought.`,
     importance: original.importance,
     marketTone: actualImpact >= 0 ? "Bullish" : "Bearish",
     relatedTickers: [company.symbol],
