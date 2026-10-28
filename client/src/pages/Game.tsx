@@ -778,16 +778,11 @@ export default function Game() {
               <Grid container spacing={2}>
                 {todayNews.map((n) => {
                   const c = getNewsCredibility(n);
-                  const toneFg = n.marketTone === "Bullish" ? D.greenText : n.marketTone === "Bearish" ? D.redText : D.t2;
-                  const toneBg = n.marketTone === "Bullish" ? D.greenBg : n.marketTone === "Bearish" ? D.redBg : D.overlay;
-                  const toneLabel = n.marketTone === "Bullish" ? "Likely up" : n.marketTone === "Bearish" ? "Likely down" : "Unclear";
                   return (
                     <Grid item xs={12} md={6} key={n.newsId}>
                       <Box data-tour={n.relatedTickers.includes("CAI") ? "tutorial-news" : undefined} sx={{ p: 2, height: "100%", boxSizing: "border-box", borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${n.importance === "High" ? D.amber : D.border}` }}>
                         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mb: 1 }}>
-                          <Chip size="small" label={toneLabel} title={`${n.marketTone} signal · ${n.confidence ?? "Medium"} confidence · ${n.horizon ?? "Next session"}`}
-                            sx={{ bgcolor: toneBg, color: toneFg, fontWeight: 800, fontSize: 12 }} />
-                          {n.importance === "High" && <Typography component="span" sx={{ fontSize: 12, fontWeight: 800, color: D.amber }}>Big news</Typography>}
+                          {n.importance === "High" && <Typography component="span" sx={{ fontSize: 12, fontWeight: 800, color: D.amber }}>Breaking news</Typography>}
                           <Typography component="span" title="How reliable the source is, not a chance of profit" sx={{ fontSize: 12, color: c.rating === "low" ? D.redText : D.t3, ml: "auto !important" }}>
                             {c.rating === "low" ? "Unreliable source" : c.rating === "medium" ? "Fairly reliable" : "Reliable source"}
                           </Typography>

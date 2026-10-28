@@ -73,9 +73,9 @@ export default function News() {
           </Button>
         </Stack>
 
-        <Box component="details" sx={{ mb: 2, color: D.t2 }}><summary>Understanding news signals</summary>
+        <Box component="details" sx={{ mb: 2, color: D.t2 }}><summary>Reading the evidence</summary>
         <Typography sx={{ fontSize: 14, lineHeight: 1.6 }}>
-          Bullish signals point up; bearish signals point down. Confidence describes signal strength.
+          Consider what the report could change about a company's sales, costs, and risks. An advisor on the company's stock page can help you interpret the evidence.
           Credibility estimates report reliability from the publisher and rumor status. A score out of 100 is not a probability of profit.
         </Typography></Box>
         <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -135,7 +135,6 @@ function ArchiveCard({ item }: { item: MarketNews }) {
     <Typography sx={{ color: D.t1, fontSize: 17, lineHeight: 1.3, fontWeight: 900, my: 1 }}>{item.headline}</Typography>
     <Typography sx={{ color: D.t2, fontSize: 13, lineHeight: 1.7, mb: 2 }}>{item.body}</Typography>
     <Stack direction="row" gap={.75} flexWrap="wrap">
-      <Chip size="small" label={`${item.marketTone} signal`} />
       <Chip size="small" label={`Credibility ${credibility.score}/100 · ${credibility.label}`} />
       {item.relatedTickers.map((ticker) => <Chip key={ticker} size="small" label={ticker} sx={{ bgcolor: D.elevated, color: D.t1 }} />)}
     </Stack>
@@ -148,7 +147,6 @@ function ArticleDetail({ item }: { item: MarketNews }) {
     <Typography sx={{ color: D.brandText, fontSize: 11, fontWeight: 900, fontFamily: MONO }}>DAY {item.gameDay} · {item.source.toUpperCase()}</Typography>
     <Typography sx={{ color: D.t1, fontSize: { xs: 22, md: 28 }, lineHeight: 1.2, fontWeight: 950, my: 1.5 }}>{item.headline}</Typography>
     <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mb: 2.5 }}>
-      <Chip size="small" label={`${item.marketTone} signal`} />
       <Chip size="small" label={`${item.confidence ?? "Medium"} confidence`} />
       <Chip size="small" label={item.horizon ?? "Next session"} />
       <Chip size="small" label={`Credibility ${credibility.score}/100 · ${credibility.label}`} />
@@ -160,6 +158,6 @@ function ArticleDetail({ item }: { item: MarketNews }) {
       <Typography sx={{ color: D.t3, fontSize: 10.5, fontWeight: 900, fontFamily: MONO, mb: 1 }}>MARKET EXPOSURE</Typography>
       <Stack direction="row" gap={1} flexWrap="wrap">{item.relatedTickers.map((ticker) => <Chip key={ticker} size="small" label={ticker} sx={{ bgcolor: D.elevated, color: D.t1 }} />)}{item.affectedSectors?.map((name) => <Chip key={name} size="small" label={name} sx={{ bgcolor: D.brandBg, color: D.brandText }} />)}</Stack>
     </Box>
-    <Typography sx={{ color: D.t3, fontSize: 11.5, mt: 3 }}>Signals describe direction, confidence, and time horizon—not guaranteed returns. Exact price impacts remain hidden.</Typography>
+    <Typography sx={{ color: D.t3, fontSize: 11.5, mt: 3 }}>Reports provide evidence to assess, not guaranteed returns. Exact price impacts remain hidden.</Typography>
   </Box>;
 }

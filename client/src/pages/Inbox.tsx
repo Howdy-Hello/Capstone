@@ -16,9 +16,6 @@ import NewspaperIcon from "@mui/icons-material/Newspaper";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import SearchIcon from "@mui/icons-material/Search";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
-import TrendingDownIcon from "@mui/icons-material/TrendingDown";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -92,12 +89,6 @@ function folderIcon(folder: MailFolder) {
 
 function folderLabel(folder: MailFolder) {
   return FOLDERS.find((f) => f.id === folder)?.label ?? "System";
-}
-
-function toneMeta(tone: MarketNews["marketTone"]) {
-  if (tone === "Bullish") return { label: "Bullish", icon: <TrendingUpIcon sx={{ fontSize: 12 }} />, color: D.greenText, bg: D.greenBg };
-  if (tone === "Bearish") return { label: "Bearish", icon: <TrendingDownIcon sx={{ fontSize: 12 }} />, color: D.redText, bg: D.redBg };
-  return { label: "Unclear", icon: <HelpOutlineIcon sx={{ fontSize: 12 }} />, color: D.amber, bg: D.amberBg };
 }
 
 function timeLabel(item: MailItem) {
@@ -402,9 +393,6 @@ export default function Inbox() {
 
                   {selected.news && (
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }}>
-                      <Chip size="small" icon={toneMeta(selected.news.marketTone).icon}
-                        label={toneMeta(selected.news.marketTone).label}
-                        sx={{ bgcolor: toneMeta(selected.news.marketTone).bg, color: toneMeta(selected.news.marketTone).color, fontWeight: 800, fontSize: 10.5, "& .MuiChip-icon": { color: "inherit" } }} />
                       <Chip size="small" label={selected.news.importance === "High" ? "High impact" : "Normal impact"}
                         sx={{ bgcolor: selected.news.importance === "High" ? D.redBg : D.overlay, color: selected.news.importance === "High" ? D.redText : D.t3, fontWeight: 800, fontSize: 10.5 }} />
                       {selected.news.isRumor && (
