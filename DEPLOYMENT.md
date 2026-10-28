@@ -19,6 +19,11 @@ open again and allows trading after the news), and today's news can be read
 before the close. The market close, checked trade retries and reward rules
 require SQL c.
 
+The 2026-10-28 round (news while trading, day recap, faster day advance) adds
+`POST /api/game/close` to the API server and no SQL. Redeploy the server to
+get the one-request close and the next day's market prepared at the close;
+until then the client closes the market directly, as before.
+
 **Deploy order matters** when upgrading an existing install: apply the
 migrations, deploy the server (with its server-only Supabase credential), then deploy the
 client with `REACT_APP_API_URL`. An old client stops working as soon as the
