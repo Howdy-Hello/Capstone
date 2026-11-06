@@ -1,8 +1,9 @@
 import DecisionNote from "../components/learning/DecisionNote";
+import DayBar from "../components/DayBar";
 import React, { useEffect, useState } from "react";
-import {
+import { GlobalStyles,
   Box, Button, Chip, CircularProgress, Container, Divider, Grid, IconButton,
-  LinearProgress, MenuItem, Select, Tooltip, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography,
+  LinearProgress, MenuItem, Select, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -15,11 +16,9 @@ import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
 } from "recharts";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import TrendingFlatIcon from "@mui/icons-material/TrendingFlat";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import QueryStatsIcon from "@mui/icons-material/QueryStats";
-import AssessmentIcon from "@mui/icons-material/Assessment";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
@@ -29,7 +28,7 @@ import { getMaxAffordableQuantity, getSharesOwned } from "../data/tradingState";
 import { MARKET_CLOSED_MESSAGE, useGame } from "../context/GameContext";
 import { AlertCondition, describeAlert, useStockAlerts } from "../hooks/useStockAlerts";
 import { useAdvisor } from "../hooks/useAdvisor";
-import { D, CARD, MONO, money, pct } from "../theme/design";
+import { D, CARD, MONO, money, pct, readableOn, isFlat } from "../theme/design";
 import { TradeJournalInput } from "../lib/tradeJournal";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -100,8 +99,8 @@ function CandleTooltip({ active, payload }: any) {
       <Typography sx={{ color: D.t1, fontWeight: 900, fontSize: 12, mb: 0.7 }}>Day {candle.gameDay}</Typography>
       {[['Open', candle.openPrice], ['High', candle.highPrice], ['Low', candle.lowPrice], ['Close', candle.closePrice]].map(([label, value]) => (
         <Stack key={label} direction="row" justifyContent="space-between" spacing={2.5}>
-          <Typography sx={{ color: D.t3, fontSize: 11 }}>{label}</Typography>
-          <Typography sx={{ color: label === 'Close' ? (up ? D.greenText : D.redText) : D.t2, fontFamily: MONO, fontWeight: 800, fontSize: 11 }}>{money(Number(value))}</Typography>
+          <Typography sx={{ color: D.t3, fontSize: 12 }}>{label}</Typography>
+          <Typography sx={{ color: label === 'Close' ? (up ? D.greenText : D.redText) : D.t2, fontFamily: MONO, fontWeight: 800, fontSize: 12 }}>{money(Number(value))}</Typography>
         </Stack>
       ))}
     </Box>
@@ -173,8 +172,8 @@ export default function StockDetails() {
   }
 
   const isUp = stock.dayChangePercent >= 0;
+  const flatToday = isFlat(stock.dayChangePercent);
   const riskScore = getRiskScore(stock.riskLevel);
-  const latestHistory = history[history.length - 1];
   const sharesOwned = getSharesOwned(trading.account, stock.symbol);
   // BUG-060: after the close, trades are refused until the next day.
   const marketClosed = trading.marketPhase === "after_hours";
@@ -225,31 +224,28 @@ export default function StockDetails() {
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
+      <DayBar />
       {/* Hero */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
-        <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-          <Button onClick={() => navigate("/game")} startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
-            sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 1.5, mb: 2, fontSize: 13, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
-            Back to Market
-          </Button>
+        <Container maxWidth="xl" sx={{ py: { xs: 2.5, md: 3 } }}>
           <Grid container spacing={3} alignItems="center">
             <Grid item xs={12} md={7}>
-              <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+              <motion.div>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
-                  {[stock.symbol, `Day ${gameDay}`, `${stock.riskLevel} Risk`, stock.fundamentals.analystRating].map((label, i) => (
+                  {[stock.symbol, `${stock.riskLevel} Risk`, `Illustrative rating: ${stock.fundamentals.analystRating}`].map((label, i) => (
                     <Chip key={i} label={label} size="small"
-                      sx={{ bgcolor: D.overlay, color: D.brandText, border: `1px solid ${D.border}`, fontWeight: 800, fontSize: 10.5, fontFamily: MONO }} />
+                      sx={{ bgcolor: D.overlay, color: D.t2, border: `1px solid ${D.border}`, fontWeight: 800, fontSize: 12 }} />
                   ))}
                 </Stack>
-                <Typography component="h1" sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>{stock.name}</Typography>
+                <Typography component="h1" sx={{ fontSize: { xs: 26, md: 32 }, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em", mb: 1 }}>{stock.name}</Typography>
                 <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.7, maxWidth: 600 }}>{stock.description}</Typography>
-                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} style={{ display: "inline-block", marginTop: 16 }}>
+                <motion.div whileTap={reduceMotion ? undefined : { scale: 0.97 }} style={{ display: "inline-block", marginTop: 16 }}>
                   <Button onClick={() => trading.toggleWatchlist(stock)} startIcon={watchlisted ? <StarIcon /> : <StarBorderIcon />}
                     sx={{ color: watchlisted ? D.amber : D.t2, border: `1px solid ${watchlisted ? D.amber : D.border}`, bgcolor: watchlisted ? D.amberBg : "transparent", fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.amber, borderColor: D.amber, bgcolor: D.amberBg } }}>
                     {watchlisted ? "Watching" : "Add to Watchlist"}
                   </Button>
                 </motion.div>
-                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} style={{ display: "inline-block", marginTop: 16, marginLeft: 8 }}>
+                <motion.div whileTap={reduceMotion ? undefined : { scale: 0.97 }} style={{ display: "inline-block", marginTop: 16, marginLeft: 8 }}>
                   <Button component={RouterLink} to={`/compare?left=${stock.symbol}&right=${compareSymbol}`}
                     sx={{ color: D.brandText, border: `1px solid ${D.brandBd}`, bgcolor: D.brandBg, fontWeight: 800, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.overlay } }}>
                     Compare
@@ -258,18 +254,18 @@ export default function StockDetails() {
               </motion.div>
             </Grid>
             <Grid item xs={12} md={5}>
-              <motion.div initial={reduceMotion ? undefined : { opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.1 }}>
+              <motion.div>
                 <Box data-tour="stock-price" sx={{ ...CARD, p: 3 }}>
-                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>CURRENT PRICE</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>CURRENT PRICE</Typography>
                   <motion.div key={stock.currentPrice} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
-                    <Typography sx={{ fontSize: 36, fontWeight: 950, color: D.t1, fontFamily: MONO, lineHeight: 1, mb: 1 }}>{money(stock.currentPrice)}</Typography>
+                    <Typography sx={{ fontSize: 24, fontWeight: 900, color: D.t1, fontFamily: MONO, lineHeight: 1, mb: 1 }}>{money(stock.currentPrice)}</Typography>
                   </motion.div>
-                  <Chip size="small" icon={isUp ? <TrendingUpIcon sx={{ fontSize: 14 }} /> : <TrendingDownIcon sx={{ fontSize: 14 }} />}
+                  <Chip size="small" icon={flatToday ? <TrendingFlatIcon sx={{ fontSize: 14 }} /> : isUp ? <TrendingUpIcon sx={{ fontSize: 14 }} /> : <TrendingDownIcon sx={{ fontSize: 14 }} />}
                     label={`${pct(stock.dayChangePercent)} Today`}
-                    sx={{ bgcolor: isUp ? D.greenBg : D.redBg, color: isUp ? D.greenText : D.redText, border: `1px solid ${isUp ? D.greenBd : D.redBd}`, fontWeight: 800, mb: 2 }} />
-                  <Typography sx={{ fontSize: 11.5, color: D.t3, mb: 0.8 }}>Risk Level: {stock.riskLevel}</Typography>
+                    sx={{ bgcolor: flatToday ? D.elevated : isUp ? D.greenBg : D.redBg, color: flatToday ? D.t2 : isUp ? D.greenText : D.redText, border: `1px solid ${flatToday ? D.border : isUp ? D.greenBd : D.redBd}`, "& .MuiChip-icon": { color: "inherit" }, fontWeight: 800, mb: 2 }} />
+                  <Typography sx={{ fontSize: 12, color: D.t3, mb: 0.8 }}>Risk Level: {stock.riskLevel}</Typography>
                   <LinearProgress variant="determinate" value={riskScore}
-                    sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: stock.riskLevel === "High" ? D.red : D.green, borderRadius: 99 } }} />
+                    sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.amber, borderRadius: 99 } }} />
                 </Box>
               </motion.div>
             </Grid>
@@ -278,70 +274,41 @@ export default function StockDetails() {
       </Box>
 
       <Container maxWidth="xl" sx={{ py: 3 }}>
-        {/* Stat tiles */}
-        <Grid data-tour="stock-values" container spacing={2} sx={{ mb: 3 }}>
-          {[
-            { label: "Current Price",   val: money(stock.currentPrice),                             icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: undefined, note: "Price for one share; it is not the value of the whole business." },
-            { label: "P/E Ratio",       val: stock.fundamentals.peRatio.toFixed(1),                 icon: <AssessmentIcon sx={{ fontSize: 20 }} />,           up: undefined, note: "Price divided by annual earnings per share; compare similar businesses." },
-            { label: "Revenue Growth",  val: `+${stock.fundamentals.revenueGrowth.toFixed(1)}%`,    icon: <TrendingUpIcon sx={{ fontSize: 20 }} />,            up: undefined, note: "Change in sales; investigate whether sales become sustainable profit." },
-            { label: "Volume",          val: latestHistory ? latestHistory.volume.toLocaleString() : "-", icon: <QueryStatsIcon sx={{ fontSize: 20 }} />,      up: undefined, note: "Number of shares traded, not a measure of business quality." },
-          ].map((s, i) => {
-            const color = s.up === undefined ? D.brandText : D.greenText;
-            const bg    = s.up === undefined ? D.brandBg   : D.greenBg;
-            return (
-              <Grid item xs={12} sm={6} md={3} key={s.label}>
-                <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: Math.min(i * 0.06, 0.24) }}
-                  sx={{ ...CARD, p: 2.5 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                    <Box>
-                      <Tooltip title={s.note} enterTouchDelay={0}><Typography tabIndex={0} sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography></Tooltip>
-                      <motion.div key={s.val} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
-                        <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
-                      </motion.div>
-                    </Box>
-                    <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
-                  </Stack>
-                </Box>
-              </Grid>
-            );
-          })}
-        </Grid>
-
-        <Grid container spacing={3}>
-          <Grid item xs={12} lg={8}>
+        <Box sx={{ display: "grid", gap: 3, gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 2fr) minmax(0, 1fr)" }, gridTemplateRows: { lg: "auto 1fr" }, gridTemplateAreas: { xs: '"ticket" "main" "rail"', lg: '"main ticket" "main rail"' } }}>
+          <Box sx={{ gridArea: "main", minWidth: 0 }}>
             {/* Price chart */}
             <Box sx={{ ...CARD, p: 0, overflow: "hidden", mb: 3 }}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Box>
-                  <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Price History</Typography>
-                  <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Close prices up to Day {gameDay}.</Typography>
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Price History</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t3 }}>Close prices up to Day {gameDay}.</Typography>
                 </Box>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <ToggleButtonGroup data-tour="chart-toggle" exclusive size="small" value={chartType} onChange={(_, value) => value && setChartType(value)} aria-label="Price chart type"
-                    sx={{ "& .MuiToggleButton-root": { color: D.t3, borderColor: D.border, px: 1.5, py: 0.45, fontSize: 11, fontWeight: 800, textTransform: "none", "&.Mui-selected": { color: D.brandText, bgcolor: D.brandBg }, "&.Mui-selected:hover": { bgcolor: D.brandBg } } }}>
+                    sx={{ "& .MuiToggleButton-root": { color: D.t3, borderColor: D.border, px: 1.5, py: 0.45, fontSize: 12, fontWeight: 800, textTransform: "none", "&.Mui-selected": { color: D.brandText, bgcolor: D.brandBg }, "&.Mui-selected:hover": { bgcolor: D.brandBg } } }}>
                     <ToggleButton value="area" aria-label="Area chart">Area</ToggleButton>
                     <ToggleButton value="bar" aria-label="Candlestick chart">Candles</ToggleButton>
                   </ToggleButtonGroup>
-                  <Chip label={`${history.length} data points`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontSize: 11 }} />
+                  <Chip label={`${history.length} data ${history.length === 1 ? "point" : "points"}`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontSize: 12 }} />
                 </Stack>
               </Stack>
-              <Typography sx={{ px: 3, color: D.t2, fontSize: 12 }}>Candles show open, high, low, and close. The body spans open to close; the wick spans the day’s range. Up/down colours describe movement, not a recommendation.</Typography>
+              <Typography sx={{ px: 3, pt: 1.5, color: D.t2, fontSize: 14, maxWidth: "75ch" }}>Candles show open, high, low, and close. The body spans open to close; the wick spans the day’s range. Up/down colours describe movement, not a recommendation.</Typography>
               <Box sx={{ p: 2.5, height: 360 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   {chartType === "area" ? (
                     <AreaChart data={history}>
                       <defs><linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={D.brand} stopOpacity={0.35} /><stop offset="95%" stopColor={D.brand} stopOpacity={0.02} /></linearGradient></defs>
                       <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
-                      <XAxis dataKey="gameDay" tickFormatter={(v) => `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 11 }} />
-                      <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 11 }} />
+                      <XAxis dataKey="gameDay" tickFormatter={(v) => `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
+                      <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 12 }} />
                       <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "Close"]} labelFormatter={(l) => `Day ${l}`} />
-                      <Area type="monotone" dataKey="closePrice" stroke={D.brand} strokeWidth={2.5} fill="url(#priceFill)" dot={history.length <= 40} activeDot={{ r: 5, fill: D.brand }} />
+                      <Area isAnimationActive={false} type="monotone" dataKey="closePrice" stroke={D.brand} strokeWidth={2.5} fill="url(#priceFill)" dot={history.length <= 40} activeDot={{ r: 5, fill: D.brand }} />
                     </AreaChart>
                   ) : (
                     <BarChart data={candleHistory} barCategoryGap="10%">
                       <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
-                      <XAxis dataKey="gameDay" tickFormatter={(v) => `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 11 }} />
-                      <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 11 }} />
+                      <XAxis dataKey="gameDay" tickFormatter={(v) => `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
+                      <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 12 }} />
                       <RTooltip cursor={{ fill: D.overlay }} content={<CandleTooltip />} />
                       <Bar dataKey="range" shape={<Candlestick />} isAnimationActive={false} />
                     </BarChart>
@@ -353,8 +320,8 @@ export default function StockDetails() {
             {/* Fundamentals */}
             <Box sx={{ ...CARD, p: 0, overflow: "hidden", mb: 3 }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Company Fundamentals</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Stored company metrics to inform trading decisions.</Typography>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Company Fundamentals</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t3 }}>Stored company metrics to inform trading decisions.</Typography>
               </Box>
               <Box sx={{ p: 2.5 }}>
                 <Grid container spacing={2}>
@@ -368,8 +335,8 @@ export default function StockDetails() {
                   ].map((m) => (
                     <Grid item xs={12} sm={6} md={4} key={m.label}>
                       <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, height: "100%" }}>
-                        <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>{m.label.toUpperCase()}</Typography>
-                        <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO, mb: 0.3 }}>{m.val}</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>{m.label.toUpperCase()}</Typography>
+                        <Typography sx={{ fontSize: 20, fontWeight: 900, color: D.t1, fontFamily: MONO, mb: 0.3 }}>{m.val}</Typography>
                         <Typography sx={{ fontSize: 12, color: D.t3 }}>{m.note}</Typography>
                       </Box>
                     </Grid>
@@ -381,8 +348,8 @@ export default function StockDetails() {
             {/* Recent prices */}
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Recent Prices</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Latest 10 generated price points.</Typography>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Recent Prices</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t3 }}>Latest 10 generated price points.</Typography>
               </Box>
               <Box sx={{ p: 2.5 }}>
                 <Stack spacing={1}>
@@ -391,7 +358,7 @@ export default function StockDetails() {
                     return (
                       <Box key={item.priceId} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                         <Grid container spacing={1} alignItems="center">
-                          <Grid item xs={6} sm={2}><Typography sx={{ fontSize: 13, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>Day {item.gameDay}</Typography></Grid>
+                          <Grid item xs={6} sm={2}><Typography sx={{ fontSize: 14, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>Day {item.gameDay}</Typography></Grid>
                           {[
                             { l: "Open",  v: money(item.openPrice) },
                             { l: "High",  v: money(item.highPrice) },
@@ -399,12 +366,12 @@ export default function StockDetails() {
                             { l: "Close", v: money(item.closePrice) },
                           ].map((c) => (
                             <Grid item xs={6} sm={2} key={c.l}>
-                              <Typography sx={{ fontSize: 10.5, color: D.t3 }}>{c.l}</Typography>
-                              <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{c.v}</Typography>
+                              <Typography sx={{ fontSize: 12, color: D.t3 }}>{c.l}</Typography>
+                              <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{c.v}</Typography>
                             </Grid>
                           ))}
                           <Grid item xs={6} sm={2}>
-                            <Typography sx={{ fontSize: 13, fontWeight: 900, color: up ? D.greenText : D.redText, textAlign: { xs: "left", sm: "right" }, fontFamily: MONO }}>
+                            <Typography sx={{ fontSize: 14, fontWeight: 900, color: up ? D.greenText : D.redText, textAlign: { xs: "left", sm: "right" }, fontFamily: MONO }}>
                               {pct(item.changePercent)}
                             </Typography>
                           </Grid>
@@ -415,48 +382,54 @@ export default function StockDetails() {
                 </Stack>
               </Box>
             </Box>
-          </Grid>
-
-          {/* Sidebar */}
-          <Grid item xs={12} lg={4}>
-            <Stack spacing={2.5}>
-              {/* Company profile */}
-              <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 2 }}>Company Profile</Typography>
-                <Stack spacing={0}>
-                  {[
-                    { l: "Symbol",        v: stock.symbol },
-                    { l: "Sector",        v: stock.sector },
-                    { l: "Industry",      v: stock.industry },
-                    { l: "Starting Price", v: money(stock.startingPrice) },
-                    { l: "Volatility",    v: `${(stock.volatility * 100).toFixed(1)}%` },
-                    { l: "Risk Level",    v: stock.riskLevel },
-                    { l: "Rating",        v: stock.fundamentals.analystRating },
-                  ].map((r) => (
-                    <Stack key={r.l} direction="row" justifyContent="space-between" gap={2} sx={{ py: 1.2, borderBottom: `1px solid ${D.border}`, "&:last-child": { border: "none" } }}>
-                      <Typography sx={{ fontSize: 13, color: D.t3 }}>{r.l}</Typography>
-                      <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO, textAlign: "right" }}>{r.v}</Typography>
-                    </Stack>
-                  ))}
+            <Box sx={{ mt: 3 }}>
+              {/* Related news */}
+              <Box sx={{ ...CARD, p: 3 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                  <NewspaperIcon sx={{ fontSize: 18, color: D.brandText }} />
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Related News</Typography>
                 </Stack>
+                <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>News connected to {stock.symbol} up to Day {gameDay}.</Typography>
+                <Divider sx={{ borderColor: D.border, mb: 2 }} />
+                {relatedNews.length === 0 ? (
+                  <Typography sx={{ fontSize: 14, color: D.t3 }}>No related news yet.</Typography>
+                ) : (
+                  <Stack spacing={1.2}>
+                    <MotionPresence mode="popLayout" initial={false}>
+                    {relatedNews.slice(-8).map((n, index) => (
+                        <Box key={n.newsId} component={motion.div} layout={!reduceMotion}
+                          initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
+                          transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
+                          sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                          <Chip size="small" label={n.importance} sx={{ bgcolor: D.amberBg, color: D.amber, fontWeight: 800, fontSize: 12, mb: 0.8 }} />
+                          <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.3 }}>Day {n.gameDay}: {n.headline}</Typography>
+                          <Typography sx={{ fontSize: 14, color: D.t3, lineHeight: 1.6 }}>{n.body}</Typography>
+                        </Box>
+                    ))}
+                    </MotionPresence>
+                  </Stack>
+                )}
               </Box>
+            </Box>
+          </Box>
 
+          <Box sx={{ gridArea: "ticket", minWidth: 0 }}>
               {/* Trading actions */}
               <Box data-tour="trade-panel" sx={{ ...CARD, p: 3 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Trading Actions</Typography>
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Trading Actions</Typography>
                   <Chip label={watchlisted ? "WATCHING" : "WATCHLIST"} size="small"
-                    sx={{ bgcolor: watchlisted ? D.amberBg : D.overlay, color: watchlisted ? D.amber : D.t3, fontWeight: 900, fontSize: 10, fontFamily: MONO }} />
+                    sx={{ bgcolor: watchlisted ? D.amberBg : D.overlay, color: watchlisted ? D.amber : D.t3, fontWeight: 900, fontSize: 12, fontFamily: MONO }} />
                 </Stack>
                 <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
-                  <Typography sx={{ fontSize: 13, color: D.t3 }}>Cash: {money(trading.account.cash)}</Typography>
-                  <Typography sx={{ fontSize: 13, color: D.t3 }}>Owned: {sharesOwned}</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t3 }}>Cash: {money(trading.account.cash)}</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t3 }}>Owned: {sharesOwned}</Typography>
                 </Stack>
 
-                <Typography sx={{ color: D.t2, fontSize: 12, mb: 2 }}>Fictional company · synthetic prices · illustrative risk and analyst rating. Immediate orders only; try other order types in Learn.</Typography>
+                <Typography sx={{ color: D.t2, fontSize: 14, mb: 2 }}>Fictional company · synthetic prices · illustrative risk and analyst rating. Immediate orders only; try other order types in Learn.</Typography>
                 {/* Quantity stepper */}
                 <Box sx={{ mb: 2 }}>
-                  <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 1 }}>QUANTITY</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 1 }}>QUANTITY</Typography>
                   <Stack direction="row" alignItems="center" spacing={1.5}>
                     <IconButton size="small" aria-label="Decrease share quantity" onClick={() => setQuantity((q) => Math.max(1, q - 1))} disabled={quantity <= 1}
                       sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, color: D.t2, borderRadius: 1.5,
@@ -470,7 +443,7 @@ export default function StockDetails() {
                         const v = parseInt(e.target.value, 10);
                         if (!Number.isNaN(v) && v >= 1) setQuantity(v);
                       }}
-                      inputProps={{ min: 1, sx: { textAlign: "center", fontFamily: MONO, fontWeight: 900, fontSize: 17, py: 0.8 } }}
+                      inputProps={{ min: 1, "aria-label": "Share quantity", sx: { textAlign: "center", fontFamily: MONO, fontWeight: 900, fontSize: 18, py: 0.8 } }}
                       sx={{
                         width: 80,
                         "& .MuiOutlinedInput-root": {
@@ -492,32 +465,32 @@ export default function StockDetails() {
                         stock.currentPrice,
                         (q) => trading.getTradeQuote(stock, "buy", q).total
                       )))}
-                      sx={{ color: D.brandText, fontSize: 11, fontWeight: 800, textTransform: "none", px: 1, minWidth: "auto" }}>
+                      sx={{ color: D.brandText, fontSize: 12, fontWeight: 800, textTransform: "none", px: 1, minWidth: "auto" }}>
                       Max
                     </Button>
-                    <Typography sx={{ fontSize: 13, color: D.t3, fontFamily: MONO }}>
+                    <Typography sx={{ fontSize: 14, color: D.t3, fontFamily: MONO }}>
                       = {money(buyQuote.total)}
                     </Typography>
                   </Stack>
-                  <Typography sx={{ fontSize: 11, color: D.t3, mt: 0.5, fontFamily: MONO }}>
+                  <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5, fontFamily: MONO }}>
                     Cash after: <Box component="span" sx={{ color: trading.account.cash - buyQuote.total >= 0 ? D.greenText : D.redText, fontWeight: 700 }}>
                       {money(Math.max(0, trading.account.cash - buyQuote.total))}
                     </Box>
                   </Typography>
                   {(buyQuote.slippage > 0.001 || sellQuote.slippage > 0.001) && (
-                    <Typography sx={{ fontSize: 11, color: D.amber, mt: 0.8 }}>
+                    <Typography sx={{ fontSize: 12, color: D.amber, mt: 0.8 }}>
                       Game rule: orders above 15% of net worth receive an account-size execution penalty, capped at 12%. This is a balancing rule, not how real brokers price your savings.
                     </Typography>
                   )}
                 </Box>
 
-                <Box data-tour="trade-journal" sx={{ mb: 2, p: 1.75, bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2 }}>
-                  <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t1, mb: .35 }}>DECISION JOURNAL <Box component="span" sx={{ color: D.t3, fontWeight: 600 }}>(OPTIONAL)</Box></Typography>
-                  <Typography sx={{ fontSize: 11, color: D.t3, mb: 1.2 }}>A price-outcome review arrives at your horizon. Reflect on your plan on the Dashboard.</Typography>
+                <Box component="details" data-tour="trade-journal" sx={{ mb: 2, p: 1.75, bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2 }}>
+                  <Box component="summary" sx={{ cursor: "pointer", minHeight: 24, mb: .35 }}><Typography component="span" sx={{ fontSize: 12, fontWeight: 900, color: D.t1 }}>DECISION JOURNAL <Box component="span" sx={{ color: D.t3, fontWeight: 600 }}>(OPTIONAL)</Box></Typography></Box>
+                  <Typography sx={{ fontSize: 12, color: D.t3, mb: 1.2 }}>A price-outcome review arrives at your horizon. Reflect on your plan on the Dashboard.</Typography>
                   <TextField fullWidth size="small" multiline minRows={2} value={tradeThesis} onChange={(event) => setTradeThesis(event.target.value.slice(0, 500))} label="Why am I making this decision?"
                     inputProps={{ "aria-label": "Reason for this decision" }} sx={{ mb: 1, "& .MuiOutlinedInput-root": { bgcolor: D.surface, color: D.t1, fontSize: 12, "& fieldset": { borderColor: D.border }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
                   <Stack direction="row" spacing={.6} sx={{ mb: 1 }}>
-                    {[3, 10, 30].map((days) => <Button key={days} size="small" onClick={() => setTradeHorizonDays(days)} sx={{ minWidth: 0, px: 1, py: .35, borderRadius: 99, textTransform: "none", fontSize: 10, fontWeight: 800, color: tradeHorizonDays === days ? D.brandText : D.t3, bgcolor: tradeHorizonDays === days ? D.brandBg : "transparent", border: `1px solid ${tradeHorizonDays === days ? D.brandBd : D.border}` }}>{days} days</Button>)}
+                    {[3, 10, 30].map((days) => <Button key={days} size="small" onClick={() => setTradeHorizonDays(days)} sx={{ minWidth: 0, px: 1, py: .35, borderRadius: 99, textTransform: "none", fontSize: 12, fontWeight: 800, color: tradeHorizonDays === days ? D.brandText : D.t3, bgcolor: tradeHorizonDays === days ? D.brandBg : "transparent", border: `1px solid ${tradeHorizonDays === days ? D.brandBd : D.border}` }}>{days} days</Button>)}
                   </Stack>
                   <TextField fullWidth size="small" value={tradeExitPlan} onChange={(event) => setTradeExitPlan(event.target.value.slice(0, 500))} placeholder="What would prove you wrong?"
                     inputProps={{ "aria-label": "Trade exit rule" }} sx={{ "& .MuiOutlinedInput-root": { bgcolor: D.surface, color: D.t1, fontSize: 12, "& fieldset": { borderColor: D.border }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
@@ -528,34 +501,59 @@ export default function StockDetails() {
                   {tradeMsg && (
                     <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 30 }}>
                       <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: tradeMsg.ok ? D.greenBg : D.redBg, border: `1px solid ${tradeMsg.ok ? D.greenBd : D.redBd}`, mb: 1.5 }}>
-                        <Typography sx={{ fontSize: 13, fontWeight: 700, color: tradeMsg.ok ? D.greenText : D.redText }}>{tradeMsg.text}</Typography>
+                        <Typography sx={{ fontSize: 14, fontWeight: 700, color: tradeMsg.ok ? D.greenText : D.redText }}>{tradeMsg.text}</Typography>
                       </Box>
                     </motion.div>
                   )}
                 </MotionPresence>
                 <Stack spacing={1}>
                   {marketClosed && (
-                    <Typography role="status" sx={{ fontSize: 12.5, color: D.amber, fontWeight: 800 }}>
+                    <Typography role="status" sx={{ fontSize: 14, color: D.amber, fontWeight: 800 }}>
                       {MARKET_CLOSED_MESSAGE}
                     </Typography>
                   )}
-                  <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+                  {/* On a phone Buy and Sell stay in reach as a bottom bar. */}
+                  <GlobalStyles styles={{ "@media (max-width: 899.95px)": { body: { paddingBottom: 72 } } }} />
+                  <Box sx={{ position: { xs: "fixed", md: "static" }, left: 0, right: 0, bottom: 0, zIndex: 1100, display: "flex", flexDirection: { xs: "row", md: "column" }, gap: 1, p: { xs: 1.5, md: 0 }, bgcolor: { xs: D.surface, md: "transparent" }, borderTop: { xs: `1px solid ${D.border}`, md: "none" }, "& > *": { flex: 1 } }}>
+                  <motion.div whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
                     <Button data-tour="tutorial-buy" fullWidth variant="contained" onClick={handleBuy}
                       disabled={submitting || marketClosed || trading.advancing || trading.actionPending || trading.isGameComplete || trading.account.cash < buyQuote.total}
-                      sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+                      sx={{ bgcolor: D.green, color: readableOn(D.green), fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.green, filter: "brightness(0.9)", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Buy {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>
                   </motion.div>
-                  <motion.div whileHover={reduceMotion ? undefined : { scale: 1.01 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+                  <motion.div whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
                     <Button data-tour="tutorial-sell" fullWidth variant="contained" disabled={submitting || marketClosed || trading.advancing || trading.actionPending || trading.isGameComplete || sharesOwned < quantity} onClick={handleSell}
-                      sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+                      sx={{ bgcolor: D.red, color: readableOn(D.red), fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.red, filter: "brightness(0.9)", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                       Sell {quantity} {quantity === 1 ? "share" : "shares"}
                     </Button>
                   </motion.div>
-                  <Button fullWidth onClick={() => navigate("/game")}
-                    sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
-                    Back to Market
-                  </Button>
+                  </Box>
+                </Stack>
+              </Box>
+          </Box>
+
+          {/* Sidebar */}
+          <Box sx={{ gridArea: "rail", minWidth: 0 }}>
+            <Stack spacing={2.5}>
+              {/* Company profile */}
+              <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 2 }}>Company Profile</Typography>
+                <Stack spacing={0}>
+                  {[
+                    { l: "Symbol",        v: stock.symbol },
+                    { l: "Sector",        v: stock.sector },
+                    { l: "Industry",      v: stock.industry },
+                    { l: "Starting Price", v: money(stock.startingPrice) },
+                    { l: "Volatility",    v: `${(stock.volatility * 100).toFixed(1)}%` },
+                    { l: "Risk Level",    v: stock.riskLevel },
+                    { l: "Rating",        v: stock.fundamentals.analystRating },
+                  ].map((r) => (
+                    <Stack key={r.l} direction="row" justifyContent="space-between" gap={2} sx={{ py: 1.2, borderBottom: `1px solid ${D.border}`, "&:last-child": { border: "none" } }}>
+                      <Typography sx={{ fontSize: 14, color: D.t3 }}>{r.l}</Typography>
+                      <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO, textAlign: "right" }}>{r.v}</Typography>
+                    </Stack>
+                  ))}
                 </Stack>
               </Box>
 
@@ -564,12 +562,12 @@ export default function StockDetails() {
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <SmartToyIcon sx={{ fontSize: 18, color: D.brandText }} />
-                    <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Advisor</Typography>
+                    <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Advisor</Typography>
                   </Stack>
                   <Chip label={advisor.activeAdvisor ? advisor.activeAdvisor.name : "No advisor"} size="small"
-                    sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 800, fontSize: 10, fontFamily: MONO }} />
+                    sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 800, fontSize: 12, fontFamily: MONO }} />
                 </Stack>
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2 }}>
+                <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>
                   {advisor.activeAdvisor ? `${advisor.activeAdvisor.name} will review ${stock.symbol}'s momentum, fundamentals, and recent news.` : "Hire an advisor to unlock stock reports for this game run."}
                 </Typography>
 
@@ -577,14 +575,14 @@ export default function StockDetails() {
                   <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, mb: 1.5 }}>
                     <Chip size="small" label={advisor.report.verdict}
                       sx={{
-                        mb: 1, fontWeight: 900, fontSize: 10.5,
+                        mb: 1, fontWeight: 900, fontSize: 12,
                         bgcolor: advisor.report.verdict === "Bullish" ? D.greenBg : advisor.report.verdict === "Cautious" ? D.redBg : D.overlay,
                         color: advisor.report.verdict === "Bullish" ? D.greenText : advisor.report.verdict === "Cautious" ? D.redText : D.t2,
                       }} />
-                    <Typography sx={{ fontSize: 12.5, color: D.t1, fontWeight: 700, mb: 1 }}>{advisor.report.summary}</Typography>
+                    <Typography sx={{ fontSize: 14, color: D.t1, fontWeight: 700, mb: 1 }}>{advisor.report.summary}</Typography>
                     <Stack spacing={0.6}>
                       {advisor.report.points.map((point, i) => (
-                        <Typography key={i} sx={{ fontSize: 11.5, color: D.t3, lineHeight: 1.5 }}>• {point}</Typography>
+                        <Typography key={i} sx={{ fontSize: 12, color: D.t3, lineHeight: 1.5 }}>• {point}</Typography>
                       ))}
                     </Stack>
                   </Box>
@@ -607,9 +605,9 @@ export default function StockDetails() {
               <Box data-tour="price-alerts" sx={{ ...CARD, p: 3 }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
                   <NotificationsActiveIcon sx={{ fontSize: 18, color: D.brandText }} />
-                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Price Alerts</Typography>
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Price Alerts</Typography>
                 </Stack>
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2 }}>
+                <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>
                   Get notified when {stock.symbol} crosses a threshold.
                 </Typography>
 
@@ -618,7 +616,7 @@ export default function StockDetails() {
                     {symbolAlerts.map((alert) => (
                       <Stack key={alert.id} direction="row" alignItems="center" justifyContent="space-between"
                         sx={{ p: 1.4, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                        <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: D.t1 }}>{describeAlert(alert)}</Typography>
+                        <Typography sx={{ fontSize: 14, fontWeight: 700, color: D.t1 }}>{describeAlert(alert)}</Typography>
                         <IconButton size="small" aria-label={`Delete ${describeAlert(alert)} alert`} onClick={() => deleteAlert(alert.id)} sx={{ color: D.t3, "&:hover": { color: D.redText } }}>
                           <DeleteOutlineIcon sx={{ fontSize: 16 }} />
                         </IconButton>
@@ -628,14 +626,14 @@ export default function StockDetails() {
                 )}
 
                 <Stack spacing={1}>
-                  <Select size="small" value={alertCondition} onChange={(e) => setAlertCondition(e.target.value as AlertCondition)}
+                  <Select size="small" SelectDisplayProps={{ "aria-label": "Alert condition" }} value={alertCondition} onChange={(e) => setAlertCondition(e.target.value as AlertCondition)}
                     sx={{
-                      bgcolor: D.elevated, color: D.t1, borderRadius: 1.5, fontSize: 13,
+                      bgcolor: D.elevated, color: D.t1, borderRadius: 1.5, fontSize: 14,
                       "& .MuiOutlinedInput-notchedOutline": { borderColor: D.border },
                       "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: D.borderHi },
                     }}>
                     {ALERT_CONDITIONS.map((c) => (
-                      <MenuItem key={c.value} value={c.value} sx={{ fontSize: 13 }}>{c.label}</MenuItem>
+                      <MenuItem key={c.value} value={c.value} sx={{ fontSize: 14 }}>{c.label}</MenuItem>
                     ))}
                   </Select>
                   {needsThreshold(alertCondition) ? (
@@ -643,10 +641,11 @@ export default function StockDetails() {
                       size="small" type="number" value={alertThreshold}
                       onChange={(e) => setAlertThreshold(e.target.value)}
                       placeholder={isPctCondition ? "e.g. 5 (%)" : `e.g. ${stock.currentPrice.toFixed(2)}`}
-                      InputProps={{ startAdornment: isPctCondition ? undefined : <Typography sx={{ fontSize: 13, color: D.t3, mr: 0.5 }}>$</Typography> }}
+                      inputProps={{ "aria-label": isPctCondition ? "Alert percentage" : "Alert price" }}
+                      InputProps={{ startAdornment: isPctCondition ? undefined : <Typography sx={{ fontSize: 14, color: D.t3, mr: 0.5 }}>$</Typography> }}
                       sx={{
                         "& .MuiOutlinedInput-root": {
-                          bgcolor: D.elevated, color: D.t1, borderRadius: 1.5, fontSize: 13,
+                          bgcolor: D.elevated, color: D.t1, borderRadius: 1.5, fontSize: 14,
                           "& fieldset": { borderColor: D.border },
                           "&:hover fieldset": { borderColor: D.borderHi },
                           "&.Mui-focused fieldset": { borderColor: D.brand },
@@ -665,38 +664,11 @@ export default function StockDetails() {
                 </Stack>
               </Box>
 
-              {/* Related news */}
-              <Box sx={{ ...CARD, p: 3 }}>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-                  <NewspaperIcon sx={{ fontSize: 18, color: D.brandText }} />
-                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Related News</Typography>
-                </Stack>
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2 }}>News connected to {stock.symbol} up to Day {gameDay}.</Typography>
-                <Divider sx={{ borderColor: D.border, mb: 2 }} />
-                {relatedNews.length === 0 ? (
-                  <Typography sx={{ fontSize: 13, color: D.t3 }}>No related news yet.</Typography>
-                ) : (
-                  <Stack spacing={1.2}>
-                    <MotionPresence mode="popLayout" initial={false}>
-                    {relatedNews.slice(-8).map((n, index) => (
-                        <Box key={n.newsId} component={motion.div} layout={!reduceMotion}
-                          initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
-                          transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
-                          sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                          <Chip size="small" label={n.importance} sx={{ bgcolor: n.importance === "High" ? D.redBg : D.amberBg, color: n.importance === "High" ? D.redText : D.amber, fontWeight: 800, fontSize: 10, mb: 0.8 }} />
-                          <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1, mb: 0.3 }}>Day {n.gameDay}: {n.headline}</Typography>
-                          <Typography sx={{ fontSize: 12, color: D.t3, lineHeight: 1.6 }}>{n.body}</Typography>
-                        </Box>
-                    ))}
-                    </MotionPresence>
-                  </Stack>
-                )}
-              </Box>
               <Box component="details" sx={{ ...CARD, p: 3, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText }}>Record a research or risk note</Box><Box sx={{ mt: 2 }}><DecisionNote key={stock.symbol} kind={stock.riskLevel === "High" ? "risk" : "research"} symbol={stock.symbol} /></Box></Box>
               <Box component="details" sx={{ ...CARD, p: 3, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText }}>Keep researching instead of trading</Box><Box sx={{ mt: 2 }}><DecisionNote key={`wait-${stock.symbol}`} kind="wait" symbol={stock.symbol} /></Box></Box>
             </Stack>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Container>
     </Box>
   );

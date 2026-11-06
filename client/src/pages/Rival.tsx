@@ -3,7 +3,7 @@ import {
   Avatar, Box, Chip, Container, Divider, LinearProgress, Stack, Typography,
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer,
   Tooltip as ReTooltip, XAxis, YAxis,
@@ -20,22 +20,18 @@ import { useInboxMessages } from "../lib/inbox";
 import { D, MONO, money, pct } from "../theme/design";
 import { usePageTitle } from "../lib/usePageTitle";
 
-function StatCard({ label, value, sub, accent, delay = 0 }: {
-  label: string; value: string; sub?: React.ReactNode; accent?: string; delay?: number;
+function StatCard({ label, value, sub, accent }: {
+  label: string; value: string; sub?: React.ReactNode; accent?: string;
 }) {
-  const reduceMotion = useReducedMotion();
   return (
     <Box
       component={motion.div}
-      initial={reduceMotion ? undefined : { opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay }}
       sx={{ flex: 1, minWidth: 0, bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, p: 2.5 }}
     >
-      <Typography sx={{ fontSize: 10.5, color: D.t3, fontFamily: MONO, letterSpacing: 0.6, mb: 0.75 }}>
+      <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO, letterSpacing: 0.6, mb: 0.75 }}>
         {label}
       </Typography>
-      <Typography sx={{ fontWeight: 950, fontSize: 24, color: accent ?? D.t1, fontFamily: MONO, lineHeight: 1.1 }}>
+      <Typography sx={{ fontWeight: 900, fontSize: 24, color: accent ?? D.t1, fontFamily: MONO, lineHeight: 1.1 }}>
         {value}
       </Typography>
       {sub && <Box sx={{ mt: 0.75 }}>{sub}</Box>}
@@ -45,7 +41,6 @@ function StatCard({ label, value, sub, accent, delay = 0 }: {
 
 export default function Rival() {
   usePageTitle("Rival");
-  const reduceMotion = useReducedMotion();
   const { gameDay, gameMode } = useGame();
   const {
     rivalName, rivalNetWorth, playerNetWorth, playerAhead, gapPct, positions, equityCurve,
@@ -80,18 +75,16 @@ export default function Rival() {
       {/* Hero */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
         <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
-          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+          <motion.div>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2.5} alignItems={{ sm: "center" }}>
               <Avatar sx={{ width: 64, height: 64, bgcolor: D.amberBg, color: D.amber, border: `2px solid ${D.border}`, flexShrink: 0 }}>
                 <SportsMmaIcon sx={{ fontSize: 30 }} />
               </Avatar>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Chip label="RIVAL TRADER" size="small"
-                  sx={{ bgcolor: D.amberBg, color: D.amber, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-                <Typography component="h1" sx={{ fontWeight: 950, fontSize: { xs: 24, md: 30 }, color: D.t1, lineHeight: 1.05 }}>
+                <Typography component="h1" sx={{ fontWeight: 900, fontSize: { xs: 26, md: 32 }, color: D.t1, lineHeight: 1.05 , letterSpacing: "-0.02em" }}>
                   {rivalName}
                 </Typography>
-                <Typography sx={{ fontSize: 13.5, color: D.t3, mt: 0.75 }}>
+                <Typography sx={{ fontSize: 14, color: D.t3, mt: 0.75 }}>
                   Your rival holds these stocks throughout the run.
                 </Typography>
               </Box>
@@ -101,7 +94,7 @@ export default function Rival() {
                   bgcolor: playerAhead ? D.greenBg : D.redBg,
                   color: leadColor,
                   border: `1px solid ${playerAhead ? D.greenBd : D.redBd}`,
-                  fontWeight: 950, fontSize: 12, fontFamily: MONO, letterSpacing: 0.5,
+                  fontWeight: 900, fontSize: 12, fontFamily: MONO, letterSpacing: 0.5,
                   px: 1, height: 32, flexShrink: 0,
                 }}
               />
@@ -115,19 +108,16 @@ export default function Rival() {
           {/* Head to head */}
           <Box
             component={motion.div}
-            initial={reduceMotion ? undefined : { opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
             sx={{ bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, p: { xs: 2.5, md: 3 } }}
           >
-            <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO, letterSpacing: 0.6, mb: 2 }}>
+            <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO, letterSpacing: 0.6, mb: 2 }}>
               HEAD TO HEAD · DAY {gameDay}
             </Typography>
 
             <Stack direction="row" justifyContent="space-between" alignItems="flex-end" sx={{ mb: 1.25 }}>
               <Box>
                 <Typography sx={{ fontSize: 12, color: D.t3, mb: 0.25 }}>You</Typography>
-                <Typography sx={{ fontWeight: 950, fontSize: { xs: 20, md: 26 }, color: D.t1, fontFamily: MONO }}>
+                <Typography sx={{ fontWeight: 900, fontSize: { xs: 20, md: 26 }, color: D.t1, fontFamily: MONO }}>
                   {money(playerNetWorth)}
                 </Typography>
                 <Typography sx={{ fontSize: 12, fontWeight: 800, color: playerReturnPct >= 0 ? D.greenText : D.redText }}>
@@ -136,7 +126,7 @@ export default function Rival() {
               </Box>
               <Box sx={{ textAlign: "right" }}>
                 <Typography sx={{ fontSize: 12, color: D.t3, mb: 0.25 }}>{rivalName}</Typography>
-                <Typography sx={{ fontWeight: 950, fontSize: { xs: 20, md: 26 }, color: D.t1, fontFamily: MONO }}>
+                <Typography sx={{ fontWeight: 900, fontSize: { xs: 20, md: 26 }, color: D.t1, fontFamily: MONO }}>
                   {money(rivalNetWorth)}
                 </Typography>
                 <Typography sx={{ fontSize: 12, fontWeight: 800, color: rivalReturnPct >= 0 ? D.greenText : D.redText }}>
@@ -155,7 +145,7 @@ export default function Rival() {
               <Box sx={{ width: `${100 - playerShare}%`, bgcolor: D.amber, transition: "width .4s ease" }} />
             </Box>
 
-            <Typography sx={{ fontSize: 13, fontWeight: 800, color: leadColor, mt: 1.5 }}>
+            <Typography sx={{ fontSize: 14, fontWeight: 800, color: leadColor, mt: 1.5 }}>
               {playerAhead
                 ? `You're ahead by ${money(Math.abs(playerNetWorth - rivalNetWorth))} (${gapPct >= 0 ? "+" : ""}${gapPct.toFixed(1)}%).`
                 : `${rivalName} is ahead by ${money(Math.abs(rivalNetWorth - playerNetWorth))} (${gapPct.toFixed(1)}%).`}
@@ -166,35 +156,29 @@ export default function Rival() {
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <StatCard label="RIVAL RETURN" value={pct(rivalReturnPct)}
               accent={rivalReturnPct >= 0 ? D.greenText : D.redText}
-              sub={<Typography sx={{ fontSize: 11.5, color: D.t3 }}>from {money(RIVAL_STARTING_CASH)} on Day 1</Typography>}
-              delay={0.04} />
+              sub={<Typography sx={{ fontSize: 12, color: D.t3 }}>from {money(RIVAL_STARTING_CASH)} on Day 1</Typography>} />
             <StatCard label="BEST HOLDING" value={best ? best.company.symbol : "—"}
               accent={best && best.returnPct >= 0 ? D.greenText : D.redText}
               sub={best && (
-                <Typography sx={{ fontSize: 11.5, color: D.t3 }}>{pct(best.returnPct)} · {best.company.sector}</Typography>
-              )}
-              delay={0.08} />
+                <Typography sx={{ fontSize: 12, color: D.t3 }}>{pct(best.returnPct)} · {best.company.sector}</Typography>
+              )} />
             <StatCard label="WORST HOLDING" value={worst ? worst.company.symbol : "—"}
               accent={worst && worst.returnPct >= 0 ? D.greenText : D.redText}
               sub={worst && (
-                <Typography sx={{ fontSize: 11.5, color: D.t3 }}>{pct(worst.returnPct)} · {worst.company.sector}</Typography>
-              )}
-              delay={0.12} />
+                <Typography sx={{ fontSize: 12, color: D.t3 }}>{pct(worst.returnPct)} · {worst.company.sector}</Typography>
+              )} />
           </Stack>
 
           {/* Equity curve */}
           {equityCurve.length > 1 && (
             <Box
               component={motion.div}
-              initial={reduceMotion ? undefined : { opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.16 }}
               sx={{ bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, p: { xs: 2, md: 3 } }}
             >
-              <Typography sx={{ fontWeight: 900, fontSize: 15.5, color: D.t1, mb: 0.25 }}>
+              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 0.25 }}>
                 {rivalName}&rsquo;s equity curve
               </Typography>
-              <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>
+              <Typography sx={{ fontSize: 14, color: D.t3, mb: 2.5 }}>
                 Rival history compared with your current net worth.
               </Typography>
               <Box sx={{ height: 260 }}>
@@ -207,9 +191,9 @@ export default function Rival() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={D.border} vertical={false} />
-                    <XAxis dataKey="day" tick={{ fill: D.t3, fontSize: 11 }} tickFormatter={(d) => `D${d}`}
+                    <XAxis dataKey="day" tick={{ fill: D.t3, fontSize: 12 }} tickFormatter={(d) => `D${d}`}
                       axisLine={{ stroke: D.border }} tickLine={false} />
-                    <YAxis tick={{ fill: D.t3, fontSize: 11 }} tickFormatter={(v) => `$${Math.round(Number(v))}`}
+                    <YAxis tick={{ fill: D.t3, fontSize: 12 }} tickFormatter={(v) => `$${Math.round(Number(v))}`}
                       axisLine={false} tickLine={false} domain={["dataMin - 60", "dataMax + 60"]} />
                     <ReTooltip
                       contentStyle={{ background: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, fontSize: 12 }}
@@ -219,8 +203,8 @@ export default function Rival() {
                       labelFormatter={(label) => `Day ${label}`}
                     />
                     <ReferenceLine y={playerNetWorth} stroke={D.brand} strokeDasharray="5 4"
-                      label={{ value: "You today", position: "insideTopLeft", fill: D.brandText, fontSize: 11 }} />
-                    <Area type="monotone" dataKey="rival" stroke={D.amber} strokeWidth={2} fill="url(#rivalFill)" />
+                      label={{ value: "You today", position: "insideTopLeft", fill: D.brandText, fontSize: 12 }} />
+                    <Area isAnimationActive={false} type="monotone" dataKey="rival" stroke={D.amber} strokeWidth={2} fill="url(#rivalFill)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </Box>
@@ -230,14 +214,11 @@ export default function Rival() {
           {/* Basket */}
           <Box
             component={motion.div}
-            initial={reduceMotion ? undefined : { opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
             sx={{ bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden" }}
           >
             <Box sx={{ px: 3, py: 2.25, borderBottom: `1px solid ${D.border}` }}>
-              <Typography sx={{ fontWeight: 900, fontSize: 15.5, color: D.t1 }}>The basket</Typography>
-              <Typography sx={{ fontSize: 12.5, color: D.t3, mt: 0.25 }}>
+              <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>The basket</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t3, mt: 0.25 }}>
                 Equal weight — {money(RIVAL_STARTING_CASH / Math.max(1, positions.length))} into each on Day 1, never rebalanced.
               </Typography>
             </Box>
@@ -247,7 +228,7 @@ export default function Rival() {
                 <Stack direction="row" spacing={1} sx={{ px: 3, py: 1.25, borderBottom: `1px solid ${D.border}` }}>
                   {["COMPANY", "ENTRY", "NOW", "RETURN", "VALUE"].map((h, i) => (
                     <Typography key={h} sx={{
-                      flex: i === 0 ? 2.2 : 1, fontSize: 10, color: D.t3, fontFamily: MONO,
+                      flex: i === 0 ? 2.2 : 1, fontSize: 12, color: D.t3, fontFamily: MONO,
                       letterSpacing: 0.5, textAlign: i === 0 ? "left" : "right",
                     }}>{h}</Typography>
                   ))}
@@ -271,27 +252,27 @@ export default function Rival() {
                       }}
                     >
                       <Box sx={{ flex: 2.2, minWidth: 0 }}>
-                        <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: D.t1, fontFamily: MONO }}>
+                        <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>
                           {position.company.symbol}
                         </Typography>
-                        <Typography noWrap sx={{ fontSize: 11.5, color: D.t3 }}>{position.company.name}</Typography>
+                        <Typography noWrap sx={{ fontSize: 12, color: D.t3 }}>{position.company.name}</Typography>
                       </Box>
-                      <Typography sx={{ flex: 1, textAlign: "right", fontSize: 12.5, color: D.t3, fontFamily: MONO }}>
+                      <Typography sx={{ flex: 1, textAlign: "right", fontSize: 14, color: D.t3, fontFamily: MONO }}>
                         {money(position.basis)}
                       </Typography>
-                      <Typography sx={{ flex: 1, textAlign: "right", fontSize: 12.5, color: D.t1, fontFamily: MONO }}>
+                      <Typography sx={{ flex: 1, textAlign: "right", fontSize: 14, color: D.t1, fontFamily: MONO }}>
                         {money(position.price)}
                       </Typography>
                       <Stack direction="row" spacing={0.4} alignItems="center" justifyContent="flex-end" sx={{ flex: 1 }}>
                         {up
                           ? <TrendingUpIcon sx={{ fontSize: 14, color: D.greenText }} />
                           : <TrendingDownIcon sx={{ fontSize: 14, color: D.redText }} />}
-                        <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: up ? D.greenText : D.redText, fontFamily: MONO }}>
+                        <Typography sx={{ fontSize: 14, fontWeight: 800, color: up ? D.greenText : D.redText, fontFamily: MONO }}>
                           {pct(position.returnPct)}
                         </Typography>
                       </Stack>
                       <Box sx={{ flex: 1 }}>
-                        <Typography sx={{ textAlign: "right", fontSize: 12.5, color: D.t1, fontFamily: MONO }}>
+                        <Typography sx={{ textAlign: "right", fontSize: 14, color: D.t1, fontFamily: MONO }}>
                           {money(position.value)}
                         </Typography>
                         <LinearProgress
@@ -314,23 +295,20 @@ export default function Rival() {
           {rivalMail.length > 0 && (
             <Box
               component={motion.div}
-              initial={reduceMotion ? undefined : { opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.24 }}
               sx={{ bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden" }}
             >
               <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.25, borderBottom: `1px solid ${D.border}` }}>
                 <MailOutlineIcon sx={{ color: D.amber, fontSize: 18 }} />
-                <Typography sx={{ fontWeight: 900, fontSize: 15.5, color: D.t1, flex: 1 }}>Recent messages</Typography>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1, flex: 1 }}>Recent messages</Typography>
                 <Chip component={RouterLink} to="/inbox" clickable size="small" label="OPEN INBOX"
-                  sx={{ bgcolor: D.brandBg, color: D.brandText, fontWeight: 900, fontSize: 9.5, fontFamily: MONO, textDecoration: "none" }} />
+                  sx={{ bgcolor: D.brandBg, color: D.brandText, fontWeight: 900, fontSize: 12, fontFamily: MONO, textDecoration: "none" }} />
               </Stack>
               <Box sx={{ p: 3, pt: 2 }}>
                 <Stack spacing={1.5}>
                   {rivalMail.map((message) => (
                     <Box key={message.id} sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                      <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1, mb: 0.4 }}>{message.subject}</Typography>
-                      <Typography sx={{ fontSize: 12.5, color: D.t2, lineHeight: 1.65 }}>{message.body}</Typography>
+                      <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.4 }}>{message.subject}</Typography>
+                      <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.65 }}>{message.body}</Typography>
                     </Box>
                   ))}
                 </Stack>
@@ -340,7 +318,7 @@ export default function Rival() {
 
           {/* How it works */}
           <Box sx={{ bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, p: 3 }}>
-            <Typography sx={{ fontWeight: 900, fontSize: 15.5, color: D.t1, mb: 1.5 }}>How the rival works</Typography>
+            <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 1.5 }}>How the rival works</Typography>
             <Divider sx={{ borderColor: D.border, mb: 2 }} />
             <Stack spacing={1.25}>
               {[
@@ -352,7 +330,7 @@ export default function Rival() {
               ].map((line) => (
                 <Stack key={line} direction="row" spacing={1.25} alignItems="flex-start">
                   <Box sx={{ mt: 0.9, width: 5, height: 5, borderRadius: "50%", bgcolor: D.amber, flexShrink: 0 }} />
-                  <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.7 }}>{line}</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.7 }}>{line}</Typography>
                 </Stack>
               ))}
             </Stack>

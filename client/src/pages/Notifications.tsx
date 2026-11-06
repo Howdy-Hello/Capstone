@@ -27,12 +27,10 @@ export default function Notifications() {
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
         <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
-          <Chip label="ACTIVITY" size="small"
-            sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-          <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
+          <Typography component="h1" sx={{ fontSize: { xs: 26, md: 32 }, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em" }}>
             Notifications & Activity
           </Typography>
-          <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
+          <Typography sx={{ fontSize: 14, color: D.t2, mt: 0.5 }}>
             Recent alerts and gameplay notices from this browser.
           </Typography>
         </Container>
@@ -45,7 +43,7 @@ export default function Notifications() {
               sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
               <Stack direction="row" spacing={1} alignItems="center">
                 <NotificationsActiveIcon sx={{ color: D.brandText, fontSize: 18 }} />
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Notification History</Typography>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Notification History</Typography>
               </Stack>
               <Button size="small" startIcon={<DeleteOutlineIcon />} onClick={clearNotificationHistory}
                 disabled={notifications.length === 0}
@@ -55,17 +53,17 @@ export default function Notifications() {
             </Stack>
             <Box sx={{ p: 2.5 }}>
               {notifications.length === 0 ? (
-                <Typography sx={{ fontSize: 13, color: D.t3 }}>No notifications recorded yet.</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t3 }}>No notifications recorded yet.</Typography>
               ) : (
                 <Stack spacing={1}>
                   {notifications.map((item) => (
                     <Box key={item.id} sx={{ p: 1.7, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.6 }}>
-                        <Chip size="small" label={item.kind.toUpperCase()} sx={{ bgcolor: D.overlay, color: D.brandText, fontWeight: 900, fontSize: 10, fontFamily: MONO }} />
-                        <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>{timeLabel(item.createdAt)}</Typography>
+                        <Chip size="small" label={item.kind.toUpperCase()} sx={{ bgcolor: D.overlay, color: D.brandText, fontWeight: 900, fontSize: 12, fontFamily: MONO }} />
+                        <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>{timeLabel(item.createdAt)}</Typography>
                       </Stack>
-                      <Typography sx={{ fontWeight: 850, fontSize: 13.5, color: D.t1 }}>{item.title}</Typography>
-                      {item.description && <Typography sx={{ fontSize: 12.5, color: D.t3, mt: 0.3 }}>{item.description}</Typography>}
+                      <Typography sx={{ fontWeight: 850, fontSize: 14, color: D.t1 }}>{item.title}</Typography>
+                      {item.description && <Typography sx={{ fontSize: 14, color: D.t3, mt: 0.3 }}>{item.description}</Typography>}
                     </Box>
                   ))}
                 </Stack>

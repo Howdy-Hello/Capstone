@@ -21,8 +21,8 @@ export default function TodayGoalCard({ day, goals, completedCount, error, onRet
   return (
     <Box component="section" aria-label="Today's goal" sx={{ ...CARD, p: 2.5, height: "100%", boxSizing: "border-box" }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-        <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Today's goal</Typography>
-        <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: allDone ? D.greenText : D.t3 }}>
+        <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Today's goal</Typography>
+        <Typography sx={{ fontSize: 14, fontWeight: 800, color: allDone ? D.greenText : D.t3 }}>
           {completedCount}/{goals.length} done
         </Typography>
       </Stack>
@@ -32,17 +32,17 @@ export default function TodayGoalCard({ day, goals, completedCount, error, onRet
       {next ? (
         <>
           <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1 }}>{next.title}</Typography>
-          <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.6, mb: 1 }}>{next.description}</Typography>
+          <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6, mb: 1 }}>{next.description}</Typography>
           {next.kind ? (
             // Keyed by goal so the form closes when the next goal takes over.
             <Box component="details" key={next.id} sx={{ color: D.t1,
-              "& > summary": { cursor: "pointer", color: D.brandText, fontWeight: 800, fontSize: 13 },
+              "& > summary": { cursor: "pointer", color: D.brandText, fontWeight: 800, fontSize: 14 },
               "& > summary:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: 2 } }}>
               <Box component="summary">Record my answer</Box>
               <Box sx={{ mt: 2 }}><DecisionNote kind={next.kind} /></Box>
             </Box>
           ) : next.id === "watch2" ? (
-            <Typography sx={{ fontSize: 13, fontWeight: 700, color: D.brandText }}>
+            <Typography sx={{ fontSize: 14, fontWeight: 700, color: D.brandText }}>
               Use the star on a stock row to watch it · {Math.min(next.current, next.target)}/{next.target}
             </Typography>
           ) : null}
@@ -50,12 +50,12 @@ export default function TodayGoalCard({ day, goals, completedCount, error, onRet
       ) : (
         <Stack direction="row" spacing={1} alignItems="center">
           <CheckCircleIcon sx={{ fontSize: 18, color: D.greenText }} />
-          <Typography sx={{ fontSize: 13, color: D.t2 }}>All of Day {day}'s goals are done. New ones arrive when you advance.</Typography>
+          <Typography sx={{ fontSize: 14, color: D.t2 }}>All of Day {day}'s goals are done. New ones arrive when you advance.</Typography>
         </Stack>
       )}
 
       <Button component={RouterLink} to="/game/goals" size="small"
-        sx={{ mt: 1.2, p: 0, minWidth: 0, color: D.t3, fontSize: 12.5, fontWeight: 700, textTransform: "none", "&:hover": { color: D.t1, bgcolor: "transparent" } }}>
+        sx={{ mt: 1.2, p: 0, minWidth: 0, minHeight: 24, color: D.t3, fontSize: 14, fontWeight: 700, textTransform: "none", "&:hover": { color: D.t1, bgcolor: "transparent" } }}>
         All goals and missions →
       </Button>
       {error && (

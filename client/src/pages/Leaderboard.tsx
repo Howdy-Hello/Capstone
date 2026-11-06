@@ -20,7 +20,7 @@ import { fetchLeaderboard } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
-import { D, CARD, MONO, money } from "../theme/design";
+import { D, CARD, MONO, money, readableOn } from "../theme/design";
 import { getPlayerLevel } from "../data/levelSystem";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -50,7 +50,9 @@ type RankedPlayer = LeaderboardRow & {
   level: number;
 };
 
-const MEDAL_COLORS = ["#F59E0B", "#94A3B8", "#C98B5F"];
+const medalColors = () => [D.amber, "#94A3B8", "#C98B5F"];
+// The medal fills are too pale for text or icons on the light themes.
+const medalText = (index: number) => (index === 0 ? D.amber : D.t2);
 
 const TIER_TOOLTIPS: Record<string, string> = {
   Champion: "Rank #1 — all-time highest net worth",
@@ -61,8 +63,8 @@ const TIER_TOOLTIPS: Record<string, string> = {
 };
 
 function tierFor(rank: number): { label: string; color: string } {
-  if (rank === 1) return { label: "Champion", color: "#F59E0B" };
-  if (rank <= 3) return { label: "Expert",   color: "#94A3B8" };
+  if (rank === 1) return { label: "Champion", color: D.amber };
+  if (rank <= 3) return { label: "Expert",   color: D.t2 };
   if (rank <= 10) return { label: "Elite",   color: D.brandText };
   if (rank <= 25) return { label: "Rising",  color: D.greenText };
   return { label: "Player", color: D.t3 };
@@ -175,16 +177,14 @@ export default function Leaderboard() {
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
             <Box>
-              <Chip label="GLOBAL RANKINGS" size="small"
-                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Leaderboard</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
+              <Typography component="h1" sx={{ fontSize: { xs: 26, md: 32 }, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em" }}>Leaderboard</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t2, mt: 0.5 }}>
                 {isThirtyDay ? "Completed 30-day challenges ranked by final net worth." : "Infinite runs ranked by each player's current net worth."}
               </Typography>
             </Box>
             <Box sx={{ ...CARD, p: 2.5, minWidth: 240 }}>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>YOUR RANK</Typography>
-              <Typography sx={{ fontSize: 36, fontWeight: 950, color: D.brandText, fontFamily: MONO, lineHeight: 1 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>YOUR RANK</Typography>
+              <Typography sx={{ fontSize: 20, fontWeight: 900, color: D.t1, fontFamily: MONO, lineHeight: 1.2 }}>
                 {loading ? "—" : currentEntry ? `#${currentEntry.rank}` : "—"}
               </Typography>
               {currentEntry && (
@@ -194,7 +194,7 @@ export default function Leaderboard() {
                   </Typography>
                   <Tooltip title={TIER_TOOLTIPS[currentEntry.badge] ?? ""} placement="bottom" arrow>
                     <Chip label={currentEntry.badge} size="small"
-                      sx={{ mt: 0.8, bgcolor: D.brandBg, color: currentEntry.tierColor, fontWeight: 800, fontSize: 10, cursor: "help" }} />
+                      sx={{ mt: 0.8, mr: 1, bgcolor: "transparent", border: `1px solid ${currentEntry.tierColor}`, color: currentEntry.tierColor, fontWeight: 800, fontSize: 12, cursor: "help" }} />
                   </Tooltip>
                 </>
               )}
@@ -225,7 +225,7 @@ export default function Leaderboard() {
               py: 1,
               gap: 0.8,
               fontWeight: 800,
-              fontSize: 12.5,
+              fontSize: 14,
               textTransform: "none",
               "&.Mui-selected": {
                 color: D.brandText,
@@ -235,8 +235,8 @@ export default function Leaderboard() {
             },
           }}
         >
-          <ToggleButton value="infinite"><AllInclusiveIcon sx={{ fontSize: 17 }} />Infinite</ToggleButton>
-          <ToggleButton value="thirty_day"><TimerIcon sx={{ fontSize: 17 }} />30-Day Runs</ToggleButton>
+          <ToggleButton value="infinite"><AllInclusiveIcon sx={{ fontSize: 18 }} />Infinite</ToggleButton>
+          <ToggleButton value="thirty_day"><TimerIcon sx={{ fontSize: 18 }} />30-Day Runs</ToggleButton>
         </ToggleButtonGroup>
 
         {/* ── Stat tiles ───────────────────────────────────────────────────── */}
@@ -246,18 +246,18 @@ export default function Leaderboard() {
             { label: isThirtyDay ? "Your Best 30-Day" : "Rank", val: isThirtyDay ? (currentEntry ? money(currentEntry.best_net_worth) : "—") : (currentEntry ? `#${currentEntry.rank}` : "—"), icon: <EmojiEventsIcon sx={{ fontSize: 20 }} />, color: "#F59E0B", bg: "rgba(245,158,11,0.1)" },
             { label: "Your Return",    val: currentEntry ? `${currentEntry.return_pct >= 0 ? "+" : ""}${currentEntry.return_pct.toFixed(1)}%` : "—", icon: <TrendingUpIcon sx={{ fontSize: 20 }} />, color: D.greenText, bg: D.greenBg },
             { label: isThirtyDay ? "Completed Runs" : "Players Ranked", val: loading ? "—" : players.length.toString(), icon: <WorkspacePremiumIcon sx={{ fontSize: 20 }} />, color: D.brandText, bg: D.brandBg },
-          ].map((s, i) => (
-            <Grid item xs={12} sm={6} md={3} key={s.label}>
-              <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: Math.min(i * 0.06, 0.24) }}
+          ].map((s) => (
+            <Grid item xs={6} md={3} key={s.label}>
+              <Box component={motion.div}
                 sx={{ ...CARD, p: 2.5 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                   <Box>
-                    <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
                     <motion.div key={s.val} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
-                      <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                      <Typography sx={{ fontSize: 20, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
                     </motion.div>
                   </Box>
-                  <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: s.bg, color: s.color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
+                  <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: s.bg, color: s.color, display: { xs: "none", sm: "grid" }, placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
                 </Stack>
               </Box>
             </Grid>
@@ -267,7 +267,7 @@ export default function Leaderboard() {
         {/* ── Error ────────────────────────────────────────────────────────── */}
         {error && (
           <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
-            <Typography sx={{ color: D.redText, fontSize: 13, fontWeight: 800 }}>Could not load leaderboard: {error}</Typography>
+            <Typography sx={{ color: D.redText, fontSize: 14, fontWeight: 800 }}>Could not load leaderboard: {error}</Typography>
           </Box>
         )}
 
@@ -280,15 +280,15 @@ export default function Leaderboard() {
             {/* ── Podium + top 3 ─────────────────────────────────────────── */}
             <Grid item xs={12} md={4}>
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3, height: "100%" }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 0.5 }}>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 0.5 }}>
                   {isThirtyDay ? "Best 30-Day Runs" : "Top Traders"}
                 </Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2.5 }}>
+                <Typography sx={{ fontSize: 14, color: D.t3, mb: 2.5 }}>
                   {isThirtyDay ? "The highest finishing values after Day 30." : "The strongest current infinite portfolios."}
                 </Typography>
 
                 {topThree.length === 0 ? (
-                  <Typography sx={{ fontSize: 13, color: D.t3 }}>No ranked runs yet. Be the first!</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t3 }}>No ranked runs yet. Be the first!</Typography>
                 ) : (
                   <>
                     {/* Visual podium: 2nd | 1st | 3rd */}
@@ -304,7 +304,7 @@ export default function Leaderboard() {
                               sx={{
                                 width: idx === 0 ? 52 : 40,
                                 height: idx === 0 ? 52 : 40,
-                                bgcolor: MEDAL_COLORS[idx],
+                                bgcolor: medalColors()[idx],
                                 color: "#09090F",
                                 fontWeight: 900,
                                 fontSize: idx === 0 ? 20 : 16,
@@ -313,25 +313,25 @@ export default function Leaderboard() {
                               }}>
                               {p.displayUsername[0]?.toUpperCase()}
                             </Avatar>
-                            <Typography sx={{ fontSize: 11, fontWeight: 900, color: isYou ? D.brandText : D.t1, textAlign: "center", mb: 0.3, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <Typography sx={{ fontSize: 12, fontWeight: 900, color: isYou ? D.brandText : D.t1, textAlign: "center", mb: 0.3, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {p.displayUsername}
                             </Typography>
-                            <Typography sx={{ fontSize: 9.5, fontWeight: 900, color: D.brandText, fontFamily: MONO, mb: 0.3 }}>LV {p.level}</Typography>
-                            <Typography sx={{ fontSize: 10, color: D.t3, fontFamily: MONO, textAlign: "center", mb: 0.8 }}>
+                            <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.brandText, fontFamily: MONO, mb: 0.3 }}>LV {p.level}</Typography>
+                            <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO, textAlign: "center", mb: 0.8 }}>
                               {sortBy === "net_worth" ? money(p.best_net_worth) : `${p.return_pct >= 0 ? "+" : ""}${p.return_pct.toFixed(1)}%`}
                             </Typography>
                             <Box sx={{
                               width: "100%",
                               height: podiumHeights[idx],
                               borderRadius: "4px 4px 0 0",
-                              bgcolor: `${MEDAL_COLORS[idx]}18`,
-                              border: `1px solid ${MEDAL_COLORS[idx]}33`,
+                              bgcolor: `${medalColors()[idx]}18`,
+                              border: `1px solid ${medalColors()[idx]}33`,
                               borderBottom: "none",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
                             }}>
-                              <Typography sx={{ fontSize: idx === 0 ? 22 : 18, fontWeight: 950, color: MEDAL_COLORS[idx], fontFamily: MONO }}>
+                              <Typography sx={{ fontSize: idx === 0 ? 22 : 18, fontWeight: 900, color: medalText(idx), fontFamily: MONO }}>
                                 #{p.rank}
                               </Typography>
                             </Box>
@@ -350,19 +350,19 @@ export default function Leaderboard() {
                           sx={{ p: 2, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${p.user_id === user?.id ? D.brandBd : D.border}` }}>
                           <Stack direction="row" spacing={1.5} alignItems="center">
                             <Avatar src={p.avatar_url ?? undefined}
-                              sx={{ bgcolor: MEDAL_COLORS[p.rank - 1] ?? D.brand, color: "#09090F", fontWeight: 900, width: 36, height: 36, fontSize: 15 }}>
+                              sx={{ bgcolor: medalColors()[p.rank - 1] ?? D.brand, color: readableOn(medalColors()[p.rank - 1] ?? D.brand), fontWeight: 900, width: 36, height: 36, fontSize: 16 }}>
                               {p.displayUsername[0]?.toUpperCase()}
                             </Avatar>
                             <Box sx={{ flex: 1, minWidth: 0 }}>
                               <Typography sx={{ fontWeight: 900, fontSize: 14, color: p.user_id === user?.id ? D.brandText : D.t1 }} noWrap>
                                 {p.displayUsername}{p.user_id === user?.id ? " (You)" : ""}
                               </Typography>
-                              <Typography sx={{ fontSize: 10, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>LV {p.level}</Typography>
+                              <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>LV {p.level}</Typography>
                               <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>
                                 {sortBy === "net_worth" ? money(p.best_net_worth) : `${p.return_pct >= 0 ? "+" : ""}${p.return_pct.toFixed(1)}%`}
                               </Typography>
                             </Box>
-                            <MilitaryTechIcon sx={{ color: MEDAL_COLORS[p.rank - 1] ?? D.t3, fontSize: 20 }} />
+                            <MilitaryTechIcon sx={{ color: p.rank <= 3 ? medalText(p.rank - 1) : D.t3, fontSize: 20 }} />
                           </Stack>
                         </Box>
                       ))}
@@ -382,7 +382,7 @@ export default function Leaderboard() {
                     <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>
                       {isThirtyDay ? "30-Day Run Rankings" : "Full Leaderboard"}
                     </Typography>
-                    <Typography sx={{ fontSize: 12.5, color: D.t3 }}>
+                    <Typography sx={{ fontSize: 14, color: D.t3 }}>
                       {isThirtyDay ? "Every completed challenge is ranked by its Day-30 finish." : "Each player's latest infinite run ranked by current net worth."}
                     </Typography>
                   </Box>
@@ -392,7 +392,7 @@ export default function Leaderboard() {
                       onChange={(_, v) => { if (v) setSortBy(v); }}
                       sx={{
                         "& .MuiToggleButton-root": {
-                          color: D.t3, borderColor: D.border, fontSize: 11, fontWeight: 700,
+                          color: D.t3, borderColor: D.border, fontSize: 12, fontWeight: 700,
                           textTransform: "none", px: 1.5, py: 0.6,
                           "&.Mui-selected": { color: D.brandText, bgcolor: D.brandBg, borderColor: D.brandBd },
                         },
@@ -412,7 +412,7 @@ export default function Leaderboard() {
                 {/* Search */}
                 <Box sx={{ px: 2.5, pt: 2, pb: 0.5 }}>
                   <TextField
-                    fullWidth size="small" placeholder="Search players…"
+                    fullWidth size="small" placeholder="Search players…" inputProps={{ "aria-label": "Search players" }}
                     value={search} onChange={(e) => setSearch(e.target.value)}
                     InputProps={{
                       startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 16, color: D.t3 }} /></InputAdornment>,
@@ -443,7 +443,7 @@ export default function Leaderboard() {
                       <Typography sx={{ fontWeight: 800, fontSize: 16, color: D.t1, mb: 0.5 }}>
                         {players.length === 0 ? "No players yet." : "No results found."}
                       </Typography>
-                      <Typography sx={{ fontSize: 13, color: D.t3 }}>
+                      <Typography sx={{ fontSize: 14, color: D.t3 }}>
                         {players.length === 0 ? "Start a run to appear on the leaderboard." : "Try a different search term."}
                       </Typography>
                     </Box>
@@ -464,29 +464,29 @@ export default function Leaderboard() {
                               {/* Rank */}
                               <Grid item xs="auto">
                                 <Chip label={`#${p.rank}`} size="small"
-                                  sx={{ bgcolor: rankBg, color: p.rank <= 3 ? MEDAL_COLORS[p.rank - 1] : D.t3, fontWeight: 900, fontSize: 10, fontFamily: MONO, minWidth: 38 }} />
+                                  sx={{ bgcolor: rankBg, color: p.rank <= 3 ? medalText(p.rank - 1) : D.t3, fontWeight: 900, fontSize: 12, fontFamily: MONO, minWidth: 38 }} />
                               </Grid>
 
                               {/* Player */}
                               <Grid item xs>
                                 <Stack direction="row" spacing={1.2} alignItems="center">
                                   <Avatar src={p.avatar_url ?? undefined}
-                                    sx={{ width: 30, height: 30, bgcolor: D.brand, fontSize: 12, fontWeight: 900, flexShrink: 0 }}>
+                                    sx={{ width: 30, height: 30, bgcolor: D.brand, color: readableOn(D.brand), fontSize: 12, fontWeight: 900, flexShrink: 0 }}>
                                     {p.displayUsername[0]?.toUpperCase()}
                                   </Avatar>
                                   <Box sx={{ minWidth: 0 }}>
-                                    <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: isYou ? D.brandText : D.t1, lineHeight: 1.2 }} noWrap>
+                                    <Typography sx={{ fontWeight: 900, fontSize: 14, color: isYou ? D.brandText : D.t1, lineHeight: 1.2 }} noWrap>
                                       {p.displayUsername}{isYou ? " (You)" : ""}
                                     </Typography>
-                                    <Typography sx={{ fontSize: 9.5, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>
+                                    <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>
                                       LV {p.level}
                                     </Typography>
                                     <Tooltip title={TIER_TOOLTIPS[p.badge] ?? ""} placement="top" arrow>
                                       <Chip label={p.badge} size="small"
-                                        sx={{ height: 16, bgcolor: "transparent", color: p.tierColor, fontWeight: 800, fontSize: 9.5, cursor: "help", "& .MuiChip-label": { px: 0.8 } }} />
+                                        sx={{ height: 16, bgcolor: "transparent", color: p.tierColor, fontWeight: 800, fontSize: 12, cursor: "help", "& .MuiChip-label": { px: 0.8 } }} />
                                     </Tooltip>
                                     {isThirtyDay && p.completed_at && (
-                                      <Typography sx={{ fontSize: 10, color: D.t3 }}>
+                                      <Typography sx={{ fontSize: 12, color: D.t3 }}>
                                         Finished {new Date(p.completed_at).toLocaleDateString()}
                                       </Typography>
                                     )}
@@ -496,14 +496,14 @@ export default function Leaderboard() {
 
                               {/* Net worth */}
                               <Grid item xs={12} sm={3}>
-                                <Typography sx={{ fontSize: 10.5, color: D.t3 }}>Net Worth</Typography>
-                                <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(p.best_net_worth)}</Typography>
+                                <Typography sx={{ fontSize: 12, color: D.t3 }}>Net Worth</Typography>
+                                <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(p.best_net_worth)}</Typography>
                               </Grid>
 
                               {/* Return */}
                               <Grid item xs={6} sm={2}>
-                                <Typography sx={{ fontSize: 10.5, color: D.t3 }}>Return</Typography>
-                                <Typography sx={{ fontSize: 13, fontWeight: 800, color: p.return_pct >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
+                                <Typography sx={{ fontSize: 12, color: D.t3 }}>Return</Typography>
+                                <Typography sx={{ fontSize: 14, fontWeight: 800, color: p.return_pct >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
                                   {p.return_pct >= 0 ? "+" : ""}{p.return_pct.toFixed(1)}%
                                 </Typography>
                               </Grid>
@@ -511,8 +511,8 @@ export default function Leaderboard() {
                               {/* Progress bar */}
                               <Grid item xs={12} sm={3}>
                                 <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                                  <Typography sx={{ fontSize: 11, color: D.t3 }}>vs #1</Typography>
-                                  <Typography sx={{ fontSize: 11, fontWeight: 800, color: isYou ? D.brandText : D.t2 }}>{Math.round(progress)}%</Typography>
+                                  <Typography sx={{ fontSize: 12, color: D.t3 }}>vs #1</Typography>
+                                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: isYou ? D.brandText : D.t2 }}>{Math.round(progress)}%</Typography>
                                 </Stack>
                                 <LinearProgress variant="determinate" value={progress}
                                   sx={{ height: 5, borderRadius: 99, bgcolor: D.border, "& .MuiLinearProgress-bar": { bgcolor: isYou ? D.brand : D.green, borderRadius: 99 } }} />

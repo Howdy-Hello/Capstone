@@ -3,7 +3,7 @@ import {
   Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Stack, Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { D } from "../theme/design";
+import { D, readableOn } from "../theme/design";
 
 export type ConfirmDialogProps = {
   open: boolean;
@@ -42,7 +42,7 @@ export default function ConfirmDialog({
         <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
           <Typography id={titleId} component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>{title}</Typography>
           <IconButton size="small" aria-label="Close" disabled={pending} onClick={onClose} sx={{ color: D.t3 }}>
-            <CloseIcon sx={{ fontSize: 17 }} />
+            <CloseIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Stack>
       </DialogTitle>
@@ -63,7 +63,7 @@ export default function ConfirmDialog({
         <Button variant="contained" onClick={onConfirm} disabled={pending}
           startIcon={pending ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : undefined}
           sx={{
-            bgcolor: danger ? D.red : D.brand, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none",
+            bgcolor: danger ? D.red : D.brand, color: readableOn(danger ? D.red : D.brand), fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none",
             "&:hover": { bgcolor: danger ? "#DC2626" : D.brandMid, boxShadow: "none" },
             "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 },
           }}>

@@ -1,5 +1,5 @@
 import DecisionNote from "../components/learning/DecisionNote";
-import RunProgressBar from "../components/RunProgressBar";
+import DayBar from "../components/DayBar";
 import { useLearningProgress } from "../hooks/useLearningProgress";
 import { AccountFlow, accountPerformance } from "../lib/accountPerformance";
 import React, { useEffect, useMemo, useState } from "react";
@@ -21,7 +21,6 @@ import {
 } from "recharts";
 
 import { Stock } from "../data/mockStocks";
-import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import { getNetWorth, getPortfolioValue } from "../data/tradingState";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
@@ -78,21 +77,21 @@ function realizedProfitLoss(records: TradeRecord[]) {
 // the theme changes, and a captured array keeps the import-time colours forever.
 const pieColors = () => [D.green, D.brand, D.amber, D.red, D.greenText, D.redText];
 
-function StatTile({ label, value, icon, up, index = 0 }: { label: string; value: string; icon: React.ReactNode; up?: boolean; index?: number }) {
+function StatTile({ label, value, icon }: { label: string; value: string; icon: React.ReactNode; up?: boolean; index?: number }) {
   const reduceMotion = useReducedMotion();
-  const color = up === undefined ? D.brandText : up ? D.greenText : D.redText;
-  const bg = up === undefined ? D.brandBg : up ? D.greenBg : D.redBg;
+  const color = D.t2;
+  const bg = D.overlay;
   return (
-    <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: Math.min(index * 0.06, 0.24) }}
-      sx={{ ...CARD, p: 2.5 }}>
+    <Box component={motion.div}
+      sx={{ ...CARD, p: 2.5, height: "100%", boxSizing: "border-box" }}>
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-        <Box>
-          <Typography sx={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 0.8, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{label.toUpperCase()}</Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 900, letterSpacing: 0.8, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{label.toUpperCase()}</Typography>
           <motion.div key={value} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
-            <Typography sx={{ fontSize: 22, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{value}</Typography>
+            <Typography sx={{ fontSize: { xs: 18, sm: 20 }, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{value}</Typography>
           </motion.div>
         </Box>
-        <Box sx={{ width: 38, height: 38, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <Box sx={{ width: 38, height: 38, borderRadius: 2, bgcolor: bg, color, display: { xs: "none", sm: "grid" }, placeItems: "center", flexShrink: 0 }}>
           {icon}
         </Box>
       </Stack>
@@ -272,60 +271,26 @@ export default function Dashboard() {
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh" }}>
+      <DayBar />
       {/* Header */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
-        <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 2.5, md: 3 } }}>
+          <motion.div>
             <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
               <Box>
-                <Chip label={`DAY ${gameDay}`} size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-                <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
+                <Typography component="h1" sx={{ fontSize: { xs: 26, md: 32 }, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em" }}>
                   {playerName}&apos;s Dashboard
                 </Typography>
-                <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>Live portfolio view for Game Day {gameDay} · {modeLabel}</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2, mt: 0.5 }}>Live portfolio view for Game Day {gameDay} · {modeLabel}</Typography>
               </Box>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                <Box sx={{ ...CARD, p: 2.5, minWidth: 200 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                    <Stack direction="row" spacing={0.6} alignItems="center">
-                      <MilitaryTechIcon sx={{ fontSize: 15, color: D.brandText }} />
-                      <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO }}>LEVEL {level.level}</Typography>
-                    </Stack>
-                    <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>{level.xpIntoLevel}/{level.xpForNextLevel} XP</Typography>
-                  </Stack>
-                  <LinearProgress variant="determinate" value={level.progressPercent}
-                    sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
-                </Box>
-                <Box sx={{ ...CARD, p: 2.5, minWidth: 200 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                    <Typography sx={{ fontSize: 11, fontWeight: 900, color: D.t3, fontFamily: MONO }}>SESSION STATUS</Typography>
-                    <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>DAY {gameDay}{trading.maxGameDay ? `/${trading.maxGameDay}` : ""}</Typography>
-                  </Stack>
-                  <RunProgressBar day={gameDay} maxDay={trading.maxGameDay} height={6} color={D.brand} />
-                </Box>
-              </Stack>
             </Stack>
           </motion.div>
-          <Box sx={{ ...CARD, p: 3, mt: 3 }}>
-          <Typography sx={{ color: D.t1, fontWeight: 900, mb: 2 }}>Account breakdown</Typography>
-            <Typography sx={{ color: D.t2, fontSize: 13, mb: 2 }}>Net-worth change includes bills, advisor spending, and game rewards. The market figure is an equal-weight average of stock price changes from Day 1, with no cash, fees, dividends, or spending; it is context, not a like-for-like performance comparison. Realized P/L uses up to 500 recent trades and can be incomplete in long runs.</Typography>
-            <Typography sx={{ fontWeight: 900, color: D.t1, mb: 1 }}>Where did my balance go?</Typography>
-            {flowError && <Alert severity="error" action={<Button onClick={() => setFlowRetry(n => n + 1)}>Retry</Button>}>{flowError}</Alert>}
-            {performance ? <>
-              <Typography sx={{ fontSize: 12, color: D.t2, mb: 1 }}>Tracking from Day {performance.startDay}. New saves preserve this breakdown. Older runs begin at their first tracked value; saves made before tracking began start at their restored value. Earlier spending is not reconstructed.</Typography>
-              <Stack spacing={.8} sx={{ mb: 2 }}>{[
-                ["Opening account value", performance.start], ["Investment gain / loss (including execution costs)", performance.investmentGain],
-                ["Living expenses paid", -performance.livingCosts], ["Advisor spending", -performance.advisorCosts], ["Game rewards", performance.rewards], ["Ending account value", netWorth],
-              ].map(([label, amount]) => <Stack key={String(label)} direction="row" justifyContent="space-between" gap={2}><Typography sx={{ color: D.t2, fontSize: 13 }}>{label}</Typography><Typography sx={{ color: D.t1, fontFamily: MONO, fontSize: 13 }}>{money(Number(amount))}</Typography></Stack>)}</Stack>
-            </> : !flowError && <Typography sx={{ color: D.t2, fontSize: 13, mb: 2 }}>Account tracking is not available yet. No investment result is inferred from spending.</Typography>}
-
-        </Box>
       </Container>
       </Box>
 
       <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
         {trading.error && (
-          <Alert severity="warning" action={<Button disabled={trading.actionPending} onClick={() => { void trading.reloadSession().catch(() => {}); }}>Retry</Button>} sx={{ mb: 2.5, bgcolor: D.amberBg, color: D.t1, border: `1px solid ${D.border}`, fontSize: 13 }}>
+          <Alert severity="warning" action={<Button disabled={trading.actionPending} onClick={() => { void trading.reloadSession().catch(() => {}); }}>Retry</Button>} sx={{ mb: 2.5, bgcolor: D.amberBg, color: D.t1, border: `1px solid ${D.border}`, fontSize: 14 }}>
             {trading.error}
           </Alert>
         )}
@@ -337,17 +302,46 @@ export default function Dashboard() {
             { label: "Portfolio",    value: money(portfolioValue),        icon: <PieChartIcon sx={{ fontSize: 20 }} />,            up: undefined },
             { label: "Net Worth",    value: money(netWorth),              icon: <AssessmentIcon sx={{ fontSize: 20 }} />,          up: returnPct >= 0 },
             { label: "Net-worth change", value: pct(returnPct, 2),            icon: returnPct >= 0 ? <TrendingUpIcon sx={{ fontSize: 20 }} /> : <TrendingDownIcon sx={{ fontSize: 20 }} />, up: returnPct >= 0 },
-          ].map((s, i) => (
-            <Grid item xs={12} sm={6} md={3} key={s.label}>
+          ].filter((s) => s.label !== "Net Worth").map((s, i) => (
+            <Grid item xs={s.label === "Net-worth change" ? 12 : 6} sm={4} key={s.label}>
               <StatTile {...s} index={i} />
             </Grid>
           ))}
         </Grid>
 
+        <Box sx={{ ...CARD, p: 2.5, mb: 3 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3 }}>LEVEL {level.level}</Typography>
+            <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>{level.xpIntoLevel}/{level.xpForNextLevel} XP</Typography>
+          </Stack>
+          <LinearProgress variant="determinate" value={level.progressPercent} aria-label="Level progress"
+            sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
+        </Box>
+
+        {/* The numbers come first; the explanation is there for anyone who asks. */}
+        <Box component="details" open={Boolean(flowError) || undefined} sx={{ ...CARD, mb: 3,
+          "& > summary": { cursor: "pointer", p: 2.5, color: D.t1, fontWeight: 900 },
+          "& > summary:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: 2 },
+        }}>
+          <Box component="summary">Account breakdown: where did my balance go?</Box>
+          <Box sx={{ px: 2.5, pb: 1 }}>
+            <Typography sx={{ color: D.t2, fontSize: 14, mb: 2, maxWidth: "75ch" }}>Net-worth change includes bills, advisor spending, and game rewards. The market figure is an equal-weight average of stock price changes from Day 1, with no cash, fees, dividends, or spending; it is context, not a like-for-like performance comparison. Realized P/L uses up to 500 recent trades and can be incomplete in long runs.</Typography>
+            {flowError && <Alert severity="error" action={<Button onClick={() => setFlowRetry(n => n + 1)}>Retry</Button>}>{flowError}</Alert>}
+            {performance ? <>
+              <Typography sx={{ fontSize: 12, color: D.t2, mb: 1, maxWidth: "75ch" }}>Tracking from Day {performance.startDay}. New saves preserve this breakdown. Older runs begin at their first tracked value; saves made before tracking began start at their restored value. Earlier spending is not reconstructed.</Typography>
+              <Stack spacing={.8} sx={{ mb: 2 }}>{[
+                ["Opening account value", performance.start], ["Investment gain / loss (including execution costs)", performance.investmentGain],
+                ["Living expenses paid", -performance.livingCosts], ["Advisor spending", -performance.advisorCosts], ["Game rewards", performance.rewards], ["Ending account value", netWorth],
+              ].map(([label, amount]) => <Stack key={String(label)} direction="row" justifyContent="space-between" gap={2}><Typography sx={{ color: D.t2, fontSize: 14 }}>{label}</Typography><Typography sx={{ color: D.t1, fontFamily: MONO, fontSize: 14 }}>{money(Number(amount))}</Typography></Stack>)}</Stack>
+            </> : !flowError && <Typography sx={{ color: D.t2, fontSize: 14, mb: 2 }}>Account tracking is not available yet. No investment result is inferred from spending.</Typography>}
+
+          </Box>
+        </Box>
+
         <Box sx={{ ...CARD, p: 0, overflow: "hidden", mb: 3 }}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
             <Box>
-              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio Review</Typography>
+              <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio Review</Typography>
               <Typography sx={{ fontSize: 14, color: D.t2 }}>Separate investment results from spending, then check your portfolio exposure.</Typography>
             </Box>
             <Chip label={holdings.length ? `Portfolio balance: ${review.riskScore}/100 · ${review.riskLabel}` : "Portfolio balance: awaiting holdings"} size="small"
@@ -363,7 +357,7 @@ export default function Dashboard() {
               <Grid item xs={6} md={3} key={item.label} sx={{ borderRight: `1px solid ${D.border}`, borderBottom: { xs: `1px solid ${D.border}`, md: 0 } }}>
                 <Box sx={{ p: 2.5 }}>
                   <Typography sx={{ fontSize: 12, color: D.t2, fontWeight: 900, fontFamily: MONO, letterSpacing: .5 }}>{item.label.toUpperCase()}</Typography>
-                  <Typography sx={{ mt: .6, fontSize: 19, color: item.color, fontWeight: 950, fontFamily: MONO }}>{item.value}</Typography>
+                  <Typography sx={{ mt: .6, fontSize: 20, color: item.color, fontWeight: 900, fontFamily: MONO }}>{item.value}</Typography>
                 </Box>
               </Grid>
             ))}
@@ -391,12 +385,12 @@ export default function Dashboard() {
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Box>
-                  <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Holdings</Typography>
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Holdings</Typography>
                   <Typography sx={{ fontSize: 14, color: D.t2 }}>Marked to Day {gameDay} prices.</Typography>
                 </Box>
-                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
+                <motion.div whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
                   <Button component={RouterLink} to="/game" size="small" variant="contained"
-                    sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
+                    sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 14, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
                     Trade →
                   </Button>
                 </motion.div>
@@ -405,7 +399,7 @@ export default function Dashboard() {
                 {holdings.length === 0 ? (
                   <Box sx={{ p: 3, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, textAlign: "center" }}>
                     <Typography sx={{ fontWeight: 800, color: D.t2, mb: 0.5 }}>No positions yet</Typography>
-                    <Typography sx={{ fontSize: 13, color: D.t3 }}>Buy shares on the Game page and they'll appear here.</Typography>
+                    <Typography sx={{ fontSize: 14, color: D.t3 }}>Buy shares on the Game page and they'll appear here.</Typography>
                   </Box>
                 ) : (
                   <Stack spacing={1.2}>
@@ -426,7 +420,7 @@ export default function Dashboard() {
                                 </Box>
                                 <Box>
                                   <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{h.symbol}</Typography>
-                                  <Typography sx={{ fontSize: 11.5, color: D.t3 }}>{h.name}</Typography>
+                                  <Typography sx={{ fontSize: 12, color: D.t3 }}>{h.name}</Typography>
                                 </Box>
                               </Stack>
                             </Grid>
@@ -436,33 +430,33 @@ export default function Dashboard() {
                               { label: "Value",  val: money(h.marketValue) },
                             ].map((m) => (
                               <Grid item xs={4} md={2} key={m.label}>
-                                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>{m.label.toUpperCase()}</Typography>
-                                <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{m.val}</Typography>
+                                <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO }}>{m.label.toUpperCase()}</Typography>
+                                <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{m.val}</Typography>
                               </Grid>
                             ))}
                             <Grid item xs={12} md={2}>
-                              <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>P/L</Typography>
-                              <Typography sx={{ fontSize: 13, fontWeight: 800, color: up ? D.greenText : D.redText, fontFamily: MONO }}>
+                              <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO }}>P/L</Typography>
+                              <Typography sx={{ fontSize: 14, fontWeight: 800, color: up ? D.greenText : D.redText, fontFamily: MONO }}>
                                 {h.profitLoss >= 0 ? "+" : ""}{money(h.profitLoss)}
                               </Typography>
-                              <Typography sx={{ fontSize: 11, color: up ? D.greenText : D.redText }}>{pct(h.profitLossPercent)}</Typography>
+                              <Typography sx={{ fontSize: 12, color: up ? D.greenText : D.redText }}>{pct(h.profitLossPercent)}</Typography>
                             </Grid>
                           </Grid>
                           <Box sx={{ mt: 1.5 }}>
                             <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                              <Typography sx={{ fontSize: 10.5, color: D.t3 }}>Allocation</Typography>
-                              <Typography sx={{ fontSize: 10.5, color: D.t3 }}>{alloc.toFixed(1)}%</Typography>
+                              <Typography sx={{ fontSize: 12, color: D.t3 }}>Allocation</Typography>
+                              <Typography sx={{ fontSize: 12, color: D.t3 }}>{alloc.toFixed(1)}%</Typography>
                             </Stack>
                             <LinearProgress variant="determinate" value={Math.min(100, alloc)}
                               sx={{ height: 4, borderRadius: 99, bgcolor: D.border, "& .MuiLinearProgress-bar": { bgcolor: up ? D.green : D.red, borderRadius: 99 } }} />
                           </Box>
                           <Stack direction="row" spacing={1} sx={{ mt: 1.2 }}>
                             <Button size="small" component={RouterLink} to={`/stocks/${h.symbol}`}
-                              sx={{ color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", px: 1.2, py: 0.4, borderRadius: 1.2, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}`, "&:hover": { bgcolor: D.overlay } }}>
+                              sx={{ color: D.brandText, fontSize: 12, fontWeight: 700, textTransform: "none", px: 1.2, py: 0.4, borderRadius: 1.2, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}`, "&:hover": { bgcolor: D.overlay } }}>
                               View Chart →
                             </Button>
                             <Button size="small" component={RouterLink} to="/game"
-                              sx={{ color: D.t2, fontSize: 11, fontWeight: 700, textTransform: "none", px: 1.2, py: 0.4, borderRadius: 1.2, border: `1px solid ${D.border}`, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
+                              sx={{ color: D.t2, fontSize: 12, fontWeight: 700, textTransform: "none", px: 1.2, py: 0.4, borderRadius: 1.2, border: `1px solid ${D.border}`, "&:hover": { color: D.t1, borderColor: D.borderHi } }}>
                               Trade
                             </Button>
                           </Stack>
@@ -480,18 +474,18 @@ export default function Dashboard() {
           <Grid item xs={12} lg={4}>
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Allocation</Typography>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Allocation</Typography>
                 <Typography sx={{ fontSize: 14, color: D.t2 }}>Cash and sector exposure.</Typography>
               </Box>
               <Box sx={{ px: 2.5, py: 2 }}>
-                <Box sx={{ height: 260 }}>
+                <Box aria-hidden sx={{ height: 260 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <RTooltip
                         contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }}
                         formatter={(val: any) => [money(Number(val)), ""]}
                       />
-                      <Pie data={sectorExposure} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="80%" paddingAngle={2}>
+                      <Pie isAnimationActive={false} rootTabIndex={-1} data={sectorExposure} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="80%" paddingAngle={2}>
                         {sectorExposure.map((_, i) => <Cell key={i} fill={pieColors()[i % pieColors().length]} />)}
                       </Pie>
                     </PieChart>
@@ -503,7 +497,7 @@ export default function Dashboard() {
                     <Stack key={e.name} direction="row" justifyContent="space-between" alignItems="center">
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: pieColors()[i % pieColors().length] }} />
-                        <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: D.t2 }}>{e.name}</Typography>
+                        <Typography sx={{ fontSize: 14, fontWeight: 700, color: D.t2 }}>{e.name}</Typography>
                       </Stack>
                       <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>{money(e.value)}</Typography>
                     </Stack>
@@ -517,17 +511,17 @@ export default function Dashboard() {
           <Grid item xs={12} lg={7}>
             <Box data-tour="market-movers" sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Market Movers</Typography>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Market Movers</Typography>
                 <Typography sx={{ fontSize: 14, color: D.t2 }}>Top 8 absolute moves today.</Typography>
               </Box>
               <Box sx={{ p: 2.5, height: 320 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={movers} layout="vertical" margin={{ left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
-                    <XAxis type="number" tickFormatter={(v) => `${Number(v).toFixed(0)}%`} tick={{ fill: D.t3, fontSize: 11 }} />
+                    <XAxis type="number" tickFormatter={(v) => `${Number(v).toFixed(0)}%`} tick={{ fill: D.t3, fontSize: 12 }} />
                     <YAxis type="category" dataKey="symbol" width={52} tick={{ fill: D.t2, fontSize: 12, fontFamily: MONO }} />
                     <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(v: any) => [`${Number(v).toFixed(2)}%`, "Move"]} />
-                    <Bar dataKey="dayChangePercent" radius={[0, 4, 4, 0]}>
+                    <Bar isAnimationActive={false} dataKey="dayChangePercent" radius={[0, 4, 4, 0]}>
                       {movers.map((s) => <Cell key={s.symbol} fill={s.dayChangePercent >= 0 ? D.green : D.red} />)}
                     </Bar>
                   </BarChart>
@@ -540,36 +534,36 @@ export default function Dashboard() {
           <Grid item xs={12} lg={5}>
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Today's News</Typography>
-                <Typography sx={{ fontSize: 14, color: D.t2 }}>Day {gameDay} after-hours signals for the next session.</Typography>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Today's News</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2 }}>Day {trading.marketPhase === "after_hours" ? gameDay : gameDay - 1} after-hours signals for the next session.</Typography>
               </Box>
               <Box sx={{ p: 2.5 }}>
                 {news.length === 0 ? (
-                  <Typography sx={{ fontSize: 13, color: D.t3, py: 1 }}>{trading.marketPhase === "market_open" ? "News arrives after the market closes." : "No major news today. Prices still move from drift and volatility."}</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t3, py: 1 }}>{trading.marketPhase === "market_open" ? "News arrives after the market closes." : "No major news today. Prices still move from drift and volatility."}</Typography>
                 ) : (
                   <Stack spacing={1.2}>
                     <MotionPresence mode="popLayout" initial={false}>
-                    {news.slice(0, 5).map((item, index) => (
+                    {news.slice(0, 3).map((item, index) => (
                         <Box key={item.newsId} component={motion.div} layout={!reduceMotion}
                           initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
                           transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
                           sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                           <Stack direction="row" spacing={1} sx={{ mb: 0.8 }} flexWrap="wrap" useFlexGap>
                             <Chip size="small" label={item.importance}
-                              sx={{ bgcolor: item.importance === "High" ? D.redBg : D.amberBg, color: item.importance === "High" ? D.redText : D.amber, border: `1px solid ${item.importance === "High" ? D.redBd : "rgba(245,158,11,0.3)"}`, fontWeight: 800, fontSize: 10 }} />
+                              sx={{ bgcolor: D.amberBg, color: D.amber, border: `1px solid ${"rgba(245,158,11,0.3)"}`, fontWeight: 800, fontSize: 12 }} />
                             {item.relatedTickers.slice(0, 3).map((t) => (
-                              <Chip key={t} size="small" label={t} sx={{ bgcolor: D.overlay, color: D.brandText, fontWeight: 800, fontSize: 10, fontFamily: MONO }} />
+                              <Chip key={t} size="small" label={t} sx={{ bgcolor: D.overlay, color: D.t2, fontWeight: 800, fontSize: 12, fontFamily: MONO }} />
                             ))}
                           </Stack>
-                          <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: D.t1, mb: 0.4 }}>{item.headline}</Typography>
+                          <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.4 }}>{item.headline}</Typography>
                           <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6 }}>{item.body}</Typography>
                         </Box>
                     ))}
                     </MotionPresence>
                   </Stack>
                 )}
-                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
-                  <Button fullWidth variant="outlined" component={RouterLink} to="/news" sx={{ mt: 2, color: D.brandText, borderColor: D.brandBd, fontWeight: 800, fontSize: 13, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.brandBg } }}>
+                <motion.div whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+                  <Button fullWidth variant="outlined" component={RouterLink} to="/news" sx={{ mt: 2, color: D.brandText, borderColor: D.brandBd, fontWeight: 800, fontSize: 14, textTransform: "none", borderRadius: 1.5, "&:hover": { bgcolor: D.brandBg } }}>
                     Open Newsroom →
                   </Button>
                 </motion.div>
@@ -592,8 +586,8 @@ export default function Dashboard() {
                           {up ? <TrendingUpIcon /> : <TrendingDownIcon />}
                         </Box>
                         <Box>
-                          <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>{label}</Typography>
-                          <Typography sx={{ fontSize: 18, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{stock.symbol} {pct(stock.dayChangePercent)}</Typography>
+                          <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO }}>{label}</Typography>
+                          <Typography sx={{ fontSize: 18, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{stock.symbol} {pct(stock.dayChangePercent)}</Typography>
                           <Typography sx={{ fontSize: 12, color: D.t3 }}>{stock.name}</Typography>
                         </Box>
                       </Stack>
@@ -602,8 +596,8 @@ export default function Dashboard() {
                 ))}
                 <Grid item xs={12} md={4}>
                   <Box>
-                    <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>MARKET BREADTH</Typography>
-                    <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1 }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>MARKET BREADTH</Typography>
+                    <Typography sx={{ fontSize: 20, fontWeight: 900, color: D.t1 }}>
                       <Box component="span" sx={{ color: D.greenText }}>{marketSummary.gainers} up</Box>
                       {" / "}
                       <Box component="span" sx={{ color: D.redText }}>{marketSummary.losers} down</Box>
@@ -618,7 +612,7 @@ export default function Dashboard() {
 
         <Box sx={{ ...CARD, p: 0, overflow: "hidden", mt: 3 }}>
           <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-            <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio Analytics</Typography>
+            <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio Analytics</Typography>
             <Typography sx={{ fontSize: 14, color: D.t2 }}>Quick risk and behavior readouts from your current positions.</Typography>
           </Box>
           <Grid container spacing={0} sx={{ "& > .MuiGrid-item": { borderRight: { md: `1px solid ${D.border}` }, borderBottom: { xs: `1px solid ${D.border}`, md: 0 } } }}>
@@ -630,8 +624,8 @@ export default function Dashboard() {
             ].map((item) => (
               <Grid item xs={12} sm={6} md={3} key={item.label}>
                 <Box sx={{ p: 2.5 }}>
-                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{item.label.toUpperCase()}</Typography>
-                  <Typography sx={{ fontSize: 18, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{item.value}</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{item.label.toUpperCase()}</Typography>
+                  <Typography sx={{ fontSize: 18, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{item.value}</Typography>
                   <Typography sx={{ fontSize: 14, color: D.t2, mt: 0.3 }}>{item.detail}</Typography>
                 </Box>
               </Grid>
@@ -643,14 +637,14 @@ export default function Dashboard() {
         <Box sx={{ ...CARD, p: 0, overflow: "hidden", mt: 3 }}>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
             <Box>
-              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Trade History</Typography>
+              <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Trade History</Typography>
               <Typography sx={{ fontSize: 14, color: D.t2 }}>
                 {tradeInsights.buys} buys, {tradeInsights.sells} sells, {money(tradeInsights.volume)} total volume.
               </Typography>
             </Box>
             <FormControl size="small" sx={{ minWidth: 150 }}>
-              <Select value={tradeTypeFilter} onChange={(event) => setTradeTypeFilter(event.target.value as typeof tradeTypeFilter)}
-                sx={{ color: D.t1, bgcolor: D.elevated, borderRadius: 1.5, fontSize: 13, "& fieldset": { borderColor: D.border }, "& .MuiSvgIcon-root": { color: D.t3 } }}>
+              <Select SelectDisplayProps={{ "aria-label": "Filter trades by type" }} value={tradeTypeFilter} onChange={(event) => setTradeTypeFilter(event.target.value as typeof tradeTypeFilter)}
+                sx={{ color: D.t1, bgcolor: D.elevated, borderRadius: 1.5, fontSize: 14, "& fieldset": { borderColor: D.border }, "& .MuiSvgIcon-root": { color: D.t3 } }}>
                 <MenuItem value="all">All trades</MenuItem>
                 <MenuItem value="buy">Buys only</MenuItem>
                 <MenuItem value="sell">Sells only</MenuItem>
@@ -663,13 +657,13 @@ export default function Dashboard() {
                 <CircularProgress sx={{ color: D.brandText }} />
               </Box>
             ) : tradeHistoryError ? (
-              <Alert severity="error" sx={{ bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>
+              <Alert severity="error" sx={{ bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 14 }}>
                 Could not load trade history: {tradeHistoryError}
               </Alert>
             ) : tradeHistory.length === 0 ? (
               <Box sx={{ p: 3, borderRadius: 2, bgcolor: D.elevated, border: `1px dashed ${D.borderHi}`, textAlign: "center" }}>
-                <Typography sx={{ fontWeight: 800, fontSize: 15, color: D.t1, mb: 0.5 }}>No trades yet.</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Buy your first stock to start your trading log.</Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: 16, color: D.t1, mb: 0.5 }}>No trades yet.</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>Buy your first stock to start your trading log.</Typography>
                 <Button component={RouterLink} to="/game" variant="contained"
                   sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
                   Go to Market →
@@ -689,31 +683,31 @@ export default function Dashboard() {
                       <Grid container spacing={1.5} alignItems="center">
                         <Grid item xs="auto">
                           <Chip size="small" label={isBuy ? "BUY" : "SELL"}
-                            sx={{ bgcolor: isBuy ? D.greenBg : D.redBg, color: isBuy ? D.greenText : D.redText, border: `1px solid ${isBuy ? D.greenBd : D.redBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, minWidth: 40 }} />
+                            sx={{ bgcolor: isBuy ? D.greenBg : D.redBg, color: isBuy ? D.greenText : D.redText, border: `1px solid ${isBuy ? D.greenBd : D.redBd}`, fontWeight: 900, fontSize: 12, fontFamily: MONO, minWidth: 40 }} />
                         </Grid>
                         <Grid item xs>
                           <Stack direction="row" spacing={0.8} alignItems="center">
-                            <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: D.t1, fontFamily: MONO }}>{sym}</Typography>
+                            <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{sym}</Typography>
                             <Typography sx={{ fontSize: 12, color: D.t3 }}>{t.stocks?.company_name ?? ""}</Typography>
                           </Stack>
                         </Grid>
                         <Grid item xs={4} sm={2}>
-                          <Typography sx={{ fontSize: 10.5, color: D.t3 }}>Qty</Typography>
-                          <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{t.quantity}</Typography>
+                          <Typography sx={{ fontSize: 12, color: D.t3 }}>Qty</Typography>
+                          <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{t.quantity}</Typography>
                         </Grid>
                         <Grid item xs={4} sm={2}>
-                          <Typography sx={{ fontSize: 10.5, color: D.t3 }}>Price</Typography>
-                          <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(t.price_per_share)}</Typography>
+                          <Typography sx={{ fontSize: 12, color: D.t3 }}>Price</Typography>
+                          <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(t.price_per_share)}</Typography>
                         </Grid>
                         <Grid item xs={4} sm={2}>
-                          <Typography sx={{ fontSize: 10.5, color: D.t3 }}>Total</Typography>
-                          <Typography sx={{ fontSize: 13, fontWeight: 800, color: isBuy ? D.redText : D.greenText, fontFamily: MONO }}>
+                          <Typography sx={{ fontSize: 12, color: D.t3 }}>Total</Typography>
+                          <Typography sx={{ fontSize: 14, fontWeight: 800, color: isBuy ? D.redText : D.greenText, fontFamily: MONO }}>
                             {isBuy ? "−" : "+"}{money(t.total_amount)}
                           </Typography>
                         </Grid>
                         <Grid item xs={12} sm={2}>
-                          <Typography sx={{ fontSize: 11.5, color: D.brandText, fontFamily: MONO, fontWeight: 700 }}>Day {t.game_day}</Typography>
-                          <Typography sx={{ fontSize: 11, color: D.t3 }}>{new Date(t.executed_at).toLocaleDateString()}</Typography>
+                          <Typography sx={{ fontSize: 12, color: D.brandText, fontFamily: MONO, fontWeight: 700 }}>Day {t.game_day}</Typography>
+                          <Typography sx={{ fontSize: 12, color: D.t3 }}>{new Date(t.executed_at).toLocaleDateString()}</Typography>
                         </Grid>
                       </Grid>
                     </Box>
@@ -721,7 +715,7 @@ export default function Dashboard() {
                 })}
                 </MotionPresence>
                 {filteredTradeHistory.length === 0 && (
-                  <Typography sx={{ fontSize: 13, color: D.t3, py: 1 }}>No trades match this filter.</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t3, py: 1 }}>No trades match this filter.</Typography>
                 )}
               </Stack>
             )}
@@ -731,17 +725,17 @@ export default function Dashboard() {
         <Box sx={{ ...CARD, p: 0, overflow: "hidden", mt: 3 }}>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
             <Box>
-              <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Decision Journal</Typography>
+              <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Decision Journal</Typography>
               <Typography sx={{ fontSize: 14, color: D.t2 }}>The reasoning you captured before trading. Price-outcome reviews arrive in your inbox at your chosen horizon. Reflect here to assess the plan, evidence, position size, and luck.</Typography>
             </Box>
-            <Chip size="small" label={`${journalEntries.length} PLANNED`} sx={{ bgcolor: D.brandBg, color: D.brandText, fontWeight: 900, fontSize: 10, fontFamily: MONO }} />
+            <Chip size="small" label={`${journalEntries.length} PLANNED`} sx={{ bgcolor: D.brandBg, color: D.brandText, fontWeight: 900, fontSize: 12, fontFamily: MONO }} />
           </Stack>
           <Box sx={{ p: 2.5 }}>
             {journalError && <Alert severity="error" action={<Button onClick={() => setFlowRetry(n => n + 1)}>Retry</Button>}>{journalError}</Alert>}
             {journalEntries.length === 0 ? (
               <Box sx={{ p: 3, borderRadius: 2, bgcolor: D.elevated, border: `1px dashed ${D.borderHi}`, textAlign: "center" }}>
                 <Typography sx={{ fontWeight: 800, color: D.t1, mb: .5 }}>No trade plans recorded yet.</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3 }}>Add your reason and exit rule in the trade ticket to begin your decision journal.</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t3 }}>Add your reason and exit rule in the trade ticket to begin your decision journal.</Typography>
               </Box>
             ) : (
               <Stack spacing={1.2}>
@@ -756,17 +750,17 @@ export default function Dashboard() {
                       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
                         <Box sx={{ minWidth: 0 }}>
                           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: .8 }}>
-                            <Chip size="small" label={entry.trade_type.toUpperCase()} sx={{ bgcolor: entry.trade_type === "buy" ? D.greenBg : D.redBg, color: entry.trade_type === "buy" ? D.greenText : D.redText, fontSize: 9.5, fontWeight: 900, fontFamily: MONO }} />
+                            <Chip size="small" label={entry.trade_type.toUpperCase()} sx={{ bgcolor: entry.trade_type === "buy" ? D.greenBg : D.redBg, color: entry.trade_type === "buy" ? D.greenText : D.redText, fontSize: 12, fontWeight: 900, fontFamily: MONO }} />
                             <Typography sx={{ color: D.t1, fontWeight: 900, fontFamily: MONO }}>{entry.symbol}</Typography>
-                            <Typography sx={{ color: D.t3, fontSize: 11 }}>Day {entry.game_day} · {entry.horizon_days}-day horizon</Typography>
+                            <Typography sx={{ color: D.t3, fontSize: 12 }}>Day {entry.game_day} · {entry.horizon_days}-day horizon</Typography>
                           </Stack>
-                          <Typography sx={{ color: D.t2, fontSize: 13, lineHeight: 1.55 }}>{entry.thesis || "No reason recorded."}</Typography>
+                          <Typography sx={{ color: D.t2, fontSize: 14, lineHeight: 1.55 }}>{entry.thesis || "No reason recorded."}</Typography>
                           {entry.exit_plan && <Typography sx={{ color: D.t3, fontSize: 12, mt: .6 }}>Exit rule: {entry.exit_plan}</Typography>}
                         </Box>
                         <Box sx={{ textAlign: { sm: "right" }, flexShrink: 0 }}>
-                          <Typography sx={{ color: outcome >= 0 ? D.greenText : D.redText, fontSize: 15, fontWeight: 900, fontFamily: MONO }}>{pct(outcome)}</Typography>
-                          <Typography sx={{ color: D.t3, fontSize: 10.5 }}>Price movement since trade</Typography>
-                          <Typography sx={{ color: D.t3, fontSize: 10.5 }}>{entry.reviewed_day ? `Outcome review Day ${entry.reviewed_day}` : "Awaiting outcome review"}</Typography>
+                          <Typography sx={{ color: outcome >= 0 ? D.greenText : D.redText, fontSize: 16, fontWeight: 900, fontFamily: MONO }}>{pct(outcome)}</Typography>
+                          <Typography sx={{ color: D.t3, fontSize: 12 }}>Price movement since trade</Typography>
+                          <Typography sx={{ color: D.t3, fontSize: 12 }}>{entry.reviewed_day ? `Outcome review Day ${entry.reviewed_day}` : "Awaiting outcome review"}</Typography>
                         </Box>
                       </Stack>
                       <Box component="details" sx={{ mt: 2, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText }}>Reflect on this decision</Box><Box sx={{ mt: 2 }}><DecisionNote kind="reflection" symbol={entry.symbol} journalId={entry.id} /></Box></Box>

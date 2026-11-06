@@ -1,6 +1,6 @@
 import React from "react";
 import { createTheme, CssBaseline, GlobalStyles, outlinedInputClasses, ThemeProvider as MuiThemeProvider } from "@mui/material";
-import { applyDesignColors, DEFAULT_COLORS, DesignColors } from "../theme/design";
+import { applyDesignColors, DEFAULT_COLORS, DesignColors, readableOn } from "../theme/design";
 
 type CustomThemeInput = {
   bg: string;
@@ -93,7 +93,7 @@ export const makePalette = (
     // were all but invisible. The values below clear AA 4.5:1 for text and the
     // 3:1 non-text bar for the solid bar/dot fills, on every light surface.
     ...(light ? {
-      green:     "#059669",
+      green:     "#047857",
       greenBd:   "rgba(5,150,105,0.32)",
       greenText: "#065F46",
       red:       "#DC2626",
@@ -178,9 +178,9 @@ const DARK_QUERY = "(prefers-color-scheme: dark)";
 const SYSTEM_LIGHT: DesignColors = {
   bg: "#FFFFFF", surface: "#FFFFFF", elevated: "#F7F7F7", overlay: "#EFEFEF",
   border: "#DEDEDE", borderHi: "#BFBFBF",
-  green: "#079455", greenBg: "rgba(7,148,85,0.10)", greenBd: "rgba(7,148,85,0.30)", greenText: "#06713F",
+  green: "#047857", greenBg: "rgba(7,148,85,0.10)", greenBd: "rgba(7,148,85,0.30)", greenText: "#06713F",
   red: "#D92D3A", redBg: "rgba(217,45,58,0.09)", redBd: "rgba(217,45,58,0.28)", redText: "#A51F2B",
-  amber: "#9B6700", amberBg: "rgba(155,103,0,0.10)",
+  amber: "#8A5A00", amberBg: "rgba(155,103,0,0.10)",
   brand: "#7C3AED", brandMid: "#6D28D9", brandBg: "rgba(124,58,237,0.10)", brandBd: "rgba(124,58,237,0.30)", brandText: "#5B21B6",
   t1: "#111111", t2: "#333333", t3: "#555555", t4: "#6B6B6B",
 };
@@ -460,11 +460,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     palette: {
       mode: dark ? "dark" : "light",
       background: { default: palette.bg, paper: palette.surface },
+      primary: { main: palette.brand, contrastText: readableOn(palette.brand) },
     },
     components: {
       // Dark-mode Paper adds a lightening gradient per elevation; the app's
       // surfaces are flat colours from the palette.
       MuiPaper: { styleOverrides: { root: { backgroundImage: "none" } } },
+      // MUI's dark palette gives contained buttons near-black text, which is
+      // 3.69:1 on the brand fill. Per-button `sx` still wins over this.
+      MuiButton: { styleOverrides: { contained: { color: readableOn(palette.brand) }, text: { color: palette.brandText }, outlined: { color: palette.brandText } } },
+      MuiLink: { styleOverrides: { root: { color: palette.brandText, textDecorationColor: palette.brandBd } } },
+      MuiTab: { styleOverrides: { root: { "&.Mui-selected": { color: palette.brandText } } } },
+      // Pages name their bar when it means something specific.
+      MuiLinearProgress: { defaultProps: { "aria-label": "Progress" } },
+      // Counts are information, not losses: red is kept for money.
+      MuiBadge: { styleOverrides: { colorError: { backgroundColor: palette.t1, color: palette.surface } } },
+      // MUI fades placeholders to 0.42 from inside its own styles, which beats
+      // the global placeholder rule below and left them under 3:1.
+      MuiInputBase: { styleOverrides: { input: { "&::placeholder": { opacity: 1 } } } },
       MuiInputLabel: {
         styleOverrides: {
           root: {
@@ -477,7 +490,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       },
       MuiFormHelperText: {
         styleOverrides: {
-          root: { color: palette.t2, "&.Mui-error": { color: palette.redText } },
+          root: { color: palette.t2, "&.Mui-error": { color: palette.redText }, "&.Mui-disabled": { color: palette.t3 } },
         },
       },
       MuiOutlinedInput: {
@@ -500,12 +513,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         {/* Inside the theme so the page background and text follow the palette. */}
         <CssBaseline />
         <GlobalStyles styles={{
-          ".learning .MuiButton-contained:not(.Mui-disabled)": { backgroundColor: palette.brand, color: "#fff" },
+          ".learning .MuiButton-contained:not(.Mui-disabled)": { backgroundColor: palette.brand, color: readableOn(palette.brand) },
           ".learning .MuiButton-outlined:not(.Mui-disabled)": { color: palette.brandText, borderColor: palette.brandBd },
           ".learning .MuiButton-text:not(.Mui-disabled)": { color: palette.brandText },
           ".learning .MuiSelect-icon": { color: palette.t2 },
           ".learning .MuiAlert-standardInfo": { color: palette.t1, backgroundColor: palette.brandBg, border: `1px solid ${palette.brandBd}` },
           ".learning .MuiAlert-standardInfo .MuiAlert-icon": { color: palette.brandText },
+          "h1, h2, h3": { textWrap: "balance" },
+          "p, li, .MuiAlert-message": { textWrap: "pretty" },
           ".MuiMenu-paper": { backgroundColor: palette.elevated, color: palette.t1 },
           ".MuiCheckbox-root": { color: palette.t2 },
           ".MuiCheckbox-root.Mui-checked": { color: palette.brandText },
@@ -513,6 +528,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           "input, textarea, .MuiInputBase-input, .MuiSelect-select": {
             color: dark ? "#FFFFFF" : palette.t1,
             WebkitTextFillColor: dark ? "#FFFFFF" : palette.t1,
+          },
+          // Under 16px, iOS zooms the page when a field is focused. Important
+          // because many fields set a smaller size in their own `sx`.
+          "@media (max-width: 899.95px)": {
+            "input, textarea, .MuiInputBase-input, .MuiSelect-select": { fontSize: "16px !important" },
           },
           "input::placeholder, textarea::placeholder, .MuiInputBase-input::placeholder": {
             color: palette.t3,

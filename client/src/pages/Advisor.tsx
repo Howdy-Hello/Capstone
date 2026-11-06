@@ -24,15 +24,15 @@ export default function Advisor() {
 
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh", py: { xs: 3, md: 5 } }}>
-      <Container data-tour="advisor-page" maxWidth="lg">
+      <Container data-tour="advisor-page" maxWidth="xl">
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 1 }}>
-          <Box><Stack direction="row" spacing={1.2} alignItems="center"><SmartToyIcon sx={{ color: D.brandText }} /><Typography component="h1" sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 950 }}>Advisor Marketplace</Typography></Stack><Typography sx={{ color: D.t3, mt: 1 }}>Hire specialists with game cash. Advisors remain available for the current run.</Typography></Box>
+          <Box><Stack direction="row" spacing={1.2} alignItems="center"><SmartToyIcon sx={{ color: D.brandText }} /><Typography component="h1" sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 900 , letterSpacing: "-0.02em" }}>Advisor Marketplace</Typography></Stack><Typography sx={{ color: D.t3, mt: 1 }}>Hire specialists with game cash. Advisors remain available for the current run.</Typography></Box>
           <Chip icon={<AccountBalanceWalletIcon />} label={`${money(trading.account.cash)} available`} sx={{ alignSelf: { sm: "flex-start" }, bgcolor: D.greenBg, color: D.greenText, fontFamily: MONO, fontWeight: 900 }} />
         </Stack>
 
         {message && <Alert severity="success" onClose={() => setMessage("")} sx={{ my: 3, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}` }}>{message}</Alert>}
 
-        {advisorState.ownedAdvisors.length > 0 && <Box sx={{ ...CARD, p: 2.5, my: 3 }}><Typography sx={{ color: D.t1, fontWeight: 900, mb: 1.5 }}>My Advisors</Typography><Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>{advisorState.ownedAdvisors.map((advisor) => <Chip key={advisor.id} icon={<CheckCircleIcon />} label={`${advisor.name} · ${advisor.role}`} sx={{ bgcolor: D.brandBg, color: D.brandText, fontWeight: 800 }} />)}</Stack></Box>}
+        {advisorState.ownedAdvisors.length > 0 && <Box sx={{ ...CARD, p: 2.5, my: 3 }}><Typography component="h2" sx={{ color: D.t1, fontWeight: 900, mb: 1.5 }}>My Advisors</Typography><Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>{advisorState.ownedAdvisors.map((advisor) => <Chip key={advisor.id} icon={<CheckCircleIcon />} label={`${advisor.name} · ${advisor.role}`} sx={{ bgcolor: D.brandBg, color: D.brandText, fontWeight: 800 }} />)}</Stack></Box>}
 
         <Grid container spacing={2.5} sx={{ mt: 1 }}>
           {ADVISORS.map((advisor) => {
@@ -43,11 +43,11 @@ export default function Advisor() {
               <Grid item xs={12} sm={6} key={advisor.id}>
                 <Box sx={{ ...CARD, p: 3, height: "100%", borderColor: owned ? D.greenBd : D.border }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1.5 }}>
-                    <Box><Typography sx={{ color: D.t1, fontSize: 20, fontWeight: 950 }}>{advisor.name}</Typography><Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900 }}>{advisor.role}</Typography></Box>
-                    <Chip label={owned ? "HIRED" : available ? money(advisor.cost) : "COMING SOON"} size="small" sx={{ bgcolor: owned ? D.greenBg : D.overlay, color: owned ? D.greenText : D.t1, fontFamily: MONO, fontWeight: 900 }} />
+                    <Box><Typography component="h2" sx={{ color: D.t1, fontSize: 20, fontWeight: 900 }}>{advisor.name}</Typography><Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900 }}>{advisor.role}</Typography></Box>
+                    <Chip label={owned ? "HIRED" : available ? money(advisor.cost) : "COMING SOON"} size="small" sx={{ bgcolor: owned ? D.greenBg : D.overlay, color: owned ? D.greenText : D.t1, fontWeight: 900 }} />
                   </Stack>
-                  <Typography sx={{ color: D.t3, fontSize: 13, lineHeight: 1.6, mb: 2 }}>{advisor.description}</Typography>
-                  <Stack spacing={1} sx={{ mb: 2.5 }}>{advisor.features.map((feature) => <Stack key={feature} direction="row" spacing={1} alignItems="center"><CheckCircleIcon sx={{ color: D.greenText, fontSize: 15 }} /><Typography sx={{ color: D.t2, fontSize: 12.5 }}>{feature}</Typography></Stack>)}</Stack>
+                  <Typography sx={{ color: D.t3, fontSize: 14, lineHeight: 1.6, mb: 2 }}>{advisor.description}</Typography>
+                  <Stack spacing={1} sx={{ mb: 2.5 }}>{advisor.features.map((feature) => <Stack key={feature} direction="row" spacing={1} alignItems="center"><CheckCircleIcon sx={{ color: D.t3, fontSize: 16 }} /><Typography sx={{ color: D.t2, fontSize: 14 }}>{feature}</Typography></Stack>)}</Stack>
                   <Button fullWidth variant={owned ? "outlined" : "contained"} disabled={owned || !available || !affordable} onClick={() => setSelected(advisor)} sx={{ bgcolor: owned ? "transparent" : D.brand, color: owned ? D.greenText : "#fff", borderColor: owned ? D.greenBd : D.brand, textTransform: "none", fontWeight: 900, boxShadow: "none" }}>{owned ? "Already hired" : !available ? "Coming soon" : affordable ? `Hire ${advisor.name}` : "Not enough cash"}</Button>
                 </Box>
               </Grid>

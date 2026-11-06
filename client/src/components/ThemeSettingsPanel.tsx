@@ -29,7 +29,7 @@ export default function ThemeSettingsPanel() {
       <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <PaletteOutlinedIcon sx={{ color: D.brandText, fontSize: 18 }} />
-          <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Appearance Settings</Typography>
+          <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Appearance Settings</Typography>
         </Stack>
         <Tooltip title="Reset theme">
           <IconButton aria-label="Reset theme" onClick={resetTheme} sx={{ color: D.t3, p: 0.7, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
@@ -39,7 +39,7 @@ export default function ThemeSettingsPanel() {
       </Stack>
 
       <Box sx={{ p: 3 }}>
-        <Typography sx={{ fontSize: 13, color: D.t3, mb: 2.2 }}>
+        <Typography sx={{ fontSize: 14, color: D.t3, mb: 2.2 }}>
           The default follows your device automatically. You can also choose a fixed palette or create your own.
         </Typography>
 
@@ -66,8 +66,8 @@ export default function ThemeSettingsPanel() {
                 }}
               >
                 <Stack direction="row" spacing={0.6} alignItems="center">
-                  {[preset.colors.bg, preset.colors.surface, preset.colors.elevated, preset.colors.brand].map((color) => (
-                    <Box key={color} sx={{ width: 16, height: 16, borderRadius: 99, bgcolor: color, border: `1px solid ${D.borderHi}` }} />
+                  {[preset.colors.bg, preset.colors.surface, preset.colors.elevated, preset.colors.brand].map((color, swatch) => (
+                    <Box key={`${preset.id}-${swatch}`} sx={{ width: 16, height: 16, borderRadius: 99, bgcolor: color, border: `1px solid ${D.borderHi}` }} />
                   ))}
                 </Stack>
                 <Typography sx={{ fontSize: 12, fontWeight: 850, lineHeight: 1.2, textAlign: "right" }}>
@@ -81,22 +81,23 @@ export default function ThemeSettingsPanel() {
 
         <Divider sx={{ borderColor: D.border, my: 2.5 }} />
 
-        <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, mb: 1.4, fontFamily: MONO, letterSpacing: 1 }}>
+        <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, mb: 1.4, fontFamily: MONO, letterSpacing: 1 }}>
           CUSTOM COLORS
         </Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.2 }}>
           {customFields.map(([key, label]) => (
             <Box key={key} sx={{ p: 1.2, border: `1px solid ${D.border}`, borderRadius: 1.5, bgcolor: D.elevated }}>
-              <Typography sx={{ fontSize: 11, color: D.t3, fontWeight: 800, mb: 0.8 }}>{label}</Typography>
+              <Typography sx={{ fontSize: 12, color: D.t3, fontWeight: 800, mb: 0.8 }}>{label}</Typography>
               <Stack direction="row" spacing={1} alignItems="center">
                 <Box
                   component="input"
                   type="color"
+                  aria-label={label}
                   value={customInput[key]}
                   onChange={(event) => updateCustomInput({ [key]: event.target.value })}
                   sx={{ width: 38, height: 30, p: 0, border: 0, bgcolor: "transparent", cursor: "pointer" }}
                 />
-                <Typography sx={{ fontSize: 11.5, color: D.t2, fontFamily: MONO }}>
+                <Typography sx={{ fontSize: 12, color: D.t2, fontFamily: MONO }}>
                   {customInput[key].toUpperCase()}
                 </Typography>
               </Stack>

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import {
+import { ButtonBase,
   Avatar, Badge, Box, Button, Checkbox, Chip, Divider, IconButton, InputAdornment,
   Stack, TextField, Tooltip, Typography,
 } from "@mui/material";
@@ -56,15 +56,15 @@ type MailItem = {
 };
 
 const FOLDERS: { id: MailFolder | "all"; label: string; icon: React.ReactNode }[] = [
-  { id: "all",         label: "Inbox",       icon: <InboxIcon sx={{ fontSize: 17 }} /> },
-  { id: "news",        label: "Market news", icon: <NewspaperIcon sx={{ fontSize: 17 }} /> },
-  { id: "mission",     label: "Missions",    icon: <FlagIcon sx={{ fontSize: 17 }} /> },
-  { id: "advisor",     label: "Advisor",     icon: <SmartToyIcon sx={{ fontSize: 17 }} /> },
-  { id: "achievement", label: "Achievements",icon: <WorkspacePremiumIcon sx={{ fontSize: 17 }} /> },
-  { id: "rival",       label: "Rival",       icon: <SportsMmaIcon sx={{ fontSize: 17 }} /> },
-  { id: "bill",        label: "Billing",     icon: <ReceiptLongIcon sx={{ fontSize: 17 }} /> },
-  { id: "level",       label: "Level ups",   icon: <MilitaryTechIcon sx={{ fontSize: 17 }} /> },
-  { id: "system",      label: "System",      icon: <InfoIcon sx={{ fontSize: 17 }} /> },
+  { id: "all",         label: "Inbox",       icon: <InboxIcon sx={{ fontSize: 18 }} /> },
+  { id: "news",        label: "Market news", icon: <NewspaperIcon sx={{ fontSize: 18 }} /> },
+  { id: "mission",     label: "Missions",    icon: <FlagIcon sx={{ fontSize: 18 }} /> },
+  { id: "advisor",     label: "Advisor",     icon: <SmartToyIcon sx={{ fontSize: 18 }} /> },
+  { id: "achievement", label: "Achievements",icon: <WorkspacePremiumIcon sx={{ fontSize: 18 }} /> },
+  { id: "rival",       label: "Rival",       icon: <SportsMmaIcon sx={{ fontSize: 18 }} /> },
+  { id: "bill",        label: "Billing",     icon: <ReceiptLongIcon sx={{ fontSize: 18 }} /> },
+  { id: "level",       label: "Level ups",   icon: <MilitaryTechIcon sx={{ fontSize: 18 }} /> },
+  { id: "system",      label: "System",      icon: <InfoIcon sx={{ fontSize: 18 }} /> },
 ];
 
 // Read during render: applyDesignColors mutates the shared D singleton on a
@@ -84,7 +84,7 @@ function folderColors(folder: MailFolder): { color: string; bg: string } {
 }
 
 function folderIcon(folder: MailFolder) {
-  return FOLDERS.find((f) => f.id === folder)?.icon ?? <InfoIcon sx={{ fontSize: 17 }} />;
+  return FOLDERS.find((f) => f.id === folder)?.icon ?? <InfoIcon sx={{ fontSize: 18 }} />;
 }
 
 function folderLabel(folder: MailFolder) {
@@ -201,37 +201,37 @@ export default function Inbox() {
   const folderTitle = FOLDERS.find((item) => item.id === folder)?.label ?? "Inbox";
 
   return (
-    <Box data-tour="inbox-page" sx={{ bgcolor: D.bg, minHeight: "100vh", p: { xs: 1, md: 2 } }}>
+    <Box data-tour="inbox-page" sx={{ bgcolor: D.bg, minHeight: "100vh", p: { xs: 2, sm: 3 } }}>
       <Box sx={{ maxWidth: 1600, mx: "auto", bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3, overflow: "hidden", minHeight: { md: "calc(100vh - 110px)" } }}>
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ height: 72, px: { xs: 2, md: 3 }, borderBottom: `1px solid ${D.border}` }}>
+        <Stack direction="row" alignItems="center" spacing={2} useFlexGap sx={{ minHeight: 72, flexWrap: { xs: "wrap", md: "nowrap" }, rowGap: 1, py: { xs: 1.25, md: 0 }, px: { xs: 2, md: 3 }, borderBottom: `1px solid ${D.border}` }}>
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ width: { md: 218 }, flexShrink: 0 }}>
             <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: D.brand, display: "grid", placeItems: "center", color: "white" }}>
               <MailOutlineIcon sx={{ fontSize: 21 }} />
             </Box>
             <Box>
-              <Typography component="h1" sx={{ fontWeight: 950, fontSize: 16, color: D.t1, lineHeight: 1.1 }}>StockPilot Mail</Typography>
-              <Typography sx={{ fontSize: 10, color: D.t3, fontFamily: MONO }}>MARKET DESK</Typography>
+              <Typography component="h1" sx={{ fontWeight: 900, fontSize: 20, color: D.t1, lineHeight: 1.1 }}>StockPilot Mail</Typography>
+              <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>MARKET DESK</Typography>
             </Box>
           </Stack>
           <TextField value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search news, people, or messages" size="small" inputProps={{ "aria-label": "Search mail" }}
-            sx={{ flex: 1, maxWidth: 720, "& .MuiOutlinedInput-root": { bgcolor: D.elevated, borderRadius: 2.5, height: 46, "& fieldset": { borderColor: "transparent" }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand }, "& input": { color: D.t1, fontSize: { xs: 16, sm: 13.5 } } } }}
+            sx={{ flex: { xs: "1 1 100%", md: 1 }, maxWidth: { xs: "100%", md: 720 }, order: { xs: 3, md: 0 }, "& .MuiOutlinedInput-root": { bgcolor: D.elevated, borderRadius: 2.5, height: 46, "& fieldset": { borderColor: "transparent" }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand }, "& input": { color: D.t1, fontSize: { xs: 16, sm: 13.5 } } } }}
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: D.t3 }} /></InputAdornment> }} />
           <Box sx={{ flex: 1 }} />
-          <Tooltip title="More options"><IconButton sx={{ color: D.t3 }}><MoreVertIcon /></IconButton></Tooltip>
+          <Tooltip title="More options"><IconButton aria-label="More options" sx={{ color: D.t3 }}><MoreVertIcon /></IconButton></Tooltip>
           <Avatar sx={{ width: 34, height: 34, bgcolor: D.brandBg, color: D.brandText, fontSize: 12, fontWeight: 900 }}>SP</Avatar>
         </Stack>
 
         <Box sx={{ display: "flex", alignItems: "stretch", minHeight: { md: "calc(100vh - 182px)" }, flexDirection: { xs: "column", md: "row" } }}>
           {/* Folder rail */}
           <Box sx={{ width: { xs: "100%", md: 242 }, flexShrink: 0, p: { xs: 1.25, md: 2 }, borderRight: { md: `1px solid ${D.border}` } }}>
-            <Button fullWidth startIcon={<MarkEmailReadIcon />} onClick={markEverythingRead}
-              sx={{ justifyContent: "flex-start", px: 2, py: 1.35, mb: 1.5, borderRadius: 2.5, bgcolor: D.brand, color: "white", textTransform: "none", fontWeight: 850, boxShadow: `0 8px 24px ${D.brandBg}`, "&:hover": { bgcolor: D.brandMid } }}>
+            <Button fullWidth startIcon={<MarkEmailReadIcon />} onClick={markEverythingRead} disabled={totalUnread === 0}
+              sx={{ justifyContent: { xs: "center", md: "flex-start" }, px: 2, py: 0.8, mb: 1.5, borderRadius: 2.5, bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, textTransform: "none", fontWeight: 800, boxShadow: "none", "&:hover": { bgcolor: D.overlay, borderColor: D.brand }, "&.Mui-disabled": { bgcolor: "transparent", color: D.t3, borderColor: D.border } }}>
               Mark all as read
             </Button>
             <Stack
               direction={{ xs: "row", md: "column" }}
               spacing={0.5}
-              sx={{ overflowX: { xs: "auto", md: "visible" }, pb: { xs: 1, md: 0 } }}
+              sx={{ overflowX: { xs: "auto", md: "visible" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" }, pb: { xs: 1, md: 0 } }}
             >
               {FOLDERS.map((f) => {
                 const count = unreadByFolder.get(f.id) ?? 0;
@@ -250,7 +250,7 @@ export default function Inbox() {
                       borderRadius: "0 18px 18px 0",
                       textTransform: "none",
                       fontWeight: active ? 900 : 700,
-                      fontSize: 13,
+                      fontSize: 14,
                       color: active ? D.brandText : D.t2,
                       bgcolor: active ? D.brandBg : "transparent",
                       "&:hover": { bgcolor: active ? D.brandBg : D.overlay, color: active ? D.brandText : D.t1 },
@@ -259,14 +259,14 @@ export default function Inbox() {
                     <Box component="span" sx={{ flex: 1, textAlign: "left", whiteSpace: "nowrap" }}>{f.label}</Box>
                     {count > 0 && (
                       <Badge badgeContent={count} color="error"
-                        sx={{ mr: 1, "& .MuiBadge-badge": { position: "static", transform: "none", fontSize: 9.5, height: 16, minWidth: 16 } }} />
+                        sx={{ mr: 1, "& .MuiBadge-badge": { position: "static", transform: "none", fontSize: 12, height: 16, minWidth: 16 } }} />
                     )}
                   </Button>
                 );
               })}
             </Stack>
             <Box sx={{ display: { xs: "none", md: "block" }, mt: 3, px: 1.5 }}>
-              <Typography sx={{ fontSize: 10, color: D.t3, fontFamily: MONO, letterSpacing: 1, mb: 1.5 }}>MAIL SUMMARY</Typography>
+              <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO, letterSpacing: 1, mb: 1.5 }}>MAIL SUMMARY</Typography>
               <Stack direction="row" justifyContent="space-between"><Typography sx={{ fontSize: 12, color: D.t3 }}>Unread</Typography><Typography sx={{ fontSize: 12, color: D.t1, fontFamily: MONO }}>{totalUnread}</Typography></Stack>
               <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}><Typography sx={{ fontSize: 12, color: D.t3 }}>Total mail</Typography><Typography sx={{ fontSize: 12, color: D.t1, fontFamily: MONO }}>{allMail.length}</Typography></Stack>
             </Box>
@@ -282,12 +282,12 @@ export default function Inbox() {
               borderRight: selected ? { lg: `1px solid ${D.border}` } : undefined,
             }}>
               <Stack direction="row" alignItems="center" sx={{ px: 2, height: 54, borderBottom: `1px solid ${D.border}` }}>
-                <Checkbox size="small" disabled sx={{ color: D.t4 }} />
-                <Tooltip title="Refresh"><IconButton size="small" sx={{ color: D.t3 }}><AutorenewIcon sx={{ fontSize: 19 }} /></IconButton></Tooltip>
-                <Typography sx={{ ml: 1, color: D.t1, fontWeight: 850, fontSize: 14 }}>{folderTitle}</Typography>
+                <Checkbox size="small" disabled inputProps={{ "aria-label": "Select all messages" }} sx={{ color: D.t4 }} />
+                <Tooltip title="Refresh"><IconButton size="small" aria-label="Refresh" sx={{ color: D.t3 }}><AutorenewIcon sx={{ fontSize: 20 }} /></IconButton></Tooltip>
+                <Typography component="h2" sx={{ ml: 1, color: D.t1, fontWeight: 850, fontSize: 14 }}>{folderTitle}</Typography>
                 <Box sx={{ flex: 1 }} />
-                <Typography sx={{ fontSize: 10.5, color: D.t3, fontFamily: MONO }}>{visible.length} messages</Typography>
-                <IconButton size="small" disabled><ChevronLeftIcon sx={{ fontSize: 18 }} /></IconButton><IconButton size="small" disabled><ChevronRightIcon sx={{ fontSize: 18 }} /></IconButton>
+                <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>{visible.length} messages</Typography>
+                <IconButton size="small" disabled aria-label="Previous page"><ChevronLeftIcon sx={{ fontSize: 18 }} /></IconButton><IconButton size="small" disabled aria-label="Next page"><ChevronRightIcon sx={{ fontSize: 18 }} /></IconButton>
               </Stack>
               <Box sx={{ bgcolor: D.surface, overflow: "hidden" }}>
                 {visible.length === 0 ? (
@@ -296,7 +296,7 @@ export default function Inbox() {
                     <Typography sx={{ fontWeight: 800, color: D.t2, mb: 0.5 }}>
                       {query ? "No mail matches that search." : "Nothing here yet."}
                     </Typography>
-                    <Typography sx={{ fontSize: 13, color: D.t3 }}>
+                    <Typography sx={{ fontSize: 14, color: D.t3 }}>
                       {query
                         ? "Try a different word, or clear the search."
                         : "Play a few days and headlines, missions and rival messages will land here."}
@@ -315,38 +315,32 @@ export default function Inbox() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.2, delay: Math.min(index * 0.015, 0.2) }}
                           onClick={() => openItem(item)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e: React.KeyboardEvent) => {
-                            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openItem(item); }
-                          }}
                           sx={{
                             display: "flex", gap: 0.75, alignItems: "center",
-                            px: 1.25, py: 1.15,
+                            px: { xs: 2, sm: 1.25 }, py: 1.15,
                             cursor: "pointer",
                             borderBottom: `1px solid ${D.border}`,
-                            borderLeft: `3px solid ${active ? D.brand : "transparent"}`,
-                            bgcolor: active ? D.overlay : item.read ? "transparent" : D.brandBg,
+                            bgcolor: active ? D.overlay : "transparent",
                             transition: "background-color .12s ease",
                             "&:hover": { bgcolor: D.overlay },
                             "&:last-of-type": { borderBottom: "none" },
                           }}
                         >
-                          <Checkbox size="small" onClick={(e) => e.stopPropagation()} sx={{ color: D.t4, p: .5 }} />
-                          <IconButton size="small" onClick={(e) => e.stopPropagation()} aria-label="Star message" sx={{ color: D.t4, p: .5 }}><StarBorderIcon sx={{ fontSize: 18 }} /></IconButton>
+                          <Checkbox size="small" onClick={(e) => e.stopPropagation()} inputProps={{ "aria-label": "Select message" }} sx={{ display: { xs: "none", sm: "inline-flex" }, color: D.t4, p: .5 }} />
+                          <IconButton size="small" onClick={(e) => e.stopPropagation()} aria-label="Star message" sx={{ display: { xs: "none", sm: "inline-flex" }, color: D.t4, p: .5 }}><StarBorderIcon sx={{ fontSize: 18 }} /></IconButton>
                           <Box sx={{ width: 27, height: 27, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", bgcolor: meta.bg, color: meta.color }}>{folderIcon(item.folder)}</Box>
 
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <ButtonBase aria-label={`Open message: ${item.subject}`} sx={{ display: "block", textAlign: "left", flex: 1, minWidth: 0, borderRadius: 1, "&:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: 2 } }}>
                             <Stack direction="row" spacing={1} alignItems="baseline">
-                              <Typography noWrap sx={{ fontSize: 12.5, fontWeight: item.read ? 700 : 900, color: item.read ? D.t2 : D.t1, flex: 1 }}>
+                              <Typography noWrap sx={{ fontSize: 14, fontWeight: item.read ? 700 : 900, color: item.read ? D.t2 : D.t1, flex: 1 }}>
                                 {item.from}
                               </Typography>
-                              <Typography sx={{ fontSize: 10.5, color: D.t3, fontFamily: MONO, flexShrink: 0 }}>
+                              <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO, flexShrink: 0 }}>
                                 {timeLabel(item)}
                               </Typography>
                             </Stack>
-                            <Typography noWrap sx={{ fontSize: 13, fontWeight: item.read ? 600 : 900, color: item.read ? D.t2 : D.t1, mt: 0.15 }}>{item.subject}<Box component="span" sx={{ fontWeight: 500, color: D.t3 }}> — {item.preview}</Box></Typography>
-                          </Box>
+                            <Typography noWrap sx={{ fontSize: 14, fontWeight: item.read ? 600 : 900, color: item.read ? D.t2 : D.t1, mt: 0.15 }}>{item.subject}<Box component="span" sx={{ fontWeight: 500, color: D.t3 }}> — {item.preview}</Box></Typography>
+                          </ButtonBase>
 
                           {!item.read && (
                             <Box sx={{ mt: 1, width: 8, height: 8, borderRadius: "50%", bgcolor: D.brand, flexShrink: 0 }} />
@@ -379,25 +373,25 @@ export default function Inbox() {
                   <Chip
                     size="small"
                     label={folderLabel(selected.folder)}
-                    sx={{ bgcolor: folderColors(selected.folder).bg, color: folderColors(selected.folder).color, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 0.5 }}
+                    sx={{ bgcolor: folderColors(selected.folder).bg, color: folderColors(selected.folder).color, fontWeight: 900, fontSize: 12, fontFamily: MONO, letterSpacing: 0.5 }}
                   />
                   <Box sx={{ flex: 1 }} />
-                  <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO }}>{timeLabel(selected)}</Typography>
+                  <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>{timeLabel(selected)}</Typography>
                 </Stack>
 
                 <Box sx={{ p: { xs: 2.5, md: 3 } }}>
-                  <Typography sx={{ fontWeight: 950, fontSize: { xs: 20, md: 23 }, color: D.t1, lineHeight: 1.35, mb: 2 }}>
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: { xs: 20, md: 23 }, color: D.t1, lineHeight: 1.35, mb: 2 }}>
                     {selected.subject}
                   </Typography>
-                  <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 3 }}><Avatar sx={{ width: 38, height: 38, bgcolor: folderColors(selected.folder).bg, color: folderColors(selected.folder).color, fontSize: 14, fontWeight: 900 }}>{selected.from.slice(0, 1).toUpperCase()}</Avatar><Box><Typography sx={{ color: D.t1, fontWeight: 800, fontSize: 13.5 }}>{selected.from}</Typography><Typography sx={{ fontSize: 11.5, color: D.t3 }}>to me{selected.gameDay !== null && ` · Day ${selected.gameDay}`}</Typography></Box></Stack>
+                  <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 3 }}><Avatar sx={{ width: 38, height: 38, bgcolor: folderColors(selected.folder).bg, color: folderColors(selected.folder).color, fontSize: 14, fontWeight: 900 }}>{selected.from.slice(0, 1).toUpperCase()}</Avatar><Box><Typography sx={{ color: D.t1, fontWeight: 800, fontSize: 14 }}>{selected.from}</Typography><Typography sx={{ fontSize: 12, color: D.t3 }}>to me{selected.gameDay !== null && ` · Day ${selected.gameDay}`}</Typography></Box></Stack>
 
                   {selected.news && (
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }}>
                       <Chip size="small" label={selected.news.importance === "High" ? "High impact" : "Normal impact"}
-                        sx={{ bgcolor: selected.news.importance === "High" ? D.redBg : D.overlay, color: selected.news.importance === "High" ? D.redText : D.t3, fontWeight: 800, fontSize: 10.5 }} />
+                        sx={{ bgcolor: selected.news.importance === "High" ? D.redBg : D.overlay, color: selected.news.importance === "High" ? D.redText : D.t3, fontWeight: 800, fontSize: 12 }} />
                       {selected.news.isRumor && (
                         <Chip size="small" label="Unconfirmed"
-                          sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 800, fontSize: 10.5 }} />
+                          sx={{ bgcolor: D.overlay, color: D.t3, fontWeight: 800, fontSize: 12 }} />
                       )}
                     </Stack>
                   )}
@@ -409,7 +403,7 @@ export default function Inbox() {
                   {selected.news && selected.news.relatedTickers.length > 0 && (
                     <>
                       <Divider sx={{ borderColor: D.border, my: 2.5 }} />
-                      <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO, letterSpacing: 0.5, mb: 1 }}>
+                      <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO, letterSpacing: 0.5, mb: 1 }}>
                         RELATED HOLDINGS
                       </Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -421,7 +415,7 @@ export default function Inbox() {
                             clickable
                             size="small"
                             label={ticker}
-                            sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, fontSize: 11, fontFamily: MONO, textDecoration: "none" }}
+                            sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, fontSize: 12, fontFamily: MONO, textDecoration: "none" }}
                           />
                         ))}
                       </Stack>

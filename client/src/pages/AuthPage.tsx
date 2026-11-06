@@ -223,7 +223,7 @@ const AuthPage: React.FC = () => {
       // 16px: iOS zooms the page into any smaller input on focus (BUG-026).
       "& input": { color: D.t1, fontSize: 16 },
     },
-    "& .MuiInputLabel-root": { color: D.t3, fontSize: 13.5, "&.Mui-focused": { color: D.brandText } },
+    "& .MuiInputLabel-root": { color: D.t3, fontSize: 14, "&.Mui-focused": { color: D.brandText } },
   };
 
   return (
@@ -239,17 +239,17 @@ const AuthPage: React.FC = () => {
                   <CandlestickChartIcon sx={{ fontSize: 18, color: "#fff" }} />
                 </Box>
                 <Box>
-                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>StockPilot</Typography>
-                  <Typography sx={{ fontSize: 10, color: D.t3, fontFamily: MONO }}>SIMULATION TERMINAL</Typography>
+                  <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>StockPilot</Typography>
+                  <Typography sx={{ fontSize: 12, color: D.t3 }}>SIMULATION TERMINAL</Typography>
                 </Box>
               </Stack>
 
               <Box sx={{ my: 4 }}>
-                <Typography sx={{ fontSize: 24, fontWeight: 950, color: D.t1, letterSpacing: -1, lineHeight: 1.2, mb: 1.5 }}>
+                <Typography sx={{ fontSize: 24, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em", lineHeight: 1.2, mb: 1.5 }}>
                   Learn to trade.<br />
                   <Box component="span" sx={{ color: D.brandText }}>No risk required.</Box>
                 </Typography>
-                <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.8 }}>
+                <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.8 }}>
                   Practice real market decisions in a safe simulation environment.
                 </Typography>
               </Box>
@@ -257,8 +257,8 @@ const AuthPage: React.FC = () => {
               <Stack spacing={1.2}>
                 {PERKS.map((p) => (
                   <Stack key={p} direction="row" spacing={1} alignItems="flex-start">
-                    <CheckCircleOutlineIcon sx={{ fontSize: 15, color: D.greenText, mt: 0.25 }} />
-                    <Typography sx={{ fontSize: 12.5, color: D.t2, lineHeight: 1.5 }}>{p}</Typography>
+                    <CheckCircleOutlineIcon sx={{ fontSize: 16, color: D.t3, mt: 0.25 }} />
+                    <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.5 }}>{p}</Typography>
                   </Stack>
                 ))}
               </Stack>
@@ -271,32 +271,32 @@ const AuthPage: React.FC = () => {
               sx={{ flex: 1, p: { xs: 3, sm: 4.5 }, bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: { xs: 3, md: "0 16px 16px 0" }, display: "flex", flexDirection: "column" }}>
 
               <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3.5 }}>
-                <IconButton aria-label="Back to home" onClick={() => navigate("/")} size="small" sx={{ color: D.t3, p: 0.6, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
+                <IconButton aria-label="Back to home" onClick={() => navigate("/")} size="small" sx={{ color: D.t3, p: 0.6, minWidth: 32, minHeight: 32, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
                   <ArrowBackIosNewIcon sx={{ fontSize: 14 }} />
                 </IconButton>
                 <Typography sx={{ fontSize: 12, color: D.t3 }}>Back to home</Typography>
               </Stack>
 
-              <Typography component="h1" sx={{ fontWeight: 950, fontSize: 22, color: D.t1, letterSpacing: -0.5, mb: 0.5 }}>
+              <Typography component="h1" sx={{ fontWeight: 900, fontSize: 22, color: D.t1, letterSpacing: -0.5, mb: 0.5 }}>
                 {headings[mode].title}
               </Typography>
-              <Typography sx={{ fontSize: 13.5, color: D.t2, mb: 3 }}>{headings[mode].sub}</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t2, mb: 3 }}>{headings[mode].sub}</Typography>
 
-              {error && <Alert severity="error" sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{error}</Alert>}
+              {error && <Alert severity="error" sx={{ mb: 2, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 14 }}>{error}</Alert>}
               {!error && (mode === "login" || mode === "signup") && throttle.isLocked && (
-                <Alert severity="warning" sx={{ mb: 2, bgcolor: D.amberBg, color: D.t1, border: `1px solid ${D.border}`, fontSize: 13 }}>
+                <Alert severity="warning" sx={{ mb: 2, bgcolor: D.amberBg, color: D.t1, border: `1px solid ${D.border}`, fontSize: 14 }}>
                   Too many attempts. Try again in {throttle.remainingSeconds}s.
                 </Alert>
               )}
               {!error && (mode === "login" || mode === "signup") && !throttle.isLocked && throttle.attemptsLeft <= 2 && throttle.attemptsLeft > 0 && (
-                <Alert severity="warning" sx={{ mb: 2, bgcolor: D.amberBg, color: D.t1, border: `1px solid ${D.border}`, fontSize: 13 }}>
+                <Alert severity="warning" sx={{ mb: 2, bgcolor: D.amberBg, color: D.t1, border: `1px solid ${D.border}`, fontSize: 14 }}>
                   {throttle.attemptsLeft} attempt{throttle.attemptsLeft === 1 ? "" : "s"} left before a short cooldown.
                 </Alert>
               )}
-              {successMsg && <Alert severity="success" sx={{ mb: 2, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 13 }}>{successMsg}</Alert>}
+              {successMsg && <Alert severity="success" sx={{ mb: 2, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 14 }}>{successMsg}</Alert>}
               {pendingEmail && (
                 <Button type="button" variant="text" size="small" disabled={resending} onClick={handleResendConfirmation}
-                  sx={{ mb: 2, alignSelf: "flex-start", color: D.brandText, textTransform: "none", fontWeight: 700, fontSize: 12.5, px: 0, "&:hover": { bgcolor: "transparent", color: D.t1 } }}>
+                  sx={{ mb: 2, alignSelf: "flex-start", color: D.brandText, textTransform: "none", fontWeight: 700, fontSize: 14, px: 0, "&:hover": { bgcolor: "transparent", color: D.t1 } }}>
                   {resending ? "Sending…" : `Resend confirmation email to ${pendingEmail}`}
                 </Button>
               )}
@@ -308,7 +308,7 @@ const AuthPage: React.FC = () => {
                 </Button>
 
                 <Divider sx={{ borderColor: D.border, my: 0.5 }}>
-                  <Typography component="span" sx={{ px: 1.2, fontSize: 11, color: D.t3, fontFamily: MONO }}>OR</Typography>
+                  <Typography component="span" sx={{ px: 1.2, fontSize: 12, color: D.t3, fontFamily: MONO }}>OR</Typography>
                 </Divider>
 
                 {mode === "signup" && (
@@ -351,11 +351,11 @@ const AuthPage: React.FC = () => {
                           sx={{ color: D.t3, p: 0.6, "&.Mui-checked": { color: D.brandText } }}
                         />
                       )}
-                      label={<Typography sx={{ fontSize: 12.5, color: D.t3 }}>Remember me</Typography>}
+                      label={<Typography sx={{ fontSize: 14, color: D.t3 }}>Remember me</Typography>}
                       sx={{ ml: -0.5, mr: 0 }}
                     />
                     <Link component="button" type="button" underline="hover" onClick={() => setMode("reset")}
-                      sx={{ fontSize: 12.5, color: D.t3, "&:hover": { color: D.brandText } }}>
+                      sx={{ fontSize: 14, minHeight: 24, color: D.t3, "&:hover": { color: D.brandText } }}>
                       Forgot password?
                     </Link>
                   </Box>
@@ -373,7 +373,7 @@ const AuthPage: React.FC = () => {
 
                 <Divider sx={{ borderColor: D.border, my: 0.5 }} />
 
-                <Typography textAlign="center" sx={{ fontSize: 13, color: D.t3 }}>
+                <Typography textAlign="center" sx={{ fontSize: 14, color: D.t3 }}>
                   {mode === "reset" ? (
                     <>Remember it?{" "}
                       <Link component="button" type="button" onClick={() => setMode("login")} sx={{ color: D.brandText, fontWeight: 800, "&:hover": { color: D.t1 } }}>
@@ -382,7 +382,7 @@ const AuthPage: React.FC = () => {
                     </>
                   ) : mode === "login" ? (
                     <>Don&apos;t have an account?{" "}
-                      <Link component="button" type="button" onClick={() => setMode("signup")} sx={{ color: D.brandText, fontWeight: 800, "&:hover": { color: D.t1 } }}>
+                      <Link component="button" type="button" onClick={() => setMode("signup")} sx={{ minHeight: 24, color: D.brandText, fontWeight: 800, "&:hover": { color: D.t1 } }}>
                         Sign up free
                       </Link>
                     </>

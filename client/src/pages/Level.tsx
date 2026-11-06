@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import {
-  Box, Button, Chip, CircularProgress, Container, Grid, LinearProgress, Stack, Typography,
+  Box, Button, CircularProgress, Container, Grid, LinearProgress, Stack, Typography,
 } from "@mui/material";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
@@ -53,20 +53,18 @@ export default function Level() {
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={3}>
             <Box>
-              <Chip label="PLAYER PROGRESSION" size="small"
-                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography component="h1" sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>
+              <Typography component="h1" sx={{ fontSize: { xs: 26, md: 32 }, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em" }}>
                 Level {playerLevel.level}
               </Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
+              <Typography sx={{ fontSize: 14, color: D.t2, mt: 0.5 }}>
                 Earn XP from achievements to raise your player level. Cash level-up rewards apply only to Endless mode.
               </Typography>
             </Box>
             <Box sx={{ ...CARD, p: 2.5, width: { xs: "100%", md: 390 } }}>
               <Stack direction="row" justifyContent="space-between" alignItems="flex-end" sx={{ mb: 1 }}>
                 <Box>
-                  <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>NEXT LEVEL</Typography>
-                  <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.brandText, fontFamily: MONO }}>LV {playerLevel.level + 1}</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO }}>NEXT LEVEL</Typography>
+                  <Typography sx={{ fontSize: 20, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>LV {playerLevel.level + 1}</Typography>
                 </Box>
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t2, fontFamily: MONO }}>
                   {playerLevel.xpIntoLevel} / {playerLevel.xpForNextLevel} XP
@@ -74,7 +72,7 @@ export default function Level() {
               </Stack>
               <LinearProgress variant="determinate" value={playerLevel.progress}
                 sx={{ height: 8, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.brand, borderRadius: 99 } }} />
-              <Typography sx={{ fontSize: 11.5, color: D.t3, mt: 1 }}>{remainingXp} XP remaining</Typography>
+              <Typography sx={{ fontSize: 12, color: D.t3, mt: 1 }}>{remainingXp} XP remaining</Typography>
             </Box>
           </Stack>
         </Container>
@@ -88,14 +86,14 @@ export default function Level() {
             { label: "XP to Next Level", value: remainingXp, icon: <EmojiEventsIcon /> },
             { label: "XP Achievements", value: `${unlocked.length}/${achievements.length}`, icon: <CheckCircleIcon /> },
           ].map((stat) => (
-            <Grid item xs={12} sm={6} md={3} key={stat.label}>
-              <Box sx={{ ...CARD, p: 2.5 }}>
+            <Grid item xs={6} md={3} key={stat.label}>
+              <Box sx={{ ...CARD, p: 2.5, height: "100%", boxSizing: "border-box" }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                   <Box>
-                    <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>{stat.label.toUpperCase()}</Typography>
-                    <Typography sx={{ fontSize: 21, fontWeight: 950, color: D.t1, fontFamily: MONO, mt: 0.5 }}>{stat.value}</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO }}>{stat.label.toUpperCase()}</Typography>
+                    <Typography sx={{ fontSize: 21, fontWeight: 900, color: D.t1, fontFamily: MONO, mt: 0.5 }}>{stat.value}</Typography>
                   </Box>
-                  <Box sx={{ width: 38, height: 38, borderRadius: 2, display: "grid", placeItems: "center", bgcolor: D.brandBg, color: D.brandText }}>
+                  <Box sx={{ width: 38, height: 38, borderRadius: 2, display: { xs: "none", sm: "grid" }, placeItems: "center", bgcolor: D.overlay, color: D.t2, flexShrink: 0 }}>
                     {stat.icon}
                   </Box>
                 </Stack>
@@ -108,8 +106,8 @@ export default function Level() {
           <Grid item xs={12} md={7}>
             <Box sx={{ ...CARD, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Level Roadmap</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3 }}>Every level requires more XP than the one before it.</Typography>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Level Roadmap</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t3 }}>Every level requires more XP than the one before it.</Typography>
               </Box>
               <Stack spacing={1.2} sx={{ p: 2.5 }}>
                 {upcomingLevels.map((entry, index) => (
@@ -121,10 +119,10 @@ export default function Level() {
                         </Box>
                         <Box>
                           <Typography sx={{ fontSize: 14, fontWeight: 900, color: index === 0 ? D.brandText : D.t1 }}>Level {entry.level} → {entry.level + 1}</Typography>
-                          <Typography sx={{ fontSize: 11, color: D.t3 }}>{entry.totalRequired.toLocaleString("en-US")} total XP to reach Level {entry.level + 1}</Typography>
+                          <Typography sx={{ fontSize: 12, color: D.t3 }}>{entry.totalRequired.toLocaleString("en-US")} total XP to reach Level {entry.level + 1}</Typography>
                         </Box>
                       </Stack>
-                      <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.t2, fontFamily: MONO }}>{entry.requirement.toLocaleString("en-US")} XP</Typography>
+                      <Typography sx={{ fontSize: 14, fontWeight: 900, color: D.t2, fontFamily: MONO, whiteSpace: "nowrap", flexShrink: 0 }}>{entry.requirement.toLocaleString("en-US")} XP</Typography>
                     </Stack>
                   </Box>
                 ))}
@@ -135,50 +133,50 @@ export default function Level() {
           <Grid item xs={12} md={5}>
             <Stack spacing={2.5}>
               <Box sx={{ ...CARD, p: 3 }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>XP Earned</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 2 }}>Unlocked achievements contributing to your level.</Typography>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>XP Earned</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>Unlocked achievements contributing to your level.</Typography>
                 {unlocked.length ? (
                   <Stack spacing={1}>
                     {unlocked.map((achievement) => (
                       <Stack key={achievement.id} direction="row" justifyContent="space-between" sx={{ p: 1.4, borderRadius: 1.5, bgcolor: D.greenBg, border: `1px solid ${D.greenBd}` }}>
-                        <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: D.t1 }}>{achievement.title}</Typography>
-                        <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: D.greenText, fontFamily: MONO }}>+{achievement.rewardXp} XP</Typography>
+                        <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1 }}>{achievement.title}</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t2, fontFamily: MONO }}>+{achievement.rewardXp} XP</Typography>
                       </Stack>
                     ))}
                   </Stack>
                 ) : (
-                  <Typography sx={{ fontSize: 13, color: D.t3 }}>No XP earned yet. Unlock an achievement to begin leveling.</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t3 }}>No XP earned yet. Unlock an achievement to begin leveling.</Typography>
                 )}
               </Box>
 
               <Box sx={{ ...CARD, p: 3 }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Rewards</Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mt: 0.5, mb: 2 }}>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Rewards</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t3, mt: 0.5, mb: 2 }}>
                   Your next one-time cash reward is available only when leveling up in Endless mode.
                 </Typography>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderRadius: 2, bgcolor: D.greenBg, border: `1px solid ${D.greenBd}` }}>
                   <Box>
-                    <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>UNLOCKS AT</Typography>
-                    <Typography sx={{ fontSize: 18, fontWeight: 950, color: D.t1, fontFamily: MONO }}>Level {nextRewardLevel}</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO }}>UNLOCKS AT</Typography>
+                    <Typography sx={{ fontSize: 18, fontWeight: 900, color: D.t1, fontFamily: MONO }}>Level {nextRewardLevel}</Typography>
                   </Box>
                   <Box sx={{ textAlign: "right" }}>
-                    <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO }}>CASH REWARD</Typography>
-                    <Typography sx={{ fontSize: 22, fontWeight: 950, color: D.greenText, fontFamily: MONO }}>${nextCashReward.toLocaleString("en-US")}</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO }}>CASH REWARD</Typography>
+                    <Typography sx={{ fontSize: 22, fontWeight: 900, color: D.greenText, fontFamily: MONO }}>${nextCashReward.toLocaleString("en-US")}</Typography>
                   </Box>
                 </Stack>
               </Box>
 
               <Box sx={{ ...CARD, p: 3 }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Next XP Opportunity</Typography>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Next XP Opportunity</Typography>
                 {available[0] ? (
                   <>
                     <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.brandText, mt: 1 }}>{available[0].title} · +{available[0].rewardXp} XP</Typography>
-                    <Typography sx={{ fontSize: 12.5, color: D.t3, mt: 0.5, mb: 1.5 }}>{available[0].description}</Typography>
+                    <Typography sx={{ fontSize: 14, color: D.t3, mt: 0.5, mb: 1.5 }}>{available[0].description}</Typography>
                     <LinearProgress variant="determinate" value={available[0].progress}
                       sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: D.green, borderRadius: 99 } }} />
                   </>
                 ) : (
-                  <Typography sx={{ fontSize: 13, color: D.greenText, mt: 1 }}>Every achievement is unlocked.</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.greenText, mt: 1 }}>Every achievement is unlocked.</Typography>
                 )}
                 <Button component={RouterLink} to="/achievements" fullWidth sx={{ mt: 2, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, textTransform: "none" }}>
                   View Achievements

@@ -26,7 +26,7 @@ function DecisionNoteForm({ kind = "wait", symbol, journalId }: { kind?: Learnin
   };
   return <Box className="learning" component="form" onSubmit={event => { event.preventDefault(); void save(); }} sx={{ color: D.t1 }}>
     <Typography sx={{ fontWeight: 900, mb: .5 }}>{prompt.title}{symbol ? ` · ${symbol}` : ""}</Typography>
-    <Typography sx={{ color: D.t2, fontSize: 13, mb: 2 }}>{prompt.prompt}</Typography>
+    <Typography sx={{ color: D.t2, fontSize: 14, mb: 2 }}>{prompt.prompt}</Typography>
     <Stack spacing={2}>
       <TextField select label="My decision" value={decision} onChange={e => setDecision(e.target.value)} disabled={pending} fullWidth size="small">
         <MenuItem value="wait">Wait / keep researching</MenuItem><MenuItem value="avoid">Avoid this investment</MenuItem>

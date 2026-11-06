@@ -34,7 +34,7 @@ export default function UpdatePassword() {
     },
     "& .MuiInputLabel-root": {
       color: D.t3,
-      fontSize: 13.5,
+      fontSize: 14,
       "&.Mui-focused": { color: D.brandText },
     },
   };
@@ -81,10 +81,10 @@ export default function UpdatePassword() {
     return (
       <Box sx={{ bgcolor: D.bg, minHeight: "100vh", display: "grid", placeItems: "center", px: 2 }}>
         <Box sx={{ ...CARD, p: 4, width: "100%", maxWidth: 460, textAlign: "center" }}>
-          <Typography component="h1" sx={{ fontSize: 22, fontWeight: 950, color: D.t1, mb: 1 }}>
+          <Typography component="h1" sx={{ fontSize: 22, fontWeight: 900, color: D.t1, mb: 1 }}>
             Reset link unavailable
           </Typography>
-          <Typography sx={{ fontSize: 13.5, color: D.t2, lineHeight: 1.7, mb: 3 }}>
+          <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.7, mb: 3 }}>
             This password reset link is invalid or has expired. Request a new link from the login page.
           </Typography>
           <Button component={RouterLink} to="/auth?mode=reset" variant="contained"
@@ -104,10 +104,10 @@ export default function UpdatePassword() {
             <LockResetIcon />
           </Box>
 
-          <Typography component="h1" sx={{ fontSize: 24, fontWeight: 950, color: D.t1, mb: 0.5 }}>
+          <Typography component="h1" sx={{ fontSize: 24, fontWeight: 900, color: D.t1, mb: 0.5 }}>
             Choose a new password
           </Typography>
-          <Typography sx={{ fontSize: 13.5, color: D.t2, mb: 3 }}>
+          <Typography sx={{ fontSize: 14, color: D.t2, mb: 3 }}>
             Enter a new password for {user.email}.
           </Typography>
 

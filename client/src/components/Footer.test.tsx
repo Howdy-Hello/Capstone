@@ -21,9 +21,10 @@ function footerAt(path: string, signedIn: boolean) {
   return container;
 }
 
-test("the signed-out homepage keeps its full footer and guest links", () => {
+test("the signed-out homepage keeps its footer and drops links that need an account", () => {
   const page = footerAt("/", false);
-  expect(page.textContent).toContain("PRODUCT");
+  expect(page.textContent).not.toContain("PRODUCT");
+  expect(page.querySelector('a[href="/dashboard"]')).toBeNull();
   expect(page.querySelector('a[href="/practice"]')).not.toBeNull();
   expect(page.querySelector('a[href="/learn?tab=investing"]')).not.toBeNull();
   expect(page.querySelector('a[href="/privacy"]')).not.toBeNull();

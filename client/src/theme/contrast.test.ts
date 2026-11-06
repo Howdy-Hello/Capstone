@@ -1,4 +1,4 @@
-import { DesignColors } from "./design";
+import { DesignColors, readableOn } from "./design";
 import { themePresets } from "../context/ThemeContext";
 
 // Readability audit across every theme preset.
@@ -127,6 +127,17 @@ describe("theme readability", () => {
         // Separators are decorative, so this is a visibility floor rather than
         // the 3:1 bar WCAG sets for meaningful UI components.
         if (ratio < 1.25) failures.push(`${preset.name}: border on ${surface} = ${ratio.toFixed(2)}:1`);
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it("buttons on solid green, red and brand fills have readable text", () => {
+    const failures: string[] = [];
+    for (const preset of themePresets) {
+      for (const fill of ["green", "red", "brand"] as (keyof DesignColors)[]) {
+        const ratio = contrast(readableOn(preset.colors[fill]), preset.colors[fill]);
+        if (ratio < 4.5) failures.push(`${preset.name}: text on ${fill} = ${ratio.toFixed(2)}:1`);
       }
     }
     expect(failures).toEqual([]);

@@ -17,7 +17,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { isMissingDbObject, supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { GameMode, useGame } from "../context/GameContext";
-import { D, CARD, MONO, money } from "../theme/design";
+import { D, CARD, MONO, money, readableOn } from "../theme/design";
 import { usePageTitle } from "../lib/usePageTitle";
 import { normalizeMarketSeed } from "../data/mockStocks";
 
@@ -194,27 +194,27 @@ export default function SaveLoad() {
       {/* Hero */}
       <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-          <motion.div initial={reduceMotion ? undefined : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <motion.div>
             <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2}>
               <Box>
 
-                <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Save & Load</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t2, mt: 0.5 }}>
+                <Typography component="h1" sx={{ fontSize: { xs: 26, md: 32 }, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em" }}>Save & Load</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2, mt: 0.5 }}>
                   Cloud saves persist across devices. Up to {MAX_SLOTS} slots.
                 </Typography>
               </Box>
               <Box sx={{ ...CARD, p: 2.5, minWidth: 300 }}>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>LATEST SAVE</Typography>
-                <Typography sx={{ fontWeight: 800, fontSize: 15, color: D.t1, mb: 0.4 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.5 }}>LATEST SAVE</Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: 16, color: D.t1, mb: 0.4 }}>
                   {latestSlot ? latestSlot.slot_name : "No cloud saves yet"}
                 </Typography>
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 1.5 }}>
+                <Typography sx={{ fontSize: 14, color: D.t3, mb: 1.5 }}>
                   {latestSlot
                     ? `${new Date(latestSlot.created_at).toLocaleString()} · Day ${latestSlot.game_day}`
                     : "Save your current game to create a slot."}
                 </Typography>
                 <Stack direction="row" spacing={1}>
-                  <motion.div whileHover={reduceMotion || saving || !user ? undefined : { y: -2 }} whileTap={reduceMotion || saving || !user ? undefined : { scale: 0.96 }}>
+                  <motion.div whileTap={reduceMotion || saving || !user ? undefined : { scale: 0.96 }}>
                     <Button onClick={saveGame} variant="contained" size="small" disabled={trading.actionPending || loadingSlot !== null || saving || !user}
                       startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon sx={{ fontSize: 14 }} />}
                       sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", fontSize: 12, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
@@ -251,21 +251,21 @@ export default function SaveLoad() {
             { label: "Current Day",    val: `Day ${trading.gameDay}`,          icon: <CalendarTodayIcon sx={{ fontSize: 20 }} />,        up: undefined },
             { label: "Mode",           val: currentModeLabel,                  icon: <ShieldIcon sx={{ fontSize: 20 }} />,               up: undefined },
             { label: "Best Net Worth", val: money(summary.bestNetWorth),       icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: true      },
-          ].map((s, i) => {
+          ].map((s) => {
             const color = s.up === undefined ? D.brandText : D.greenText;
             const bg    = s.up === undefined ? D.brandBg   : D.greenBg;
             return (
-              <Grid item xs={12} sm={6} md={3} key={s.label}>
-                <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: Math.min(i * 0.06, 0.24) }}
+              <Grid item xs={6} md={3} key={s.label}>
+                <Box component={motion.div}
                   sx={{ ...CARD, p: 2.5 }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                     <Box>
-                      <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
+                      <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
                       <motion.div key={s.val} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
-                        <Typography sx={{ fontSize: 20, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
+                        <Typography sx={{ fontSize: 20, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
                       </motion.div>
                     </Box>
-                    <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: bg, color, display: "grid", placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
+                    <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: bg, color, display: { xs: "none", sm: "grid" }, placeItems: "center", flexShrink: 0 }}>{s.icon}</Box>
                   </Stack>
                 </Box>
               </Grid>
@@ -279,7 +279,7 @@ export default function SaveLoad() {
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Box>
-                  <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Cloud Saves</Typography>
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Cloud Saves</Typography>
 
                 </Box>
                 <Button onClick={saveGame} variant="contained" size="small" disabled={trading.actionPending || loadingSlot !== null || saving || slots.length >= MAX_SLOTS || !user}
@@ -297,7 +297,7 @@ export default function SaveLoad() {
                 ) : slots.length === 0 ? (
                   <Box sx={{ p: 4, borderRadius: 2, bgcolor: D.elevated, border: `1px dashed ${D.borderHi}`, textAlign: "center" }}>
                     <Typography sx={{ fontWeight: 800, fontSize: 16, color: D.t1, mb: 0.5 }}>No cloud saves yet.</Typography>
-                    <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Save your current game to create your first cloud slot.</Typography>
+                    <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>Save your current game to create your first cloud slot.</Typography>
                     <Button onClick={saveGame} variant="contained" disabled={trading.actionPending || loadingSlot !== null || saving}
                       sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
                       Save Game
@@ -319,7 +319,7 @@ export default function SaveLoad() {
                               <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1 }}>{slot.slot_name}</Typography>
                               {slot.ranked === false && (
                                 <Chip label="Unranked" size="small"
-                                  sx={{ mt: 0.5, height: 20, fontSize: 11, fontWeight: 800, color: D.t2, bgcolor: D.overlay, border: `1px solid ${D.border}` }} />
+                                  sx={{ mt: 0.5, height: 20, fontSize: 12, fontWeight: 800, color: D.t2, bgcolor: D.overlay, border: `1px solid ${D.border}` }} />
                               )}
                               <Typography sx={{ fontSize: 12, color: D.t3 }}>{new Date(slot.created_at).toLocaleString()}</Typography>
                             </Grid>
@@ -330,8 +330,8 @@ export default function SaveLoad() {
                               { label: "Return",   val: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(1)}%`, color: returnPct >= 0 ? D.greenText : D.redText },
                             ].map((m) => (
                               <Grid item xs={6} sm={1.5} key={m.label}>
-                                <Typography sx={{ fontSize: 10.5, color: D.t3 }}>{m.label}</Typography>
-                                <Typography sx={{ fontSize: 13, fontWeight: 800, color: m.color ?? D.t1, fontFamily: MONO }}>{m.val}</Typography>
+                                <Typography sx={{ fontSize: 12, color: D.t3 }}>{m.label}</Typography>
+                                <Typography sx={{ fontSize: 14, fontWeight: 800, color: m.color ?? D.t1, fontFamily: MONO }}>{m.val}</Typography>
                               </Grid>
                             ))}
                             <Grid item xs={12} sm={2}>
@@ -341,7 +341,7 @@ export default function SaveLoad() {
                                     disabled={trading.actionPending || saving || loadingSlot !== null}
                                     startIcon={isLoading ? <CircularProgress size={12} sx={{ color: "#fff" }} /> : <RestoreIcon sx={{ fontSize: 14 }} />}
                                     onClick={() => setLoadConfirm(slot)}
-                                    sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", fontSize: 12, "&:hover": { bgcolor: "#16A34A", boxShadow: "none" } }}>
+                                    sx={{ bgcolor: D.green, color: readableOn(D.green), fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", fontSize: 12, "&:hover": { bgcolor: D.green, filter: "brightness(0.9)", boxShadow: "none" } }}>
                                     Load
                                   </Button>
                                 </motion.div>
@@ -415,7 +415,7 @@ export default function SaveLoad() {
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Delete Save?</Typography>
             <IconButton size="small" aria-label="Close delete confirmation" onClick={() => setDeleteConfirm(null)} sx={{ color: D.t3 }}>
-              <CloseIcon sx={{ fontSize: 17 }} />
+              <CloseIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Stack>
         </DialogTitle>
@@ -430,7 +430,7 @@ export default function SaveLoad() {
             Cancel
           </Button>
           <Button variant="contained" onClick={() => deleteConfirm && deleteSlot(deleteConfirm)}
-            sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" } }}>
+            sx={{ bgcolor: D.red, color: readableOn(D.red), fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.red, filter: "brightness(0.9)", boxShadow: "none" } }}>
             Delete
           </Button>
         </DialogActions>

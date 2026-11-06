@@ -215,8 +215,8 @@ export default function Guide() {
               component="h1"
               variant="h2"
               sx={{
-                fontWeight: 950,
-                letterSpacing: -1,
+                fontWeight: 900,
+                letterSpacing: "-0.02em",
                 lineHeight: 1.05,
                 mb: 2,
               }}
@@ -245,7 +245,7 @@ export default function Guide() {
                   CORE IDEA
                 </Typography>
 
-                <Typography variant="h4" sx={{ fontWeight: 950, my: 1 }}>
+                <Typography variant="h4" sx={{ fontWeight: 900, my: 1 }}>
                   Stocks move when expectations change.
                 </Typography>
 
@@ -262,7 +262,7 @@ export default function Guide() {
                     to="/game"
                     sx={{
                       bgcolor: BRAND.red,
-                      fontWeight: 950,
+                      fontWeight: 900,
                       borderRadius: 2.2,
                       "&:hover": { bgcolor: "#E63131" },
                     }}
@@ -277,7 +277,7 @@ export default function Guide() {
                     sx={{
                       color: "#fff",
                       borderColor: "rgba(255,255,255,0.35)",
-                      fontWeight: 950,
+                      fontWeight: 900,
                       borderRadius: 2.2,
                     }}
                   >
@@ -297,7 +297,7 @@ export default function Guide() {
               <Card sx={panelStyle}>
                 <CardContent sx={{ p: 3 }}>
                   <IconBox color={BRAND.green}>{item.icon}</IconBox>
-                  <Typography variant="h6" sx={{ fontWeight: 950, mb: 1 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 900, mb: 1 }}>
                     {item.title}
                   </Typography>
                   <Typography color="text.secondary">{item.text}</Typography>
@@ -394,7 +394,7 @@ export default function Guide() {
               <CardContent sx={{ p: 3 }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                   <PsychologyIcon sx={{ color: BRAND.green }} />
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 900 }}>
                     Investor Mindset
                   </Typography>
                 </Stack>
@@ -433,7 +433,7 @@ export default function Guide() {
               <CardContent sx={{ p: 3 }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                   <PieChartIcon sx={{ color: BRAND.green }} />
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 900 }}>
                     Sector Behavior
                   </Typography>
                 </Stack>
@@ -445,7 +445,7 @@ export default function Guide() {
                 {sectorGuide.map((sector) => (
                   <Box key={sector.name} sx={{ mb: 2.2 }}>
                     <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.6 }}>
-                      <Typography sx={{ fontWeight: 950 }}>{sector.name}</Typography>
+                      <Typography sx={{ fontWeight: 900 }}>{sector.name}</Typography>
                       <Typography sx={{ fontWeight: 900 }}>{sector.risk}/100</Typography>
                     </Stack>
                     <LinearProgress
@@ -473,7 +473,7 @@ export default function Guide() {
               <CardContent sx={{ p: 3 }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                   <ShieldIcon sx={{ color: BRAND.red }} />
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 900 }}>
                     Common Mistakes
                   </Typography>
                 </Stack>
@@ -496,7 +496,7 @@ export default function Guide() {
           <CardContent sx={{ p: 3 }}>
             <Grid container spacing={3}>
               <Grid item xs={12} md={4}>
-                <Typography variant="h5" sx={{ fontWeight: 950 }}>
+                <Typography variant="h5" sx={{ fontWeight: 900 }}>
                   Simulator to Real Market
                 </Typography>
                 <Typography color="text.secondary" sx={{ mt: 1 }}>
@@ -539,7 +539,7 @@ export default function Guide() {
               spacing={2}
             >
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 950 }}>
+                <Typography variant="h6" sx={{ fontWeight: 900 }}>
                   Ready to test the framework?
                 </Typography>
                 <Typography color="text.secondary">
@@ -555,7 +555,7 @@ export default function Guide() {
                   to="/game"
                   sx={{
                     bgcolor: BRAND.red,
-                    fontWeight: 950,
+                    fontWeight: 900,
                     borderRadius: 2.2,
                     px: 3,
                     "&:hover": { bgcolor: "#E63131" },
@@ -570,7 +570,7 @@ export default function Guide() {
                   sx={{
                     borderColor: BRAND.navy,
                     color: BRAND.navy,
-                    fontWeight: 950,
+                    fontWeight: 900,
                     borderRadius: 2.2,
                     px: 3,
                   }}
@@ -606,7 +606,7 @@ function GuideSection({
           <Box sx={{ color: BRAND.green, display: "grid", placeItems: "center" }}>
             {icon}
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 950 }}>
+          <Typography variant="h5" sx={{ fontWeight: 900 }}>
             {title}
           </Typography>
         </Stack>
@@ -631,7 +631,7 @@ function InfoBlock({ title, text }: { title: string; text: string }) {
         border: "1px solid #E5E9EF",
       }}
     >
-      <Typography sx={{ fontWeight: 950, mb: 0.7, color: BRAND.navy }}>
+      <Typography sx={{ fontWeight: 900, mb: 0.7, color: BRAND.navy }}>
         {title}
       </Typography>
       <Typography color="text.secondary">{text}</Typography>
@@ -660,7 +660,7 @@ function NumberedPoint({ number, text }: { number: number; text: string }) {
           color: BRAND.navy,
           display: "grid",
           placeItems: "center",
-          fontWeight: 950,
+          fontWeight: 900,
           flexShrink: 0,
         }}
       >

@@ -1,13 +1,6 @@
 import React from "react";
 import { Box, Button, Chip, Container, Grid, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
-import { motion } from "framer-motion";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import TrendingDownIcon from "@mui/icons-material/TrendingDown";
-import BarChartIcon from "@mui/icons-material/BarChart";
-import AutoStoriesOutlinedIcon from "@mui/icons-material/AutoStoriesOutlined";
-import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
-import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct } from "../theme/design";
 import { usePageTitle } from "../lib/usePageTitle";
@@ -20,25 +13,24 @@ const STOCKS = [
 ];
 
 const FEATURES = [
-  { icon: <BarChartIcon sx={{ fontSize: 22 }} />,           title: "Portfolio Simulation",   desc: "Trade 21 stocks for as many simulated days as you want with a $2,000 starting stake." },
-  { icon: <AutoStoriesOutlinedIcon sx={{ fontSize: 22 }} />, title: "Learn the Concepts",    desc: "Explore company research, long-term investing, diversification, order types, and fees." },
-  { icon: <EmojiEventsOutlinedIcon sx={{ fontSize: 22 }} />, title: "Compete on Leaderboard", desc: "Try a 30-day challenge if you enjoy competition. Your rank is separate from learning progress." },
-  { icon: <ShieldOutlinedIcon sx={{ fontSize: 22 }} />,      title: "Risk-Free Practice",    desc: "Experiment with virtual money, fictional companies, and synthetic prices. Your real savings stay untouched." },
+  { title: "Portfolio Simulation",   desc: "Trade 21 stocks for as many simulated days as you want with a $2,000 starting stake." },
+  { title: "Learn the Concepts",    desc: "Explore company research, long-term investing, diversification, order types, and fees." },
+  { title: "Compete on Leaderboard", desc: "Try a 30-day challenge if you enjoy competition. Your rank is separate from learning progress." },
+  { title: "Risk-Free Practice",    desc: "Experiment with virtual money, fictional companies, and synthetic prices. Your real savings stay untouched." },
 ];
 
-const STEPS = [
-  { n: "01", title: "Create an account", desc: "Sign up free for your own trading desk and saved progress." },
-  { n: "02", title: "Get your $2,000 stake", desc: "Every new game starts with $2,000 in simulated cash." },
-  { n: "03", title: "Trade stocks each day", desc: "Research, buy, sell, or wait in a turn-based market." },
-  { n: "04", title: "See how you rank", desc: "Try the optional 30-day challenge and compare your final account value." },
+// The same steps Learn teaches, in the same words.
+const TURN = [
+  { title: "Review your position", text: "Check cash balance and current holdings before making any new order." },
+  { title: "Read the market news", text: "Ask whether a headline is credible, unexpected, and relevant to the business." },
+  { title: "Place orders", text: "Choose whether to buy, sell, or wait based on evidence, cash needs, and your plan." },
+  { title: "Advance the day", text: "The market updates, prices shift, and fresh events appear." },
 ];
 
-const MotionBox = motion.create(Box);
 
 // The huge top margin counts anything above the viewport as "in view", so a
 // visitor who jumps past a section (End key, fast fling) still gets it revealed
 // instead of a blank gap; sections below the fold still animate on arrival.
-const REVEAL_VIEWPORT = { once: true, margin: "100000px 0px 0px 0px" };
 
 export default function Home() {
   usePageTitle();
@@ -46,21 +38,17 @@ export default function Home() {
   return (
     <Box sx={{ bgcolor: D.bg, color: D.t1 }}>
       {/* HERO */}
-      <Box sx={{ position: "relative", overflow: "hidden", minHeight: { xs: 520, md: 680 }, display: "flex", alignItems: "center" }}>
-        <Box sx={{ position: "absolute", inset: 0, backgroundImage: `linear-gradient(${D.border} 1px, transparent 1px), linear-gradient(90deg, ${D.border} 1px, transparent 1px)`, backgroundSize: "48px 48px", opacity: 0.5 }} />
-        <Box sx={{ position: "absolute", top: -100, left: -100, width: 600, height: 600, borderRadius: "50%", background: `radial-gradient(circle, ${D.brandBg} 0%, transparent 70%)`, pointerEvents: "none" }} />
-        <Box sx={{ position: "absolute", bottom: -120, right: -80, width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <Box sx={{ position: "relative", overflow: "hidden", minHeight: { md: 600 }, display: "flex", alignItems: "center" }}>
 
         <Container maxWidth="xl" sx={{ position: "relative", zIndex: 1, py: { xs: 6, md: 8 } }}>
           <Grid container spacing={5} alignItems="center">
-            <Grid item xs={12} lg={6}>
-              <MotionBox initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <Chip label="SIMULATION PLATFORM" size="small" sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, fontSize: 10, letterSpacing: 1, mb: 2.5, fontFamily: MONO }} />
-                <Typography variant="h1" sx={{ fontSize: { xs: 36, md: 52, lg: 60 }, fontWeight: 950, lineHeight: 1.08, letterSpacing: -2, color: D.t1, mb: 2 }}>
+            <Grid item xs={12} md={6}>
+              <Box>
+                <Typography variant="h1" sx={{ fontSize: { xs: 40, md: 52, lg: 60 }, fontWeight: 800, lineHeight: 1.08, letterSpacing: "-0.02em", color: D.t1, mb: 2 }}>
                   Trade the market.<br />
                   <Box component="span" sx={{ color: D.brandText }}>Risk nothing.</Box>
                 </Typography>
-                <Typography sx={{ fontSize: { xs: 15, md: 17 }, color: D.t2, lineHeight: 1.8, mb: 3.5, maxWidth: 480 }}>
+                <Typography sx={{ fontSize: { xs: 16, md: 18 }, color: D.t2, lineHeight: 1.6, mb: 3.5, maxWidth: 480 }}>
                   StockPilot puts $2,000 of simulated capital in your hands. Keep advancing the market, build your portfolio, and learn what separates disciplined traders from the rest.
                 </Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
@@ -74,104 +62,76 @@ export default function Home() {
                   </Button>
                 </Stack>
                 <Button component={RouterLink} to="/practice" size="small" sx={{ color: D.brandText, textTransform: "none", mt: 1.5, px: 0 }}>Try guest practice without an account →</Button>
-              </MotionBox>
+              </Box>
             </Grid>
 
-            {/* Terminal card */}
-            <Grid item xs={12} lg={6}>
-              <MotionBox initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.15 }}>
-                <Box sx={{ ...CARD, borderRadius: 3, overflow: "hidden", maxWidth: 520, ml: { lg: "auto" } }}>
-                  <Box sx={{ px: 2, py: 1.2, borderBottom: `1px solid ${D.border}`, display: "flex", alignItems: "center", gap: 1 }}>
-                    {["#EF4444", "#F59E0B", "#22C55E"].map((c) => (
-                      <Box key={c} sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: c }} />
-                    ))}
-                    <Typography sx={{ fontSize: 11, color: D.t3, ml: 1, fontFamily: MONO }}>portfolio_terminal.exe</Typography>
-                  </Box>
-                  <Box sx={{ px: 2.5, pt: 2.5, pb: 1.5, borderBottom: `1px solid ${D.border}` }}>
-                    <Typography sx={{ fontSize: 11, color: D.t3, fontFamily: MONO, mb: 0.5 }}>PORTFOLIO VALUE</Typography>
-                    <Stack direction="row" alignItems="flex-end" gap={1}>
-                      <Typography sx={{ fontSize: 32, fontWeight: 950, color: D.t1, fontFamily: MONO, lineHeight: 1 }}>{money(2418.72)}</Typography>
-                      <Chip label="+20.9%" size="small" icon={<TrendingUpIcon sx={{ fontSize: 12 }} />}
-                        sx={{ bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, fontWeight: 800, fontSize: 11, mb: 0.3 }} />
+            {/* Illustrative account */}
+            <Grid item xs={12} md={6}>
+              <Box>
+                <Box sx={{ ...CARD, borderRadius: 3, overflow: "hidden", maxWidth: { md: 520 }, ml: { md: "auto" } }}>
+                  <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${D.border}` }}>
+                    <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+                      {["DAY 4", "MARKET OPEN"].map((label) => (
+                        <Chip key={label} label={label} size="small" sx={{ bgcolor: D.elevated, color: D.t2, border: `1px solid ${D.border}`, fontWeight: 800, fontSize: 12 }} />
+                      ))}
                     </Stack>
-                    <Typography sx={{ fontSize: 11, color: D.t3, mt: 0.5 }}>Illustrative account · not a forecast</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t3 }}>NET WORTH</Typography>
+                    <Typography sx={{ fontSize: { xs: 36, md: 44 }, fontWeight: 700, color: D.t1, fontFamily: MONO, lineHeight: 1.1, letterSpacing: "-0.02em" }}>{money(2418.72)}</Typography>
+                    <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.greenText }}>{pct(20.9)} since Day 1</Typography>
+                    <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>Illustrative account · not a forecast</Typography>
                   </Box>
-                  <Box sx={{ px: 2.5, py: 1.5 }}>
-                    {STOCKS.map((s) => {
-                      const up = s.change >= 0;
-                      return (
-                        <Stack key={s.sym} direction="row" alignItems="center" justifyContent="space-between"
-                          sx={{ py: 1, borderBottom: `1px solid ${D.border}`, "&:last-child": { border: "none" } }}>
-                          <Stack direction="row" spacing={1.5} alignItems="center">
-                            <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: D.overlay, border: `1px solid ${D.border}`, display: "grid", placeItems: "center" }}>
-                              <Typography sx={{ fontSize: 9, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>{s.sym.slice(0, 2)}</Typography>
-                            </Box>
-                            <Box>
-                              <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{s.sym}</Typography>
-                              <Typography sx={{ fontSize: 11, color: D.t3 }}>{s.name}</Typography>
-                            </Box>
-                          </Stack>
-                          <Stack alignItems="flex-end">
-                            <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(s.price)}</Typography>
-                            <Stack direction="row" spacing={0.4} alignItems="center">
-                              {up ? <TrendingUpIcon sx={{ fontSize: 12, color: D.greenText }} /> : <TrendingDownIcon sx={{ fontSize: 12, color: D.redText }} />}
-                              <Typography sx={{ fontSize: 11, color: up ? D.greenText : D.redText, fontWeight: 700 }}>{pct(s.change)}</Typography>
-                            </Stack>
-                          </Stack>
-                        </Stack>
-                      );
-                    })}
+                  <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${D.border}` }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t3, mb: 0.75 }}>DAY 3 AFTER-HOURS NEWS · RELIABLE SOURCE</Typography>
+                    <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1 }}>Independent review finds no major Closed Ai data-control failures</Typography>
+                    <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO, mt: 0.5 }}>Affects: CAI</Typography>
+                  </Box>
+                  <Box sx={{ px: 2.5 }}>
+                    {STOCKS.slice(0, 2).map((s) => (
+                      <Stack key={s.sym} direction="row" alignItems="center" justifyContent="space-between" sx={{ py: 1.25, borderBottom: `1px solid ${D.border}`, "&:last-child": { borderBottom: "none" } }}>
+                        <Box>
+                          <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{s.sym}</Typography>
+                          <Typography sx={{ fontSize: 12, color: D.t3 }}>{s.name}</Typography>
+                        </Box>
+                        <Box sx={{ textAlign: "right" }}>
+                          <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(s.price)}</Typography>
+                          <Typography sx={{ fontSize: 12, fontWeight: 700, color: s.change >= 0 ? D.greenText : D.redText }}>{pct(s.change)}</Typography>
+                        </Box>
+                      </Stack>
+                    ))}
                   </Box>
                 </Box>
-              </MotionBox>
+              </Box>
             </Grid>
           </Grid>
         </Container>
       </Box>
 
-      {/* FEATURES */}
-      <Box sx={{ bgcolor: D.surface, borderTop: `1px solid ${D.border}`, borderBottom: `1px solid ${D.border}` }}>
-        <Container maxWidth="xl" sx={{ py: { xs: 5, md: 7 } }}>
-          <Typography sx={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.5, color: D.t3, mb: 4, textAlign: "center", fontFamily: MONO }}>
-            PLATFORM FEATURES
-          </Typography>
-          <Grid container spacing={2.5}>
-            {FEATURES.map((f, i) => (
-              <Grid item xs={12} sm={6} lg={3} key={i}>
-                <MotionBox initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={REVEAL_VIEWPORT} transition={{ delay: i * 0.1, duration: 0.4 }}>
-                  <Box sx={{ ...CARD, p: 3, height: "100%", borderRadius: 2.5, "&:hover": { borderColor: D.borderHi }, transition: "border-color 200ms" }}>
-                    <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}`, display: "grid", placeItems: "center", mb: 2, color: D.brandText }}>
-                      {f.icon}
-                    </Box>
-                    <Typography sx={{ fontWeight: 800, fontSize: 14.5, color: D.t1, mb: 1 }}>{f.title}</Typography>
-                    <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.7 }}>{f.desc}</Typography>
-                  </Box>
-                </MotionBox>
+      {/* A TURN */}
+      <Box sx={{ bgcolor: D.surface, borderTop: `1px solid ${D.border}` }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 6, md: 8 } }}>
+          <Typography component="h2" sx={{ fontSize: { xs: 26, md: 32 }, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em", mb: 1 }}>How a Turn Works</Typography>
+          <Typography sx={{ fontSize: 16, color: D.t2, mb: 4 }}>Each turn is one game day. Follow this order every time.</Typography>
+          <Grid container spacing={3}>
+            {TURN.map((step, i) => (
+              <Grid item xs={12} sm={6} md={3} key={step.title}>
+                <Typography sx={{ fontSize: 14, fontWeight: 700, color: D.t3, fontFamily: MONO, mb: 1 }}>{i + 1}</Typography>
+                <Typography component="h3" sx={{ fontWeight: 800, fontSize: 16, color: D.t1, mb: 0.5 }}>{step.title}</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6 }}>{step.text}</Typography>
               </Grid>
             ))}
           </Grid>
         </Container>
       </Box>
 
-      {/* HOW IT WORKS */}
-      <Box sx={{ bgcolor: D.bg }}>
+      {/* FEATURES */}
+      <Box sx={{ bgcolor: D.bg, borderTop: `1px solid ${D.border}` }}>
         <Container maxWidth="xl" sx={{ py: { xs: 6, md: 8 } }}>
-          <Box sx={{ textAlign: "center", mb: 5 }}>
-            <Typography sx={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.5, color: D.t3, mb: 1.5, fontFamily: MONO }}>HOW IT WORKS</Typography>
-            <Typography sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -1 }}>Up and running in 60 seconds</Typography>
-          </Box>
-          <Grid container spacing={2} sx={{ maxWidth: 900, mx: "auto" }}>
-            {STEPS.map((s, i) => (
-              <Grid item xs={12} sm={6} key={i}>
-                <MotionBox initial={{ opacity: 0, x: -16 }} whileInView={{ opacity: 1, x: 0 }} viewport={REVEAL_VIEWPORT} transition={{ delay: i * 0.1, duration: 0.4 }}>
-                  <Stack direction="row" spacing={2} sx={{ p: 2.5, borderRadius: 2.5, bgcolor: D.surface, border: `1px solid ${D.border}` }}>
-                    <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.t4, fontFamily: MONO, pt: 0.1, flexShrink: 0 }}>{s.n}</Typography>
-                    <Box>
-                      <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.5 }}>{s.title}</Typography>
-                      <Typography sx={{ fontSize: 13, color: D.t3, lineHeight: 1.7 }}>{s.desc}</Typography>
-                    </Box>
-                  </Stack>
-                </MotionBox>
+          <Typography component="h2" sx={{ fontSize: { xs: 26, md: 32 }, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em", mb: 4 }}>Platform features</Typography>
+          <Grid container spacing={3}>
+            {FEATURES.map((f) => (
+              <Grid item xs={12} sm={6} md={3} key={f.title}>
+                <Typography component="h3" sx={{ fontWeight: 800, fontSize: 16, color: D.t1, mb: 0.5 }}>{f.title}</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6 }}>{f.desc}</Typography>
               </Grid>
             ))}
           </Grid>
@@ -181,14 +141,14 @@ export default function Home() {
       {/* CTA */}
       <Box sx={{ bgcolor: D.surface, borderTop: `1px solid ${D.border}` }}>
         <Container maxWidth="md" sx={{ py: { xs: 6, md: 8 }, textAlign: "center" }}>
-          <Typography sx={{ fontSize: { xs: 26, md: 38 }, fontWeight: 950, color: D.t1, letterSpacing: -1.5, mb: 1.5 }}>
+          <Typography component="h2" sx={{ fontSize: { xs: 26, md: 38 }, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em", mb: 1.5 }}>
             {user ? "Ready for your next move?" : "Ready to start trading?"}
           </Typography>
-          <Typography sx={{ fontSize: 15, color: D.t2, mb: 3.5 }}>
+          <Typography sx={{ fontSize: 16, color: D.t2, mb: 3.5 }}>
             Free practice with virtual money. Build your understanding one decision at a time.
           </Typography>
           <Button component={RouterLink} to={user ? "/game" : "/auth?mode=signup"} variant="contained"
-            sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 15, textTransform: "none", borderRadius: 2, px: 4, py: 1.6, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
+            sx={{ bgcolor: D.brand, fontWeight: 800, fontSize: 16, textTransform: "none", borderRadius: 2, px: 4, py: 1.6, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
             {user ? "Continue trading" : "Create free account"}
           </Button>
         </Container>

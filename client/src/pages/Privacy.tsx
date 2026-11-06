@@ -37,7 +37,7 @@ const SECTIONS: { title: string; body: React.ReactNode }[] = [
     body: (
       <>
         You can change your profile at any time in{" "}
-        <Link component={RouterLink} to="/settings" sx={{ color: D.brandText }}>Settings</Link>.
+        <Link component={RouterLink} to="/settings" sx={{ display: "inline-block", minHeight: 24, color: D.brandText }}>Settings</Link>.
         {" "}Delete account, also in Settings, permanently removes your account and all game data stored with us.
       </>
     ),
@@ -49,17 +49,17 @@ const Privacy: React.FC = () => {
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh", py: { xs: 4, md: 7 } }}>
       <Container maxWidth="md">
-        <Typography component="h1" sx={{ fontSize: { xs: 28, md: 34 }, fontWeight: 950, color: D.t1, letterSpacing: -0.8, mb: 1 }}>
+        <Typography component="h1" sx={{ fontSize: { xs: 26, md: 32 }, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em", mb: 1 }}>
           Privacy
         </Typography>
-        <Typography sx={{ color: D.t3, fontSize: 13, mb: 4 }}>Last updated {UPDATED}</Typography>
+        <Typography sx={{ color: D.t3, fontSize: 14, mb: 4 }}>Last updated {UPDATED}</Typography>
         <Stack spacing={3.5}>
           {SECTIONS.map((section) => (
             <Box key={section.title}>
               <Typography component="h2" sx={{ fontSize: 18, fontWeight: 900, color: D.t1, mb: 1 }}>
                 {section.title}
               </Typography>
-              <Typography component="div" sx={{ color: D.t2, fontSize: 15, lineHeight: 1.7 }}>
+              <Typography component="div" sx={{ color: D.t2, fontSize: 16, lineHeight: 1.7 }}>
                 {section.body}
               </Typography>
             </Box>
@@ -67,7 +67,7 @@ const Privacy: React.FC = () => {
           {PRIVACY_CONTACT && (
             <Box>
               <Typography component="h2" sx={{ fontSize: 18, fontWeight: 900, color: D.t1, mb: 1 }}>Contact</Typography>
-              <Typography sx={{ color: D.t2, fontSize: 15, lineHeight: 1.7 }}>
+              <Typography sx={{ color: D.t2, fontSize: 16, lineHeight: 1.7 }}>
                 Questions about your data:{" "}
                 <Link href={`mailto:${PRIVACY_CONTACT}`} sx={{ color: D.brandText }}>{PRIVACY_CONTACT}</Link>
               </Typography>

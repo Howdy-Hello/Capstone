@@ -80,6 +80,24 @@ export function applyDesignColors(colors: DesignColors) {
   Object.assign(D, colors);
 }
 
+function relativeLuminance(hex: string): number {
+  const raw = hex.trim().replace("#", "");
+  const full = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
+  const n = Number.parseInt(full, 16);
+  if (full.length !== 6 || Number.isNaN(n)) return 0;
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((x) => {
+    const s = x / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+// Text colour for a solid fill. White whenever it clears AA 4.5:1, otherwise
+// black, which then always does. Presets and custom themes pick their own fills.
+export function readableOn(fill: string): string {
+  return 1.05 / (relativeLuminance(fill) + 0.05) >= 4.5 ? "#FFFFFF" : "#000000";
+}
+
 // Shared card style
 export const CARD = {
   get bgcolor() { return D.surface; },
@@ -88,8 +106,8 @@ export const CARD = {
   boxShadow:    'none',
 } as const;
 
-// Monospace font for all numbers/tickers
-export const MONO = "'Courier New', Courier, monospace" as const;
+// Monospace font for all numbers/tickers, self-hosted through src/index.tsx
+export const MONO = "'Roboto Mono', 'Courier New', monospace" as const;
 
 // Format helpers
 export function money(n: number): string {
@@ -97,5 +115,12 @@ export function money(n: number): string {
 }
 
 export function pct(n: number, decimals = 2): string {
-  return `${n >= 0 ? '+' : ''}${n.toFixed(decimals)}%`;
+  const fixed = n.toFixed(decimals);
+  if (Number(fixed) === 0) return `${Math.abs(Number(fixed)).toFixed(decimals)}%`;
+  return `${n >= 0 ? '+' : ''}${fixed}%`;
+}
+
+// True when a percentage would display as 0.00%: neither a gain nor a loss.
+export function isFlat(n: number): boolean {
+  return Math.abs(n) < 0.005;
 }

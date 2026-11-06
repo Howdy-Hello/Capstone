@@ -1,8 +1,10 @@
+import { MotionConfig } from "framer-motion";
 import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Link as RouterLink, useLocation } from "react-router-dom";
 import { Box, Button, CircularProgress, Typography } from "@mui/material";
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import DayBar from "./components/DayBar";
 import { GameProvider } from "./context/GameContext";
 import { ThemeProvider, useThemeSettings } from "./context/ThemeContext";
 import { setInboxUser } from "./lib/inbox";
@@ -60,9 +62,12 @@ const Privacy = lazy(() => import("./pages/Privacy"));
 const NotFound: React.FC = () => {
   usePageTitle("Page not found");
   useNoIndex();
+  const { user } = useAuth();
   return (
+  <>
+  {user && <DayBar />}
   <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 2, px: 2, textAlign: "center" }}>
-    <Typography sx={{ fontSize: 72, fontWeight: 950, color: D.brandBd, lineHeight: 1 }}>404</Typography>
+    <Typography sx={{ fontSize: 72, fontWeight: 900, color: D.brandText, lineHeight: 1 }}>404</Typography>
     <Typography component="h1" sx={{ fontSize: 22, fontWeight: 900, color: D.t1 }}>Page not found</Typography>
     <Typography sx={{ fontSize: 14, color: D.t3, maxWidth: 320 }}>This route doesn't exist. Head back to the market.</Typography>
     <Button component={RouterLink} to="/" variant="contained"
@@ -70,18 +75,19 @@ const NotFound: React.FC = () => {
       Back to Home
     </Button>
   </Box>
+  </>
   );
 };
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
-  if (loading) return null;
-  if (!user) return <Navigate to="/auth?mode=login" replace />;
+  if (loading) return <PageFallback />;
+  if (!user) return <><PageFallback /><Navigate to="/auth?mode=login" replace /></>;
   return <>{children}</>;
 };
 
 const PageFallback: React.FC = () => (
-  <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center" }}>
+  <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
     <CircularProgress aria-label="Loading page" sx={{ color: D.brandText }} />
   </Box>
 );
@@ -119,11 +125,12 @@ function AppLayout() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", width: "100%", m: 0, p: 0, bgcolor: D.bg }}>
-      <Box component="header" sx={{ width: "100%", flexShrink: 0 }}>
+      <Box component="header" sx={{ position: "sticky", top: 0, zIndex: 1200, width: "100%", flexShrink: 0 }}>
         <Header />
       </Box>
 
-      <Box component="main" sx={{ flex: 1, width: "100%", overflowX: "hidden" }}>
+      <Box component="main" sx={{ flex: 1, width: "100%", overflowX: "clip" }}>
+        <MotionConfig reducedMotion="user">
         <Suspense fallback={<PageFallback />}>
           <Routes>
             {/* Public */}
@@ -161,6 +168,7 @@ function AppLayout() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </MotionConfig>
       </Box>
 
       <Box component="footer" sx={{ width: "100%", flexShrink: 0 }}>

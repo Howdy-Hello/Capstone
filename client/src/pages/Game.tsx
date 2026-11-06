@@ -1,20 +1,16 @@
 import DecisionNote from "../components/learning/DecisionNote";
+import DayBar from "../components/DayBar";
 import ConfirmDialog from "../components/ConfirmDialog";
-import RunProgressBar from "../components/RunProgressBar";
 import DayRecapCard from "../components/DayRecapCard";
 import TodayGoalCard from "../components/TodayGoalCard";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
+import { ButtonBase,
   Avatar, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
   CircularProgress, Divider, Grid, IconButton, Stack, TextField, Typography,
 } from "@mui/material";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import TrendingDownIcon from "@mui/icons-material/TrendingDown";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
-import StorefrontIcon from "@mui/icons-material/Storefront";
 import CloseIcon from "@mui/icons-material/Close";
 import CodeIcon from "@mui/icons-material/Code";
 import AddIcon from "@mui/icons-material/Add";
@@ -45,7 +41,7 @@ import { useLevel } from "../hooks/useLevel";
 import { fetchLeaderboard } from "../lib/api";
 import { addInboxMessage } from "../lib/inbox";
 import { useAuth } from "../context/AuthContext";
-import { D, CARD, MONO, money, pct } from "../theme/design";
+import { D, CARD, MONO, money, pct, readableOn, isFlat } from "../theme/design";
 import { TradeJournalInput } from "../lib/tradeJournal";
 import { getTutorialProgress, updateTutorialProgress } from "../lib/tutorial";
 import { usePageTitle } from "../lib/usePageTitle";
@@ -99,7 +95,7 @@ export default function Game() {
   // Kept mounted for its level-up side effects; the level chip moved off this page.
   useLevel();
   const {
-    advancing, gameDay, gameMode, isGameComplete, marketPhase, maxGameDay, setGameDay, closeMarket,
+    advancing, gameDay, gameMode, isGameComplete, marketPhase, setGameDay, closeMarket,
     stocks, news: todayNews, syncSessionValue,
   } = trading;
 
@@ -164,12 +160,10 @@ export default function Game() {
       : 0;
     return { gainers, losers, averageMove };
   }, [stocks]);
-  const modeLabel = gameMode === "limited_30" ? "30-Day Challenge" : "Infinite";
   // BUG-060: after the close, trades are refused until the next day.
   const marketClosed = marketPhase === "after_hours";
-  const modeDescription = gameMode === "limited_30"
-    ? "A focused 30-day scoring run. Rankings use your final net worth at the finish."
-    : "An open-ended sandbox. Keep advancing days as long as you want.";
+  const modeLabel = gameMode === "limited_30" ? "30-Day Challenge" : "Infinite";
+  const marketFlat = isFlat(marketSummary.averageMove);
   useEffect(() => {
     if (!sectors.includes(selectedSector)) setSelectedSector("All");
   }, [selectedSector, sectors, setSelectedSector]);
@@ -274,7 +268,12 @@ export default function Game() {
   const [closing, setClosing] = useState(false);
   // Testers had to reopen the brief every day; it now stays as they left it.
   const [newsCollapsed, setNewsCollapsed] = useState(() => {
-    try { return localStorage.getItem(NEWS_COLLAPSED_KEY) === "1"; } catch { return false; }
+    // With no saved choice, start closed on phones: open, it pushes the market
+    // about 3,900px down the page.
+    try {
+      const saved = localStorage.getItem(NEWS_COLLAPSED_KEY);
+      return saved === null ? window.matchMedia("(max-width: 899.95px)").matches : saved === "1";
+    } catch { return false; }
   });
   const toggleNews = () => setNewsCollapsed((was) => {
     try { localStorage.setItem(NEWS_COLLAPSED_KEY, was ? "0" : "1"); } catch { /* per-browser preference only */ }
@@ -499,8 +498,8 @@ export default function Game() {
       <Dialog onClose={dismissTutorial} open={tutorialPromptOpen} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: D.surface, border: `1px solid ${D.border}`, borderRadius: 3 } }}>
         <DialogContent sx={{ p: { xs: 3, md: 4 }, textAlign: "center" }}>
           <Box sx={{ width: 58, height: 58, mx: "auto", mb: 2, borderRadius: 3, bgcolor: D.brandBg, color: D.brandText, display: "grid", placeItems: "center" }}><ShowChartIcon sx={{ fontSize: 30 }} /></Box>
-          <Typography sx={{ color: D.t1, fontSize: 24, fontWeight: 950 }}>Welcome to StockPilot</Typography>
-          <Typography sx={{ color: D.t3, fontSize: 13.5, lineHeight: 1.7, mt: 1 }}>Take a short guided tour through the website’s navigation, pages, controls, and information. You can revisit tutorials from Settings.</Typography>
+          <Typography sx={{ color: D.t1, fontSize: 24, fontWeight: 900 }}>Welcome to StockPilot</Typography>
+          <Typography sx={{ color: D.t3, fontSize: 14, lineHeight: 1.7, mt: 1 }}>Take a short guided tour through the website’s navigation, pages, controls, and information. You can revisit tutorials from Settings.</Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, justifyContent: "center" }}>
           <Button onClick={dismissTutorial} sx={{ color: D.t3, textTransform: "none", fontWeight: 700 }}>Skip for now</Button>
@@ -551,63 +550,22 @@ export default function Game() {
       />
 
       {/* Hero */}
-      <Box sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
-        <Container maxWidth="xl" sx={{ py: { xs: 2, md: 2.5 } }}>
-          <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} md={7}>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.2 }}>
-                <motion.div key={gameDay} initial={reduceMotion ? false : { opacity: 0, y: -8, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 420, damping: 24 }}>
-                  <Chip label={`DAY ${gameDay}${maxGameDay ? ` / ${maxGameDay}` : ""}`} size="small"
-                    sx={{ bgcolor: gameDay <= STORY_DAYS ? D.redBg : D.brandBg, color: gameDay <= STORY_DAYS ? D.redText : D.brandText, border: `1px solid ${gameDay <= STORY_DAYS ? D.redBd : D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
-                </motion.div>
-                <Chip icon={gameMode === "limited_30" ? <TimerIcon sx={{ fontSize: 14 }} /> : <AllInclusiveIcon sx={{ fontSize: 14 }} />}
-                  label={modeLabel} size="small" title={modeDescription}
-                  sx={{ bgcolor: D.elevated, color: D.t2, border: `1px solid ${D.border}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
-                <Chip label={marketPhase === "market_open" ? "MARKET OPEN" : "AFTER HOURS"} size="small"
-                  sx={{ bgcolor: marketPhase === "market_open" ? D.greenBg : D.amberBg, color: marketPhase === "market_open" ? D.greenText : D.amber, border: `1px solid ${marketPhase === "market_open" ? D.greenBd : D.amber}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1 }} />
-              </Stack>
-              <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 950, color: D.t1, letterSpacing: -1, mb: 1 }}>Stock Market Simulator</Typography>
-              <Box sx={{ mb: 1.5 }} />
-              <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
-                <motion.div whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
-                  <Button data-tour="next-day" onClick={handleNextDay} variant="contained" disabled={isGameComplete || advancing || closing}
-                    title={isGameComplete ? undefined : marketPhase === "market_open" ? "Close the market and reveal news (→)" : "Advance to next day (→)"}
-                    sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: `0 8px 24px ${D.brandBg}` }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
-                    {isGameComplete ? "Run Complete" : advanceLabel}
-                  </Button>
-                </motion.div>
-                <Button onClick={() => setNewRunConfirm("infinite")} disabled={newRunDisabled} startIcon={<AllInclusiveIcon />}
-                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay }, "&.Mui-disabled": { color: D.t4 } }}>
-                  New Infinite run
-                </Button>
-                <Button onClick={() => setNewRunConfirm("limited_30")} disabled={newRunDisabled} startIcon={<TimerIcon />}
-                  sx={{ color: D.t2, border: `1px solid ${D.border}`, fontWeight: 700, textTransform: "none", borderRadius: 1.5, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay }, "&.Mui-disabled": { color: D.t4 } }}>
-                  New 30-Day run
-                </Button>
-              </Stack>
-            </Grid>
-            <Grid item xs={12} md={5}>
-              <Box sx={{ px: { xs: 0, md: 3 }, py: 1 }}>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: 1 }}>MARKET STATUS</Typography>
-                <motion.div key={`market-${gameDay}`} initial={reduceMotion ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32 }}>
-                  <Typography sx={{ fontSize: 32, fontWeight: 950, color: marketSummary.averageMove >= 0 ? D.greenText : D.redText, fontFamily: MONO, lineHeight: 1, mb: 1 }}>
-                    {pct(marketSummary.averageMove)}
-                  </Typography>
-                </motion.div>
-                <Chip size="small" icon={marketSummary.averageMove >= 0 ? <TrendingUpIcon sx={{ fontSize: 14 }} /> : <TrendingDownIcon sx={{ fontSize: 14 }} />}
-                  label={marketSummary.averageMove >= 0 ? "Positive Day" : "Negative Day"}
-                  sx={{ bgcolor: marketSummary.averageMove >= 0 ? D.greenBg : D.redBg, color: marketSummary.averageMove >= 0 ? D.greenText : D.redText, border: `1px solid ${marketSummary.averageMove >= 0 ? D.greenBd : D.redBd}`, fontWeight: 800, mb: 2 }} />
-                <RunProgressBar day={gameDay} maxDay={maxGameDay} height={5} color={isGameComplete ? D.green : D.brand} />
-              </Box>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
+      <DayBar leadsThePage
+        heading={<Typography component="h1" sx={{ fontSize: 20, fontWeight: 900, color: D.t1 }}>Stock Market Simulator</Typography>}
+        action={(
+          <Box component={motion.div} whileTap={reduceMotion ? undefined : { scale: 0.96 }} sx={{ width: { xs: "100%", md: "auto" } }}>
+            <Button data-tour="next-day" onClick={handleNextDay} variant="contained" disabled={isGameComplete || advancing || closing}
+              title={isGameComplete ? undefined : marketPhase === "market_open" ? "Close the market and reveal news (→)" : "Advance to next day (→)"}
+              sx={{ width: { xs: "100%", md: "auto" }, minHeight: 44, bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+              {isGameComplete ? "Run Complete" : advanceLabel}
+            </Button>
+          </Box>
+        )} />
 
       <Container maxWidth="xl" sx={{ py: 3 }}>
         {trading.error && (
           <Box role="alert" sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
-            <Typography sx={{ color: D.redText, fontSize: 13, fontWeight: 800 }}>
+            <Typography sx={{ color: D.redText, fontSize: 14, fontWeight: 800 }}>
               {trading.error}
             </Typography>
             <Button disabled={trading.actionPending} onClick={() => { void trading.reloadSession().catch(() => {}); }}>Retry</Button>
@@ -617,24 +575,16 @@ export default function Game() {
         {/* Stat tiles */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {[
-            { label: "Cash",      val: money(trading.account.cash), icon: <AccountBalanceWalletIcon sx={{ fontSize: 20 }} />, up: true },
-            { label: "Shares",    val: money(portfolioValue),        icon: <StorefrontIcon sx={{ fontSize: 20 }} />,          up: true },
-            { label: "Net Worth", val: money(netWorth),              icon: netWorth >= 2000 ? <TrendingUpIcon sx={{ fontSize: 20 }} /> : <TrendingDownIcon sx={{ fontSize: 20 }} />, up: netWorth >= 2000,
-              sub: `${pct(((netWorth - 2000) / 2000) * 100)} since Day 1` },
+            { label: "Cash", val: money(trading.account.cash), sub: undefined, tone: D.t1 },
+            { label: "Portfolio", val: money(portfolioValue), sub: undefined, tone: D.t1 },
+            { label: "Market today", val: pct(marketSummary.averageMove), sub: marketFlat ? "Flat Day" : marketSummary.averageMove > 0 ? "Positive Day" : "Negative Day", tone: marketFlat ? D.t2 : marketSummary.averageMove > 0 ? D.greenText : D.redText },
           ].map((s) => (
             <Grid item xs={s.sub ? 12 : 6} sm={4} key={s.label}>
-              <Box data-tour={s.label === "Net Worth" ? "net-worth" : undefined} sx={{ ...CARD, p: 2.5, transition: "transform 180ms ease, border-color 180ms ease", "&:hover": { transform: reduceMotion ? "none" : "translateY(-3px)", borderColor: D.borderHi } }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                  <Box>
-                    <Typography sx={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.4, color: D.t3, fontFamily: MONO, mb: 0.8 }}>{s.label.toUpperCase()}</Typography>
-                    <motion.div key={s.val} initial={reduceMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
-                      <Typography sx={{ fontSize: { xs: 17, sm: 20 }, fontWeight: 950, color: D.t1, fontFamily: MONO }}>{s.val}</Typography>
-                    </motion.div>
-                    {s.sub && <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: s.up ? D.greenText : D.redText }}>{s.sub}</Typography>}
-                  </Box>
-                  <Box sx={{ display: { xs: "none", sm: "grid" }, width: 36, height: 36, borderRadius: 2, bgcolor: s.up ? D.greenBg : D.redBg, color: s.up ? D.greenText : D.redText, placeItems: "center", flexShrink: 0 }}>
-                    {s.icon}
-                  </Box>
+              <Box sx={{ ...CARD, p: 2, height: "100%", boxSizing: "border-box" }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t3, fontFamily: MONO, mb: 0.5 }}>{s.label.toUpperCase()}</Typography>
+                <Stack direction="row" alignItems="baseline" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Typography sx={{ fontSize: 20, fontWeight: 700, color: s.tone, fontFamily: MONO }}>{s.val}</Typography>
+                  {s.sub && <Typography sx={{ fontSize: 14, fontWeight: 700, color: s.tone }}>{s.sub}</Typography>}
                 </Stack>
               </Box>
             </Grid>
@@ -650,7 +600,7 @@ export default function Game() {
                     <Typography sx={{ fontSize: 14, fontWeight: 900, color: D.redText }}>
                       Bills paid: −{money(trading.latestBill.paid)}
                     </Typography>
-                    <Typography sx={{ fontSize: 12.5, color: D.t2 }}>
+                    <Typography sx={{ fontSize: 14, color: D.t2 }}>
                       {trading.latestBill.cycles > 1 ? `${trading.latestBill.cycles} weekly cycles were due. ` : ""}
                       {trading.latestBill.shortfall > 0
                         ? `${money(trading.latestBill.shortfall)} is still owed: it counts against your net worth and is collected from your cash on the next day.`
@@ -672,7 +622,7 @@ export default function Game() {
             return (
               <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }} transition={{ type: "spring", stiffness: 420, damping: 30 }}>
                 <Box sx={{ p: 2, mb: 2.5, borderRadius: 2, bgcolor: ok ? D.greenBg : D.redBg, border: `1px solid ${ok ? D.greenBd : D.redBd}`, boxShadow: `0 8px 28px ${ok ? D.greenBg : D.redBg}` }}>
-                  <Typography sx={{ fontSize: 13.5, fontWeight: 800, color: ok ? D.greenText : D.redText }}>{tradeMessage}</Typography>
+                  <Typography sx={{ fontSize: 14, fontWeight: 800, color: ok ? D.greenText : D.redText }}>{tradeMessage}</Typography>
                 </Box>
               </motion.div>
             );
@@ -683,8 +633,8 @@ export default function Game() {
           <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.greenBg, border: `1px solid ${D.greenBd}`, mb: 2.5 }}>
             <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5}>
               <Box>
-                <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.greenText }}>30-Day Challenge Complete</Typography>
-                <Typography sx={{ fontSize: 13, color: D.t2 }}>Your Day 30 net worth is ready for the leaderboard. Start another challenge or switch to Infinite mode.</Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.greenText }}>30-Day Challenge Complete</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2 }}>Your Day 30 net worth is ready for the leaderboard. Start another challenge or switch to Infinite mode.</Typography>
               </Box>
               {/* A finished challenge has nothing left to lose, so these start the run directly. */}
               <Stack direction="row" spacing={1}>
@@ -705,24 +655,42 @@ export default function Game() {
 
         {/* New players get the turn explained; after the story days it is noise. */}
         {/* Testers couldn't find these behind the Game menu's arrow. */}
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }} component="nav" aria-label="Game shortcuts">
+        <Stack direction="row" spacing={1} useFlexGap component="nav" aria-label="Game shortcuts" sx={{ mb: 2.5, flexWrap: { xs: "nowrap", md: "wrap" }, overflowX: { xs: "auto", md: "visible" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" }, "& > *": { flexShrink: 0 } }}>
           {[
-            { to: "/game/watchlist", label: `Watchlist${trading.watchlistStocks.length ? ` (${trading.watchlistStocks.length})` : ""}`, icon: <StarBorderIcon sx={{ fontSize: 17 }} /> },
-            { to: "/game/goals", label: `Goals & Missions${missions.loaded && missions.totalCount ? ` (${missions.completedCount}/${missions.totalCount})` : ""}`, icon: <FlagOutlinedIcon sx={{ fontSize: 17 }} /> },
-            { to: "/game/advisor", label: "Advisors", icon: <SmartToyOutlinedIcon sx={{ fontSize: 17 }} /> },
-            { to: "/game/living-costs", label: "Living Costs", icon: <ReceiptLongOutlinedIcon sx={{ fontSize: 17 }} /> },
+            { to: "/game/watchlist", label: `Watchlist${trading.watchlistStocks.length ? ` (${trading.watchlistStocks.length})` : ""}`, icon: <StarBorderIcon sx={{ fontSize: 18 }} /> },
+            { to: "/game/goals", label: `Goals & Missions${missions.loaded && missions.totalCount ? ` (${missions.completedCount}/${missions.totalCount})` : ""}`, icon: <FlagOutlinedIcon sx={{ fontSize: 18 }} /> },
+            { to: "/game/advisor", label: "Advisors", icon: <SmartToyOutlinedIcon sx={{ fontSize: 18 }} /> },
+            { to: "/game/living-costs", label: "Living Costs", icon: <ReceiptLongOutlinedIcon sx={{ fontSize: 18 }} /> },
           ].map((link) => (
             <Button key={link.to} component={RouterLink} to={link.to} startIcon={link.icon} size="small"
-              sx={{ color: D.t2, bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 1.5, px: 1.5, fontWeight: 700, fontSize: 13, textTransform: "none",
+              sx={{ color: D.t2, bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 1.5, px: 1.5, fontWeight: 700, fontSize: 14, textTransform: "none",
                 "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
               {link.label}
+            </Button>
+          ))}
+          <Button onClick={() => setNewRunConfirm("infinite")} disabled={newRunDisabled} startIcon={<AllInclusiveIcon sx={{ fontSize: 18 }} />} size="small"
+            sx={{ ml: { md: "auto !important" }, color: D.t2, borderRadius: 1.5, px: 1.5, fontWeight: 700, fontSize: 14, textTransform: "none", "&:hover": { color: D.t1, bgcolor: D.overlay }, "&.Mui-disabled": { color: D.t4 } }}>
+            New Infinite run
+          </Button>
+          <Button onClick={() => setNewRunConfirm("limited_30")} disabled={newRunDisabled} startIcon={<TimerIcon sx={{ fontSize: 18 }} />} size="small"
+            sx={{ color: D.t2, borderRadius: 1.5, px: 1.5, fontWeight: 700, fontSize: 14, textTransform: "none", "&:hover": { color: D.t1, bgcolor: D.overlay }, "&.Mui-disabled": { color: D.t4 } }}>
+            New 30-Day run
+          </Button>
+          {[
+            { id: "game-market", label: "Jump to Market" },
+            { id: "game-portfolio", label: "Jump to Portfolio" },
+          ].map((jump) => (
+            <Button key={jump.id} size="small" onClick={() => document.getElementById(jump.id)?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" })}
+              sx={{ order: -1, display: { xs: "inline-flex", md: "none" }, color: D.t1, bgcolor: D.elevated, border: `1px solid ${D.borderHi}`, borderRadius: 1.5, px: 1.5, fontWeight: 700, fontSize: 14, textTransform: "none",
+                "&:hover": { bgcolor: D.overlay } }}>
+              {jump.label}
             </Button>
           ))}
         </Stack>
 
         {!isGameComplete && gameDay <= STORY_DAYS && (
-          <Box sx={{ mb: 2, pl: 2, borderLeft: `3px solid ${D.brand}` }}>
-            <Typography sx={{ color: D.t1, fontSize: 14, fontWeight: 800 }}>Your next step</Typography>
+          <Box sx={{ mb: 2 }}>
+            <Typography component="h2" sx={{ color: D.t1, fontSize: 14, fontWeight: 800 }}>Your next step</Typography>
             <Typography sx={{ color: D.t2, fontSize: 14, lineHeight: 1.6 }}>
               {marketPhase === "after_hours"
                 ? "Read the news brief and open a related stock to check its risk and fundamentals. Trading reopens when you advance to the next day."
@@ -764,11 +732,11 @@ export default function Game() {
             }}>
             <Box component="summary">
               <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                <Typography component="span" sx={{ fontWeight: 800, fontSize: 15 }}>
+                <Typography component="h2" sx={{ fontWeight: 800, fontSize: 16 }}>
                   <NewspaperIcon sx={{ fontSize: 18, verticalAlign: "text-bottom", mr: 0.8, color: D.brandText }} />
-                  News for Day {marketClosed ? gameDay + 1 : gameDay} · {todayNews.length} {todayNews.length === 1 ? "story" : "stories"}
+                  Day {marketClosed ? gameDay : gameDay - 1} after-hours news · {todayNews.length} {todayNews.length === 1 ? "story" : "stories"}
                 </Typography>
-                <Typography component="span" sx={{ color: D.brandText, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                <Typography component="span" sx={{ color: D.brandText, fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
                   {newsCollapsed ? "Show" : "Hide"}
                 </Typography>
               </Stack>
@@ -783,7 +751,7 @@ export default function Game() {
                       <Box data-tour={n.relatedTickers.includes("CAI") ? "tutorial-news" : undefined} sx={{ p: 2, height: "100%", boxSizing: "border-box", borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${n.importance === "High" ? D.amber : D.border}` }}>
                         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mb: 1 }}>
                           {n.importance === "High" && <Typography component="span" sx={{ fontSize: 12, fontWeight: 800, color: D.amber }}>Breaking news</Typography>}
-                          <Typography component="span" title="How reliable the source is, not a chance of profit" sx={{ fontSize: 12, color: c.rating === "low" ? D.redText : D.t3, ml: "auto !important" }}>
+                          <Typography component="span" title="How reliable the source is, not a chance of profit" sx={{ fontSize: 12, color: c.rating === "low" ? D.amber : D.t3, ml: "auto !important" }}>
                             {c.rating === "low" ? "Unreliable source" : c.rating === "medium" ? "Fairly reliable" : "Reliable source"}
                           </Typography>
                         </Stack>
@@ -802,26 +770,22 @@ export default function Game() {
         <Grid container spacing={3}>
           {/* Stock market table */}
           <Grid item xs={12} md={8}>
-            <Box data-tour="market-list" sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+            <Box id="game-market" data-tour="market-list" sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Box>
-                  <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Market</Typography>
-                  <Typography sx={{ fontSize: 12.5, color: D.t3 }}>
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Market</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t3 }}>
                     {filteredStocks.length} of {stocks.length} stocks shown. Click a stock for its chart, P/E and growth.
                   </Typography>
                   {marketClosed && (
-                    <Typography role="status" sx={{ fontSize: 12.5, color: D.amber, fontWeight: 800, mt: 0.5 }}>
+                    <Typography role="status" sx={{ fontSize: 14, color: D.amber, fontWeight: 800, mt: 0.5 }}>
                       {MARKET_CLOSED_MESSAGE}
                     </Typography>
                   )}
                 </Box>
-                <Button onClick={handleNextDay} variant="contained" size="small" disabled={isGameComplete || advancing || closing}
-                  sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
-                  {isGameComplete ? "Complete" : advanceLabel}
-                </Button>
               </Stack>
-              <Box sx={{ p: 2 }}>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+              <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 1 }}>
+                <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 1, flexWrap: { xs: "nowrap", md: "wrap" }, overflowX: { xs: "auto", md: "visible" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" }, "& > *": { flexShrink: 0 } }}>
                   {sectors.map((sector) => {
                     const selected = sector === selectedSector;
                     const count = sectorCounts.get(sector) ?? 0;
@@ -839,7 +803,7 @@ export default function Game() {
                           border: `1px solid ${selected ? D.brandBd : D.border}`,
                           color: selected ? D.brandText : D.t2,
                           fontWeight: 900,
-                          fontSize: 11.5,
+                          fontSize: 12,
                           "&:hover": { bgcolor: selected ? D.brandBg : D.overlay, borderColor: selected ? D.brandBd : D.borderHi },
                           "& .MuiChip-label": { px: 1.2 },
                         }}
@@ -849,7 +813,7 @@ export default function Game() {
                 </Stack>
                 {filteredStocks.length === 0 ? (
                   <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                    <Typography sx={{ fontSize: 13, color: D.t3 }}>No stocks match this sector.</Typography>
+                    <Typography sx={{ fontSize: 14, color: D.t3 }}>No stocks match this sector.</Typography>
                   </Box>
                 ) : (
                   <MotionPresence mode="popLayout" initial={false}>
@@ -873,17 +837,17 @@ export default function Game() {
 
           {/* Right sidebar */}
           <Grid item xs={12} md={4}>
-            <Stack spacing={2.5}>
+            <Stack spacing={2.5} sx={{ position: { md: "sticky" }, top: { md: 196 }, maxHeight: { md: "calc(100vh - 212px)" }, overflowY: { md: "auto" }, scrollbarWidth: "thin", "& > *": { flexShrink: 0 } }}>
               {/* Portfolio */}
-              <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
+              <Box id="game-portfolio" sx={{ ...CARD, p: 0, overflow: "hidden" }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Portfolio</Typography>
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio</Typography>
                   {trading.account.holdings.length > 0 && (
                     <Box sx={{ textAlign: "right" }}>
-                      <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: portfolioToday >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
+                      <Typography sx={{ fontSize: 14, fontWeight: 800, color: portfolioToday >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
                         {portfolioToday >= 0 ? "+" : ""}{money(portfolioToday)} today
                       </Typography>
-                      <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: portfolioPnL >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: portfolioPnL >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
                         {portfolioPnL >= 0 ? "+" : ""}{money(portfolioPnL)} since bought
                       </Typography>
                     </Box>
@@ -892,7 +856,7 @@ export default function Game() {
                 <Box sx={{ p: 2.5 }}>
                   {trading.account.holdings.length === 0 ? (
                     <Box sx={{ textAlign: "center", py: 1.5 }}>
-                      <Typography sx={{ fontSize: 13, color: D.t3, mb: 1 }}>No shares owned yet.</Typography>
+                      <Typography sx={{ fontSize: 14, color: D.t3, mb: 1 }}>No shares owned yet.</Typography>
                       <Typography sx={{ fontSize: 12, color: D.t3 }}>Buy a stock from the market to start building your portfolio.</Typography>
                     </Box>
                   ) : (
@@ -910,28 +874,28 @@ export default function Game() {
                           <Box key={h.symbol} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${up ? D.greenBd : D.redBd}` }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                               <Box>
-                                <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: D.t1, fontFamily: MONO }}>
+                                <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>
                                   {h.symbol}
-                                  <Typography component="span" sx={{ fontWeight: 500, fontSize: 11.5, color: D.t3, ml: 0.8 }}>× {h.shares}</Typography>
+                                  <Typography component="span" sx={{ fontWeight: 500, fontSize: 12, color: D.t3, ml: 0.8 }}>× {h.shares}</Typography>
                                 </Typography>
-                                <Typography sx={{ fontSize: 11.5, color: D.t3 }}>Avg {money(h.averageCost)}</Typography>
+                                <Typography sx={{ fontSize: 12, color: D.t3 }}>Avg {money(h.averageCost)}</Typography>
                               </Box>
                               <Box sx={{ textAlign: "right" }}>
-                                <Typography sx={{ fontWeight: 800, fontSize: 13, color: D.t1, fontFamily: MONO }}>{money(val)}</Typography>
+                                <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, fontFamily: MONO }}>{money(val)}</Typography>
                                 {heldOvernight > 0 ? (
-                                  <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: up ? D.greenText : D.redText }}>
+                                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: up ? D.greenText : D.redText }}>
                                     {today >= 0 ? "+" : ""}{money(today)} today ({pct(live?.dayChangePercent ?? 0, 1)})
                                   </Typography>
                                 ) : (
-                                  <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: D.t3 }}>Bought today</Typography>
+                                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t3 }}>Bought today</Typography>
                                 )}
-                                <Typography sx={{ fontSize: 11, fontWeight: 700, color: pnl >= 0 ? D.greenText : D.redText }}>
+                                <Typography sx={{ fontSize: 12, fontWeight: 700, color: pnl >= 0 ? D.greenText : D.redText }}>
                                   {pnl >= 0 ? "+" : ""}{money(pnl)} since bought ({pct(pnlPct, 1)})
                                 </Typography>
                               </Box>
                             </Stack>
                             <Button size="small" onClick={() => navigate(`/stocks/${h.symbol}`, { state: { gameDay } })}
-                              sx={{ mt: 0.8, color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto", height: "auto", lineHeight: 1 }}>
+                              sx={{ mt: 0.8, color: D.brandText, fontSize: 12, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto", minHeight: 24, height: "auto", lineHeight: 1 }}>
                               View details →
                             </Button>
                           </Box>
@@ -945,24 +909,24 @@ export default function Game() {
               {/* Rival trader */}
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.8 }}>
-                  <SportsMmaIcon sx={{ fontSize: 18, color: "#F59E0B" }} />
-                  <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>{rival.rivalName}</Typography>
+                  <SportsMmaIcon sx={{ fontSize: 18, color: D.amber }} />
+                  <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>{rival.rivalName}</Typography>
                   <Chip label={rival.playerAhead ? "YOU LEAD" : "THEY LEAD"} size="small"
-                    sx={{ bgcolor: rival.playerAhead ? D.greenBg : D.redBg, color: rival.playerAhead ? D.greenText : D.redText, fontWeight: 900, fontSize: 9.5 }} />
+                    sx={{ bgcolor: rival.playerAhead ? D.greenBg : D.redBg, color: rival.playerAhead ? D.greenText : D.redText, fontWeight: 900, fontSize: 12 }} />
                 </Stack>
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mb: 1.5 }}>
+                <Typography sx={{ fontSize: 14, color: D.t3, mb: 1.5 }}>
                   A rival trader running a fixed {rival.basket.length}-stock strategy since Day 1.
                 </Typography>
                 <Stack spacing={1}>
                   <Stack direction="row" justifyContent="space-between">
                     <Typography sx={{ fontSize: 12, color: D.t3 }}>You</Typography>
-                    <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{money(rival.playerNetWorth)}</Typography>
+                    <Typography sx={{ fontSize: 14, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{money(rival.playerNetWorth)}</Typography>
                   </Stack>
                   <Stack direction="row" justifyContent="space-between">
                     <Typography sx={{ fontSize: 12, color: D.t3 }}>{rival.rivalName}</Typography>
-                    <Typography sx={{ fontSize: 13, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{money(rival.rivalNetWorth)}</Typography>
+                    <Typography sx={{ fontSize: 14, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{money(rival.rivalNetWorth)}</Typography>
                   </Stack>
-                  <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: rival.playerAhead ? D.greenText : D.redText, mt: 0.3 }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: rival.playerAhead ? D.greenText : D.redText, mt: 0.3 }}>
                     {rival.playerAhead ? "+" : ""}{rival.gapPct.toFixed(1)}% vs rival
                   </Typography>
                   <Button component={RouterLink} to="/rival" size="small" endIcon={<ChevronRightIcon sx={{ fontSize: 16 }} />}
@@ -977,37 +941,37 @@ export default function Game() {
               <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <EmojiEventsIcon sx={{ fontSize: 17, color: "#F59E0B" }} />
-                    <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Top Traders</Typography>
+                    <EmojiEventsIcon sx={{ fontSize: 18, color: D.amber }} />
+                    <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Top Traders</Typography>
                   </Stack>
                   <Button component={RouterLink} to="/leaderboard" size="small"
-                    sx={{ color: D.brandText, fontSize: 11, fontWeight: 700, textTransform: "none", px: 0.5 }}>
+                    sx={{ color: D.brandText, fontSize: 12, fontWeight: 700, textTransform: "none", px: 0.5 }}>
                     View All →
                   </Button>
                 </Stack>
                 <Box sx={{ p: 2.5 }}>
                   {myRank !== null && (
                     <Box sx={{ p: 1.5, mb: 1.5, borderRadius: 2, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}` }}>
-                      <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: D.brandText }}>Your rank: #{myRank}</Typography>
+                      <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.brandText }}>Your rank: #{myRank}</Typography>
                     </Box>
                   )}
                   {topPlayers.length === 0 ? (
-                    <Typography sx={{ fontSize: 13, color: D.t3 }}>No ranked runs yet.</Typography>
+                    <Typography sx={{ fontSize: 14, color: D.t3 }}>No ranked runs yet.</Typography>
                   ) : (
                     <Stack spacing={1}>
                       {topPlayers.map((p) => (
                         <Stack key={p.user_id} direction="row" spacing={1.5} alignItems="center">
-                          <Avatar sx={{ width: 28, height: 28, bgcolor: p.rank <= 3 ? D.brand : D.overlay, fontSize: 12, fontWeight: 900 }}>
+                          <Avatar sx={{ width: 28, height: 28, bgcolor: p.rank <= 3 ? D.brand : D.overlay, color: p.rank <= 3 ? readableOn(D.brand) : D.t1, fontSize: 12, fontWeight: 900 }}>
                             {p.username[0]?.toUpperCase()}
                           </Avatar>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography sx={{ fontSize: 13, fontWeight: 800, color: user?.id === p.user_id ? D.brandText : D.t1 }} noWrap>
+                            <Typography sx={{ fontSize: 14, fontWeight: 800, color: user?.id === p.user_id ? D.brandText : D.t1 }} noWrap>
                               {p.username}{user?.id === p.user_id ? " (You)" : ""}
                             </Typography>
                           </Box>
                           <Box sx={{ textAlign: "right", flexShrink: 0 }}>
-                            <Typography sx={{ fontSize: 10.5, color: D.t3, fontFamily: MONO }}>#{p.rank}</Typography>
-                            <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: D.t2, fontFamily: MONO }}>{money(p.net_worth)}</Typography>
+                            <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>#{p.rank}</Typography>
+                            <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t2, fontFamily: MONO }}>{money(p.net_worth)}</Typography>
                           </Box>
                         </Stack>
                       ))}
@@ -1018,8 +982,8 @@ export default function Game() {
             </Stack>
           </Grid>
         </Grid>
-        <Box component="details" sx={{ ...CARD, p: 2, mb: 2, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText, fontWeight: 800 }}>My decision today · trading is optional</Box><Box sx={{ mt: 2 }}><DecisionNote kind="wait" /></Box></Box>
-        <Typography sx={{ color: D.t2, fontSize: 12, mb: 2 }}>Fictional companies and synthetic prices. The after-hours news window pauses price reactions for learning; real markets may react immediately. Game risk scores and analyst ratings are illustrative.</Typography>
+        <Box component="details" sx={{ ...CARD, p: 2, mt: 3, mb: 2, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText, fontWeight: 800 }}>My decision today · trading is optional</Box><Box sx={{ mt: 2 }}><DecisionNote kind="wait" /></Box></Box>
+        <Typography sx={{ color: D.t2, fontSize: 12, mb: 2, maxWidth: "75ch" }}>Fictional companies and synthetic prices. The after-hours news window pauses price reactions for learning; real markets may react immediately. Game risk scores and analyst ratings are illustrative.</Typography>
       </Container>
     </Box>
   );
@@ -1068,31 +1032,31 @@ function AchievementUnlockToast({ achievement, queuedCount, onClose }: {
               <WorkspacePremiumIcon />
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontSize: 10, fontWeight: 950, letterSpacing: 1.1, color: D.brandText, fontFamily: MONO }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.1, color: D.brandText, fontFamily: MONO }}>
                 ACHIEVEMENT UNLOCKED
               </Typography>
-              <Typography sx={{ mt: 0.35, fontSize: 16, fontWeight: 950, color: D.t1 }}>
+              <Typography sx={{ mt: 0.35, fontSize: 16, fontWeight: 900, color: D.t1 }}>
                 {achievement.title}
               </Typography>
-              <Typography sx={{ mt: 0.35, fontSize: 12.5, lineHeight: 1.5, color: D.t2 }}>
+              <Typography sx={{ mt: 0.35, fontSize: 14, lineHeight: 1.5, color: D.t2 }}>
                 {achievement.description}
               </Typography>
               <Chip
                 size="small"
                 label={achievement.reward}
-                sx={{ mt: 1.1, height: 23, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, fontSize: 10.5, fontWeight: 900 }}
+                sx={{ mt: 1.1, height: 23, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, fontSize: 12, fontWeight: 900 }}
               />
-              <Typography sx={{ mt: 0.8, fontSize: 10.5, color: D.t3 }}>
+              <Typography sx={{ mt: 0.8, fontSize: 12, color: D.t3 }}>
                 {achievement.achievedByPercent.toFixed(1)}% of players unlocked this
               </Typography>
               {queuedCount > 1 && (
-                <Typography component="span" sx={{ ml: 1, fontSize: 10.5, color: D.t3 }}>
+                <Typography component="span" sx={{ ml: 1, fontSize: 12, color: D.t3 }}>
                   +{queuedCount - 1} more
                 </Typography>
               )}
             </Box>
             <IconButton size="small" aria-label="Dismiss achievement notification" onClick={onClose} sx={{ mt: -0.5, mr: -0.5, color: D.t3, "&:hover": { color: D.t1, bgcolor: D.overlay } }}>
-              <CloseIcon sx={{ fontSize: 17 }} />
+              <CloseIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Stack>
         </Box>
@@ -1156,7 +1120,7 @@ function CommandConsole({ open, onClose, onRun }: {
     >
       <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${D.border}` }}>
         <Stack direction="row" spacing={1} alignItems="center">
-          <CodeIcon sx={{ fontSize: 17, color: D.brandText }} />
+          <CodeIcon sx={{ fontSize: 18, color: D.brandText }} />
           <Typography sx={{ fontWeight: 900, fontSize: 12, color: D.t2, fontFamily: MONO }}>dev</Typography>
         </Stack>
         <IconButton size="small" aria-label="Close developer console" onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}>
@@ -1179,7 +1143,7 @@ function CommandConsole({ open, onClose, onRun }: {
               void submitCommand();
             }
           }}
-          inputProps={{ sx: { fontFamily: MONO, fontSize: 13 } }}
+          inputProps={{ sx: { fontFamily: MONO, fontSize: 14 } }}
           sx={{
             mb: 1,
             "& .MuiOutlinedInput-root": {
@@ -1195,7 +1159,7 @@ function CommandConsole({ open, onClose, onRun }: {
 
         <Box sx={{ minHeight: 96, maxHeight: 148, overflow: "auto", p: 1.3, borderRadius: 1.5, bgcolor: D.bg, border: `1px solid ${D.border}` }}>
           {history.map((line, index) => (
-            <Typography key={`${line}-${index}`} sx={{ fontSize: 11.5, color: line.startsWith(">") ? D.brandText : D.t2, fontFamily: MONO, lineHeight: 1.7 }}>
+            <Typography key={`${line}-${index}`} sx={{ fontSize: 12, color: line.startsWith(">") ? D.brandText : D.t2, fontFamily: MONO, lineHeight: 1.7 }}>
               {line}
             </Typography>
           ))}
@@ -1210,25 +1174,23 @@ function StockRow({ stock, animationIndex, marketClosed, sharesOwned, watchliste
 }) {
   const reduceMotion = useReducedMotion();
   const up = stock.dayChangePercent >= 0;
-  const risk = stock.riskLevel === "High" ? { fg: D.redText, bg: D.redBg }
-    : stock.riskLevel === "Medium" ? { fg: D.amber, bg: D.amberBg }
-    : { fg: D.greenText, bg: D.greenBg };
+  const risk = stock.riskLevel === "High" ? { fg: D.amber, bg: D.amberBg }
+    : stock.riskLevel === "Medium" ? { fg: D.amber, bg: "transparent" }
+    : { fg: D.t3, bg: "transparent" };
   return (
     <Box data-tour={stock.symbol === "CAI" ? "tutorial-stock" : animationIndex === 0 ? "first-stock" : undefined} component={motion.div} layout={!reduceMotion} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }} transition={{ duration: 0.22, delay: Math.min(animationIndex * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
-      onClick={onOpen} role="button" tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      onClick={onOpen}
       sx={{
-        display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr auto", md: "1.4fr 0.9fr auto" },
-        gap: 2, alignItems: "center", p: 2, mb: 1.2, borderRadius: 2,
-        bgcolor: D.elevated, border: `1px solid ${D.border}`,
+        display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr) auto auto", md: "1.4fr 0.9fr auto" },
+        gap: { xs: 1, sm: 2 }, alignItems: "center", py: { xs: 1.25, sm: 1.5 },
+        borderBottom: `1px solid ${D.border}`, "&:last-of-type": { borderBottom: "none" },
         cursor: "pointer", outline: "none",
-        transition: "border-color 160ms, background-color 160ms, transform 160ms",
-        "&:hover": { borderColor: D.borderHi, bgcolor: D.overlay, transform: reduceMotion ? "none" : "translateX(3px)" },
-        "&:focus-visible": { boxShadow: `0 0 0 2px ${D.brand}` },
+        transition: "background-color 160ms",
+        "&:hover": { bgcolor: D.elevated },
       }}
     >
-      <Box>
-        <Stack direction="row" spacing={1.5} alignItems="center">
+      <Box sx={{ minWidth: 0 }}>
+        <Stack direction="row" spacing={{ xs: 0.5, sm: 1.5 }} alignItems="center">
           <IconButton
             size="small"
             title={watchlisted ? "Remove from watchlist" : "Add to watchlist"}
@@ -1238,48 +1200,47 @@ function StockRow({ stock, animationIndex, marketClosed, sharesOwned, watchliste
               onToggleWatchlist();
             }}
             sx={{
-              width: 34,
-              height: 34,
+              width: { xs: 32, sm: 34 },
+              height: { xs: 44, sm: 34 },
+              flexShrink: 0,
               borderRadius: 1.5,
               color: watchlisted ? D.amber : D.t3,
-              border: `1px solid ${watchlisted ? D.amber : D.border}`,
+              border: { xs: "none", sm: `1px solid ${watchlisted ? D.amber : D.border}` },
               bgcolor: watchlisted ? D.amberBg : D.elevated,
               "&:hover": { color: D.amber, borderColor: D.amber, bgcolor: D.amberBg },
             }}
           >
-            <MotionPresence mode="wait" initial={false}>
-              <motion.span key={watchlisted ? "watched" : "unwatched"} initial={reduceMotion ? false : { scale: 0.4, rotate: -25 }} animate={{ scale: 1, rotate: 0 }} exit={reduceMotion ? undefined : { scale: 0.4, rotate: 25 }} transition={{ type: "spring", stiffness: 520, damping: 22 }} style={{ display: "grid" }}>
-                {watchlisted ? <StarIcon sx={{ fontSize: 17 }} /> : <StarBorderIcon sx={{ fontSize: 17 }} />}
-              </motion.span>
-            </MotionPresence>
+            {watchlisted ? <StarIcon sx={{ fontSize: 18 }} /> : <StarBorderIcon sx={{ fontSize: 18 }} />}
+
           </IconButton>
           {/* Testers found the old row's P/E, growth and day labels confusing;
               those figures live on the stock's page now. */}
-          <Box>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{stock.symbol}</Typography>
-              <Chip size="small" label={`${stock.riskLevel} risk`} title="How much this stock's price tends to swing"
-                sx={{ height: 20, fontSize: 11, fontWeight: 800, bgcolor: risk.bg, color: risk.fg }} />
+          {/* The row's click opens the stock; this is the keyboard and screen-reader way in. */}
+          <ButtonBase aria-label={`Open ${stock.name}`} sx={{ display: "block", textAlign: "left", minWidth: 0, minHeight: 24, borderRadius: 1, "&:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: 2 } }}>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+              <Typography component="span" sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{stock.symbol}</Typography>
+              <Chip size="small" label={<>{stock.riskLevel}<Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}> risk</Box></>} title="How much this stock's price tends to swing"
+                sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: risk.bg, color: risk.fg }} />
             </Stack>
-            <Typography sx={{ fontSize: 14, color: D.t2 }}>{stock.name} · {stock.sector}</Typography>
-            {sharesOwned > 0 && <Typography sx={{ fontSize: 11.5, color: D.brandText, fontWeight: 800 }}>You own {sharesOwned} share{sharesOwned === 1 ? "" : "s"}</Typography>}
-          </Box>
+            <Typography noWrap component="span" sx={{ display: "block", fontSize: 14, color: D.t2 }}>{stock.name}<Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}> · {stock.sector}</Box></Typography>
+            {sharesOwned > 0 && <Typography component="span" sx={{ display: "block", fontSize: 12, color: D.t2, fontWeight: 800 }}>You own {sharesOwned} share{sharesOwned === 1 ? "" : "s"}</Typography>}
+          </ButtonBase>
         </Stack>
       </Box>
 
-      <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
-        <Typography sx={{ fontWeight: 900, fontSize: 14.5, color: D.t1, fontFamily: MONO }}>{money(stock.currentPrice)}</Typography>
-        <Typography sx={{ fontSize: 13, color: up ? D.greenText : D.redText, fontWeight: 800 }}>{pct(stock.dayChangePercent)}</Typography>
-        <Typography sx={{ fontSize: 11.5, color: D.t3 }}>{stock.dayChange >= 0 ? "+" : ""}{money(stock.dayChange)} today</Typography>
+      <Box sx={{ textAlign: "right" }}>
+        <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>{money(stock.currentPrice)}</Typography>
+        <Typography sx={{ fontSize: 14, color: isFlat(stock.dayChangePercent) ? D.t2 : up ? D.greenText : D.redText, fontWeight: 800 }}>{pct(stock.dayChangePercent)}</Typography>
+        <Typography sx={{ display: { xs: "none", sm: "block" }, fontSize: 12, color: D.t3 }}>{stock.dayChange > 0 ? "+" : ""}{money(stock.dayChange)} today</Typography>
       </Box>
 
-      <Stack direction="row" spacing={1} justifyContent={{ xs: "flex-start", md: "flex-end" }}>
-        <Button size="small" variant="contained" disabled={marketClosed} onClick={(e) => { e.stopPropagation(); onBuy(); }}
-          sx={{ bgcolor: D.green, color: "#fff", fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 1.5, boxShadow: "none", minWidth: 52, "&:hover": { bgcolor: "#16A34A", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+      <Stack direction="row" spacing={1} justifyContent="flex-end">
+        <Button size="small" variant="outlined" disabled={marketClosed} onClick={(e) => { e.stopPropagation(); onBuy(); }}
+          sx={{ color: D.t1, borderColor: D.borderHi, fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 1.5, boxShadow: "none", minWidth: { xs: 44, sm: 52 }, minHeight: { xs: 44, sm: 36 }, px: { xs: 0.5, sm: 1 }, "&:hover": { color: readableOn(D.green), bgcolor: D.green, borderColor: D.green, boxShadow: "none" }, "&.Mui-disabled": { borderColor: D.border, color: D.t3 } }}>
           Buy
         </Button>
-        <Button size="small" variant="contained" disabled={marketClosed || sharesOwned === 0} onClick={(e) => { e.stopPropagation(); onSell(); }}
-          sx={{ bgcolor: D.red, color: "#fff", fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 1.5, boxShadow: "none", minWidth: 52, "&:hover": { bgcolor: "#DC2626", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+        <Button size="small" variant="outlined" disabled={marketClosed || sharesOwned === 0} onClick={(e) => { e.stopPropagation(); onSell(); }}
+          sx={{ color: D.t1, borderColor: D.borderHi, fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 1.5, boxShadow: "none", minWidth: { xs: 44, sm: 52 }, minHeight: { xs: 44, sm: 36 }, px: { xs: 0.5, sm: 1 }, "&:hover": { color: readableOn(D.red), bgcolor: D.red, borderColor: D.red, boxShadow: "none" }, "&.Mui-disabled": { borderColor: D.border, color: D.t3 } }}>
           Sell
         </Button>
       </Stack>
@@ -1336,13 +1297,13 @@ function TradeDialog({ stock, mode, cash, sharesOwned, marketClosed, getQuote, o
       <DialogTitle sx={{ bgcolor: D.elevated, borderBottom: `1px solid ${D.border}`, p: 2.5 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Box>
-            <Typography sx={{ fontWeight: 900, fontSize: 17, color: D.t1 }}>
+            <Typography sx={{ fontWeight: 900, fontSize: 18, color: D.t1 }}>
               {isBuy ? "Buy" : "Sell"} {stock.symbol}
             </Typography>
-            <Typography sx={{ fontSize: 12.5, color: D.t3 }}>{stock.name}</Typography>
+            <Typography sx={{ fontSize: 14, color: D.t3 }}>{stock.name}</Typography>
           </Box>
           <IconButton size="small" aria-label="Close trade dialog" onClick={onClose} sx={{ color: D.t3, "&:hover": { color: D.t1 } }}>
-            <CloseIcon sx={{ fontSize: 17 }} />
+            <CloseIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Stack>
       </DialogTitle>
@@ -1351,18 +1312,18 @@ function TradeDialog({ stock, mode, cash, sharesOwned, marketClosed, getQuote, o
         {error && <Typography role="alert" sx={{ color: D.redText, mb: 2 }}>{error}</Typography>}
         <Stack spacing={2} sx={{ pt: 0.5 }}>
           <Stack direction="row" justifyContent="space-between">
-            <Typography sx={{ fontSize: 13, color: D.t3 }}>Price per share</Typography>
-            <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(stock.currentPrice)}</Typography>
+            <Typography sx={{ fontSize: 14, color: D.t3 }}>Price per share</Typography>
+            <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(stock.currentPrice)}</Typography>
           </Stack>
           {isBuy ? (
             <Stack direction="row" justifyContent="space-between">
-              <Typography sx={{ fontSize: 13, color: D.t3 }}>Available cash</Typography>
-              <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(cash)}</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t3 }}>Available cash</Typography>
+              <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{money(cash)}</Typography>
             </Stack>
           ) : (
             <Stack direction="row" justifyContent="space-between">
-              <Typography sx={{ fontSize: 13, color: D.t3 }}>Shares owned</Typography>
-              <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{sharesOwned}</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t3 }}>Shares owned</Typography>
+              <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{sharesOwned}</Typography>
             </Stack>
           )}
 
@@ -1383,7 +1344,7 @@ function TradeDialog({ stock, mode, cash, sharesOwned, marketClosed, getQuote, o
                   const v = parseInt(e.target.value, 10);
                   if (!Number.isNaN(v)) setQuantity(v);
                 }}
-                inputProps={{ min: 1, max: maxQty, sx: { textAlign: "center", fontFamily: MONO, fontWeight: 900, fontSize: 18, py: 0.8 } }}
+                inputProps={{ min: 1, max: maxQty, "aria-label": "Share quantity", sx: { textAlign: "center", fontFamily: MONO, fontWeight: 900, fontSize: 18, py: 0.8 } }}
                 sx={{
                   width: 80,
                   "& .MuiOutlinedInput-root": {
@@ -1400,25 +1361,32 @@ function TradeDialog({ stock, mode, cash, sharesOwned, marketClosed, getQuote, o
                 <AddIcon sx={{ fontSize: 16 }} />
               </IconButton>
               <Button size="small" onClick={() => setQuantity(maxQty)} disabled={qty >= maxQty}
-                sx={{ color: D.brandText, fontSize: 11, fontWeight: 800, textTransform: "none", px: 1 }}>
+                sx={{ color: D.brandText, fontSize: 12, fontWeight: 800, textTransform: "none", px: 1 }}>
                 Max
               </Button>
             </Stack>
+            {quantity > maxQty && (
+              <Typography role="status" sx={{ mt: 1, fontSize: 14, color: D.t2 }}>
+                {isBuy
+                  ? `Changed to ${maxQty}: the most your cash covers, including execution costs.`
+                  : `Changed to ${maxQty}: the number of shares you own.`}
+              </Typography>
+            )}
           </Box>
 
           <Box sx={{ p: 2, borderRadius: 2, bgcolor: isBuy ? D.greenBg : D.redBg, border: `1px solid ${isBuy ? D.greenBd : D.redBd}` }}>
             <Stack direction="row" justifyContent="space-between">
-              <Typography sx={{ fontSize: 13, color: D.t2, fontWeight: 700 }}>
+              <Typography sx={{ fontSize: 14, color: D.t2, fontWeight: 700 }}>
                 {isBuy ? "Total cost" : "Total proceeds"}
               </Typography>
               <motion.div key={total} initial={reduceMotion ? false : { opacity: 0, scale: 0.9, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 500, damping: 28 }}>
-                <Typography sx={{ fontSize: 18, fontWeight: 950, color: isBuy ? D.greenText : D.redText, fontFamily: MONO }}>
+                <Typography sx={{ fontSize: 18, fontWeight: 900, color: isBuy ? D.greenText : D.redText, fontFamily: MONO }}>
                   {money(total)}
                 </Typography>
               </motion.div>
             </Stack>
             {isBuy && (
-              <Typography sx={{ fontSize: 11.5, color: D.t3, mt: 0.5 }}>
+              <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.5 }}>
                 Remaining: {money(cash - total)}
               </Typography>
             )}
@@ -1437,19 +1405,19 @@ function TradeDialog({ stock, mode, cash, sharesOwned, marketClosed, getQuote, o
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.25 }}>
               <Box>
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t1 }}>Decision journal</Typography>
-                <Typography sx={{ fontSize: 11, color: D.t3 }}>Optional · a price-outcome review arrives at your horizon. Reflect on your plan on the Dashboard.</Typography>
+                <Typography sx={{ fontSize: 12, color: D.t3 }}>Optional · a price-outcome review arrives at your horizon. Reflect on your plan on the Dashboard.</Typography>
               </Box>
-              <Chip size="small" label="LEARNING" sx={{ bgcolor: D.brandBg, color: D.brandText, fontSize: 9, fontWeight: 900, fontFamily: MONO }} />
+              <Chip size="small" label="LEARNING" sx={{ bgcolor: D.brandBg, color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }} />
             </Stack>
             <TextField fullWidth size="small" multiline minRows={2} value={thesis} onChange={(event) => setThesis(event.target.value.slice(0, 500))}
               placeholder={isBuy ? "Why do you expect this investment to work?" : "Why are you exiting now?"}
               inputProps={{ "aria-label": "Reason for this decision" }}
-              sx={{ mb: 1.25, "& .MuiOutlinedInput-root": { color: D.t1, fontSize: 12.5, bgcolor: D.surface, "& fieldset": { borderColor: D.border }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
-            <Typography sx={{ fontSize: 10, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: .75 }}>TIME HORIZON</Typography>
+              sx={{ mb: 1.25, "& .MuiOutlinedInput-root": { color: D.t1, fontSize: 14, bgcolor: D.surface, "& fieldset": { borderColor: D.border }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
+            <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, mb: .75 }}>TIME HORIZON</Typography>
             <Stack direction="row" spacing={.75} sx={{ mb: 1.25 }}>
               {[{ label: "3 days", days: 3 }, { label: "10 days", days: 10 }, { label: "30 days", days: 30 }].map((item) => (
                 <Button key={item.days} size="small" onClick={() => setHorizonDays(item.days)}
-                  sx={{ minWidth: 0, px: 1.2, py: .45, borderRadius: 99, textTransform: "none", fontSize: 10.5, fontWeight: 800, color: horizonDays === item.days ? D.brandText : D.t3, bgcolor: horizonDays === item.days ? D.brandBg : "transparent", border: `1px solid ${horizonDays === item.days ? D.brandBd : D.border}` }}>
+                  sx={{ minWidth: 0, px: 1.2, py: .45, borderRadius: 99, textTransform: "none", fontSize: 12, fontWeight: 800, color: horizonDays === item.days ? D.brandText : D.t3, bgcolor: horizonDays === item.days ? D.brandBg : "transparent", border: `1px solid ${horizonDays === item.days ? D.brandBd : D.border}` }}>
                   {item.label}
                 </Button>
               ))}
@@ -1457,14 +1425,14 @@ function TradeDialog({ stock, mode, cash, sharesOwned, marketClosed, getQuote, o
             <TextField fullWidth size="small" value={exitPlan} onChange={(event) => setExitPlan(event.target.value.slice(0, 500))}
               placeholder="What would prove this decision wrong?"
               inputProps={{ "aria-label": "Trade exit rule" }}
-              sx={{ "& .MuiOutlinedInput-root": { color: D.t1, fontSize: 12.5, bgcolor: D.surface, "& fieldset": { borderColor: D.border }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
+              sx={{ "& .MuiOutlinedInput-root": { color: D.t1, fontSize: 14, bgcolor: D.surface, "& fieldset": { borderColor: D.border }, "&:hover fieldset": { borderColor: D.borderHi }, "&.Mui-focused fieldset": { borderColor: D.brand } } }} />
           </Box>
         </Stack>
       </DialogContent>
 
       <DialogActions sx={{ bgcolor: D.elevated, borderTop: `1px solid ${D.border}`, p: 2 }}>
         {marketClosed && (
-          <Typography role="status" sx={{ mr: "auto", fontSize: 12.5, color: D.amber, fontWeight: 800 }}>
+          <Typography role="status" sx={{ mr: "auto", fontSize: 14, color: D.amber, fontWeight: 800 }}>
             {MARKET_CLOSED_MESSAGE}
           </Typography>
         )}
@@ -1480,9 +1448,9 @@ function TradeDialog({ stock, mode, cash, sharesOwned, marketClosed, getQuote, o
             finally { setSubmitting(false); }
           }}
           sx={{
-            bgcolor: isBuy ? D.green : D.red, color: "#fff", fontWeight: 800, textTransform: "none",
+            bgcolor: isBuy ? D.green : D.red, color: readableOn(isBuy ? D.green : D.red), fontWeight: 800, textTransform: "none",
             borderRadius: 1.5, boxShadow: "none", px: 3,
-            "&:hover": { bgcolor: isBuy ? "#16A34A" : "#DC2626", boxShadow: "none" },
+            "&:hover": { bgcolor: isBuy ? D.green : D.red, filter: "brightness(0.9)", boxShadow: "none" },
             "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 },
           }}>
           {isBuy ? "Buy" : "Sell"} {qty} share{qty === 1 ? "" : "s"}

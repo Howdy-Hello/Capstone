@@ -122,7 +122,7 @@ function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title
         <Box sx={{ color: D.brandText, display: "grid", placeItems: "center", "& svg": { fontSize: 18 } }}>{icon}</Box>
         <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>{title}</Typography>
       </Stack>
-      <Typography sx={{ fontSize: 12.5, color: D.t3 }}>{subtitle}</Typography>
+      <Typography sx={{ fontSize: 14, color: D.t3 }}>{subtitle}</Typography>
     </Box>
   );
 }
@@ -131,7 +131,7 @@ function InfoBlock({ title, text }: { title: string; text: string }) {
   return (
     <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}`, height: "100%" }}>
       <Typography sx={{ fontWeight: 900, fontSize: 12, color: D.t3, fontFamily: MONO, textTransform: "uppercase", letterSpacing: 0.5, mb: 0.6 }}>{title}</Typography>
-      <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.65 }}>{text}</Typography>
+      <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.65 }}>{text}</Typography>
     </Box>
   );
 }
@@ -139,8 +139,8 @@ function InfoBlock({ title, text }: { title: string; text: string }) {
 function NumberedPoint({ number, text }: { number: number; text: string }) {
   return (
     <Stack direction="row" spacing={1.5} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-      <Box sx={{ width: 26, height: 26, borderRadius: 1.5, bgcolor: D.brandBg, color: D.brandText, display: "grid", placeItems: "center", fontWeight: 950, fontSize: 12, flexShrink: 0, fontFamily: MONO }}>{number}</Box>
-      <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.65 }}>{text}</Typography>
+      <Box sx={{ width: 26, height: 26, borderRadius: 1.5, bgcolor: D.brandBg, color: D.brandText, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 12, flexShrink: 0, fontFamily: MONO }}>{number}</Box>
+      <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.65 }}>{text}</Typography>
     </Stack>
   );
 }
@@ -153,9 +153,9 @@ function TutorialTab() {
       {tutorialSteps.map((step) => (
         <Grid item xs={12} sm={6} md={3} key={step.title}>
           <Box sx={{ ...CARD, p: 3, height: "100%" }}>
-            <Box sx={{ width: 42, height: 42, borderRadius: 2, bgcolor: D.greenBg, color: D.greenText, display: "grid", placeItems: "center", mb: 2, "& svg": { fontSize: 22 } }}>{step.icon}</Box>
-            <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.8 }}>{step.title}</Typography>
-            <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.65 }}>{step.desc}</Typography>
+            <Box sx={{ width: 42, height: 42, borderRadius: 2, bgcolor: D.overlay, color: D.t1, display: "grid", placeItems: "center", mb: 2, "& svg": { fontSize: 22 } }}>{step.icon}</Box>
+            <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 0.8 }}>{step.title}</Typography>
+            <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.65 }}>{step.desc}</Typography>
           </Box>
         </Grid>
       ))}
@@ -167,10 +167,10 @@ function TutorialTab() {
             <Stack spacing={1.2}>
               {daySteps.map((s, i) => (
                 <Stack key={s.title} direction="row" spacing={2} sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                  <Box sx={{ width: 32, height: 32, borderRadius: 2, bgcolor: D.greenBg, color: D.greenText, display: "grid", placeItems: "center", fontWeight: 950, fontSize: 14, flexShrink: 0, fontFamily: MONO }}>{i + 1}</Box>
+                  <Box sx={{ width: 32, height: 32, borderRadius: 2, bgcolor: D.overlay, color: D.t1, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 14, flexShrink: 0, fontFamily: MONO }}>{i + 1}</Box>
                   <Box>
                     <Typography sx={{ fontWeight: 900, color: D.t1, fontSize: 14 }}>{s.title}</Typography>
-                    <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.6 }}>{s.text}</Typography>
+                    <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6 }}>{s.text}</Typography>
                   </Box>
                 </Stack>
               ))}
@@ -183,14 +183,14 @@ function TutorialTab() {
         <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3, height: "100%" }}>
           <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 0.4 }}>
             <TrendingUpIcon sx={{ color: D.greenText, fontSize: 18 }} />
-            <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Strategy Tips</Typography>
+            <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Strategy Tips</Typography>
           </Stack>
-          <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Rules that improve decision quality each turn.</Typography>
+          <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>Rules that improve decision quality each turn.</Typography>
           <Divider sx={{ borderColor: D.border, mb: 2 }} />
           <Stack spacing={1.2}>
             {strategyTips.map((tip, i) => (
               <Box key={tip} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}` }}>
-                <Typography sx={{ fontSize: 13, color: D.t2, fontWeight: 700 }}>{i + 1}. {tip}</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2, fontWeight: 700 }}>{i + 1}. {tip}</Typography>
               </Box>
             ))}
           </Stack>
@@ -201,8 +201,8 @@ function TutorialTab() {
         <Box sx={{ ...CARD, p: 3 }}>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={2}>
             <Box>
-              <Typography sx={{ fontWeight: 950, fontSize: 17, color: D.t1 }}>{user ? "Ready to test your strategy?" : "Try your first practice decision"}</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t3 }}>{user ? "Open the simulator to research stocks and manage your portfolio." : "Research, decide, and reflect. No account required; your saved game stays safe."}</Typography>
+              <Typography sx={{ fontWeight: 900, fontSize: 18, color: D.t1 }}>{user ? "Ready to test your strategy?" : "Try your first practice decision"}</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t3 }}>{user ? "Open the simulator to research stocks and manage your portfolio." : "Research, decide, and reflect. No account required; your saved game stays safe."}</Typography>
             </Box>
             <Button variant="contained" component={RouterLink} to={user ? "/game" : "/practice"}
               sx={{ bgcolor: D.brand, fontWeight: 900, textTransform: "none", borderRadius: 1.5, px: 4, whiteSpace: "nowrap", boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" } }}>
@@ -224,8 +224,8 @@ function GuideTab() {
         <Grid item xs={12} sm={6} md={3} key={item.title}>
           <Box sx={{ ...CARD, p: 3, height: "100%" }}>
             <Box sx={{ width: 42, height: 42, borderRadius: 2, bgcolor: D.brandBg, color: D.brandText, display: "grid", placeItems: "center", mb: 2, "& svg": { fontSize: 22 } }}>{item.icon}</Box>
-            <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1, mb: 0.8 }}>{item.title}</Typography>
-            <Typography sx={{ fontSize: 13, color: D.t2, lineHeight: 1.65 }}>{item.text}</Typography>
+            <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 0.8 }}>{item.title}</Typography>
+            <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.65 }}>{item.text}</Typography>
           </Box>
         </Grid>
       ))}
@@ -254,7 +254,7 @@ function GuideTab() {
                 {newsChecklist.map((item) => (
                   <Grid item xs={12} sm={6} key={item}>
                     <Box sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                      <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1 }}>{item}</Typography>
+                      <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1 }}>{item}</Typography>
                     </Box>
                   </Grid>
                 ))}
@@ -274,14 +274,14 @@ function GuideTab() {
           <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
             <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 0.4 }}>
               <PsychologyIcon sx={{ color: D.brandText, fontSize: 18 }} />
-              <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Investor Mindset</Typography>
+              <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Investor Mindset</Typography>
             </Stack>
-            <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Great investing survives uncertainty — not just predicts correctly.</Typography>
+            <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>Great investing survives uncertainty — not just predicts correctly.</Typography>
             <Divider sx={{ borderColor: D.border, mb: 2 }} />
             <Stack spacing={1.2}>
               {mindsetRules.map((rule, i) => (
                 <Box key={rule} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}` }}>
-                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: D.t2 }}>{i + 1}. {rule}</Typography>
+                  <Typography sx={{ fontSize: 14, fontWeight: 700, color: D.t2 }}>{i + 1}. {rule}</Typography>
                 </Box>
               ))}
             </Stack>
@@ -290,18 +290,18 @@ function GuideTab() {
           <Box sx={{ ...CARD, p: 3 }}>
             <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 0.4 }}>
               <PieChartIcon sx={{ color: D.brandText, fontSize: 18 }} />
-              <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Sector Volatility</Typography>
+              <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Sector Volatility</Typography>
             </Stack>
-            <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Illustrative game scores, not measured real-world risk. Industries react differently to economic conditions.</Typography>
+            <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>Illustrative game scores, not measured real-world risk. Industries react differently to economic conditions.</Typography>
             <Divider sx={{ borderColor: D.border, mb: 2.5 }} />
             {sectorGuide.map((sector) => (
               <Box key={sector.name} sx={{ mb: 2.5 }}>
                 <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.7 }}>
-                  <Typography sx={{ fontWeight: 900, color: D.t1, fontSize: 13 }}>{sector.name}</Typography>
-                  <Typography sx={{ fontWeight: 900, fontSize: 13, color: sector.risk > 70 ? D.redText : D.greenText, fontFamily: MONO }}>{sector.risk}/100</Typography>
+                  <Typography sx={{ fontWeight: 900, color: D.t1, fontSize: 14 }}>{sector.name}</Typography>
+                  <Typography sx={{ fontWeight: 900, fontSize: 14, color: sector.risk > 70 ? D.redText : D.greenText, fontFamily: MONO }}>{sector.risk}/100</Typography>
                 </Stack>
                 <LinearProgress variant="determinate" value={sector.risk} sx={{ height: 5, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: sector.risk > 70 ? D.red : D.green, borderRadius: 99 } }} />
-                <Typography sx={{ fontSize: 11.5, color: D.t3, mt: 0.6, lineHeight: 1.5 }}>{sector.text}</Typography>
+                <Typography sx={{ fontSize: 12, color: D.t3, mt: 0.6, lineHeight: 1.5 }}>{sector.text}</Typography>
               </Box>
             ))}
           </Box>
@@ -309,14 +309,14 @@ function GuideTab() {
           <Box sx={{ ...CARD, p: 3 }}>
             <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 0.4 }}>
               <ShieldIcon sx={{ color: D.redText, fontSize: 18 }} />
-              <Typography sx={{ fontWeight: 900, fontSize: 15, color: D.t1 }}>Common Mistakes</Typography>
+              <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Common Mistakes</Typography>
             </Stack>
-            <Typography sx={{ fontSize: 13, color: D.t3, mb: 2 }}>Most avoidable losses come from behaviour, not math.</Typography>
+            <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>Most avoidable losses come from behaviour, not math.</Typography>
             <Divider sx={{ borderColor: D.border, mb: 2.5 }} />
             <Stack spacing={1}>
               {investorMistakes.map((m) => (
                 <Box key={m} sx={{ p: 1.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
-                  <Typography sx={{ fontWeight: 800, color: D.redText, fontSize: 13 }}>{m}</Typography>
+                  <Typography sx={{ fontWeight: 800, color: D.redText, fontSize: 14 }}>{m}</Typography>
                 </Box>
               ))}
             </Stack>
@@ -328,8 +328,8 @@ function GuideTab() {
         <Box sx={{ ...CARD, p: 3 }}>
           <Grid container spacing={3}>
             <Grid item xs={12} md={4}>
-              <Typography sx={{ fontWeight: 950, fontSize: 17, color: D.t1 }}>Simulator → Real Market</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t2, mt: 1, lineHeight: 1.7 }}>
+              <Typography sx={{ fontWeight: 900, fontSize: 18, color: D.t1 }}>Simulator → Real Market</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t2, mt: 1, lineHeight: 1.7 }}>
                 The simulator simplifies real investing — but the habits carry over: read news carefully, size positions, compare fundamentals, and keep a record of your reasoning.
               </Typography>
             </Grid>
@@ -344,8 +344,8 @@ function GuideTab() {
           <Divider sx={{ my: 3, borderColor: D.border }} />
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={2}>
             <Box>
-              <Typography sx={{ fontWeight: 950, fontSize: 17, color: D.t1 }}>Ready to test the framework?</Typography>
-              <Typography sx={{ fontSize: 13, color: D.t3 }}>Use the Game page to practise, then review the Dashboard to see how your positions behave.</Typography>
+              <Typography component="h2" sx={{ fontWeight: 900, fontSize: 18, color: D.t1 }}>Ready to test the framework?</Typography>
+              <Typography sx={{ fontSize: 14, color: D.t3 }}>Use the Game page to practise, then review the Dashboard to see how your positions behave.</Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
               {/* Guest Practice is for signed-out visitors; players go to their run. */}
@@ -381,8 +381,8 @@ export default function Learn() {
           <Grid container spacing={4} alignItems="center" sx={{ pb: 3 }}>
             <Grid item xs={12} md={7}>
               <Chip label={tab === 0 ? "BEGINNER TUTORIAL" : "REAL MARKET GUIDE"} size="small"
-                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1.5 }} />
-              <Typography component="h1" sx={{ fontSize: { xs: 26, md: 34 }, fontWeight: 950, letterSpacing: -1, color: D.t1, lineHeight: 1.1, mb: 1.5 }}>
+                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 12, fontFamily: MONO, letterSpacing: 1, mb: 1.5 }} />
+              <Typography component="h1" sx={{ fontSize: { xs: 26, md: 32 }, fontWeight: 900, letterSpacing: "-0.02em", color: D.t1, lineHeight: 1.1, mb: 1.5 }}>
                 {tab === 2 ? "Build an investing plan." : tab === 0 ? "Learn to make a reasoned decision." : "How the stock market actually works."}
               </Typography>
               <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.7, maxWidth: 600 }}>
@@ -393,27 +393,27 @@ export default function Learn() {
             </Grid>
             <Grid item xs={12} md={5}>
               <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: D.t3, fontFamily: MONO, letterSpacing: 1, mb: 0.5 }}>{tab === 0 ? "QUICK OBJECTIVE" : "CORE IDEA"}</Typography>
-                <Typography sx={{ fontWeight: 950, fontSize: 17, color: D.t1, my: 0.8 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: D.t3, fontFamily: MONO, letterSpacing: 1, mb: 0.5 }}>{tab === 0 ? "QUICK OBJECTIVE" : "CORE IDEA"}</Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: 18, color: D.t1, my: 0.8 }}>
                   {tab === 0 ? "Explain your decision." : "Stocks move when expectations change."}
                 </Typography>
-                <Typography sx={{ fontSize: 13, color: D.t3, mb: 2.5, lineHeight: 1.7 }}>
+                <Typography sx={{ fontSize: 14, color: D.t3, mb: 2.5, lineHeight: 1.7 }}>
                   {tab === 0
                     ? "Learning progress comes from research, risk awareness, and reflection. A thoughtful decision to wait counts. Profit competition is an optional challenge."
                     : "The market compares new information against what investors already believed. Your job is to judge whether new info truly changes the business."}
                 </Typography>
-                <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.2 }}>
                   {[
                     { label: "Starting Capital", val: "$2,000" },
                     { label: "Learning Goal",    val: "Explain why" },
-                    { label: "Risk",             val: "Always" },
+                    { label: "Market Risk",      val: "Always present" },
                   ].map((b) => (
-                    <Box key={b.label} sx={{ px: 2, py: 1.2, borderRadius: 2, bgcolor: D.overlay, border: `1px solid ${D.borderHi}`, textAlign: "center", minWidth: 100 }}>
-                      <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: D.t3, display: "block" }}>{b.label}</Typography>
-                      <Typography sx={{ fontWeight: 900, color: D.t1, fontFamily: MONO }}>{b.val}</Typography>
+                    <Box key={b.label} sx={{ px: 2, py: 1.2, borderRadius: 2, bgcolor: D.overlay, border: `1px solid ${D.borderHi}`, textAlign: "center", flex: "1 1 auto", minWidth: 100 }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: D.t3, display: "block" }}>{b.label}</Typography>
+                      <Typography sx={{ fontWeight: 900, color: D.t1, whiteSpace: "nowrap" }}>{b.val}</Typography>
                     </Box>
                   ))}
-                </Stack>
+                </Box>
               </Box>
             </Grid>
           </Grid>
@@ -421,7 +421,7 @@ export default function Learn() {
           {/* Tabs */}
           <Box sx={{ borderTop: `1px solid ${D.border}` }}>
             <Tabs variant="scrollable" scrollButtons="auto" value={tab} onChange={(_, v) => setTab(v)} sx={{
-              "& .MuiTab-root": { color: D.t3, fontWeight: 900, fontSize: 13.5, textTransform: "none", px: 3, py: 2, minHeight: 52 },
+              "& .MuiTab-root": { color: D.t3, fontWeight: 900, fontSize: 14, textTransform: "none", px: 3, py: 2, minHeight: 52 },
               "& .Mui-selected": { color: D.t1 },
               "& .MuiTabs-indicator": { bgcolor: D.brand, height: 3, borderRadius: "2px 2px 0 0" },
             }}>

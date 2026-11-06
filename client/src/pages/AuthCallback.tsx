@@ -64,8 +64,8 @@ export default function AuthCallback() {
         <Box sx={{ ...CARD, p: 4, textAlign: "center" }}>
           {error ? (
             <>
-              <Typography component="h1" sx={{ fontSize: 20, fontWeight: 950, color: D.t1, mb: 1 }}>Google sign-in failed</Typography>
-              <Typography role="alert" sx={{ fontSize: 13.5, color: D.redText, lineHeight: 1.7, mb: 3 }}>{error}</Typography>
+              <Typography component="h1" sx={{ fontSize: 20, fontWeight: 900, color: D.t1, mb: 1 }}>Google sign-in failed</Typography>
+              <Typography role="alert" sx={{ fontSize: 14, color: D.redText, lineHeight: 1.7, mb: 3 }}>{error}</Typography>
               <Button component={RouterLink} to="/auth?mode=login" variant="contained"
                 sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", boxShadow: "none" }}>
                 Back to login

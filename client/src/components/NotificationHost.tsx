@@ -76,14 +76,14 @@ function ToastItem({ notification }: { notification: AppNotification }) {
             {meta.icon}
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography sx={{ fontSize: 9.5, fontWeight: 900, color: meta.color, fontFamily: MONO, letterSpacing: 0.6, mb: 0.3 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 900, color: meta.color, fontFamily: MONO, letterSpacing: 0.6, mb: 0.3 }}>
               {meta.label}
             </Typography>
-            <Typography sx={{ fontSize: 13, fontWeight: 800, color: D.t1, lineHeight: 1.3 }}>
+            <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, lineHeight: 1.3 }}>
               {notification.title}
             </Typography>
             {notification.description && (
-              <Typography sx={{ fontSize: 11.5, color: D.t3, lineHeight: 1.4, mt: 0.3 }}>
+              <Typography sx={{ fontSize: 12, color: D.t3, lineHeight: 1.4, mt: 0.3 }}>
                 {notification.description}
               </Typography>
             )}

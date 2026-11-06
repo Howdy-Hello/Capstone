@@ -16,7 +16,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import ThemeSettingsPanel from "../components/ThemeSettingsPanel";
-import { D, MONO } from "../theme/design";
+import { D, MONO, readableOn } from "../theme/design";
 import { getTutorialProgress } from "../lib/tutorial";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -51,8 +51,8 @@ const fieldSx = () => ({
       "& fieldset": { borderColor: D.border },
     },
   },
-  "& .MuiInputLabel-root": { color: D.t3, fontSize: 13.5, "&.Mui-focused": { color: D.brandText } },
-  "& .MuiFormHelperText-root": { color: D.t3, marginLeft: 0, marginTop: 0.75, fontSize: 11.5 },
+  "& .MuiInputLabel-root": { color: D.t3, fontSize: 14, "&.Mui-focused": { color: D.brandText } },
+  "& .MuiFormHelperText-root": { color: D.t3, marginLeft: 0, marginTop: 0.75, fontSize: 12 },
 });
 
 // Shared shell for the page's cards.
@@ -64,11 +64,11 @@ const sectionSx = (accent?: string) => ({
 });
 
 export default function ProfilePage() {
-  usePageTitle("Profile");
   const reduceMotion = useReducedMotion();
   const { user, profile, profileLoading, profileError, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  usePageTitle(pathname === "/settings" ? "Settings" : "Profile");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [displayName, setDisplayName] = useState("");
@@ -246,14 +246,12 @@ export default function ProfilePage() {
         <Container maxWidth="lg" sx={{ py: { xs: 2.5, md: 3 } }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
             <Box>
-              <Chip label={isSettings ? "SETTINGS" : "PROFILE"} size="small"
-                sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 900, fontSize: 10, fontFamily: MONO, letterSpacing: 1, mb: 1 }} />
-              <Typography component="h1" sx={{ fontWeight: 950, fontSize: { xs: 22, md: 26 }, color: D.t1, lineHeight: 1.1 }}>
+              <Typography component="h1" sx={{ fontWeight: 900, fontSize: { xs: 26, md: 32 }, color: D.t1, lineHeight: 1.1 , letterSpacing: "-0.02em" }}>
                 {isSettings ? "Account Settings" : "Your Profile"}
               </Typography>
             </Box>
             <Button onClick={async () => { await signOut(); navigate("/"); }} startIcon={<LogoutIcon />}
-              sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 2, border: `1px solid ${D.border}`, px: 2, flexShrink: 0, fontSize: 13, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
+              sx={{ color: D.t3, fontWeight: 700, textTransform: "none", borderRadius: 2, border: `1px solid ${D.border}`, px: 2, flexShrink: 0, fontSize: 14, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
               Log out
             </Button>
           </Stack>
@@ -264,17 +262,17 @@ export default function ProfilePage() {
         <MotionPresence initial={false}>
           {saveErr && (
             <motion.div key="saveErr" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
-              <Alert severity="error" onClose={() => setSaveErr(null)} sx={{ mb: 2.5, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{saveErr}</Alert>
+              <Alert severity="error" onClose={() => setSaveErr(null)} sx={{ mb: 2.5, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 14 }}>{saveErr}</Alert>
             </motion.div>
           )}
           {saveMsg && (
             <motion.div key="saveMsg" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
-              <Alert severity="success" sx={{ mb: 2.5, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 13 }}>{saveMsg}</Alert>
+              <Alert severity="success" sx={{ mb: 2.5, bgcolor: D.greenBg, color: D.greenText, border: `1px solid ${D.greenBd}`, "& .MuiAlert-icon": { color: D.greenText }, fontSize: 14 }}>{saveMsg}</Alert>
             </motion.div>
           )}
           {avatarErr && (
             <motion.div key="avatarErr" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
-              <Alert severity="error" onClose={() => setAvatarErr(null)} sx={{ mb: 2.5, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 13 }}>{avatarErr}</Alert>
+              <Alert severity="error" onClose={() => setAvatarErr(null)} sx={{ mb: 2.5, bgcolor: D.redBg, color: D.redText, border: `1px solid ${D.redBd}`, "& .MuiAlert-icon": { color: D.redText }, fontSize: 14 }}>{avatarErr}</Alert>
             </motion.div>
           )}
         </MotionPresence>
@@ -282,32 +280,32 @@ export default function ProfilePage() {
         <Grid container spacing={3} alignItems="flex-start">
           {/* Identity rail */}
           <Grid item xs={12} md={4}>
-            <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32 }}
+            <Box component={motion.div}
               sx={{ ...sectionSx(), position: { md: "sticky" }, top: { md: 88 } }}>
               <Box sx={{ p: 3, textAlign: "center" }}>
                 <Box sx={{ position: "relative", width: 104, mx: "auto", mb: 2 }}>
                   <Avatar src={avatarUrl ?? undefined}
-                    sx={{ width: 104, height: 104, bgcolor: D.elevated, border: `3px solid ${D.brandBd}`, fontSize: 34, fontWeight: 950, color: D.brandText }}>
+                    sx={{ width: 104, height: 104, bgcolor: D.elevated, border: `3px solid ${D.brandBd}`, fontSize: 34, fontWeight: 900, color: D.brandText }}>
                     {!avatarUrl && (initials || <AccountCircleIcon sx={{ fontSize: 52, color: D.t3 }} />)}
                   </Avatar>
                   <Tooltip title={avatarUrl ? "Change photo" : "Upload photo"}>
                     <IconButton aria-label="Change profile photo" onClick={() => fileRef.current?.click()} disabled={uploadingAvatar}
-                      sx={{ position: "absolute", bottom: 0, right: 0, width: 32, height: 32, bgcolor: D.brand, color: "#fff", border: `2px solid ${D.surface}`, "&:hover": { bgcolor: D.brandMid } }}>
-                      {uploadingAvatar ? <CircularProgress size={13} sx={{ color: "#fff" }} /> : <CameraAltIcon sx={{ fontSize: 15 }} />}
+                      sx={{ position: "absolute", bottom: 0, right: 0, width: 32, height: 32, bgcolor: D.brand, color: readableOn(D.brand), border: `2px solid ${D.surface}`, "&:hover": { bgcolor: D.brandMid } }}>
+                      {uploadingAvatar ? <CircularProgress size={13} sx={{ color: "#fff" }} /> : <CameraAltIcon sx={{ fontSize: 16 }} />}
                     </IconButton>
                   </Tooltip>
                 </Box>
 
-                <Typography sx={{ fontWeight: 950, fontSize: 18, color: D.t1, lineHeight: 1.2 }} noWrap>
+                <Typography sx={{ fontWeight: 900, fontSize: 18, color: D.t1, lineHeight: 1.2 }} noWrap>
                   {displayName || user.email?.split("@")[0] || "Trader"}
                 </Typography>
                 {username && (
-                  <Typography sx={{ fontSize: 13, color: D.brandText, fontFamily: MONO, mt: 0.25 }} noWrap>@{username}</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.brandText, fontFamily: MONO, mt: 0.25 }} noWrap>@{username}</Typography>
                 )}
-                <Typography sx={{ fontSize: 12.5, color: D.t3, mt: 0.75, wordBreak: "break-all" }}>{user.email}</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t3, mt: 0.75, wordBreak: "break-all" }}>{user.email}</Typography>
 
                 {memberSince && (
-                  <Typography sx={{ fontSize: 11, color: D.t4, mt: 1.5, fontFamily: MONO, letterSpacing: 0.5 }}>
+                  <Typography sx={{ fontSize: 12, color: D.t4, mt: 1.5, }}>
                     MEMBER SINCE {memberSince.toUpperCase()}
                   </Typography>
                 )}
@@ -316,19 +314,19 @@ export default function ProfilePage() {
               <Divider sx={{ borderColor: D.border }} />
 
               <Box sx={{ p: 2.5 }}>
-                <Typography sx={{ fontSize: 11, color: D.t3, mb: 1.5, fontFamily: MONO, letterSpacing: 0.5 }}>
+                <Typography sx={{ fontSize: 12, color: D.t3, mb: 1.5, fontFamily: MONO, letterSpacing: 0.5 }}>
                   PHOTO · JPEG, PNG, WEBP · MAX 2 MB
                 </Typography>
                 <Stack spacing={1}>
                   <Button fullWidth variant="outlined" startIcon={uploadingAvatar ? <CircularProgress size={13} /> : <CameraAltIcon />}
                     onClick={() => fileRef.current?.click()} disabled={uploadingAvatar}
-                    sx={{ color: D.t2, borderColor: D.border, fontWeight: 700, textTransform: "none", borderRadius: 2, fontSize: 13, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
+                    sx={{ color: D.t2, borderColor: D.border, fontWeight: 700, textTransform: "none", borderRadius: 2, fontSize: 14, "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
                     {uploadingAvatar ? "Uploading…" : avatarUrl ? "Change photo" : "Upload photo"}
                   </Button>
                   {avatarUrl && (
                     <Button fullWidth startIcon={deletingAvatar ? <CircularProgress size={13} /> : <DeleteOutlineIcon />}
                       onClick={handleAvatarDelete} disabled={deletingAvatar}
-                      sx={{ color: D.redText, border: `1px solid ${D.redBd}`, fontWeight: 700, textTransform: "none", borderRadius: 2, fontSize: 13, "&:hover": { bgcolor: D.redBg } }}>
+                      sx={{ color: D.redText, border: `1px solid ${D.redBd}`, fontWeight: 700, textTransform: "none", borderRadius: 2, fontSize: 14, "&:hover": { bgcolor: D.redBg } }}>
                       {deletingAvatar ? "Removing…" : "Remove photo"}
                     </Button>
                   )}
@@ -341,23 +339,23 @@ export default function ProfilePage() {
           <Grid item xs={12} md={8}>
             <Stack spacing={3}>
               {/* Profile details */}
-              <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.05 }}
+              <Box component={motion.div}
                 sx={sectionSx()}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.25, borderBottom: `1px solid ${D.border}` }}>
                   <EditIcon sx={{ color: D.brandText, fontSize: 18 }} />
-                  <Typography sx={{ fontWeight: 900, fontSize: 15.5, color: D.t1, flex: 1 }}>Profile details</Typography>
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1, flex: 1 }}>Profile details</Typography>
                   <MotionPresence initial={false}>
                     {isDirty && (
                       <motion.div key="dirty" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
                         <Chip label="UNSAVED" size="small"
-                          sx={{ bgcolor: D.amberBg, color: D.amber, fontWeight: 900, fontSize: 9.5, fontFamily: MONO, letterSpacing: 0.5, height: 20 }} />
+                          sx={{ bgcolor: D.amberBg, color: D.amber, fontWeight: 900, fontSize: 12, fontFamily: MONO, letterSpacing: 0.5, height: 20 }} />
                       </motion.div>
                     )}
                   </MotionPresence>
                 </Stack>
 
                 <Box sx={{ p: 3 }}>
-                  <Typography sx={{ fontSize: 13, color: D.t3, mb: 3 }}>
+                  <Typography sx={{ fontSize: 14, color: D.t3, mb: 3 }}>
                     Your name and bio are visible on the leaderboard and achievements pages.
                   </Typography>
 
@@ -382,7 +380,7 @@ export default function ProfilePage() {
                   </Grid>
 
                   <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 3 }}>
-                    <motion.div whileHover={reduceMotion || saving || !isDirty ? undefined : { y: -2 }} whileTap={reduceMotion || saving || !isDirty ? undefined : { scale: 0.98 }} style={{ display: "inline-block" }}>
+                    <motion.div whileTap={reduceMotion || saving || !isDirty ? undefined : { scale: 0.98 }} style={{ display: "inline-block" }}>
                       <Button onClick={handleSave} disabled={saving || !isDirty} variant="contained"
                         startIcon={saving ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : <SaveIcon />}
                         sx={{ bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 2, boxShadow: "none", px: 2.5, "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t4 } }}>
@@ -390,7 +388,7 @@ export default function ProfilePage() {
                       </Button>
                     </motion.div>
                     {isDirty && !saving && (
-                      <Typography sx={{ fontSize: 12.5, color: D.t3 }}>You have unsaved changes.</Typography>
+                      <Typography sx={{ fontSize: 14, color: D.t3 }}>You have unsaved changes.</Typography>
                     )}
                   </Stack>
                 </Box>
@@ -399,13 +397,13 @@ export default function ProfilePage() {
               {isSettings && (() => {
                 const progress = getTutorialProgress(user.id);
                 return (
-                  <Box data-tour="tutorial-settings" component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.1 }} sx={sectionSx()}>
+                  <Box data-tour="tutorial-settings" component={motion.div} sx={sectionSx()}>
                     <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.25, borderBottom: `1px solid ${D.border}` }}>
                       <SchoolIcon sx={{ color: D.brandText, fontSize: 18 }} />
-                      <Typography sx={{ fontWeight: 900, fontSize: 15.5, color: D.t1 }}>Interactive tutorials</Typography>
+                      <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Interactive tutorials</Typography>
                     </Stack>
                     <Box sx={{ p: 3 }}>
-                      <Typography sx={{ color: D.t3, fontSize: 13, mb: 2 }}>Replay the interface, gameplay, or advanced-tools tour at any time.</Typography>
+                      <Typography sx={{ color: D.t3, fontSize: 14, mb: 2 }}>Replay the interface, gameplay, or advanced-tools tour at any time.</Typography>
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap" useFlexGap>
                         <Button onClick={() => navigate("/tutorial")} variant="contained" sx={{ bgcolor: D.brand, textTransform: "none", fontWeight: 900, boxShadow: "none" }}>Website tour {progress.uiComplete ? "✓" : ""}</Button>
                         <Button onClick={() => navigate("/tutorial?course=game")} sx={{ color: D.t1, border: `1px solid ${D.border}`, textTransform: "none", fontWeight: 800 }}>Gameplay tutorial {progress.gameComplete ? "✓" : ""}</Button>
@@ -417,19 +415,19 @@ export default function ProfilePage() {
               })()}
 
               {/* Appearance */}
-              <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.1 }}>
+              <Box component={motion.div}>
                 <ThemeSettingsPanel />
               </Box>
 
               {/* Danger zone */}
-              <Box component={motion.div} initial={reduceMotion ? undefined : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, delay: 0.15 }}
+              <Box component={motion.div}
                 sx={sectionSx(D.redBd)}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 3, py: 2.25, borderBottom: `1px solid ${D.redBd}`, bgcolor: D.redBg }}>
                   <WarningAmberIcon sx={{ color: D.redText, fontSize: 18 }} />
-                  <Typography sx={{ fontWeight: 900, fontSize: 15.5, color: D.redText }}>Danger zone</Typography>
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.redText }}>Danger zone</Typography>
                 </Stack>
                 <Box sx={{ p: 3 }}>
-                  <Typography sx={{ fontSize: 13, color: D.t3, mb: 2.5 }}>
+                  <Typography sx={{ fontSize: 14, color: D.t3, mb: 2.5 }}>
                     Deleting your account permanently removes your login, profile,
                     avatar, game sessions, holdings, and trade history.
                   </Typography>
@@ -441,14 +439,14 @@ export default function ProfilePage() {
                   ) : (
                     <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: D.redBg, border: `1px solid ${D.redBd}` }}>
                       <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.redText, mb: 0.5 }}>Are you absolutely sure?</Typography>
-                      <Typography sx={{ fontSize: 13, color: D.t2, mb: 2 }}>
+                      <Typography sx={{ fontSize: 14, color: D.t2, mb: 2 }}>
                         This cannot be undone. All account and simulator data will
                         be deleted immediately.
                       </Typography>
                       <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
                         <Button variant="contained" onClick={handleDeleteAccount} disabled={deletingAccount}
                           startIcon={deletingAccount ? <CircularProgress size={13} sx={{ color: "#fff" }} /> : <DeleteOutlineIcon />}
-                          sx={{ bgcolor: D.red, fontWeight: 800, textTransform: "none", borderRadius: 2, boxShadow: "none", "&:hover": { bgcolor: "#DC2626", boxShadow: "none" } }}>
+                          sx={{ bgcolor: D.red, fontWeight: 800, textTransform: "none", borderRadius: 2, boxShadow: "none", "&:hover": { bgcolor: D.red, filter: "brightness(0.9)", boxShadow: "none" } }}>
                           {deletingAccount ? "Deleting…" : "Yes, delete my account"}
                         </Button>
                         <Button onClick={() => setConfirmDelete(false)}

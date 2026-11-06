@@ -18,7 +18,7 @@ export default function RunProgressBar({ day, maxDay, height, color }: Props) {
   if (!maxDay) {
     return (
       <Box aria-hidden
-        sx={{ height, borderRadius: 99, bgcolor: D.overlay, backgroundImage: `linear-gradient(90deg, ${color}, transparent)` }} />
+        sx={{ height, borderRadius: 99, bgcolor: color, opacity: 0.25 }} />
     );
   }
   return (

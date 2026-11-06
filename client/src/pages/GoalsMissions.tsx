@@ -21,7 +21,7 @@ const GoalList = ({ items }: { items: Array<{ id: string; title: string; descrip
           </Stack>
         </Stack>
         <Typography sx={{ color: D.t3, fontSize: 12, mb: 1 }}>{item.description}</Typography>
-        {item.kind ? <Box component="details" sx={{ mb: 2, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText, fontWeight: 800, fontSize: 13 }}>Record my answer</Box><Box sx={{ mt: 2 }}><DecisionNote kind={item.kind} /></Box></Box> : item.id === "watch2" ? <Button component={RouterLink} to="/game/watchlist" sx={{ textTransform: "none" }}>Open watchlist</Button> : null}
+        {item.kind ? <Box component="details" sx={{ mb: 2, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText, fontWeight: 800, fontSize: 14 }}>Record my answer</Box><Box sx={{ mt: 2 }}><DecisionNote kind={item.kind} /></Box></Box> : item.id === "watch2" ? <Button component={RouterLink} to="/game/watchlist" sx={{ textTransform: "none" }}>Open watchlist</Button> : null}
         <LinearProgress variant="determinate" value={item.progress} sx={{ height: 6, borderRadius: 99, bgcolor: D.overlay, "& .MuiLinearProgress-bar": { bgcolor: item.done ? D.green : D.brand } }} />
       </Box>
     ))}
@@ -37,7 +37,7 @@ export default function GoalsMissions() {
   return (
     <Box sx={{ bgcolor: D.bg, minHeight: "100vh", py: { xs: 3, md: 5 } }}>
       <Container maxWidth="lg">
-        <Typography component="h1" sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 950, mb: 1 }}>Learning Goals</Typography>
+        <Typography component="h1" sx={{ color: D.t1, fontSize: { xs: 26, md: 32 }, fontWeight: 900, mb: 1 , letterSpacing: "-0.02em" }}>Learning Goals</Typography>
         <Typography sx={{ color: D.t3, mb: 3 }}>Research, explain, and reflect. You can complete every daily goal without buying anything. Notes record practice; they do not certify decision quality.</Typography>
         {missions.persistenceError && <Alert severity="error" action={<Button onClick={missions.retryPersistence}>Retry</Button>}>{missions.persistenceError}</Alert>}
         {daily.persistenceError && <Alert severity="error" action={<Button onClick={daily.retryPersistence}>Retry</Button>}>{daily.persistenceError}</Alert>}
@@ -54,7 +54,7 @@ export default function GoalsMissions() {
           <Grid item xs={12} md={6}>
             <Box sx={{ ...CARD, p: 2.5 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Stack direction="row" spacing={1} alignItems="center"><FlagIcon sx={{ color: D.greenText }} /><Typography sx={{ color: D.t1, fontWeight: 900 }}>Getting Started Missions</Typography></Stack>
+                <Stack direction="row" spacing={1} alignItems="center"><FlagIcon sx={{ color: D.greenText }} /><Typography component="h2" sx={{ color: D.t1, fontWeight: 900 }}>Getting Started Missions</Typography></Stack>
                 <Chip label={`${missions.completedCount}/${missions.totalCount}`} size="small" sx={{ bgcolor: D.overlay, color: D.t2, fontWeight: 900 }} />
               </Stack>
               <GoalList items={missions.missions} />
