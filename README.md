@@ -134,13 +134,20 @@ detects `server/src/server.ts` and supports its existing `app.listen` entry poin
 3. Set the frontend project's Production environment:
    - `REACT_APP_SUPABASE_URL`
    - `REACT_APP_SUPABASE_PUBLISHABLE_KEY`
-   - `REACT_APP_API_URL=https://<backend-domain>` (no trailing slash or `/api`).
+   - `REACT_APP_API_URL=https://<frontend-domain>` (no trailing slash or `/api`).
+   The frontend's `vercel.json` proxies `/api/*` to the configured
+   `stockpilot-api-tau.vercel.app` backend before the React catch-all. Keep that
+   rewrite destination in sync if the backend domain changes. A new frontend
+   can use the existing API without changing its CORS settings or server secrets.
    Redeploy the frontend: React embeds these values at build time.
 4. In Supabase Authentication URL Configuration, set the Site URL to the
    frontend production URL and allow these redirect URLs:
    - `https://capstone-gamma-navy.vercel.app/auth/callback`
    - `https://capstone-gamma-navy.vercel.app/update-password`
-5. Verify direct navigation to `/auth`, sign-in, leaderboard, game sync, and
+5. On a Vercel Hobby team, publish deployment commits using the project owner's
+   linked GitHub account. Commits by other contributors to a private repository
+   are blocked, including in newly created Vercel projects.
+6. Verify direct navigation to `/auth`, sign-in, leaderboard, game sync, and
    password-reset redirects. Test account deletion only with a disposable user.
 
 Keep Supabase secret/service-role keys in the backend project only. The API must
