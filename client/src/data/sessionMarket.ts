@@ -15,6 +15,7 @@ import {
   mapDatabaseEvent,
 } from "./infiniteMarket";
 import {
+  currentScriptedCopy,
   getNewsForGameDay,
   getStockHistoryBySymbol,
   MarketNews,
@@ -146,13 +147,28 @@ export function generateSessionNews(params: {
 
 /**
  * What a player may see of a story. The exact impacts decide the next
- * session's move and isAccurate says whether a rumor is true, so neither may
+ * session's move, isAccurate says whether a rumor is true and branch says how
+ * a story arc ends, so none of them may
  * reach the browser before the market has moved.
  */
 export function sanitizeNews(news: MarketNews): MarketNews {
   const visible: MarketNews = { ...news, expectedImpact: 0, actualImpact: 0, isAccurate: true };
   delete visible.impactByTicker;
+  // Every event of an arc carried "resolution" or "setback", telling anyone
+  // reading the payload how the story ends before its last report.
+  delete visible.branch;
   return visible;
+}
+
+/**
+ * Stored news with today's wording. Rows stored for engine-1 infinite runs
+ * hold the script's old copy; current stories come back unchanged.
+ */
+export function withCurrentCopy(items: MarketNews[] | null | undefined): MarketNews[] {
+  return (items ?? []).map((item) => {
+    const copy = currentScriptedCopy(item.newsId, item.headline, item.body);
+    return copy.headline === item.headline && copy.body === item.body ? item : { ...item, ...copy };
+  });
 }
 
 export function historyFromRows(rows: SessionPriceRow[]): StockPriceHistory[] {

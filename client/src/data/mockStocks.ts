@@ -1804,30 +1804,89 @@ function branchArcEvents(arcKey: string, events: MarketNews[], marketSeed?: stri
   });
 }
 
+/**
+ * Story arcs run in 30-day seasons. Season 0 (days 1-30) is the original
+ * selection and must never change: 30-day runs and every run's first month
+ * depend on it. Infinite runs used to get no arcs at all after day 30, so each
+ * later season picks its own arcs, skipping the previous season's arcs so the
+ * same storyline never runs twice in a row.
+ */
+export const STORY_ARC_SEASON_DAYS = 30;
+
+function rankStoryArcs(seedCode: string, salt: string) {
+  const arcCount = 2 + Math.floor(seededRandom(`story-arc-count${salt}`, seedCode) * 3);
+  const ranked = [...storyArcDefinitions].sort((a, b) => {
+    const scoreA = seededRandom(`story-arc-rank-${a.arcKey}${salt}`, seedCode) * a.selectionWeight;
+    const scoreB = seededRandom(`story-arc-rank-${b.arcKey}${salt}`, seedCode) * b.selectionWeight;
+    return scoreB - scoreA;
+  });
+  return { arcCount, ranked };
+}
+
+// Each season's picks depend on the one before, so they are worked out in
+// order and kept per seed.
+const seasonArcKeyCache = new Map<string, string[][]>();
+
+function seasonArcKeys(seedCode: string, season: number): string[] {
+  let seasons = seasonArcKeyCache.get(seedCode);
+  if (!seasons) {
+    if (seasonArcKeyCache.size >= 500) seasonArcKeyCache.clear();
+    const { arcCount, ranked } = rankStoryArcs(seedCode, "");
+    seasons = [ranked.slice(0, arcCount).map((arc) => arc.arcKey)];
+    seasonArcKeyCache.set(seedCode, seasons);
+  }
+  while (seasons.length <= season) {
+    const previous = new Set(seasons[seasons.length - 1]);
+    const { arcCount, ranked } = rankStoryArcs(seedCode, `-season${seasons.length}`);
+    seasons.push(ranked.filter((arc) => !previous.has(arc.arcKey)).slice(0, arcCount).map((arc) => arc.arcKey));
+  }
+  return seasons[season];
+}
+
+// Selection runs for every company on every generated day; cache it.
+const storyArcSeasonCache = new Map<string, MarketNews[]>();
+const STORY_ARC_SEASON_CACHE_LIMIT = 2_000;
+
+function getSeasonStoryArcEvents(marketSeed: string | null | undefined, season: number): MarketNews[] {
+  const seedCode = normalizeMarketSeed(marketSeed);
+  const cacheKey = `${seedCode}:${season}`;
+  const cached = storyArcSeasonCache.get(cacheKey);
+  if (cached) return cached;
+
+  let events: MarketNews[];
+  if (season === 0) {
+    events = getSelectedStoryArcDefinitions(seedCode).flatMap((arc) => arc.events);
+  } else {
+    const salt = `-season${season}`;
+    const offset = season * STORY_ARC_SEASON_DAYS;
+    events = seasonArcKeys(seedCode, season)
+      .map((arcKey) => storyArcDefinitions.find((arc) => arc.arcKey === arcKey)!)
+      .flatMap((arc) => branchArcEvents(arc.arcKey, arc.events, `${seedCode}${salt}`))
+      .map((event) => ({ ...event, newsId: `${event.newsId}_s${season}`, gameDay: event.gameDay + offset }));
+  }
+
+  if (storyArcSeasonCache.size >= STORY_ARC_SEASON_CACHE_LIMIT) storyArcSeasonCache.clear();
+  storyArcSeasonCache.set(cacheKey, events);
+  return events;
+}
+
 function getSelectedStoryArcDefinitions(marketSeed?: string | null) {
   const seedCode = normalizeMarketSeed(marketSeed);
-  const arcCount = 2 + Math.floor(seededRandom("story-arc-count", seedCode) * 3);
+  const { arcCount, ranked } = rankStoryArcs(seedCode, "");
 
-  return [...storyArcDefinitions]
-    .sort((a, b) => {
-      const scoreA =
-        seededRandom(`story-arc-rank-${a.arcKey}`, seedCode) * a.selectionWeight;
-      const scoreB =
-        seededRandom(`story-arc-rank-${b.arcKey}`, seedCode) * b.selectionWeight;
-
-      return scoreB - scoreA;
-    })
+  return ranked
     .slice(0, arcCount)
     .map((arc) => ({ ...arc, events: branchArcEvents(arc.arcKey, arc.events, seedCode) }));
 }
 
+/** The arcs of the first season (days 1-30). */
 export function getSelectedStoryArcKeys(marketSeed?: string | null) {
   return getSelectedStoryArcDefinitions(marketSeed).map((arc) => arc.arcKey);
 }
 
 function getStoryArcNewsForGameDay(gameDay: number, marketSeed?: string | null) {
-  return getSelectedStoryArcDefinitions(marketSeed)
-    .flatMap((arc) => arc.events)
+  const season = Math.floor((normalizeGameDay(gameDay) - 1) / STORY_ARC_SEASON_DAYS);
+  return getSeasonStoryArcEvents(marketSeed, season)
     .filter((news) => news.gameDay === gameDay);
 }
 
@@ -2016,7 +2075,8 @@ function generateEarningsEvent(
     headline,
     body,
     importance: outcome === "meet" ? "Medium" : "High",
-    marketTone: actualImpact >= 0 ? "Bullish" : "Bearish",
+    // An in-line print says little either way; calling it Bullish misread it.
+    marketTone: outcome === "meet" ? "Unclear" : actualImpact >= 0 ? "Bullish" : "Bearish",
     relatedTickers: [company.symbol],
     expectedImpact: round2(expectedImpact),
     actualImpact: round2(actualImpact),
@@ -2171,11 +2231,18 @@ function generateFollowUpForCompany(
   const original = generateEventForCompany(company, gameDay - 1, marketSeed);
   if (!original?.newsId.startsWith("news_")) return null;
   if (!["rumor", "regulatory", "lawsuit", "supply", "product", "partnership", "contract", "labor", "merger"].includes(original.category)) return null;
-  if (seededRandom(`follow-up-roll-${company.symbol}-${gameDay}`, marketSeed) > 0.55) return null;
+  // A rumour is always settled the next day, so a false one can't move the
+  // price for good the way a true one does. Other reports get a follow-up
+  // only sometimes.
+  if (!original.isRumor && seededRandom(`follow-up-roll-${company.symbol}-${gameDay}`, marketSeed) > 0.55) return null;
 
-  const confirmed = original.isAccurate && seededRandom(`follow-up-outcome-${company.symbol}-${gameDay}`, marketSeed) > 0.25;
+  // The follow-up tells the hidden truth: true reports are confirmed and false
+  // ones disputed. (Before, a quarter of true reports were "disputed" and their
+  // move reversed, while false rumours often went unanswered.)
+  const confirmed = original.isAccurate;
   const originalImpact = original.impactByTicker?.[company.symbol]?.actualImpact ?? original.actualImpact;
-  const actualImpact = originalImpact * (confirmed ? 0.45 : -0.75);
+  // A disputed claim gives back the whole move it caused.
+  const actualImpact = originalImpact * (confirmed ? 0.45 : -1);
   return {
     newsId: `followup_${original.newsId}_${gameDay}`,
     gameDay,
@@ -2347,6 +2414,59 @@ function generateNextPricePoint(
     eventImpact: round2(eventImpact),
     eventId: event?.newsId,
   };
+}
+
+// Template headlines as they read before the evidence-and-uncertainty rewrite,
+// index-aligned with [...bullishTemplates, ...bearishTemplates]. The infinite
+// script in market_events was seeded with this wording.
+const LEGACY_TEMPLATE_HEADLINES = [
+  "reports stronger-than-expected earnings",
+  "wins a major new contract",
+  "sees strong demand after product update",
+  "is reportedly close to a strategic partnership",
+  "raises full-year guidance",
+  "receives an analyst upgrade to Buy",
+  "announces a share buyback and dividend increase",
+  "wins regulatory approval for a key product",
+  "faces pressure after legal concerns emerge",
+  "warns of short-term supply delays",
+  "falls as sector outlook weakens",
+  "drops after an unconfirmed negative report",
+  "misses earnings and cuts guidance",
+  "faces a regulatory investigation",
+  "issues a product recall over safety concerns",
+  "slides after a surprise executive departure",
+  "falls after announcing a dilutive share sale",
+];
+
+let scriptedCopyById: Map<string, { headline: string; body: string }> | null = null;
+
+/**
+ * Current wording for a story in the shared infinite script (market_events).
+ * The database rows keep the old copy, so engine-1 infinite runs would show
+ * it for their first 30 days; the story keys and template headlines identify
+ * which current story each row is. Unknown rows keep their own text.
+ */
+export function currentScriptedCopy(eventKey: string, headline: string, body: string) {
+  if (!scriptedCopyById) {
+    scriptedCopyById = new Map();
+    for (const news of [...hardcodedOpeningNews, ...storyArcDefinitions.flatMap((arc) => arc.events)]) {
+      scriptedCopyById.set(news.newsId, { headline: news.headline, body: news.body });
+    }
+  }
+  const scripted = scriptedCopyById.get(eventKey);
+  if (scripted) return scripted;
+
+  if (eventKey.startsWith("news_")) {
+    const templates = [...bullishTemplates, ...bearishTemplates];
+    const index = LEGACY_TEMPLATE_HEADLINES.findIndex((legacy) => headline.endsWith(` ${legacy}`));
+    const template = templates[index];
+    if (template) {
+      const company = headline.slice(0, headline.length - LEGACY_TEMPLATE_HEADLINES[index].length - 1);
+      return { headline: `${company} ${template.headline}`, body: template.body };
+    }
+  }
+  return { headline, body };
 }
 
 export function enrichMarketNews(news: MarketNews): MarketNews {

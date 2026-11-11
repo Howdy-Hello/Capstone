@@ -16,6 +16,7 @@ import {
   MAX_RUN_DAY,
   SessionPriceRow,
   stockFromCompanyHistory,
+  withCurrentCopy,
 } from "../data/sessionMarket";
 import {
   getCumulativeTradeTotal,
@@ -217,7 +218,7 @@ async function fetchSessionMarket(sessionId: string, fromDay: number): Promise<S
 
   return {
     rows,
-    news: new Map(newsRows.map((row) => [row.game_day, row.items ?? []])),
+    news: new Map(newsRows.map((row) => [row.game_day, withCurrentCopy(row.items)])),
   };
 }
 
@@ -566,7 +567,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
       localStorage.setItem(marketPhaseStorageKey(session.id), `after_hours:${closedDay}`);
       if (todaysNews?.length) {
-        setNewsByDay((current) => new Map(current).set(closedDay, todaysNews ?? []));
+        setNewsByDay((current) => new Map(current).set(closedDay, withCurrentCopy(todaysNews)));
       }
       setMarketPhase("after_hours");
     } catch (error) { reportError(error); } finally { endAction(); }

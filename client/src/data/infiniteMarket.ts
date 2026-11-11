@@ -6,6 +6,7 @@
 // types and stock builder. server/src/market/ holds a copy -- run
 // `node scripts/sync-market-engine.cjs` after editing this file.
 import {
+  currentScriptedCopy,
   enrichMarketNews,
   getNewsForGameDay,
   hashString,
@@ -110,12 +111,13 @@ export function mapDatabaseEvent(row: DatabaseEvent): MarketNews {
     return all;
   }, {});
 
+  const copy = currentScriptedCopy(row.event_key, row.headline, row.body);
   return enrichMarketNews({
     newsId: row.event_key,
     gameDay: row.game_day,
     source: row.source,
-    headline: row.headline,
-    body: row.body,
+    headline: copy.headline,
+    body: copy.body,
     importance: row.importance,
     marketTone: toneFromImpact(expectedImpact),
     relatedTickers: impacts

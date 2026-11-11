@@ -1,6 +1,6 @@
 import React from "react";
 import DayBar from "../components/DayBar";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box, Button, Chip, Container, FormControl, Grid, InputLabel, MenuItem, Select, Stack,
   TextField, Typography,
@@ -38,6 +38,15 @@ export default function News() {
     sectors: Array.from(new Set(availableNews.flatMap((item) => item.affectedSectors ?? []))).sort(),
   }), [availableNews]);
 
+  // A filter picked on one day can name a publisher, category or sector that
+  // the next brief doesn't have: the list went empty and the select showed a
+  // value missing from its own menu. Drop such a filter.
+  useEffect(() => {
+    if (publisher !== all && !options.publishers.includes(publisher)) setPublisher(all);
+    if (category !== all && !(options.categories as string[]).includes(category)) setCategory(all);
+    if (sector !== all && !options.sectors.includes(sector)) setSector(all);
+  }, [category, options, publisher, sector]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return availableNews.filter((item) => (
@@ -69,7 +78,7 @@ export default function News() {
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5} sx={{ mb: 2.5 }}>
           <Box>
             <Typography component="h2" sx={{ color: D.t1, fontSize: 18, fontWeight: 900 }}>{showAllNews ? "All revealed news" : (briefDay >= 1 ? `Day ${briefDay} after-hours news` : "No news yet")}</Typography>
-            <Typography sx={{ color: D.t3, fontSize: 14 }}>{showAllNews ? "Current and previous-day articles." : "The latest articles, revealed when the market last closed."}</Typography>
+            <Typography sx={{ color: D.t3, fontSize: 14 }}>{showAllNews ? "Every report revealed so far, newest first." :"The latest articles, revealed when the market last closed."}</Typography>
           </Box>
           <Button variant="outlined" aria-pressed={showAllNews} onClick={() => { setShowAllNews((value) => !value); setSelectedId(null); setPublisher(all); setCategory(all); setSector(all); }}
             sx={{ alignSelf: { xs: "stretch", sm: "center" }, color: D.brandText, borderColor: D.brandBd, textTransform: "none", fontWeight: 850, borderRadius: 1.5, "&:hover": { bgcolor: D.brandBg, borderColor: D.brand } }}>
@@ -160,7 +169,7 @@ function ArticleDetail({ item }: { item: MarketNews }) {
       <Chip size="small" label={item.horizon ?? "Next session"} />
       <Chip size="small" label={`Credibility ${credibility.score}/100 · ${credibility.label}`} />
       {item.followUpTo && <Chip size="small" color="info" label="Follow-up" />}
-      {item.arcKey && <Chip size="small" label={`Story: ${item.arcKey.replace(/_/g, " ")}`} />}
+      {item.arcKey && <Chip size="small" label={`Story: ${item.arcKey === "opening_tutorial" ? "opening days" : item.arcKey.replace(/_/g, " ")}`} />}
     </Stack>
     <Typography sx={{ color: D.t2, fontSize: 16, lineHeight: 1.85 }}>{item.body}</Typography>
     <Box sx={{ mt: 3, pt: 2.5, borderTop: `1px solid ${D.border}` }}>
