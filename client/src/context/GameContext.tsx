@@ -38,7 +38,7 @@ const ADVISOR_COST = 100;
 // only thing that moves a run's day forward. This context reads those rows and
 // calls the server; it no longer generates prices or writes cash itself.
 
-const STARTING_CASH = 2_000;
+export const STARTING_CASH = 2_000;
 const GAME_PHASE_STORAGE_KEY = "stockpilot-market-phase";
 /** The server's wording when a trade arrives after the close; the UI reuses it. */
 export const MARKET_CLOSED_MESSAGE = "The market is closed. Advance to the next day to trade.";

@@ -1,36 +1,35 @@
 import DecisionNote from "../components/learning/DecisionNote";
-import DayBar from "../components/DayBar";
+import RunProgressBar from "../components/RunProgressBar";
 import ConfirmDialog from "../components/ConfirmDialog";
 import DayRecapCard from "../components/DayRecapCard";
 import TodayGoalCard from "../components/TodayGoalCard";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ButtonBase,
-  Avatar, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
-  CircularProgress, Divider, Grid, IconButton, Stack, TextField, Typography,
+  Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
+  CircularProgress, Divider, IconButton, Stack, TextField, Typography,
 } from "@mui/material";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import CloseIcon from "@mui/icons-material/Close";
 import CodeIcon from "@mui/icons-material/Code";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AllInclusiveIcon from "@mui/icons-material/AllInclusive";
 import TimerIcon from "@mui/icons-material/Timer";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import StorefrontIcon from "@mui/icons-material/Storefront";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
-import SportsMmaIcon from "@mui/icons-material/SportsMma";
-import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
-import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
-import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { getNewsCredibility, STORY_DAYS, Stock } from "../data/mockStocks";
 import { getMaxAffordableQuantity, getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
-import { GameMode, MARKET_CLOSED_MESSAGE, useGame, WEEKLY_BILL_TOTAL } from "../context/GameContext";
+import { GameMode, MARKET_CLOSED_MESSAGE, useGame, STARTING_CASH, WEEKLY_BILL_TOTAL } from "../context/GameContext";
 import { buildDayRecap, overnightShares, positionChangeToday } from "../lib/dayRecap";
 import { useAchievements } from "../hooks/useAchievements";
 import { useDailyGoals } from "../hooks/useDailyGoals";
@@ -38,7 +37,6 @@ import { useStockAlerts } from "../hooks/useStockAlerts";
 import { useMissions } from "../hooks/useMissions";
 import { useRivalTrader } from "../hooks/useRivalTrader";
 import { useLevel } from "../hooks/useLevel";
-import { fetchLeaderboard } from "../lib/api";
 import { addInboxMessage } from "../lib/inbox";
 import { useAuth } from "../context/AuthContext";
 import { D, CARD, MONO, money, pct, readableOn, isFlat } from "../theme/design";
@@ -56,8 +54,6 @@ const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
 const NEWS_COLLAPSED_KEY = "stockpilot:news-collapsed";
 const RECAP_DISMISSED_KEY = "stockpilot:recap-dismissed";
 
-type MiniLeaderEntry ={ rank: number; username: string; net_worth: number; user_id: string };
-
 export default function Game() {
   usePageTitle("Market");
   const reduceMotion = useReducedMotion();
@@ -74,8 +70,6 @@ export default function Game() {
   const setSelectedSector = useCallback((sector: string) => {
     setSearchParams(sector === "All" ? {} : { sector }, { replace: true });
   }, [setSearchParams]);
-  const [topPlayers, setTopPlayers] = useState<MiniLeaderEntry[]>([]);
-  const [myRank, setMyRank] = useState<number | null>(null);
   const trading = useGame();
   const {
     achievementNotification,
@@ -89,13 +83,13 @@ export default function Game() {
   // earned here, so the hooks stay mounted for the completions they record.
   // Today's next goal is also shown on this page.
   const daily = useDailyGoals();
-  const missions = useMissions();
+  useMissions();
   const rival = useRivalTrader();
   useStockAlerts();
   // Kept mounted for its level-up side effects; the level chip moved off this page.
   useLevel();
   const {
-    advancing, gameDay, gameMode, isGameComplete, marketPhase, setGameDay, closeMarket,
+    advancing, gameDay, gameMode, isGameComplete, marketPhase, maxGameDay, setGameDay, closeMarket,
     stocks, news: todayNews, syncSessionValue,
   } = trading;
 
@@ -152,18 +146,16 @@ export default function Game() {
   const showRecap = dayRecap !== null && marketPhase === "market_open" && !advancing && recapDismissed !== recapKey;
   const showGoals = !isGameComplete && daily.goals.length > 0;
 
-  const marketSummary = useMemo(() => {
-    const gainers = stocks.filter((s) => s.dayChangePercent >= 0).length;
-    const losers = stocks.length - gainers;
-    const averageMove = stocks.length
-      ? stocks.reduce((sum, s) => sum + s.dayChangePercent, 0) / stocks.length
-      : 0;
-    return { gainers, losers, averageMove };
-  }, [stocks]);
+  const marketAverage = stocks.length
+    ? stocks.reduce((sum, stock) => sum + stock.dayChangePercent, 0) / stocks.length
+    : 0;
+  const marketFlat = isFlat(marketAverage);
+  const marketUp = marketAverage > 0;
+  const marketColor = marketFlat ? D.t2 : marketUp ? D.greenText : D.redText;
+  const netReturn = ((netWorth - STARTING_CASH) / STARTING_CASH) * 100;
   // BUG-060: after the close, trades are refused until the next day.
   const marketClosed = marketPhase === "after_hours";
   const modeLabel = gameMode === "limited_30" ? "30-Day Challenge" : "Infinite";
-  const marketFlat = isFlat(marketSummary.averageMove);
   useEffect(() => {
     if (!sectors.includes(selectedSector)) setSelectedSector("All");
   }, [selectedSector, sectors, setSelectedSector]);
@@ -173,38 +165,10 @@ export default function Game() {
   }, [trading.loading, user]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    // An advance moves cash and prices in separate renders; waiting for net
-    // worth to settle saves it and reads the leaderboard once per day, not
-    // once per render, while the next day is still loading.
-    const timer = window.setTimeout(async () => {
-      await syncSessionValue();
-      if (cancelled) return;
-
-      let rows: Array<{ user_id: string; best_net_worth: number | string; username: string | null; display_name: string | null }>;
-      try {
-        rows = await fetchLeaderboard(50);
-      } catch {
-        return;
-      }
-      if (cancelled) return;
-
-      setTopPlayers(rows.slice(0, 5).map((r, i) => ({
-        rank: i + 1,
-        username: r.username ?? r.display_name ?? "Anonymous",
-        net_worth: Number(r.best_net_worth),
-        user_id: r.user_id,
-      })));
-      const myIdx = user ? rows.findIndex((r) => r.user_id === user.id) : -1;
-      setMyRank(myIdx >= 0 ? myIdx + 1 : null);
-    }, 800);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [netWorth, syncSessionValue, user]);
+    // Cash and prices can settle in separate renders after an advance.
+    const timer = window.setTimeout(() => { void syncSessionValue(); }, 800);
+    return () => window.clearTimeout(timer);
+  }, [netWorth, syncSessionValue]);
 
   useEffect(() => {
     if (!tradeMessage) return;
@@ -268,8 +232,7 @@ export default function Game() {
   const [closing, setClosing] = useState(false);
   // Testers had to reopen the brief every day; it now stays as they left it.
   const [newsCollapsed, setNewsCollapsed] = useState(() => {
-    // With no saved choice, start closed on phones: open, it pushes the market
-    // about 3,900px down the page.
+    // Start with a one-headline preview on phones until the player chooses.
     try {
       const saved = localStorage.getItem(NEWS_COLLAPSED_KEY);
       return saved === null ? window.matchMedia("(max-width: 899.95px)").matches : saved === "1";
@@ -326,7 +289,7 @@ export default function Game() {
       ? "Closing market…"
       : marketPhase === "market_open"
       ? "Close Market & Reveal News"
-      : "Advance to Next Day →";
+      : "Advance to Next Day";
   // No new run while nothing is loaded: after a failed load the page shows a
   // placeholder Day 1 account, and a new run would pause the real one.
   const newRunDisabled = trading.loading || trading.actionPending || !trading.sessionId;
@@ -499,11 +462,11 @@ export default function Game() {
         <DialogContent sx={{ p: { xs: 3, md: 4 }, textAlign: "center" }}>
           <Box sx={{ width: 58, height: 58, mx: "auto", mb: 2, borderRadius: 3, bgcolor: D.brandBg, color: D.brandText, display: "grid", placeItems: "center" }}><ShowChartIcon sx={{ fontSize: 30 }} /></Box>
           <Typography sx={{ color: D.t1, fontSize: 24, fontWeight: 900 }}>Welcome to StockPilot</Typography>
-          <Typography sx={{ color: D.t3, fontSize: 14, lineHeight: 1.7, mt: 1 }}>Take a short guided tour through the website’s navigation, pages, controls, and information. You can revisit tutorials from Settings.</Typography>
+          <Typography sx={{ color: D.t3, fontSize: 14, lineHeight: 1.7, mt: 1 }}>See where to find the market, place trades, and read reports. You can replay the tour from Settings.</Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, justifyContent: "center" }}>
           <Button onClick={dismissTutorial} sx={{ color: D.t3, textTransform: "none", fontWeight: 700 }}>Skip for now</Button>
-          <Button onClick={startTutorial} variant="contained" sx={{ bgcolor: D.brand, textTransform: "none", fontWeight: 900, boxShadow: "none" }}>Start website tour</Button>
+          <Button onClick={startTutorial} variant="contained" sx={{ bgcolor: D.brand, textTransform: "none", fontWeight: 900, boxShadow: "none" }}>Start tour</Button>
         </DialogActions>
       </Dialog>
       {tradeDialog && (
@@ -549,18 +512,50 @@ export default function Game() {
         onClose={dismissAchievementNotification}
       />
 
-      {/* Hero */}
-      <DayBar leadsThePage
-        heading={<Typography component="h1" sx={{ fontSize: 20, fontWeight: 900, color: D.t1 }}>Stock Market Simulator</Typography>}
-        action={(
-          <Box component={motion.div} whileTap={reduceMotion ? undefined : { scale: 0.96 }} sx={{ width: { xs: "100%", md: "auto" } }}>
-            <Button data-tour="next-day" onClick={handleNextDay} variant="contained" disabled={isGameComplete || advancing || closing}
-              title={isGameComplete ? undefined : marketPhase === "market_open" ? "Close the market and reveal news (→)" : "Advance to next day (→)"}
-              sx={{ width: { xs: "100%", md: "auto" }, minHeight: 44, bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
-              {isGameComplete ? "Run Complete" : advanceLabel}
-            </Button>
+      <Box component="header" sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}` }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 2.5, md: 3 } }}>
+          <Box sx={{ display: "grid", alignItems: "center", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 7fr) minmax(0, 5fr)" }, gap: { xs: 2.5, md: 4 } }}>
+            <Box>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+                <Chip label={`DAY ${gameDay}${maxGameDay ? ` / ${maxGameDay}` : ""}`} size="small"
+                  sx={{ bgcolor: D.brandBg, color: D.brandText, border: `1px solid ${D.brandBd}`, fontWeight: 800, fontSize: 12, fontFamily: MONO }} />
+                <Chip icon={gameMode === "limited_30" ? <TimerIcon /> : <AllInclusiveIcon />} label={modeLabel} size="small"
+                  sx={{ bgcolor: D.elevated, color: D.t2, border: `1px solid ${D.border}`, fontWeight: 800, fontSize: 12 }} />
+                <Chip label={marketClosed ? "AFTER HOURS" : "MARKET OPEN"} size="small"
+                  sx={{ bgcolor: marketClosed ? D.amberBg : D.greenBg, color: marketClosed ? D.amber : D.greenText, border: `1px solid ${marketClosed ? D.amber : D.greenBd}`, fontWeight: 800, fontSize: 12, fontFamily: MONO }} />
+              </Stack>
+              <Typography component="h1" sx={{ fontSize: { xs: 24, md: 30 }, fontWeight: 900, color: D.t1, letterSpacing: "-0.02em", mb: 2 }}>
+                Stock Market Simulator
+              </Typography>
+              <Stack direction="row" gap={1} flexWrap="wrap">
+                <Button data-tour="next-day" onClick={handleNextDay} variant="contained" disabled={isGameComplete || advancing || closing}
+                  title={isGameComplete ? undefined : marketClosed ? "Advance to next day (→)" : "Close the market and reveal news (→)"}
+                  sx={{ minHeight: 44, bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
+                  {isGameComplete ? "Run Complete" : advanceLabel}
+                </Button>
+                {!isGameComplete && ([
+                  { mode: "infinite", label: "New Infinite run", icon: <AllInclusiveIcon /> },
+                  { mode: "limited_30", label: "New 30-Day run", icon: <TimerIcon /> },
+                ] as const).map(({ mode, label, icon }) => (
+                  <Button key={mode} variant="outlined" startIcon={icon} onClick={() => setNewRunConfirm(mode)} disabled={newRunDisabled}
+                    sx={{ minHeight: 44, color: D.t2, borderColor: D.borderHi, fontWeight: 700, textTransform: "none", borderRadius: 1.5 }}>
+                    {label}
+                  </Button>
+                ))}
+              </Stack>
+            </Box>
+            <Box sx={{ pl: { md: 3 }, borderLeft: { md: `1px solid ${D.border}` } }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t3, fontFamily: MONO }}>MARKET STATUS</Typography>
+              <Stack direction="row" alignItems="center" gap={1.5} flexWrap="wrap" sx={{ mt: 0.5, mb: 1.5 }}>
+                <Typography sx={{ fontSize: 32, lineHeight: 1.1, fontWeight: 800, fontFamily: MONO, color: marketColor }}>{pct(marketAverage)}</Typography>
+                <Chip size="small" label={marketFlat ? "Flat Day" : marketUp ? "Positive Day" : "Negative Day"}
+                  sx={{ bgcolor: marketFlat ? D.elevated : marketUp ? D.greenBg : D.redBg, color: marketColor, fontWeight: 800 }} />
+              </Stack>
+              <RunProgressBar day={gameDay} maxDay={maxGameDay} height={5} color={isGameComplete ? D.green : D.brand} />
+            </Box>
           </Box>
-        )} />
+        </Container>
+      </Box>
 
       <Container maxWidth="xl" sx={{ py: 3 }}>
         {trading.error && (
@@ -572,24 +567,32 @@ export default function Game() {
           </Box>
         )}
 
-        {/* Stat tiles */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(3, minmax(0, 1fr))" }, gap: { xs: 1, sm: 2 }, mb: 2 }}>
           {[
-            { label: "Cash", val: money(trading.account.cash), sub: undefined, tone: D.t1 },
-            { label: "Portfolio", val: money(portfolioValue), sub: undefined, tone: D.t1 },
-            { label: "Market today", val: pct(marketSummary.averageMove), sub: marketFlat ? "Flat Day" : marketSummary.averageMove > 0 ? "Positive Day" : "Negative Day", tone: marketFlat ? D.t2 : marketSummary.averageMove > 0 ? D.greenText : D.redText },
-          ].map((s) => (
-            <Grid item xs={s.sub ? 12 : 6} sm={4} key={s.label}>
-              <Box sx={{ ...CARD, p: 2, height: "100%", boxSizing: "border-box" }}>
-                <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t3, fontFamily: MONO, mb: 0.5 }}>{s.label.toUpperCase()}</Typography>
-                <Stack direction="row" alignItems="baseline" spacing={1} flexWrap="wrap" useFlexGap>
-                  <Typography sx={{ fontSize: 20, fontWeight: 700, color: s.tone, fontFamily: MONO }}>{s.val}</Typography>
-                  {s.sub && <Typography sx={{ fontSize: 14, fontWeight: 700, color: s.tone }}>{s.sub}</Typography>}
-                </Stack>
+            { label: "Cash", value: trading.account.cash, icon: <AccountBalanceWalletIcon /> },
+            { label: "Portfolio value", value: portfolioValue, icon: <StorefrontIcon /> },
+            { label: "Net worth", value: netWorth, icon: netReturn < 0 ? <TrendingDownIcon /> : <TrendingUpIcon />, sub: `${pct(netReturn)} since Day 1` },
+          ].map(({ label, value, icon, sub }) => (
+            <Box key={label} data-tour={sub ? "net-worth" : undefined}
+              sx={{ ...CARD, display: "flex", justifyContent: "space-between", gap: 1, p: { xs: 1.5, sm: 2.5 }, gridColumn: { xs: sub ? "1 / -1" : "auto", sm: "auto" } }}>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t3, fontFamily: MONO, textTransform: "uppercase" }}>{label}</Typography>
+                <Typography sx={{ mt: 0.5, fontSize: { xs: 17, sm: 20 }, fontWeight: 800, color: D.t1, fontFamily: MONO, overflowWrap: "anywhere" }}>{money(value)}</Typography>
+                {sub && <Typography sx={{ fontSize: 12, fontWeight: 800, color: isFlat(netReturn) ? D.t2 : netReturn > 0 ? D.greenText : D.redText }}>{sub}</Typography>}
               </Box>
-            </Grid>
+              <Box sx={{ display: { xs: "none", sm: "grid" }, placeItems: "center", width: 36, height: 36, flexShrink: 0, bgcolor: D.brandBg, color: D.brandText, borderRadius: 2, "& svg": { fontSize: 20 } }}>{icon}</Box>
+            </Box>
           ))}
-        </Grid>
+        </Box>
+
+        <Stack component="nav" aria-label="Market shortcuts" direction="row" gap={1} flexWrap="wrap" sx={{ mb: 2 }}>
+          <Button href="#game-portfolio" size="small" sx={{ display: { md: "none" }, minHeight: 40, color: D.brandText, textTransform: "none" }}>Portfolio</Button>
+          {showGoals && <Button href="#today-goal" size="small" sx={{ display: { md: "none" }, minHeight: 40, color: D.brandText, textTransform: "none" }}>Goal</Button>}
+          <Button component={RouterLink} to="/game/watchlist" startIcon={<StarBorderIcon />} size="small" sx={{ minHeight: 40, color: D.brandText, textTransform: "none" }}>
+            Watchlist{trading.watchlistStocks.length > 0 && ` (${trading.watchlistStocks.length})`}
+          </Button>
+          <Button href="#game-tools" size="small" sx={{ minHeight: 40, color: D.brandText, textTransform: "none" }}>Game tools</Button>
+        </Stack>
 
         <MotionPresence initial={false}>
           {trading.latestBill && (
@@ -653,337 +656,229 @@ export default function Game() {
 
         {!trading.loading && !trading.verifiedRun && <Typography sx={{ color: D.t3, mb: 2 }}>This older run is practice-only. Start a new run to earn achievements and enter the leaderboards.</Typography>}
 
-        {/* New players get the turn explained; after the story days it is noise. */}
-        {/* Testers couldn't find these behind the Game menu's arrow. */}
-        <Stack direction="row" spacing={1} useFlexGap component="nav" aria-label="Game shortcuts" sx={{ mb: 2.5, flexWrap: { xs: "nowrap", md: "wrap" }, overflowX: { xs: "auto", md: "visible" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" }, "& > *": { flexShrink: 0 } }}>
-          {[
-            { to: "/game/watchlist", label: `Watchlist${trading.watchlistStocks.length ? ` (${trading.watchlistStocks.length})` : ""}`, icon: <StarBorderIcon sx={{ fontSize: 18 }} /> },
-            { to: "/game/goals", label: `Goals & Missions${missions.loaded && missions.totalCount ? ` (${missions.completedCount}/${missions.totalCount})` : ""}`, icon: <FlagOutlinedIcon sx={{ fontSize: 18 }} /> },
-            { to: "/game/advisor", label: "Advisors", icon: <SmartToyOutlinedIcon sx={{ fontSize: 18 }} /> },
-            { to: "/game/living-costs", label: "Living Costs", icon: <ReceiptLongOutlinedIcon sx={{ fontSize: 18 }} /> },
-          ].map((link) => (
-            <Button key={link.to} component={RouterLink} to={link.to} startIcon={link.icon} size="small"
-              sx={{ color: D.t2, bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 1.5, px: 1.5, fontWeight: 700, fontSize: 14, textTransform: "none",
-                "&:hover": { color: D.t1, borderColor: D.borderHi, bgcolor: D.overlay } }}>
-              {link.label}
-            </Button>
-          ))}
-          <Button onClick={() => setNewRunConfirm("infinite")} disabled={newRunDisabled} startIcon={<AllInclusiveIcon sx={{ fontSize: 18 }} />} size="small"
-            sx={{ ml: { md: "auto !important" }, color: D.t2, borderRadius: 1.5, px: 1.5, fontWeight: 700, fontSize: 14, textTransform: "none", "&:hover": { color: D.t1, bgcolor: D.overlay }, "&.Mui-disabled": { color: D.t4 } }}>
-            New Infinite run
-          </Button>
-          <Button onClick={() => setNewRunConfirm("limited_30")} disabled={newRunDisabled} startIcon={<TimerIcon sx={{ fontSize: 18 }} />} size="small"
-            sx={{ color: D.t2, borderRadius: 1.5, px: 1.5, fontWeight: 700, fontSize: 14, textTransform: "none", "&:hover": { color: D.t1, bgcolor: D.overlay }, "&.Mui-disabled": { color: D.t4 } }}>
-            New 30-Day run
-          </Button>
-          {[
-            { id: "game-market", label: "Jump to Market" },
-            { id: "game-portfolio", label: "Jump to Portfolio" },
-          ].map((jump) => (
-            <Button key={jump.id} size="small" onClick={() => document.getElementById(jump.id)?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" })}
-              sx={{ order: -1, display: { xs: "inline-flex", md: "none" }, color: D.t1, bgcolor: D.elevated, border: `1px solid ${D.borderHi}`, borderRadius: 1.5, px: 1.5, fontWeight: 700, fontSize: 14, textTransform: "none",
-                "&:hover": { bgcolor: D.overlay } }}>
-              {jump.label}
-            </Button>
-          ))}
-        </Stack>
-
-        {!isGameComplete && gameDay <= STORY_DAYS && (
+        {showRecap && dayRecap && (
           <Box sx={{ mb: 2 }}>
-            <Typography component="h2" sx={{ color: D.t1, fontSize: 14, fontWeight: 800 }}>Your next step</Typography>
-            <Typography sx={{ color: D.t2, fontSize: 14, lineHeight: 1.6 }}>
-              {marketPhase === "after_hours"
-                ? "Read the news brief and open a related stock to check its risk and fundamentals. Trading reopens when you advance to the next day."
-                : "Open a stock to review its chart and risk. Decide whether to trade or hold cash, then close the market to reveal tomorrow’s news."}
-            </Typography>
-            <Button component={RouterLink} to="/learn" size="small" sx={{ color: D.brandText, textTransform: "none", px: 0 }}>Review how a turn works →</Button>
+            <DayRecapCard key={recapKey} recap={dayRecap}
+              rival={{ name: rival.rivalName, playerAhead: rival.playerAhead, gap: Math.abs(rival.playerNetWorth - rival.rivalNetWorth) }}
+              onOpenStock={(symbol) => navigate(`/stocks/${symbol}`, { state: { gameDay } })}
+              onDismiss={dismissRecap} />
           </Box>
         )}
-        {(showRecap || showGoals) && (
-          <Grid container spacing={2} sx={{ mb: 2.5 }}>
-            {showRecap && dayRecap && (
-              <Grid item xs={12} md={showGoals ? 7 : 12}>
-                <DayRecapCard recap={dayRecap}
-                  rival={{ name: rival.rivalName, playerAhead: rival.playerAhead, gap: Math.abs(rival.playerNetWorth - rival.rivalNetWorth) }}
-                  onOpenStock={(symbol) => navigate(`/stocks/${symbol}`, { state: { gameDay } })}
-                  onDismiss={dismissRecap} />
-              </Grid>
-            )}
-            {showGoals && (
-              <Grid item xs={12} md={showRecap ? 5 : 12}>
-                <TodayGoalCard day={gameDay} goals={daily.goals} completedCount={daily.completedCount}
-                  error={daily.persistenceError} onRetry={daily.retryPersistence} />
-              </Grid>
-            )}
-          </Grid>
-        )}
 
-        {todayNews.length > 0 && (
-          // Open by default and kept open across days: testers found reopening
-          // it every turn tedious. The tour still opens it via `details.open`.
-          <Box component="details" open={!newsCollapsed} data-tour="today-news"
-            onToggle={(e: React.SyntheticEvent<HTMLDetailsElement>) => {
-              if (e.currentTarget.open === newsCollapsed) toggleNews();
-            }}
-            sx={{ ...CARD, p: 0, mb: 2.5,
-              "& > summary": { cursor: "pointer", p: 2, color: D.t1, listStyle: "none" },
-              "& > summary::-webkit-details-marker": { display: "none" },
-              "& > summary:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: 2 },
-            }}>
-            <Box component="summary">
-              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                <Typography component="h2" sx={{ fontWeight: 800, fontSize: 16 }}>
-                  <NewspaperIcon sx={{ fontSize: 18, verticalAlign: "text-bottom", mr: 0.8, color: D.brandText }} />
-                  Day {marketClosed ? gameDay : gameDay - 1} after-hours news · {todayNews.length} {todayNews.length === 1 ? "story" : "stories"}
-                </Typography>
-                <Typography component="span" sx={{ color: D.brandText, fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
-                  {newsCollapsed ? "Show" : "Hide"}
-                </Typography>
-              </Stack>
-              {newsCollapsed && <Typography sx={{ color: D.t2, fontSize: 14, mt: .5 }}>Latest: {todayNews[0].headline}</Typography>}
-            </Box>
-            <Box sx={{ px: 2.5, pb: 2.5 }}>
-              <Grid container spacing={2}>
-                {todayNews.map((n) => {
-                  const c = getNewsCredibility(n);
+        <Box sx={{
+          display: "grid", alignItems: "start", gap: 2,
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 2fr) minmax(0, 1fr)" },
+          gridTemplateAreas: { xs: '"news" "stocks" "portfolio"', md: '"stocks news" "stocks portfolio"' },
+          gridTemplateRows: { md: "auto 1fr" },
+        }}>
+          <Box component="section" aria-label="After-hours news" sx={{ ...CARD, gridArea: "news" }}>
+            {todayNews.length > 0 ? (
+              <Box component="details" open={!newsCollapsed} data-tour="today-news"
+                onToggle={(e: React.SyntheticEvent<HTMLDetailsElement>) => {
+                  if (e.target === e.currentTarget && e.currentTarget.open === newsCollapsed) toggleNews();
+                }}
+                sx={{
+                  "& > summary": { cursor: "pointer", listStyle: "none", p: { xs: 1.5, md: 2 } },
+                  "& > summary::-webkit-details-marker": { display: "none" },
+                  "& > summary:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: -2 },
+                  "&[open] > summary .news-chevron": { transform: "rotate(180deg)" },
+                }}>
+                <Box component="summary">
+                  <Stack component="span" direction="row" alignItems="center" spacing={1}>
+                    <NewspaperIcon sx={{ fontSize: 18, color: D.brandText }} />
+                    <Typography component="span" sx={{ flex: 1, color: D.t1, fontSize: 16, fontWeight: 800 }}>After-hours news</Typography>
+                    <ExpandMoreIcon className="news-chevron" sx={{ fontSize: 20, color: D.t3 }} />
+                  </Stack>
+                  <Typography component="span" sx={{ display: "block", color: D.t3, fontSize: 12, mt: 0.5 }}>
+                    Day {marketClosed ? gameDay : gameDay - 1} · {todayNews.length} {todayNews.length === 1 ? "story" : "stories"}
+                  </Typography>
+                  {newsCollapsed && <Typography component="span" noWrap sx={{ display: "block", color: D.t2, fontSize: 14, mt: 0.5 }}>{todayNews[0].headline}</Typography>}
+                </Box>
+                {todayNews.map((story) => {
+                  const credibility = getNewsCredibility(story);
                   return (
-                    <Grid item xs={12} md={6} key={n.newsId}>
-                      <Box data-tour={n.relatedTickers.includes("CAI") ? "tutorial-news" : undefined} sx={{ p: 2, height: "100%", boxSizing: "border-box", borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${n.importance === "High" ? D.amber : D.border}` }}>
-                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mb: 1 }}>
-                          {n.importance === "High" && <Typography component="span" sx={{ fontSize: 12, fontWeight: 800, color: D.amber }}>Breaking news</Typography>}
-                          <Typography component="span" title="How reliable the source is, not a chance of profit" sx={{ fontSize: 12, color: c.rating === "low" ? D.amber : D.t3, ml: "auto !important" }}>
-                            {c.rating === "low" ? "Unreliable source" : c.rating === "medium" ? "Fairly reliable" : "Reliable source"}
-                          </Typography>
-                        </Stack>
-                        <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.5 }}>{n.headline}</Typography>
-                        <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6, mb: 1 }}>{n.body}</Typography>
-                        <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>Affects: {n.relatedTickers.join(", ")}</Typography>
+                    <Box component="details" key={story.newsId} data-tour={story.relatedTickers.includes("CAI") ? "tutorial-news" : undefined}
+                      sx={{ borderTop: `1px solid ${D.border}`, "& > summary": { cursor: "pointer", color: D.t1, p: 2, fontSize: 14, fontWeight: 700 }, "& > summary:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: -2 } }}>
+                      <Box component="summary">
+                        {story.headline}
+                        <Typography component="span" sx={{ display: "block", mt: 0.5, color: credibility.rating === "low" ? D.amber : D.t3, fontSize: 12, fontWeight: 500 }}
+                          title="Source reliability">
+                          {story.importance === "High" && <Box component="span" sx={{ color: D.amber, fontWeight: 800 }}>Breaking news · </Box>}
+                          {credibility.rating === "low" ? "Unreliable source" : credibility.rating === "medium" ? "Fairly reliable" : "Reliable source"}
+                          {story.relatedTickers.length > 0 && ` · ${story.relatedTickers.join(", ")}`}
+                        </Typography>
                       </Box>
-                    </Grid>
+                      <Typography sx={{ px: 2, pb: 2, fontSize: 14, lineHeight: 1.65, color: D.t2 }}>{story.body}</Typography>
+                    </Box>
                   );
                 })}
-              </Grid>
+                <Box sx={{ px: 2, py: 0.75, borderTop: `1px solid ${D.border}` }}>
+                  <Button component={RouterLink} to="/news" size="small" sx={{ px: 0, minHeight: 40, color: D.brandText, textTransform: "none" }}>Open News</Button>
+                </Box>
+              </Box>
+            ) : (
+              <Box sx={{ p: 2 }}>
+                <Typography component="h2" sx={{ color: D.t1, fontSize: 16, fontWeight: 800 }}>After-hours news</Typography>
+                <Typography sx={{ mt: 0.5, color: D.t3, fontSize: 14 }}>News appears after the market closes.</Typography>
+              </Box>
+            )}
+          </Box>
+
+          {/* Stock market table */}
+          <Box component="section" aria-labelledby="market-stocks" data-tour="market-list" sx={{ ...CARD, gridArea: "stocks" }}>
+            <Box sx={{ px: { xs: 2, sm: 3 }, py: 2, borderBottom: `1px solid ${D.border}` }}>
+              <Typography id="market-stocks" component="h2" sx={{ fontWeight: 900, fontSize: 20, color: D.t1 }}>Stocks</Typography>
+              {marketClosed ? (
+                <Typography role="status" sx={{ fontSize: 14, color: D.amber, fontWeight: 700, mt: 0.5 }}>{MARKET_CLOSED_MESSAGE}</Typography>
+              ) : !isGameComplete && gameDay <= STORY_DAYS && (
+                <Typography sx={{ fontSize: 14, color: D.t3, mt: 0.5 }}>Open a stock to review its chart and risk before you trade. You can also hold cash.</Typography>
+              )}
+            </Box>
+            <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 1 }}>
+              <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 1, flexWrap: { xs: "nowrap", md: "wrap" }, overflowX: { xs: "auto", md: "visible" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" }, "& > *": { flexShrink: 0 } }}>
+                {sectors.map((sector) => {
+                  const selected = sector === selectedSector;
+                  const count = sectorCounts.get(sector) ?? 0;
+
+                  return (
+                    <Chip
+                      key={sector}
+                      label={`${sector} (${count})`}
+                      clickable
+                      aria-pressed={selected}
+                      onClick={() => setSelectedSector(sector)}
+                      sx={{
+                        height: 30,
+                        borderRadius: 1.5,
+                        bgcolor: selected ? D.brandBg : D.elevated,
+                        border: `1px solid ${selected ? D.brandBd : D.border}`,
+                        color: selected ? D.brandText : D.t2,
+                        fontWeight: 900,
+                        fontSize: 12,
+                        "&:hover": { bgcolor: selected ? D.brandBg : D.overlay, borderColor: selected ? D.brandBd : D.borderHi },
+                        "& .MuiChip-label": { px: 1.2 },
+                      }}
+                    />
+                  );
+                })}
+              </Stack>
+              {filteredStocks.length === 0 ? (
+                <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
+                  <Typography sx={{ fontSize: 14, color: D.t3 }}>No stocks match this sector.</Typography>
+                </Box>
+              ) : (
+                <MotionPresence mode="popLayout" initial={false}>
+                  {filteredStocks.map((stock, index) => (
+                    <StockRow key={stock.stockId} stock={stock}
+                      animationIndex={index}
+                      marketClosed={marketClosed}
+                      sharesOwned={getSharesOwned(trading.account, stock.symbol)}
+                      watchlisted={trading.isWatchlisted(stock.symbol)}
+                      onToggleWatchlist={() => trading.toggleWatchlist(stock)}
+                      onBuy={() => handleBuyStock(stock)}
+                      onSell={() => handleSellStock(stock)}
+                      onOpen={() => navigate(`/stocks/${stock.symbol}`, { state: { gameDay } })}
+                    />
+                  ))}
+                </MotionPresence>
+              )}
             </Box>
           </Box>
-        )}
 
-        <Grid container spacing={3}>
-          {/* Stock market table */}
-          <Grid item xs={12} md={8}>
-            <Box id="game-market" data-tour="market-list" sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                <Box>
-                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Market</Typography>
-                  <Typography sx={{ fontSize: 14, color: D.t3 }}>
-                    {filteredStocks.length} of {stocks.length} stocks shown. Click a stock for its chart, P/E and growth.
-                  </Typography>
-                  {marketClosed && (
-                    <Typography role="status" sx={{ fontSize: 14, color: D.amber, fontWeight: 800, mt: 0.5 }}>
-                      {MARKET_CLOSED_MESSAGE}
+          <Stack spacing={2} sx={{ gridArea: "portfolio", minWidth: 0 }}>
+            <Box component="section" id="game-portfolio" aria-label="Portfolio" tabIndex={-1} sx={{ ...CARD, scrollMarginTop: 80 }}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
+                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio</Typography>
+                {trading.account.holdings.length > 0 && (
+                  <Box sx={{ textAlign: "right" }}>
+                    <Typography sx={{ fontSize: 14, fontWeight: 800, color: portfolioToday >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
+                      {portfolioToday >= 0 ? "+" : ""}{money(portfolioToday)} today
                     </Typography>
-                  )}
-                </Box>
-              </Stack>
-              <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 1 }}>
-                <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 1, flexWrap: { xs: "nowrap", md: "wrap" }, overflowX: { xs: "auto", md: "visible" }, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" }, "& > *": { flexShrink: 0 } }}>
-                  {sectors.map((sector) => {
-                    const selected = sector === selectedSector;
-                    const count = sectorCounts.get(sector) ?? 0;
-
-                    return (
-                      <Chip
-                        key={sector}
-                        label={`${sector} (${count})`}
-                        clickable
-                        onClick={() => setSelectedSector(sector)}
-                        sx={{
-                          height: 30,
-                          borderRadius: 1.5,
-                          bgcolor: selected ? D.brandBg : D.elevated,
-                          border: `1px solid ${selected ? D.brandBd : D.border}`,
-                          color: selected ? D.brandText : D.t2,
-                          fontWeight: 900,
-                          fontSize: 12,
-                          "&:hover": { bgcolor: selected ? D.brandBg : D.overlay, borderColor: selected ? D.brandBd : D.borderHi },
-                          "& .MuiChip-label": { px: 1.2 },
-                        }}
-                      />
-                    );
-                  })}
-                </Stack>
-                {filteredStocks.length === 0 ? (
-                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                    <Typography sx={{ fontSize: 14, color: D.t3 }}>No stocks match this sector.</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 700, color: portfolioPnL >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
+                      {portfolioPnL >= 0 ? "+" : ""}{money(portfolioPnL)} since bought
+                    </Typography>
                   </Box>
+                )}
+              </Stack>
+              <Box sx={{ p: 2.5 }}>
+                {trading.account.holdings.length === 0 ? (
+                  <Typography sx={{ fontSize: 14, color: D.t3 }}>No shares owned yet.</Typography>
                 ) : (
-                  <MotionPresence mode="popLayout" initial={false}>
-                    {filteredStocks.map((stock, index) => (
-                      <StockRow key={stock.stockId} stock={stock}
-                        animationIndex={index}
-                        marketClosed={marketClosed}
-                        sharesOwned={getSharesOwned(trading.account, stock.symbol)}
-                        watchlisted={trading.isWatchlisted(stock.symbol)}
-                        onToggleWatchlist={() => trading.toggleWatchlist(stock)}
-                        onBuy={() => handleBuyStock(stock)}
-                        onSell={() => handleSellStock(stock)}
-                        onOpen={() => navigate(`/stocks/${stock.symbol}`, { state: { gameDay } })}
-                      />
-                    ))}
-                  </MotionPresence>
+                  <Stack spacing={1}>
+                    {trading.account.holdings.map((h) => {
+                      const live = stocks.find((s) => s.symbol === h.symbol);
+                      const currentPrice = live?.currentPrice ?? h.averageCost;
+                      const val = currentPrice * h.shares;
+                      const pnl = (currentPrice - h.averageCost) * h.shares;
+                      const pnlPct = h.averageCost > 0 ? ((currentPrice - h.averageCost) / h.averageCost) * 100 : 0;
+                      const heldOvernight = Math.min(h.shares, overnightShares(h.symbol, h.shares, trading.tradedToday));
+                      const today = (live?.dayChange ?? 0) * heldOvernight;
+                      const up = today >= 0;
+                      return (
+                        <Box key={h.symbol} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${up ? D.greenBd : D.redBd}` }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                            <Box>
+                              <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>
+                                {h.symbol}
+                                <Typography component="span" sx={{ fontWeight: 500, fontSize: 12, color: D.t3, ml: 0.8 }}>× {h.shares}</Typography>
+                              </Typography>
+                              <Typography sx={{ fontSize: 12, color: D.t3 }}>Avg {money(h.averageCost)}</Typography>
+                            </Box>
+                            <Box sx={{ textAlign: "right" }}>
+                              <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, fontFamily: MONO }}>{money(val)}</Typography>
+                              {heldOvernight > 0 ? (
+                                <Typography sx={{ fontSize: 12, fontWeight: 800, color: up ? D.greenText : D.redText }}>
+                                  {today >= 0 ? "+" : ""}{money(today)} today ({pct(live?.dayChangePercent ?? 0, 1)})
+                                </Typography>
+                              ) : (
+                                <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t3 }}>Bought today</Typography>
+                              )}
+                              <Typography sx={{ fontSize: 12, fontWeight: 700, color: pnl >= 0 ? D.greenText : D.redText }}>
+                                {pnl >= 0 ? "+" : ""}{money(pnl)} since bought ({pct(pnlPct, 1)})
+                              </Typography>
+                            </Box>
+                          </Stack>
+                          <Button size="small" onClick={() => navigate(`/stocks/${h.symbol}`, { state: { gameDay } })}
+                            sx={{ mt: 0.8, color: D.brandText, fontSize: 12, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto", minHeight: 24, height: "auto", lineHeight: 1 }}>
+                            View details →
+                          </Button>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
                 )}
               </Box>
             </Box>
-          </Grid>
 
-          {/* Right sidebar */}
-          <Grid item xs={12} md={4}>
-            <Stack spacing={2.5} sx={{ position: { md: "sticky" }, top: { md: 196 }, maxHeight: { md: "calc(100vh - 212px)" }, overflowY: { md: "auto" }, scrollbarWidth: "thin", "& > *": { flexShrink: 0 } }}>
-              {/* Portfolio */}
-              <Box id="game-portfolio" sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Portfolio</Typography>
-                  {trading.account.holdings.length > 0 && (
-                    <Box sx={{ textAlign: "right" }}>
-                      <Typography sx={{ fontSize: 14, fontWeight: 800, color: portfolioToday >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
-                        {portfolioToday >= 0 ? "+" : ""}{money(portfolioToday)} today
-                      </Typography>
-                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: portfolioPnL >= 0 ? D.greenText : D.redText, fontFamily: MONO }}>
-                        {portfolioPnL >= 0 ? "+" : ""}{money(portfolioPnL)} since bought
-                      </Typography>
-                    </Box>
-                  )}
-                </Stack>
-                <Box sx={{ p: 2.5 }}>
-                  {trading.account.holdings.length === 0 ? (
-                    <Box sx={{ textAlign: "center", py: 1.5 }}>
-                      <Typography sx={{ fontSize: 14, color: D.t3, mb: 1 }}>No shares owned yet.</Typography>
-                      <Typography sx={{ fontSize: 12, color: D.t3 }}>Buy a stock from the market to start building your portfolio.</Typography>
-                    </Box>
-                  ) : (
-                    <Stack spacing={1}>
-                      {trading.account.holdings.map((h) => {
-                        const live = stocks.find((s) => s.symbol === h.symbol);
-                        const currentPrice = live?.currentPrice ?? h.averageCost;
-                        const val = currentPrice * h.shares;
-                        const pnl = (currentPrice - h.averageCost) * h.shares;
-                        const pnlPct = h.averageCost > 0 ? ((currentPrice - h.averageCost) / h.averageCost) * 100 : 0;
-                        const heldOvernight = Math.min(h.shares, overnightShares(h.symbol, h.shares, trading.tradedToday));
-                        const today = (live?.dayChange ?? 0) * heldOvernight;
-                        const up = today >= 0;
-                        return (
-                          <Box key={h.symbol} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${up ? D.greenBd : D.redBd}` }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                              <Box>
-                                <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1, fontFamily: MONO }}>
-                                  {h.symbol}
-                                  <Typography component="span" sx={{ fontWeight: 500, fontSize: 12, color: D.t3, ml: 0.8 }}>× {h.shares}</Typography>
-                                </Typography>
-                                <Typography sx={{ fontSize: 12, color: D.t3 }}>Avg {money(h.averageCost)}</Typography>
-                              </Box>
-                              <Box sx={{ textAlign: "right" }}>
-                                <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, fontFamily: MONO }}>{money(val)}</Typography>
-                                {heldOvernight > 0 ? (
-                                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: up ? D.greenText : D.redText }}>
-                                    {today >= 0 ? "+" : ""}{money(today)} today ({pct(live?.dayChangePercent ?? 0, 1)})
-                                  </Typography>
-                                ) : (
-                                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t3 }}>Bought today</Typography>
-                                )}
-                                <Typography sx={{ fontSize: 12, fontWeight: 700, color: pnl >= 0 ? D.greenText : D.redText }}>
-                                  {pnl >= 0 ? "+" : ""}{money(pnl)} since bought ({pct(pnlPct, 1)})
-                                </Typography>
-                              </Box>
-                            </Stack>
-                            <Button size="small" onClick={() => navigate(`/stocks/${h.symbol}`, { state: { gameDay } })}
-                              sx={{ mt: 0.8, color: D.brandText, fontSize: 12, fontWeight: 700, textTransform: "none", p: 0, minWidth: "auto", minHeight: 24, height: "auto", lineHeight: 1 }}>
-                              View details →
-                            </Button>
-                          </Box>
-                        );
-                      })}
-                    </Stack>
-                  )}
-                </Box>
+            {showGoals && (
+              <Box id="today-goal" tabIndex={-1} sx={{ scrollMarginTop: 80 }}>
+                <TodayGoalCard day={gameDay} goals={daily.goals} completedCount={daily.completedCount}
+                  error={daily.persistenceError} onRetry={daily.retryPersistence} />
               </Box>
-
-              {/* Rival trader */}
-              <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.8 }}>
-                  <SportsMmaIcon sx={{ fontSize: 18, color: D.amber }} />
-                  <Typography sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>{rival.rivalName}</Typography>
-                  <Chip label={rival.playerAhead ? "YOU LEAD" : "THEY LEAD"} size="small"
-                    sx={{ bgcolor: rival.playerAhead ? D.greenBg : D.redBg, color: rival.playerAhead ? D.greenText : D.redText, fontWeight: 900, fontSize: 12 }} />
-                </Stack>
-                <Typography sx={{ fontSize: 14, color: D.t3, mb: 1.5 }}>
-                  A rival trader running a fixed {rival.basket.length}-stock strategy since Day 1.
-                </Typography>
-                <Stack spacing={1}>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography sx={{ fontSize: 12, color: D.t3 }}>You</Typography>
-                    <Typography sx={{ fontSize: 14, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{money(rival.playerNetWorth)}</Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography sx={{ fontSize: 12, color: D.t3 }}>{rival.rivalName}</Typography>
-                    <Typography sx={{ fontSize: 14, fontWeight: 900, color: D.t1, fontFamily: MONO }}>{money(rival.rivalNetWorth)}</Typography>
-                  </Stack>
-                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: rival.playerAhead ? D.greenText : D.redText, mt: 0.3 }}>
-                    {rival.playerAhead ? "+" : ""}{rival.gapPct.toFixed(1)}% vs rival
-                  </Typography>
-                  <Button component={RouterLink} to="/rival" size="small" endIcon={<ChevronRightIcon sx={{ fontSize: 16 }} />}
-                    sx={{ alignSelf: "flex-start", px: 0, mt: 0.5, color: D.brandText, fontWeight: 800, fontSize: 12, textTransform: "none", "&:hover": { bgcolor: "transparent", color: D.t1 } }}>
-                    See their basket
-                  </Button>
-                </Stack>
-              </Box>
-
-
-              {/* Mini Leaderboard */}
-              <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <EmojiEventsIcon sx={{ fontSize: 18, color: D.amber }} />
-                    <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Top Traders</Typography>
-                  </Stack>
-                  <Button component={RouterLink} to="/leaderboard" size="small"
-                    sx={{ color: D.brandText, fontSize: 12, fontWeight: 700, textTransform: "none", px: 0.5 }}>
-                    View All →
-                  </Button>
-                </Stack>
-                <Box sx={{ p: 2.5 }}>
-                  {myRank !== null && (
-                    <Box sx={{ p: 1.5, mb: 1.5, borderRadius: 2, bgcolor: D.brandBg, border: `1px solid ${D.brandBd}` }}>
-                      <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.brandText }}>Your rank: #{myRank}</Typography>
-                    </Box>
-                  )}
-                  {topPlayers.length === 0 ? (
-                    <Typography sx={{ fontSize: 14, color: D.t3 }}>No ranked runs yet.</Typography>
-                  ) : (
-                    <Stack spacing={1}>
-                      {topPlayers.map((p) => (
-                        <Stack key={p.user_id} direction="row" spacing={1.5} alignItems="center">
-                          <Avatar sx={{ width: 28, height: 28, bgcolor: p.rank <= 3 ? D.brand : D.overlay, color: p.rank <= 3 ? readableOn(D.brand) : D.t1, fontSize: 12, fontWeight: 900 }}>
-                            {p.username[0]?.toUpperCase()}
-                          </Avatar>
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography sx={{ fontSize: 14, fontWeight: 800, color: user?.id === p.user_id ? D.brandText : D.t1 }} noWrap>
-                              {p.username}{user?.id === p.user_id ? " (You)" : ""}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ textAlign: "right", flexShrink: 0 }}>
-                            <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>#{p.rank}</Typography>
-                            <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t2, fontFamily: MONO }}>{money(p.net_worth)}</Typography>
-                          </Box>
-                        </Stack>
-                      ))}
-                    </Stack>
-                  )}
-                </Box>
-              </Box>
-            </Stack>
-          </Grid>
-        </Grid>
-        <Box component="details" sx={{ ...CARD, p: 2, mt: 3, mb: 2, color: D.t1 }}><Box component="summary" sx={{ cursor: "pointer", color: D.brandText, fontWeight: 800 }}>My decision today · trading is optional</Box><Box sx={{ mt: 2 }}><DecisionNote kind="wait" /></Box></Box>
-        <Typography sx={{ color: D.t2, fontSize: 12, mb: 2, maxWidth: "75ch" }}>Fictional companies and synthetic prices. The after-hours news window pauses price reactions for learning; real markets may react immediately. Game risk scores and analyst ratings are illustrative.</Typography>
+            )}
+            <Box component="details" sx={{ ...CARD, color: D.t1, "& > summary": { cursor: "pointer", p: 2, fontWeight: 700 } }}>
+              <Box component="summary">Record a decision to wait</Box>
+              <Box sx={{ px: 2, pb: 2 }}><DecisionNote kind="wait" /></Box>
+            </Box>
+            <Box component="section" id="game-tools" aria-labelledby="game-tools-heading" tabIndex={-1}
+              sx={{ ...CARD, p: 2, scrollMarginTop: 80 }}>
+              <Typography id="game-tools-heading" component="h2" sx={{ fontSize: 16, fontWeight: 800 }}>Game tools</Typography>
+              <Stack direction="row" useFlexGap flexWrap="wrap" columnGap={1}>
+                {[
+                  { to: "/game/goals", label: "Goals & missions" },
+                  { to: "/game/advisor", label: "Advisors" },
+                  { to: "/game/living-costs", label: "Living costs" },
+                  { to: "/rival", label: "Rival trader" },
+                  { to: "/leaderboard", label: "Leaderboard" },
+                  { to: "/learn", label: "Investing guide" },
+                ].map(({ to, label }) => (
+                  <Button key={to} component={RouterLink} to={to} size="small" sx={{ minHeight: 40, color: D.t2, textTransform: "none" }}>{label}</Button>
+                ))}
+              </Stack>
+            </Box>
+          </Stack>
+        </Box>
+        <Typography sx={{ color: D.t2, fontSize: 12, mt: 2.5, maxWidth: "75ch" }}>Fictional companies and synthetic prices. The after-hours news window pauses price reactions for learning; real markets may react immediately. Game risk scores and analyst ratings are illustrative.</Typography>
       </Container>
     </Box>
   );

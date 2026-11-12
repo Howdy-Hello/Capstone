@@ -49,7 +49,7 @@ function goalCard(goals: DailyGoal[]) {
 test("the recap explains the net change, the movers, the news and the rival", () => {
   const text = recapText(recap);
   expect(text).toContain("Day 7 recap");
-  expect(text).toContain("-$110.00net worth");
+  expect(text).toContain("-$110.00 net worth");
   expect(text).toContain("Stocks -$10.00 (-2.9%) · Living costs −$100.00");
   expect(text).toContain("BestAAA+10.0%+$20.00");
   expect(text).toContain("WorstBBB-20.0%-$30.00");
@@ -73,7 +73,8 @@ test("a cash-only day points at the market's biggest move instead", () => {
 test("today's goal card shows the next unfinished goal and how to do it", () => {
   const page = goalCard([goal("learn_risk", true, { kind: "risk" }), goal("learn_plan", false, { kind: "plan" }), goal("watch2", false, { target: 2, current: 1 })]);
   expect(page.textContent).toContain("1/3 done");
-  expect(page.textContent).toContain("learn_plan title");
+  expect(page.querySelector("details > summary")?.textContent).toContain("learn_plan title");
+  expect(page.querySelector("details")?.open).toBe(false);
   expect(page.textContent).toContain("Record my answer");
   expect(page.querySelector('[data-testid="decision-note"]')).not.toBeNull();
   expect(page.querySelector('a[href="/game/goals"]')).not.toBeNull();
