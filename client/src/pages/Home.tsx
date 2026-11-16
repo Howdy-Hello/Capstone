@@ -11,6 +11,12 @@ const STOCKS = [
   { sym: "GVE", name: "GreenVolt Energy", price: 79.30, change: -0.84 },
 ];
 
+// Example portfolio card: the change is worked out from the two figures, so the
+// maths always matches the $2,000 start named in the intro (V4-09).
+const EXAMPLE_START = 2000;
+const EXAMPLE_NET_WORTH = 2418.72;
+const EXAMPLE_CHANGE_PCT = ((EXAMPLE_NET_WORTH - EXAMPLE_START) / EXAMPLE_START) * 100;
+
 // The same sequence taught in Learn.
 const TURN = [
   { title: "Review your position", text: "Check cash balance and current holdings before making any new order." },
@@ -57,8 +63,8 @@ export default function Home() {
               </Stack>
               <Typography sx={{ fontSize: 12, color: D.t3, fontWeight: 700 }}>Net worth</Typography>
               <Stack direction="row" alignItems="baseline" flexWrap="wrap" columnGap={1.5}>
-                <Typography sx={{ fontSize: { xs: 28, sm: 36 }, fontWeight: 700, fontFamily: MONO, letterSpacing: "-0.03em" }}>{money(2418.72)}</Typography>
-                <Typography sx={{ fontSize: 12, fontWeight: 700, color: D.greenText }}>{pct(20.9)} since Day 1</Typography>
+                <Typography sx={{ fontSize: { xs: 28, sm: 36 }, fontWeight: 700, fontFamily: MONO, letterSpacing: "-0.03em" }}>{money(EXAMPLE_NET_WORTH)}</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 700, color: D.greenText }}>{pct(EXAMPLE_CHANGE_PCT)} since Day 1</Typography>
               </Stack>
             </Box>
             <Box sx={{ px: { xs: 2, sm: 2.5 }, borderTop: `1px solid ${D.border}` }}>

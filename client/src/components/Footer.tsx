@@ -21,7 +21,8 @@ const TARGET = { display: "inline-flex", alignItems: "center", minHeight: 24 } a
 const Footer: React.FC = () => {
   const { pathname } = useLocation();
   const { user } = useAuth();
-  if (!user && pathname !== "/") return <Box component="footer" sx={{ p: 2, textAlign: "center", color: D.t3, borderTop: `1px solid ${D.border}` }}><Typography variant="caption">StockPilot · Simulation only · <Link component={RouterLink} to="/learn" sx={TARGET}>Help</Link> · <Link component={RouterLink} to="/privacy" sx={TARGET}>Privacy</Link></Typography></Box>;
+  // A plain box: App.tsx already wraps the footer in the page's one <footer> landmark (V4-07).
+  if (!user && pathname !== "/") return <Box sx={{ p: 2, textAlign: "center", color: D.t3, borderTop: `1px solid ${D.border}` }}><Typography variant="caption">StockPilot · Simulation only · <Link component={RouterLink} to="/learn" sx={TARGET}>Help</Link> · <Link component={RouterLink} to="/privacy" sx={TARGET}>Privacy</Link></Typography></Box>;
   return (
   <Box sx={{ bgcolor: D.surface, borderTop: `1px solid ${D.border}` }}>
     <Container maxWidth="xl" sx={{ py: { xs: 5, md: 6 } }}>

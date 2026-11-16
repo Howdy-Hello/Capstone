@@ -125,11 +125,20 @@ function AppLayout() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh", width: "100%", m: 0, p: 0, bgcolor: D.bg }}>
+      {/* V4-07: the first Tab stop lets keyboard and screen-reader users jump past the header.
+          It moves focus without touching the URL, so the router and /auth/callback never see a hash. */}
+      <Box component="a" href="#main-content"
+        onClick={(event) => { event.preventDefault(); document.getElementById("main-content")?.focus(); }}
+        sx={{ position: "absolute", top: 8, left: 8, zIndex: 1301, px: 2, py: 1.25, borderRadius: 1.5, bgcolor: D.surface, color: D.t1, border: `2px solid ${D.brand}`, fontSize: 14, fontWeight: 700, textDecoration: "none", transform: "translateY(-200%)", "&:focus": { transform: "none" } }}>
+        Skip to content
+      </Box>
+
+      {/* The only banner landmark: Header's AppBar renders a div (V4-07). */}
       <Box component="header" sx={{ position: "sticky", top: 0, zIndex: 1200, width: "100%", flexShrink: 0 }}>
         <Header />
       </Box>
 
-      <Box component="main" sx={{ flex: 1, width: "100%", overflowX: "clip" }}>
+      <Box component="main" id="main-content" tabIndex={-1} sx={{ flex: 1, width: "100%", overflowX: "clip", "&:focus": { outline: "none" } }}>
         <MotionConfig reducedMotion="user">
         <Suspense fallback={<PageFallback />}>
           <Routes>
@@ -171,6 +180,7 @@ function AppLayout() {
         </MotionConfig>
       </Box>
 
+      {/* The only contentinfo landmark: Footer renders plain boxes inside it (V4-07). */}
       <Box component="footer" sx={{ width: "100%", flexShrink: 0 }}>
         <Footer />
       </Box>

@@ -140,7 +140,8 @@ const Header: React.FC = () => {
           Level up! You reached LV {levelReward?.level} and earned ${levelReward?.amount.toLocaleString("en-US")} for your Endless run.
         </Alert>
       </Snackbar>
-      <AppBar position="sticky" elevation={0} sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}`, zIndex: 1200 }}>
+      {/* A div, not a second <header>: App.tsx's wrapper is the page's one banner landmark (V4-07). */}
+      <AppBar component="div" position="sticky" elevation={0} sx={{ bgcolor: D.surface, borderBottom: `1px solid ${D.border}`, zIndex: 1200 }}>
         <Toolbar sx={{ minHeight: 58, px: { xs: 2, sm: 3 }, gap: 2 }}>
 
           {/* Logo */}
@@ -296,7 +297,7 @@ const Header: React.FC = () => {
           </Stack>
 
           {/* Mobile hamburger */}
-          <IconButton data-tour="game-menu" onClick={() => setDrawerOpen(true)} aria-label="Open navigation menu" title="Open menu" sx={{ color: D.t2, display: { xs: "flex", md: "none" }, p: 0.8 }}>
+          <IconButton data-tour="game-menu" onClick={() => setDrawerOpen(true)} aria-label="Open navigation menu" title="Open menu" sx={{ color: D.t2, display: { xs: "flex", md: "none" }, p: 0.8, width: 44, height: 44 }}>
             <MenuIcon />
           </IconButton>
         </Toolbar>
@@ -313,7 +314,7 @@ const Header: React.FC = () => {
               </Box>
               <Typography sx={{ fontWeight: 900, fontSize: 14, color: D.t1 }}>StockPilot</Typography>
             </Stack>
-            <IconButton onClick={() => setDrawerOpen(false)} aria-label="Close navigation menu" title="Close menu" sx={{ color: D.t3, p: 0.5 }}>
+            <IconButton onClick={() => setDrawerOpen(false)} aria-label="Close navigation menu" title="Close menu" sx={{ color: D.t3, p: 0.5, width: 44, height: 44, m: -1 }}>
               <CloseIcon sx={{ fontSize: 20 }} />
             </IconButton>
           </Stack>
