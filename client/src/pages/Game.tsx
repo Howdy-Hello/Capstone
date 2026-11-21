@@ -1141,12 +1141,12 @@ function StockRow({ stock, animationIndex, marketClosed, sharesOwned, watchliste
       </Box>
 
       <Stack direction="row" spacing={1} justifyContent="flex-end">
-        <Button size="small" variant="outlined" disabled={marketClosed} onClick={(e) => { e.stopPropagation(); onBuy(); }}
-          sx={{ color: D.t1, borderColor: D.borderHi, fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 1.5, boxShadow: "none", minWidth: { xs: 44, sm: 52 }, minHeight: { xs: 44, sm: 36 }, px: { xs: 0.5, sm: 1 }, "&:hover": { color: readableOn(D.green), bgcolor: D.green, borderColor: D.green, boxShadow: "none" }, "&.Mui-disabled": { borderColor: D.border, color: D.t3 } }}>
+        <Button size="small" variant="contained" disabled={marketClosed} onClick={(e) => { e.stopPropagation(); onBuy(); }}
+          sx={{ color: readableOn(D.green), bgcolor: D.green, fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 1.5, boxShadow: "none", minWidth: { xs: 44, sm: 52 }, minHeight: { xs: 44, sm: 36 }, px: { xs: 0.5, sm: 1 }, "&:hover": { bgcolor: D.green, filter: "brightness(0.9)", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
           Buy
         </Button>
-        <Button size="small" variant="outlined" disabled={marketClosed || sharesOwned === 0} onClick={(e) => { e.stopPropagation(); onSell(); }}
-          sx={{ color: D.t1, borderColor: D.borderHi, fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 1.5, boxShadow: "none", minWidth: { xs: 44, sm: 52 }, minHeight: { xs: 44, sm: 36 }, px: { xs: 0.5, sm: 1 }, "&:hover": { color: readableOn(D.red), bgcolor: D.red, borderColor: D.red, boxShadow: "none" }, "&.Mui-disabled": { borderColor: D.border, color: D.t3 } }}>
+        <Button size="small" variant="contained" disabled={marketClosed || sharesOwned === 0} onClick={(e) => { e.stopPropagation(); onSell(); }}
+          sx={{ color: readableOn(D.red), bgcolor: D.red, fontWeight: 800, fontSize: 12, textTransform: "none", borderRadius: 1.5, boxShadow: "none", minWidth: { xs: 44, sm: 52 }, minHeight: { xs: 44, sm: 36 }, px: { xs: 0.5, sm: 1 }, "&:hover": { bgcolor: D.red, filter: "brightness(0.9)", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
           Sell
         </Button>
       </Stack>

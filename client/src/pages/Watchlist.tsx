@@ -5,7 +5,7 @@ import StarIcon from "@mui/icons-material/Star";
 import { Link as RouterLink } from "react-router-dom";
 import { useGame } from "../context/GameContext";
 import { getSharesOwned } from "../data/tradingState";
-import { CARD, D, MONO, money, pct } from "../theme/design";
+import { CARD, D, MONO, isFlat, money, pct } from "../theme/design";
 import { usePageTitle } from "../lib/usePageTitle";
 
 export default function Watchlist() {
@@ -36,7 +36,7 @@ export default function Watchlist() {
                   </IconButton>
                   <Typography sx={{ color: D.t1, fontSize: 14, fontWeight: 900, fontFamily: MONO }}>{stock.symbol}</Typography>
                   <Typography noWrap sx={{ color: D.t2, fontSize: 14, flex: 1, minWidth: 0 }}>{stock.name}</Typography>
-                  <Typography sx={{ color: stock.dayChangePercent >= 0 ? D.greenText : D.redText, fontSize: 14, fontWeight: 800, fontFamily: MONO }}>{pct(stock.dayChangePercent)}</Typography>
+                  <Typography sx={{ color: isFlat(stock.dayChangePercent) ? D.t3 : stock.dayChangePercent > 0 ? D.greenText : D.redText, fontSize: 14, fontWeight: 800, fontFamily: MONO }}>{pct(stock.dayChangePercent)}</Typography>
                 </Stack>
               ))}
             </Stack>
@@ -46,13 +46,14 @@ export default function Watchlist() {
           <Grid container spacing={2}>
             {trading.watchlistStocks.map((stock) => {
               const up = stock.dayChangePercent >= 0;
+              const flat = isFlat(stock.dayChangePercent);
               const owned = getSharesOwned(trading.account, stock.symbol);
               // Only the left side is pinned; /compare resolves the counterpart with
               // the same rules it uses everywhere else, and offers a picker to change it.
               const canCompare = trading.stocks.some((item) => item.symbol !== stock.symbol);
               return (
                 <Grid item xs={12} sm={6} md={4} key={stock.symbol}>
-                  <Box sx={{ ...CARD, p: 2.5, height: "100%" }}>
+                  <Box sx={{ ...CARD, bgcolor: flat ? D.surface : up ? D.greenBg : D.redBg, borderColor: flat ? D.border : up ? D.greenBd : D.redBd, p: 2.5, height: "100%" }}>
                     <Stack direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
                       <Box>
                         <Typography sx={{ color: D.t1, fontFamily: MONO, fontWeight: 900, fontSize: 18 }}>{stock.symbol}</Typography>
@@ -60,7 +61,7 @@ export default function Watchlist() {
                       </Box>
                       <Box sx={{ textAlign: "right" }}>
                         <Typography sx={{ color: D.t1, fontFamily: MONO, fontWeight: 900 }}>{money(stock.currentPrice)}</Typography>
-                        <Typography sx={{ color: up ? D.greenText : D.redText, fontWeight: 800, fontSize: 12 }}>{pct(stock.dayChangePercent)}</Typography>
+                        <Typography sx={{ color: flat ? D.t3 : up ? D.greenText : D.redText, fontWeight: 800, fontSize: 12 }}>{pct(stock.dayChangePercent)}</Typography>
                       </Box>
                     </Stack>
                     <Typography sx={{ color: D.t3, fontSize: 12, mb: 2 }}>{owned ? `${owned} shares owned` : "Not owned"}</Typography>

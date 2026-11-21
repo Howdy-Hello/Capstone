@@ -55,7 +55,8 @@ export default function WatchlistWidget({ stocks, getHistory }: {
             sx={{
               display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(44px, 0.8fr) auto",
               gap: 1.5, width: "100%", px: 2, py: 1, textAlign: "left", borderTop: `1px solid ${D.border}`,
-              "&:hover": { bgcolor: D.elevated },
+              bgcolor: isFlat(stock.dayChangePercent) ? D.surface : stock.dayChangePercent > 0 ? D.greenBg : D.redBg,
+              "&:hover": { boxShadow: `inset 0 0 0 1px ${D.borderHi}` },
               "&:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: -2 },
             }}>
             <Box component="span" sx={{ minWidth: 0 }}>
