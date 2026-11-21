@@ -1,5 +1,7 @@
 import DecisionNote from "../components/learning/DecisionNote";
 import RunProgressBar from "../components/RunProgressBar";
+import MarketHistoryChart from "../components/MarketHistoryChart";
+import WatchlistWidget from "../components/WatchlistWidget";
 import ConfirmDialog from "../components/ConfirmDialog";
 import DayRecapCard from "../components/DayRecapCard";
 import TodayGoalCard from "../components/TodayGoalCard";
@@ -27,6 +29,7 @@ import StarBorderIcon from "@mui/icons-material/StarBorder";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { buildMarketHistory } from "../data/marketHistory";
 import { getNewsCredibility, STORY_DAYS, Stock } from "../data/mockStocks";
 import { getMaxAffordableQuantity, getNetWorth, getPortfolioValue, getSharesOwned } from "../data/tradingState";
 import { GameMode, MARKET_CLOSED_MESSAGE, useGame, STARTING_CASH, WEEKLY_BILL_TOTAL } from "../context/GameContext";
@@ -90,7 +93,7 @@ export default function Game() {
   useLevel();
   const {
     advancing, gameDay, gameMode, isGameComplete, marketPhase, maxGameDay, setGameDay, closeMarket,
-    stocks, news: todayNews, newsHistory, syncSessionValue,
+    stocks, news: todayNews, newsHistory, syncSessionValue, getHistory,
   } = trading;
 
   const sectors = useMemo(() => ["All", ...Array.from(new Set(stocks.map((stock) => stock.sector))).sort()], [stocks]);
@@ -145,6 +148,7 @@ export default function Game() {
   const showRecap = dayRecap !== null && marketPhase === "market_open" && !advancing && recapDismissed !== recapKey;
   const showGoals = !isGameComplete && daily.goals.length > 0;
 
+  const marketHistory = useMemo(() => buildMarketHistory(stocks, getHistory, gameDay), [stocks, getHistory, gameDay]);
   const marketAverage = stocks.length
     ? stocks.reduce((sum, stock) => sum + stock.dayChangePercent, 0) / stocks.length
     : 0;
@@ -543,12 +547,20 @@ export default function Game() {
               </Stack>
             </Box>
             <Box sx={{ pl: { md: 3 }, borderLeft: { md: `1px solid ${D.border}` } }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t3, fontFamily: MONO }}>MARKET STATUS</Typography>
-              <Stack direction="row" alignItems="center" gap={1.5} flexWrap="wrap" sx={{ mt: 0.5, mb: 1.5 }}>
-                <Typography sx={{ fontSize: 32, lineHeight: 1.1, fontWeight: 800, fontFamily: MONO, color: marketColor }}>{pct(marketAverage)}</Typography>
-                <Chip size="small" label={marketFlat ? "Flat Day" : marketUp ? "Positive Day" : "Negative Day"}
-                  sx={{ bgcolor: marketFlat ? D.elevated : marketUp ? D.greenBg : D.redBg, color: marketColor, fontWeight: 800 }} />
-              </Stack>
+              <Box sx={{
+                display: "grid", alignItems: "center", gap: { xs: 1.5, sm: 2 }, mb: 1.5,
+                gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+              }}>
+                <Box>
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: D.t3, fontFamily: MONO }}>MARKET STATUS</Typography>
+                  <Stack direction="row" alignItems="center" gap={1.5} flexWrap="wrap" sx={{ mt: 0.5 }}>
+                    <Typography sx={{ fontSize: 32, lineHeight: 1.1, fontWeight: 800, fontFamily: MONO, color: marketColor }}>{pct(marketAverage)}</Typography>
+                    <Chip size="small" label={marketFlat ? "Flat Day" : marketUp ? "Positive Day" : "Negative Day"}
+                      sx={{ bgcolor: marketFlat ? D.elevated : marketUp ? D.greenBg : D.redBg, color: marketColor, fontWeight: 800 }} />
+                  </Stack>
+                </Box>
+                <MarketHistoryChart history={marketHistory} />
+              </Box>
               <RunProgressBar day={gameDay} maxDay={maxGameDay} height={5} color={isGameComplete ? D.green : D.brand} />
             </Box>
           </Box>
@@ -666,9 +678,12 @@ export default function Game() {
         <Box sx={{
           display: "grid", alignItems: "start", gap: 2,
           gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 2fr) minmax(0, 1fr)" },
-          gridTemplateAreas: { xs: '"news" "stocks" "portfolio"', md: '"stocks news" "stocks portfolio"' },
-          gridTemplateRows: { md: "auto 1fr" },
+          gridTemplateAreas: { xs: '"watchlist" "news" "stocks" "portfolio"', md: '"stocks watchlist" "stocks news" "stocks portfolio"' },
+          gridTemplateRows: { md: "auto auto 1fr" },
         }}>
+          <Box sx={{ gridArea: "watchlist", minWidth: 0 }}>
+            <WatchlistWidget stocks={trading.watchlistStocks} getHistory={getHistory} />
+          </Box>
           <Box component="section" aria-label="Today's news" sx={{ ...CARD, gridArea: "news" }}>
             {todayNews.length > 0 ? (
               <Box component="details" open={!newsCollapsed} data-tour="today-news"

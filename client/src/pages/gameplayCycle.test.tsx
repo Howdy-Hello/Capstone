@@ -3,11 +3,14 @@ import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import Game from './Game';
 import News from './News';
-import { getNewsForGameDay, getStocksForGameDay } from '../data/mockStocks';
+import { getNewsForGameDay, getStockHistoryBySymbol, getStocksForGameDay } from '../data/mockStocks';
 
 let mockPhase = 'market_open';
 let mockNews = getNewsForGameDay(2, 'STOCKPILOT').slice(0, 1);
-const mockStock = getStocksForGameDay(2, 'STOCKPILOT')[0];
+const mockStocks = getStocksForGameDay(2, 'STOCKPILOT');
+const mockStock = mockStocks[0];
+let mockWatchlist: typeof mockStocks = [];
+const mockGetHistory = (symbol: string) => getStockHistoryBySymbol(symbol, 2, 'STOCKPILOT');
 const mockYesterday = { ...getNewsForGameDay(1, 'STOCKPILOT')[0], relatedTickers: [mockStock.symbol] };
 const mockClose = jest.fn().mockResolvedValue(undefined);
 const mockAdvance = jest.fn().mockResolvedValue(undefined);
@@ -17,10 +20,20 @@ const mockTrading = () => ({
   marketPhase: mockPhase, isGameComplete: false, loading: false, verifiedRun: true,
   account: { cash: 1900, holdings: [{ symbol: mockStock.symbol, shares: 1, averageCost: 100 }] },
   stocks: [mockStock], news: mockNews, newsHistory: [...mockNews, mockYesterday],
-  tradedToday: {}, watchlistStocks: [], isWatchlisted: () => false,
+  tradedToday: {}, watchlistStocks: mockWatchlist, isWatchlisted: () => false,
+  getHistory: mockGetHistory,
   closeMarket: mockClose, setGameDay: mockAdvance, syncSessionValue: mockSync,
 });
 
+jest.mock('recharts', () => {
+  const { cloneElement } = jest.requireActual<typeof import('react')>('react');
+  return {
+    ...jest.requireActual('recharts'),
+    ResponsiveContainer: ({ children }: { children: import('react').ReactElement<{ width: number; height: number }> }) => (
+      cloneElement(children, { width: 180, height: 68 })
+    ),
+  };
+});
 jest.mock('react-router-dom', () => {
   const React = require('react');
   return {
@@ -45,6 +58,7 @@ let container: HTMLDivElement;
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   mockPhase = 'market_open';
+  mockWatchlist = [];
   mockNews = getNewsForGameDay(2, 'STOCKPILOT').slice(0, 1);
   mockClose.mockReset().mockResolvedValue(undefined);
   mockAdvance.mockReset().mockResolvedValue(undefined);
@@ -93,4 +107,18 @@ test('a quiet news day does not tell players to close the market to see articles
   await act(async () => { root.render(<News />); });
   expect(container.textContent).toContain('No major news today.');
   expect(container.textContent).not.toContain('Close the market to receive');
+});
+
+test('Game shows the market candles and the first three saved stocks with closing-price charts', async () => {
+  mockWatchlist = mockStocks.slice(1, 5).reverse();
+  await act(async () => { root.render(<Game />); });
+
+  const marketChart = container.querySelector('[aria-label^="Equal-weight market candlesticks"]');
+  expect(marketChart?.querySelectorAll('.recharts-bar-rectangle rect')).toHaveLength(2);
+
+  const watchlist = container.querySelector('[aria-labelledby="game-watchlist"]');
+  expect(watchlist?.querySelector('a[aria-label="View full watchlist"]')?.getAttribute('href')).toBe('/game/watchlist');
+  expect(Array.from(watchlist?.querySelectorAll('a[href^="/stocks/"]') ?? [], (row) => row.getAttribute('href')))
+    .toEqual(mockWatchlist.slice(0, 3).map((stock) => `/stocks/${stock.symbol}`));
+  expect(watchlist?.querySelectorAll('.recharts-line-curve')).toHaveLength(3);
 });
