@@ -2312,7 +2312,7 @@ function generateHardcodedOpeningPricePoint(
   gameDay: number,
   marketSeed?: string | null
 ): StockPriceHistory | null {
-  // News is published after the close and moves the following session.
+  // News is available before trading and moves the following session.
   const hardcodedClose = gameDay === 1
     ? company.startingPrice
     : hardcodedFirstThreeDayCloses[company.symbol]?.[gameDay - 1];

@@ -41,6 +41,7 @@ const results = await db.exec(await fs.readFile(path.join(here, 'gameplay-db-che
 const checks = results.flatMap((r) => r.rows).filter((row) => 'name' in row && 'ok' in row);
 for (const check of checks) console.log(check.ok ? 'ok  ' : 'FAIL', check.name);
 const failed = checks.filter((check) => !check.ok);
+await db.close();
 if (!checks.length || failed.length) {
   console.error(`${failed.length} of ${checks.length} checks failed.`);
   process.exit(1);

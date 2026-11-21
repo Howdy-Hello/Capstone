@@ -535,11 +535,11 @@ export default function Dashboard() {
             <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Today's News</Typography>
-                <Typography sx={{ fontSize: 14, color: D.t2 }}>Day {trading.marketPhase === "after_hours" ? gameDay : gameDay - 1} after-hours signals for the next session.</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t2 }}>Day {gameDay} articles to read before trading. Prices react next day.</Typography>
               </Box>
               <Box sx={{ p: 2.5 }}>
                 {news.length === 0 ? (
-                  <Typography sx={{ fontSize: 14, color: D.t3, py: 1 }}>{trading.marketPhase === "market_open" ? "News arrives after the market closes." : "No major news today. Prices still move from drift and volatility."}</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t3, py: 1 }}>No major news today. Prices still move from drift and volatility.</Typography>
                 ) : (
                   <Stack spacing={1.2}>
                     <MotionPresence mode="popLayout" initial={false}>

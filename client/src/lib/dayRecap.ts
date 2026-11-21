@@ -57,7 +57,7 @@ export function buildDayRecap(input: {
   holdings: Array<Pick<PortfolioHolding, "symbol" | "shares">>;
   stocks: Stock[];
   tradedToday: TradedToday;
-  /** The brief published after yesterday's close: the news behind today's prices. */
+  /** Yesterday's brief: the news behind today's prices. */
   news: MarketNews[];
   bill: number;
   rivalCurve: Array<{ day: number; rival: number }>;

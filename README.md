@@ -90,6 +90,18 @@ insert into storage.buckets (id, name, public) values ('avatars', 'avatars', tru
 
 ## Run the Application
 
+### Gameplay cycle
+
+Read today's articles → trade while the market is open → Close Market (trading
+stops) → Advance to Next Day (prices and portfolio values update, new articles
+appear, trading reopens). The daily recap explains the price move using the
+previous day's articles.
+
+Apply `supabase/migrations/202611210001_news_before_trading.sql` after the existing
+migrations before deploying this client. It makes today's news readable during
+trading while keeping future news and prices hidden. Pushing code alone does not
+apply Supabase migrations.
+
 ### Start the server
 ```bash
 cd server

@@ -3,7 +3,7 @@
 import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { GameProvider, MARKET_CLOSED_MESSAGE, useGame } from './GameContext';
-import { advanceSessionDay, ApiError, ensureSessionMarket } from '../lib/api';
+import { advanceSessionDay, ApiError, closeSessionMarket, ensureSessionMarket } from '../lib/api';
 import { getCumulativeTradeTotal, getPortfolioValue } from '../data/tradingState';
 import { recordTradeJournalEntry } from '../lib/tradeJournal';
 
@@ -12,6 +12,8 @@ let mockSession: any;
 let mockRpc: jest.Mock;
 let mockMarketError: unknown;
 let mockHoldings: any[];
+let mockPrices: any[];
+let mockNews: any[];
 const mockFrom = jest.fn();
 jest.mock('./AuthContext', () => ({ useAuth: () => ({ user: mockUser }) }));
 jest.mock('../lib/tradeJournal', () => ({
@@ -23,6 +25,7 @@ jest.mock('../lib/api', () => ({
   syncGameState: jest.fn().mockResolvedValue(undefined),
   ensureSessionMarket: jest.fn().mockResolvedValue({ currentDay: 1 }),
   advanceSessionDay: jest.fn(),
+  closeSessionMarket: jest.fn(),
 }));
 jest.mock('../lib/supabase', () => ({
   isMissingDbObject: (error: any) => error?.code === 'PGRST202',
@@ -30,10 +33,13 @@ jest.mock('../lib/supabase', () => ({
   from: (table: string) => {
     mockFrom(table);
     const query: any = {};
+    let fromDay = 1;
     for (const name of ['select', 'eq', 'order', 'limit', 'gt', 'gte', 'range']) query[name] = () => query;
+    query.gte = (_column: string, value: number) => { fromDay = value; return query; };
     query.maybeSingle = query.single = async () => ({ data: mockSession, error: null });
     query.then = (resolve: any) => Promise.resolve({ data: table === 'session_stock_prices'
-      ? [{ game_day: 1, symbol: 'GVE', open_price: 100, high_price: 100, low_price: 100, close_price: 100, volume: 1000, event_impact: 0 }]
+      ? mockPrices.filter((row) => row.game_day >= fromDay && row.game_day <= mockSession.current_day)
+        : table === 'session_market_news' ? mockNews.filter((row) => row.game_day >= fromDay && row.game_day <= mockSession.current_day)
         : table === 'holdings' ? mockHoldings : [], error: table === 'session_stock_prices' ? mockMarketError : null }).then(resolve);
     return query;
   },
@@ -50,9 +56,12 @@ beforeEach(async () => {
   mockRpc = jest.fn().mockResolvedValue({ data: null, error: { message: 'Not enough cash' } });
   mockMarketError = null;
   mockHoldings = [];
+  mockPrices = [{ game_day: 1, symbol: 'GVE', open_price: 100, high_price: 100, low_price: 100, close_price: 100, volume: 1000, event_impact: 0 }];
+  mockNews = [1, 2, 3].map((day) => ({ game_day: day, items: [{ newsId: `day-${day}`, gameDay: day, headline: `Day ${day} report`, body: 'Demand changes', relatedTickers: ['GVE'] }] }));
   mockFrom.mockClear();
   (ensureSessionMarket as jest.Mock).mockReset().mockResolvedValue({ currentDay: 1 });
   (advanceSessionDay as jest.Mock).mockReset();
+  (closeSessionMarket as jest.Mock).mockReset();
   localStorage.setItem('stockpilot-current-game-day:run-a', '20');
   container = document.createElement('div');
   root = createRoot(container);
@@ -272,6 +281,8 @@ test('session reload uses the latest database day and phase', async () => {
 });
 
 test('a committed day and bill survive a failed market read and reload recovers', async () => {
+  mockSession = { ...mockSession, market_phase: 'after_hours' };
+  await act(async () => { await game.reloadSession(); });
   (advanceSessionDay as jest.Mock).mockImplementationOnce(async () => {
     mockSession = { ...mockSession, current_day: 2, cash_balance: 1900, market_phase: 'market_open' };
     return { day: 2, cash: 1900, cycles_charged: 1, bill_total: 100, amount_paid: 100, shortfall: 0 };
@@ -288,4 +299,75 @@ test('a committed day and bill survive a failed market read and reload recovers'
   await act(async () => { await game.reloadSession(); });
   expect(game.error).toBeNull();
   expect(advanceSessionDay).toHaveBeenCalledTimes(1);
+});
+
+
+test("today's articles are visible before any trade, with future articles hidden", () => {
+  expect(game.marketPhase).toBe('market_open');
+  expect(game.news.map((story) => story.gameDay)).toEqual([1]);
+  expect(game.newsHistory.map((story) => story.gameDay)).toEqual([1]);
+  expect(mockRpc).not.toHaveBeenCalled();
+});
+
+test('advancing while open is refused before calling the server', async () => {
+  await act(async () => { await game.setGameDay(2); });
+  expect(game.gameDay).toBe(1);
+  expect(game.error).toBe('Close the market before advancing.');
+  expect(advanceSessionDay).not.toHaveBeenCalled();
+});
+
+test('news -> trade -> close -> next-day prices, portfolio and new news -> trade', async () => {
+  const stock = game.stocks[0];
+  mockRpc.mockImplementation(async (_name, args) => {
+    const buying = args.target_trade_type === 'buy';
+    mockSession = { ...mockSession, cash_balance: buying ? 1900 : 2010 };
+    mockHoldings = buying ? [{ quantity: 1, average_purchase_price: 100, stocks: { symbol: stock.symbol, company_name: stock.name } }] : [];
+    return { data: { symbol: stock.symbol, cash: mockSession.cash_balance, quantity: buying ? 1 : 0, average_purchase_price: 100, execution_price: buying ? 100 : 110 }, error: null };
+  });
+  expect(game.news[0].gameDay).toBe(1);
+  await act(async () => { expect(await game.buyStock(stock)).toBe(true); });
+  expect(getPortfolioValue(game.account, game.stocks)).toBe(100);
+  (closeSessionMarket as jest.Mock).mockImplementationOnce(async () => {
+    mockSession = { ...mockSession, market_phase: 'after_hours' };
+    return { day: 1, news: mockNews[0].items };
+  });
+  await act(async () => { await game.closeMarket(); });
+  expect(closeSessionMarket).toHaveBeenCalledWith('run-a', 1);
+  expect(game.marketPhase).toBe('after_hours');
+  expect(game.news[0].gameDay).toBe(1);
+  expect(game.stocks[0].currentPrice).toBe(100);
+  expect(getPortfolioValue(game.account, game.stocks)).toBe(100);
+  mockRpc.mockClear();
+  await act(async () => {
+    expect(await game.buyStock(stock)).toBe(false);
+    expect(await game.sellStock(stock)).toBe(false);
+  });
+  expect(mockRpc).not.toHaveBeenCalled();
+  (advanceSessionDay as jest.Mock).mockImplementationOnce(async () => {
+    mockSession = { ...mockSession, current_day: 2, market_phase: 'market_open' };
+    mockPrices.push({ ...mockPrices[0], game_day: 2, open_price: 100, high_price: 110, close_price: 110 });
+    return { day: 2, cash: 1900, cycles_charged: 0, bill_total: 0, amount_paid: 0, shortfall: 0 };
+  });
+  await act(async () => { await game.setGameDay(2); });
+  expect(game.gameDay).toBe(2);
+  expect(game.marketPhase).toBe('market_open');
+  expect(game.stocks[0].currentPrice).toBe(110);
+  expect(getPortfolioValue(game.account, game.stocks)).toBe(110);
+  expect(game.account.cash).toBe(1900);
+  expect(game.news.map((story) => story.gameDay)).toEqual([2]);
+  expect(game.newsHistory.map((story) => story.gameDay)).toEqual([2, 1]);
+  expect(game.tradedToday).toEqual({});
+  await act(async () => { expect(await game.sellStock(stock)).toBe(true); });
+  expect(mockRpc.mock.calls[0][1].target_game_day).toBe(2);
+  expect(game.account.cash).toBe(2010);
+  expect(game.account.holdings).toEqual([]);
+});
+
+test('a refused close keeps trading open and preserves the current brief', async () => {
+  (closeSessionMarket as jest.Mock).mockRejectedValueOnce(new ApiError('Your game has changed. Reload before trying again.', 409));
+  await act(async () => { await game.closeMarket(); });
+  expect(game.marketPhase).toBe('market_open');
+  expect(game.news[0].gameDay).toBe(1);
+  expect(game.error).toMatch(/Your game has changed/);
+  expect(game.actionPending).toBe(false);
 });

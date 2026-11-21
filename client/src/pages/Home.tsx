@@ -82,7 +82,7 @@ export default function Home() {
               ))}
             </Box>
             <Box sx={{ bgcolor: D.elevated, borderTop: `1px solid ${D.border}`, px: { xs: 2, sm: 2.5 }, py: 1.5 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 700, color: D.t3, mb: 0.5 }}>Day 3 after-hours news · Reliable source · CAI</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 700, color: D.t3, mb: 0.5 }}>Day 3 market news · Reliable source · CAI</Typography>
               <Typography sx={{ fontSize: 14, fontWeight: 700 }}>Independent review finds no major Closed Ai data-control failures</Typography>
             </Box>
           </Box>

@@ -16,16 +16,14 @@ const all = "All";
 
 export default function News() {
   usePageTitle("News");
-  const { gameDay, marketPhase, newsHistory } = useGame();
+  const { gameDay, newsHistory } = useGame();
   const [query, setQuery] = useState("");
   const [publisher, setPublisher] = useState(all);
   const [category, setCategory] = useState(all);
   const [sector, setSector] = useState(all);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAllNews, setShowAllNews] = useState(false);
-  // Same rule as the Game page: reports are filed under the day whose close
-  // revealed them, so during trading the latest brief is yesterday's.
-  const briefDay = marketPhase === "after_hours" ? gameDay : gameDay - 1;
+  const briefDay = gameDay;
 
   const availableNews = useMemo(
     () => showAllNews ? newsHistory : newsHistory.filter((item) => item.gameDay === briefDay),
@@ -77,8 +75,8 @@ export default function News() {
       <Container maxWidth="xl" sx={{ py: 3 }}>
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5} sx={{ mb: 2.5 }}>
           <Box>
-            <Typography component="h2" sx={{ color: D.t1, fontSize: 18, fontWeight: 900 }}>{showAllNews ? "All revealed news" : (briefDay >= 1 ? `Day ${briefDay} after-hours news` : "No news yet")}</Typography>
-            <Typography sx={{ color: D.t3, fontSize: 14 }}>{showAllNews ? "Every report revealed so far, newest first." :"The latest articles, revealed when the market last closed."}</Typography>
+            <Typography component="h2" sx={{ color: D.t1, fontSize: 18, fontWeight: 900 }}>{showAllNews ? "All revealed news" : (briefDay >= 1 ? `Day ${briefDay} news` : "No news yet")}</Typography>
+            <Typography sx={{ color: D.t3, fontSize: 14 }}>{showAllNews ? "Every report revealed so far, newest first." :"Today's articles are available before you trade. Prices react on the next day."}</Typography>
           </Box>
           <Button variant="outlined" aria-pressed={showAllNews} onClick={() => { setShowAllNews((value) => !value); setSelectedId(null); setPublisher(all); setCategory(all); setSector(all); }}
             sx={{ alignSelf: { xs: "stretch", sm: "center" }, color: D.brandText, borderColor: D.brandBd, textTransform: "none", fontWeight: 850, borderRadius: 1.5, "&:hover": { bgcolor: D.brandBg, borderColor: D.brand } }}>
@@ -125,7 +123,7 @@ export default function News() {
                     {selected?.newsId === item.newsId && <Box sx={{ display: { xs: "block", md: "none" } }}><ArticleDetail item={item} /></Box>}
                   </React.Fragment>
                 ))}
-                {!filtered.length && <Box sx={{ ...CARD, p: 3 }}><Typography sx={{ color: D.t3 }}>{availableNews.length === 0 ? "No reports have been revealed yet. Close the market to receive the first ones." : "No revealed articles match these filters."}</Typography></Box>}
+                {!filtered.length && <Box sx={{ ...CARD, p: 3 }}><Typography sx={{ color: D.t3 }}>{availableNews.length === 0 ? "No major news today. Prices still move from drift and volatility." : "No revealed articles match these filters."}</Typography></Box>}
               </Stack>
             </Grid>
             <Grid item xs={12} md={7} sx={{ display: { xs: "none", md: "block" } }}>

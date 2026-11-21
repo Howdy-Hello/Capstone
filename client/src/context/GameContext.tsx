@@ -140,7 +140,7 @@ type GameContextValue = {
   maxGameDay: number | null;
   isGameComplete: boolean;
   stocks: Stock[];
-  /** The newest brief: the previous day's while the market is open, today's after the close. */
+  /** Today's brief, available before trading and throughout the closed market. */
   news: MarketNews[];
   newsHistory: MarketNews[];
   getStock: (symbol: string) => Stock | undefined;
@@ -504,13 +504,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       .map((stock) => mapStockFromHistory(stock, histories.get(stock.symbol) ?? []));
   }, [databaseStocks, gameDay, gameMode, histories]);
 
-  // News for day D is published after the close on day D, so while the market
-  // is open the newest visible day is the previous one.
-  const visibleNewsDay = gameDay - (marketPhase === "market_open" ? 1 : 0);
+  // Today's articles inform trades at today's prices; reactions arrive next day.
+  const visibleNewsDay = gameDay;
 
-  // The newest published brief: yesterday's while trading (the stories the
-  // player is trading on), today's after the close. Testers had to close the
-  // market every day just to see any news.
   const news = useMemo(() => newsByDay.get(visibleNewsDay) ?? [], [newsByDay, visibleNewsDay]);
 
   // Every story the player could have seen so far, newest first. The inbox
@@ -542,8 +538,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (!session || !beginAction()) return;
     try {
       const closedDay = gameDayRef.current;
-      // Today's news is only readable after the close (BUG-044), so it
-      // wasn't in the market loaded while trading was open.
+      // Keep the day's brief available after closing, including on older servers.
       let todaysNews: MarketNews[] | null = null;
       try {
         // One round trip, and the server starts building tomorrow's market.
@@ -586,6 +581,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (next === currentDay) return;
+    if (marketPhase !== "after_hours") {
+      setError("Close the market before advancing.");
+      return;
+    }
 
     if (!beginAction()) return;
     setAdvancing(true);
@@ -650,7 +649,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       endAction();
       setAdvancing(false);
     }
-  }, [gameMode, session, beginAction, endAction]);
+  }, [gameMode, session, marketPhase, beginAction, endAction]);
 
   const getTradeQuote = useCallback((
     stock: Stock,

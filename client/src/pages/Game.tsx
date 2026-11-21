@@ -90,7 +90,7 @@ export default function Game() {
   useLevel();
   const {
     advancing, gameDay, gameMode, isGameComplete, marketPhase, maxGameDay, setGameDay, closeMarket,
-    stocks, news: todayNews, syncSessionValue,
+    stocks, news: todayNews, newsHistory, syncSessionValue,
   } = trading;
 
   const sectors = useMemo(() => ["All", ...Array.from(new Set(stocks.map((stock) => stock.sector))).sort()], [stocks]);
@@ -122,19 +122,18 @@ export default function Game() {
     [trading.account.holdings, stocks, trading.tradedToday],
   );
 
-  // Start-of-day recap, so each advance has a result to react to. While the
-  // market is open, `todayNews` is yesterday's brief: the news behind today's prices.
+  // Explain the overnight move using yesterday's articles, not today's new brief.
   const dayRecap = useMemo(() => buildDayRecap({
     day: gameDay,
     holdings: trading.account.holdings,
     stocks,
     tradedToday: trading.tradedToday,
-    news: todayNews,
+    news: newsHistory.filter((story) => story.gameDay === gameDay - 1),
     // The server's figure when this browser made the advance; otherwise the
     // weekly schedule (one cycle on arrival at every 7th day).
     bill: trading.latestBill?.day === gameDay ? trading.latestBill.total : gameDay % 7 === 0 ? WEEKLY_BILL_TOTAL : 0,
     rivalCurve: rival.equityCurve,
-  }), [gameDay, trading.account.holdings, stocks, trading.tradedToday, todayNews, trading.latestBill, rival.equityCurve]);
+  }), [gameDay, trading.account.holdings, stocks, trading.tradedToday, newsHistory, trading.latestBill, rival.equityCurve]);
   const recapKey = `${trading.sessionId}:${gameDay}`;
   const [recapDismissed, setRecapDismissed] = useState(() => {
     try { return localStorage.getItem(RECAP_DISMISSED_KEY) ?? ""; } catch { return ""; }
@@ -186,17 +185,16 @@ export default function Game() {
   // flavor email — a persistent record of "why did the market do that"
   // alongside the mission/bill/rival/achievement messages.
   useEffect(() => {
-    // While trading, `todayNews` is yesterday's brief, already filed under yesterday.
-    if (!user || !marketClosed || todayNews.length === 0) return;
+    if (!user || todayNews.length === 0) return;
     const top = [...todayNews].sort((a, b) => (a.importance === b.importance ? 0 : a.importance === "High" ? -1 : 1))[0];
     addInboxMessage(user.id, {
       id: `news-digest-${user.id}-day-${gameDay}`,
       from: top.source || "Market Wire",
-      subject: `Day ${gameDay} after hours: ${top.headline}`,
+      subject: `Day ${gameDay} news: ${top.headline}`,
       body: `${top.body}\n\n${todayNews.length > 1 ? `${todayNews.length - 1} more stor${todayNews.length - 1 === 1 ? "y" : "ies"} may affect the next session — check the News page.` : ""}`,
       category: "system",
     });
-  }, [todayNews, gameDay, marketClosed, user]);
+  }, [todayNews, gameDay, user]);
 
   // A dialog opened on one day must not trade on the next.
   useEffect(() => {
@@ -288,7 +286,7 @@ export default function Game() {
     : closing
       ? "Closing market…"
       : marketPhase === "market_open"
-      ? "Close Market & Reveal News"
+      ? "Close Market"
       : "Advance to Next Day";
   // No new run while nothing is loaded: after a failed load the page shows a
   // placeholder Day 1 account, and a new run would pause the real one.
@@ -529,7 +527,7 @@ export default function Game() {
               </Typography>
               <Stack direction="row" gap={1} flexWrap="wrap">
                 <Button data-tour="next-day" onClick={handleNextDay} variant="contained" disabled={isGameComplete || advancing || closing}
-                  title={isGameComplete ? undefined : marketClosed ? "Advance to next day (→)" : "Close the market and reveal news (→)"}
+                  title={isGameComplete ? undefined : marketClosed ? "Advance to next day (→)" : "Close the market (→)"}
                   sx={{ minHeight: 44, bgcolor: D.brand, fontWeight: 800, textTransform: "none", borderRadius: 1.5, boxShadow: "none", "&:hover": { bgcolor: D.brandMid, boxShadow: "none" }, "&.Mui-disabled": { bgcolor: D.overlay, color: D.t3 } }}>
                   {isGameComplete ? "Run Complete" : advanceLabel}
                 </Button>
@@ -671,7 +669,7 @@ export default function Game() {
           gridTemplateAreas: { xs: '"news" "stocks" "portfolio"', md: '"stocks news" "stocks portfolio"' },
           gridTemplateRows: { md: "auto 1fr" },
         }}>
-          <Box component="section" aria-label="After-hours news" sx={{ ...CARD, gridArea: "news" }}>
+          <Box component="section" aria-label="Today's news" sx={{ ...CARD, gridArea: "news" }}>
             {todayNews.length > 0 ? (
               <Box component="details" open={!newsCollapsed} data-tour="today-news"
                 onToggle={(e: React.SyntheticEvent<HTMLDetailsElement>) => {
@@ -686,11 +684,11 @@ export default function Game() {
                 <Box component="summary">
                   <Stack component="span" direction="row" alignItems="center" spacing={1}>
                     <NewspaperIcon sx={{ fontSize: 18, color: D.brandText }} />
-                    <Typography component="span" sx={{ flex: 1, color: D.t1, fontSize: 16, fontWeight: 800 }}>After-hours news</Typography>
+                    <Typography component="span" sx={{ flex: 1, color: D.t1, fontSize: 16, fontWeight: 800 }}>Today's news</Typography>
                     <ExpandMoreIcon className="news-chevron" sx={{ fontSize: 20, color: D.t3 }} />
                   </Stack>
                   <Typography component="span" sx={{ display: "block", color: D.t3, fontSize: 12, mt: 0.5 }}>
-                    Day {marketClosed ? gameDay : gameDay - 1} · {todayNews.length} {todayNews.length === 1 ? "story" : "stories"}
+                    Day {gameDay} · {todayNews.length} {todayNews.length === 1 ? "story" : "stories"}
                   </Typography>
                   {newsCollapsed && <Typography component="span" noWrap sx={{ display: "block", color: D.t2, fontSize: 14, mt: 0.5 }}>{todayNews[0].headline}</Typography>}
                 </Box>
@@ -718,8 +716,8 @@ export default function Game() {
               </Box>
             ) : (
               <Box sx={{ p: 2 }}>
-                <Typography component="h2" sx={{ color: D.t1, fontSize: 16, fontWeight: 800 }}>After-hours news</Typography>
-                <Typography sx={{ mt: 0.5, color: D.t3, fontSize: 14 }}>News appears after the market closes.</Typography>
+                <Typography component="h2" sx={{ color: D.t1, fontSize: 16, fontWeight: 800 }}>Today's news</Typography>
+                <Typography sx={{ mt: 0.5, color: D.t3, fontSize: 14 }}>No major news today. Prices still move from drift and volatility.</Typography>
               </Box>
             )}
           </Box>
@@ -878,7 +876,7 @@ export default function Game() {
             </Box>
           </Stack>
         </Box>
-        <Typography sx={{ color: D.t2, fontSize: 12, mt: 2.5, maxWidth: "75ch" }}>Fictional companies and synthetic prices. The after-hours news window pauses price reactions for learning; real markets may react immediately. Game risk scores and analyst ratings are illustrative.</Typography>
+        <Typography sx={{ color: D.t2, fontSize: 12, mt: 2.5, maxWidth: "75ch" }}>Fictional companies and synthetic prices. Read today's news before trading. Prices react when you advance to the next day; real markets may react immediately. Game risk scores and analyst ratings are illustrative.</Typography>
       </Container>
     </Box>
   );

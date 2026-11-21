@@ -56,6 +56,23 @@ insert into checks select 'advisor stored once, charged once',
   (select g.advisor_ids = '{riley}' from public.game_sessions g join run r on r.id = g.id)
   and (select count(*) = 1 from public.account_flows f join run r on r.id = f.session_id where f.kind = 'advisor');
 
+-- Today's news is visible while trading; tomorrow's news and prices stay hidden.
+insert into public.session_market_news (session_id, game_day, items)
+select r.id, d, jsonb_build_array(jsonb_build_object('newsId', 'day-' || d, 'gameDay', d))
+from run r, generate_series(1, 3) d;
+update public.session_stock_prices p set close_price = 110, high_price = 110
+from run r where p.session_id = r.id and p.game_day = 2;
+set role authenticated;
+insert into checks select 'day 1 news visible before trading', count(*) = 1 and min(game_day) = 1
+from public.session_market_news where session_id = (select id from run);
+insert into checks select 'future prices hidden while open', max(game_day) = 1
+from public.session_stock_prices where session_id = (select id from run);
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
+insert into checks select 'another player cannot read this run news', count(*) = 0
+from public.session_market_news where session_id = (select id from run);
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+reset role;
+
 -- advance needs a closed market
 do $$ begin
   perform public.server_advance_game_day('00000000-0000-0000-0000-00000000000a', (select id from run), 2);
@@ -68,6 +85,14 @@ do $$ begin
   perform public.execute_trade_checked((select id from run), (select symbol from sym), 'buy', 1, 1, gen_random_uuid());
   insert into checks values ('trade refused after hours', false);
 exception when others then insert into checks values ('trade refused after hours', sqlerrm like 'The market is closed%'); end $$;
+do $$ begin
+  perform public.execute_trade_checked((select id from run), (select symbol from sym), 'sell', 1, 1, gen_random_uuid());
+  insert into checks values ('sell refused after hours', false);
+exception when others then insert into checks values ('sell refused after hours', sqlerrm like 'The market is closed%'); end $$;
+insert into checks select 'close preserves today news without revealing tomorrow', count(*) = 1 and min(game_day) = 1
+from public.session_market_news where session_id = (select id from run);
+insert into checks select 'close preserves today prices', min(close_price) = 100 and max(game_day) = 1
+from public.session_stock_prices where session_id = (select id from run);
 -- learning goal needs a note
 do $$ begin
   insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_id)
@@ -88,6 +113,18 @@ insert into checks select 'save keeps advisors', (select advisor_ids = '{riley}'
 -- advance: market reopens, bill flow at day 7
 select public.server_advance_game_day('00000000-0000-0000-0000-00000000000a', (select id from run), 2);
 insert into checks select 'advance reopens market', (select g.market_phase = 'market_open' and g.current_day = 2 from public.game_sessions g join run r on r.id = g.id);
+insert into checks select 'advance revalues held shares at new prices', g.net_worth = g.cash_balance + 11 * 110
+from public.game_sessions g join run r on r.id = g.id;
+set role authenticated;
+insert into checks select 'advance publishes next day articles and retains history', count(*) = 2 and max(game_day) = 2
+from public.session_market_news where session_id = (select id from run);
+insert into checks select 'advance reveals new prices without future prices', max(game_day) = 2 and max(close_price) = 110
+from public.session_stock_prices where session_id = (select id from run);
+insert into checks select 'buy works after reopening',
+  (public.execute_trade_checked((select id from run), (select symbol from sym), 'buy', 2, 1, gen_random_uuid())->>'quantity')::numeric = 12;
+insert into checks select 'sell works after reopening',
+  (public.execute_trade_checked((select id from run), (select symbol from sym), 'sell', 2, 1, gen_random_uuid())->>'quantity')::numeric = 11;
+reset role;
 update public.game_sessions g set market_fingerprint = 'other' from run r where g.id = r.id;
 update public.game_sessions g set market_phase = 'after_hours' from run r where g.id = r.id;
 do $$ begin
@@ -172,6 +209,48 @@ insert into checks select 'ranked endless advance preserves pending cash rewards
 from public.profiles where id = '00000000-0000-0000-0000-00000000000a';
 set role authenticated;
 insert into checks select 'ranked endless reward still pays', (public.process_level_cash_rewards((select id from run))->>'cash_reward')::numeric > 0;
+reset role;
+
+-- Repeat the permission and news sequence in the 30-Day Challenge.
+set role authenticated;
+create temp table challenge as select * from public.start_new_game_with_mode('limited_30');
+grant select on challenge to authenticated;
+reset role;
+insert into public.session_stock_prices (session_id, game_day, symbol, open_price, high_price, low_price, close_price, volume)
+select c.id, d, s.symbol, 100, 110, 100, case when d = 1 then 100 else 110 end, 1000
+from challenge c, generate_series(1, 2) d, sym s;
+insert into public.session_market_news (session_id, game_day, items)
+select c.id, d, jsonb_build_array(jsonb_build_object('newsId', 'challenge-' || d, 'gameDay', d))
+from challenge c, generate_series(1, 2) d;
+update public.game_sessions g set market_generated_through = 2,
+  market_fingerprint = public.market_fingerprint_for(g.game_mode, g.game_seed, g.market_engine)
+from challenge c where g.id = c.id;
+set role authenticated;
+insert into checks select 'challenge: news before first trade, future news hidden', count(*) = 1 and min(game_day) = 1
+from public.session_market_news where session_id = (select id from challenge);
+insert into checks select 'challenge: buy while open',
+  (public.execute_trade_checked((select id from challenge), (select symbol from sym), 'buy', 1, 1, gen_random_uuid())->>'quantity')::numeric = 1;
+select public.close_market((select id from challenge), 1);
+do $$ declare side text; begin
+  foreach side in array array['buy', 'sell'] loop
+    begin
+      perform public.execute_trade_checked((select id from challenge), (select symbol from sym), side, 1, 1, gen_random_uuid());
+      insert into checks values ('challenge: closed market refuses ' || side, false);
+    exception when others then
+      insert into checks values ('challenge: closed market refuses ' || side, sqlerrm like 'The market is closed%');
+    end;
+  end loop;
+end $$;
+reset role;
+select public.server_advance_game_day('00000000-0000-0000-0000-00000000000a', (select id from challenge), 2);
+insert into checks select 'challenge: advance reopens and revalues portfolio',
+  g.market_phase = 'market_open' and g.current_day = 2 and g.net_worth = g.cash_balance + 110
+from public.game_sessions g join challenge c on c.id = g.id;
+set role authenticated;
+insert into checks select 'challenge: next day news before trading resumes', count(*) = 2 and max(game_day) = 2
+from public.session_market_news where session_id = (select id from challenge);
+insert into checks select 'challenge: sell after reopening',
+  (public.execute_trade_checked((select id from challenge), (select symbol from sym), 'sell', 2, 1, gen_random_uuid())->>'quantity')::numeric = 0;
 reset role;
 
 select name, ok from checks;

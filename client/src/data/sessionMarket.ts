@@ -128,7 +128,7 @@ export function generateSessionPrices(params: {
   return rows;
 }
 
-/** Every story published after the close on `day` (full detail -- server only). */
+/** Every story published before trading on `day` (full detail -- server only). */
 export function generateSessionNews(params: {
   mode: SessionGameMode;
   seed: string;
