@@ -148,7 +148,7 @@ export default function Achievements() {
                         sx={{
                         p: 2.5, borderRadius: 2, height: "100%",
                         bgcolor: a.unlocked ? D.surface : D.elevated,
-                        border: `1px solid ${a.unlocked ? D.t3 : D.border}`,
+                        border: `1px solid ${D.border}`,
                       }}>
                         <Stack direction="row" spacing={1.5} alignItems="flex-start">
                           <Box sx={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
@@ -174,7 +174,7 @@ export default function Achievements() {
                                 sx={{
                                   bgcolor: a.unlocked ? D.surface : D.overlay,
                                   color:   a.unlocked ? D.greenText : D.t3,
-                                  border: `1px solid ${a.unlocked ? D.t3 : D.border}`,
+                                  border: `1px solid ${D.border}`,
                                   fontWeight: 800, fontSize: 12,
                                 }} />
                             </Stack>
