@@ -147,7 +147,7 @@ export default function Achievements() {
                       <Box
                         sx={{
                         p: 2.5, borderRadius: 2, height: "100%",
-                        bgcolor: a.unlocked ? D.surface : D.elevated,
+                        bgcolor: D.surface,
                         border: `1px solid ${D.border}`,
                       }}>
                         <Stack direction="row" spacing={1.5} alignItems="flex-start">
@@ -211,7 +211,7 @@ export default function Achievements() {
             <Stack spacing={2.5} sx={{ position: { md: "sticky" }, top: { md: 89 } }}>
               {/* Next unlock */}
               {nextGoal && (
-                <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 3 }}>
+                <Box sx={{ ...CARD, p: 3 }}>
                   <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1, mb: 0.5 }}>Next Unlock</Typography>
                   <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>You are closest to unlocking {nextGoal.title}.</Typography>
                   <Box sx={{ p: 2, borderRadius: 2, bgcolor: D.surface, border: `1px solid ${D.border}`, mb: 2 }}>
