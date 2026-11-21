@@ -35,13 +35,13 @@ function recapText(value: DayRecap, rival = { name: "Ava Quant", playerAhead: tr
 }
 
 const goal = (id: string, done: boolean, extra: Partial<DailyGoal> = {}): DailyGoal => ({
-  id, title: `${id} title`, description: `${id} description`, current: 0, target: 1, progress: 0, done, ...extra,
+  id, title: `${id} title`, description: `${id} description`, href: "/game", actionLabel: "Open market", current: 0, target: 1, progress: 0, done, ...extra,
 });
 
 function goalCard(goals: DailyGoal[]) {
   const container = document.createElement("div");
   container.innerHTML = renderToStaticMarkup(
-    <TodayGoalCard day={7} goals={goals} completedCount={goals.filter((g) => g.done).length} error={null} onRetry={() => {}} />
+    <TodayGoalCard refreshAt="2026-11-22T05:00:00.000Z" goals={goals} completedCount={goals.filter((g) => g.done).length} error={null} onRetry={() => {}} />
   );
   return container;
 }
@@ -71,20 +71,23 @@ test("a cash-only day points at the market's biggest move instead", () => {
 });
 
 test("today's goal card shows the next unfinished goal and how to do it", () => {
-  const page = goalCard([goal("learn_risk", true, { kind: "risk" }), goal("learn_plan", false, { kind: "plan" }), goal("watch2", false, { target: 2, current: 1 })]);
+  const page = goalCard([goal("cash20", true), goal("buy1", false), goal("watch2", false, { target: 2, current: 1 })]);
   expect(page.textContent).toContain("1/3 done");
-  expect(page.querySelector("details > summary")?.textContent).toContain("learn_plan title");
+  expect(page.querySelector("details > summary")?.textContent).toContain("buy1 title");
   expect(page.querySelector("details")?.open).toBe(false);
-  expect(page.textContent).toContain("Record my answer");
-  expect(page.querySelector('[data-testid="decision-note"]')).not.toBeNull();
+  expect(page.textContent).toContain("Tracked automatically");
+  expect(page.textContent).toContain("Refreshes in");
+  expect(page.textContent).toContain("Midnight Toronto time");
+  expect(page.querySelector("textarea")).toBeNull();
+  expect(page.querySelector('[data-testid="decision-note"]')).toBeNull();
   expect(page.querySelector('a[href="/game/goals"]')).not.toBeNull();
 });
 
 test("the watchlist goal says where to act, and a finished day says so", () => {
   expect(goalCard([goal("watch2", false, { target: 2, current: 1 })]).textContent)
-    .toContain("Use the star on a stock row to watch it · 1/2");
-  const done = goalCard([goal("learn_risk", true), goal("watch2", true)]).textContent;
+    .toContain("Progress: 1/2 · Tracked automatically");
+  const done = goalCard([goal("cash20", true), goal("watch2", true)]).textContent;
   expect(done).toContain("2/2 done");
-  expect(done).toContain("All of Day 7's goals are done.");
+  expect(done).toContain("Today's goals are done.");
   expect(goalCard([]).textContent).toBe("");
 });

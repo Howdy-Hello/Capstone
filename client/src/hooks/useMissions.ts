@@ -4,6 +4,7 @@ import { useLearningProgress } from "./useLearningProgress";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { supabase } from "../lib/supabase";
+import { DAILY_GOALS_CHANGED } from "../lib/dailyGoals";
 import { pushNotification } from "../lib/notifications";
 import { addInboxMessage } from "../lib/inbox";
 
@@ -88,7 +89,12 @@ export function useMissions() {
     setLoaded(true);
   }, [user]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    const onGoalsChanged = () => { void refresh(); };
+    void refresh();
+    window.addEventListener(DAILY_GOALS_CHANGED, onGoalsChanged);
+    return () => window.removeEventListener(DAILY_GOALS_CHANGED, onGoalsChanged);
+  }, [refresh]);
 
   // Trade/alert counts live in Supabase, not GameContext, so nothing
   // triggers a re-fetch after a trade or alert unless we watch for it.

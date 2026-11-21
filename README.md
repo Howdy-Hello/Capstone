@@ -102,6 +102,12 @@ migrations before deploying this client. It makes today's news readable during
 trading while keeping future news and prices hidden. Pushing code alone does not
 apply Supabase migrations.
 
+Daily goals are automatic actions with no written responses. Three goals rotate
+at midnight in `America/Toronto`, independently of game-day advancement. The
+market card and Goals page show a countdown, including daylight-saving changes.
+Apply `supabase/migrations/202611210002_action_daily_goals.sql` with this client;
+it preserves legacy completion history and saves new progress by calendar date.
+
 ### Start the server
 ```bash
 cd server

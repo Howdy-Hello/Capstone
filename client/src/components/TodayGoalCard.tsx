@@ -2,13 +2,13 @@ import React from "react";
 import { Alert, Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { Link as RouterLink } from "react-router-dom";
-import DecisionNote from "./learning/DecisionNote";
+import DailyGoalRefresh from "./DailyGoalRefresh";
 import type { DailyGoal } from "../hooks/useDailyGoals";
 import { D, CARD } from "../theme/design";
 
-/** The day's next learning goal, on the Game page so each day has a target. */
-export default function TodayGoalCard({ day, goals, completedCount, error, onRetry }: {
-  day: number;
+/** The next daily action, available directly from the market. */
+export default function TodayGoalCard({ goals, completedCount, error, onRetry, refreshAt }: {
+  refreshAt: string;
   goals: DailyGoal[];
   completedCount: number;
   error: string | null;
@@ -28,6 +28,7 @@ export default function TodayGoalCard({ day, goals, completedCount, error, onRet
         <Typography component="span" sx={{ ml: 1, fontSize: 14, color: allDone ? D.greenText : D.t3 }}>
           {completedCount}/{goals.length} done
         </Typography>
+        <DailyGoalRefresh refreshAt={refreshAt} />
         {next && <Typography component="span" sx={{ display: "block", mt: 0.5, fontSize: 14, color: D.t2 }}>{next.title}</Typography>}
       </Box>
       <Box sx={{ px: 2, pb: 2 }}>
@@ -37,24 +38,13 @@ export default function TodayGoalCard({ day, goals, completedCount, error, onRet
         {next ? (
           <>
             <Typography sx={{ fontSize: 14, color: D.t2, lineHeight: 1.6, mb: 1 }}>{next.description}</Typography>
-            {next.kind ? (
-              // Keyed by goal so the form closes when the next goal takes over.
-              <Box component="details" key={next.id} sx={{ color: D.t1,
-                "& > summary": { cursor: "pointer", color: D.brandText, fontWeight: 800, fontSize: 14 },
-                "& > summary:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: 2 } }}>
-                <Box component="summary">Record my answer</Box>
-                <Box sx={{ mt: 2 }}><DecisionNote kind={next.kind} /></Box>
-              </Box>
-            ) : next.id === "watch2" ? (
-              <Typography sx={{ fontSize: 14, fontWeight: 700, color: D.brandText }}>
-                Use the star on a stock row to watch it · {Math.min(next.current, next.target)}/{next.target}
-              </Typography>
-            ) : null}
+            <Button component={RouterLink} to={next.href} size="small" sx={{ color: D.brandText, textTransform: "none" }}>{next.actionLabel}</Button>
+            <Typography sx={{ fontSize: 12, color: D.t3 }}>Progress: {Math.min(next.current, next.target)}/{next.target} · Tracked automatically</Typography>
           </>
         ) : (
           <Stack direction="row" spacing={1} alignItems="center">
             <CheckCircleIcon sx={{ fontSize: 18, color: D.greenText }} />
-            <Typography sx={{ fontSize: 14, color: D.t2 }}>All of Day {day}'s goals are done. New ones arrive when you advance.</Typography>
+            <Typography sx={{ fontSize: 14, color: D.t2 }}>Today's goals are done. New goals arrive at midnight Toronto time.</Typography>
           </Stack>
         )}
 

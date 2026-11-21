@@ -863,7 +863,7 @@ export default function Game() {
 
             {showGoals && (
               <Box id="today-goal" tabIndex={-1} sx={{ scrollMarginTop: 80 }}>
-                <TodayGoalCard day={gameDay} goals={daily.goals} completedCount={daily.completedCount}
+                <TodayGoalCard refreshAt={daily.refreshAt} goals={daily.goals} completedCount={daily.completedCount}
                   error={daily.persistenceError} onRetry={daily.retryPersistence} />
               </Box>
             )}

@@ -93,17 +93,15 @@ insert into checks select 'close preserves today news without revealing tomorrow
 from public.session_market_news where session_id = (select id from run);
 insert into checks select 'close preserves today prices', min(close_price) = 100 and max(game_day) = 1
 from public.session_stock_prices where session_id = (select id from run);
--- learning goal needs a note
+-- Daily goals use automatic evidence rather than written notes.
 do $$ begin
   insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_id)
-  values (auth.uid(), (select id from run), 1, 'learn_risk');
-  insert into checks values ('learn goal without note refused', false);
-exception when others then insert into checks values ('learn goal without note refused', true); end $$;
-insert into public.learning_entries (user_id, session_id, game_day, kind, decision, evidence)
-values (auth.uid(), (select id from run), 1, 'risk', 'avoid', 'Debt is high and the sector is cyclical for my cash needs.');
+  values (auth.uid(), (select id from run), 1, 'hold2');
+  insert into checks values ('holding goal without two companies refused', false);
+exception when others then insert into checks values ('holding goal without two companies refused', true); end $$;
 insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_id)
-values (auth.uid(), (select id from run), 1, 'learn_risk');
-insert into checks values ('learn goal with note accepted', true);
+values (auth.uid(), (select id from run), 1, 'cash20');
+insert into checks values ('cash goal without a written response accepted', true);
 -- save
 create temp table slot as select * from public.create_save_slot((select id from run), 'Test save');
 grant select on slot to authenticated;
@@ -251,6 +249,81 @@ insert into checks select 'challenge: next day news before trading resumes', cou
 from public.session_market_news where session_id = (select id from challenge);
 insert into checks select 'challenge: sell after reopening',
   (public.execute_trade_checked((select id from challenge), (select symbol from sym), 'sell', 2, 1, gen_random_uuid())->>'quantity')::numeric = 0;
+reset role;
+
+-- Calendar-day goals: verified actions, date boundaries, and completion uniqueness.
+set role authenticated;
+insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_id)
+values (auth.uid(), (select id from challenge), 2, 'buy1'), (auth.uid(), (select id from challenge), 2, 'sell1');
+insert into checks select 'daily goals accept verified buy and sell without notes', count(*) = 2
+from public.user_daily_goal_completions where session_id = (select id from challenge) and goal_id in ('buy1', 'sell1');
+do $$ declare bad_date date; begin
+  foreach bad_date in array array[(now() at time zone 'America/Toronto')::date - 1, (now() at time zone 'America/Toronto')::date + 1] loop
+    begin
+      insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_date, goal_id)
+      values (auth.uid(), (select id from challenge), 2, bad_date, 'cash20');
+      insert into checks values ('goal rejects non-current calendar date ' || bad_date, false);
+    exception when insufficient_privilege then
+      insert into checks values ('goal rejects non-current calendar date ' || bad_date, true);
+    end;
+  end loop;
+end $$;
+do $$ begin
+  insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_id)
+  values (auth.uid(), (select id from challenge), 2, 'learn_risk');
+  insert into checks values ('writing goals are no longer accepted', false);
+exception when insufficient_privilege then insert into checks values ('writing goals are no longer accepted', true); end $$;
+reset role;
+-- Watchlist and diversification goals also use saved actions as evidence.
+insert into public.session_stock_prices (session_id, game_day, symbol, open_price, high_price, low_price, close_price, volume)
+select c.id, 2, s.symbol, 100, 100, 100, 100, 1000
+from challenge c, (select symbol from public.stocks where is_active order by symbol limit 2) s
+on conflict (session_id, game_day, symbol) do nothing;
+set role authenticated;
+insert into public.user_watchlist (user_id, stock_id)
+select auth.uid(), id from public.stocks where is_active order by symbol limit 2;
+insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_id)
+values (auth.uid(), (select id from challenge), 2, 'watch2');
+insert into checks select 'watchlist goal completes automatically with two watched stocks', count(*) = 1
+from public.user_daily_goal_completions where session_id = (select id from challenge) and goal_id = 'watch2';
+select public.execute_trade_checked((select id from challenge), symbol, 'buy', 2, 1, gen_random_uuid())
+from public.stocks where is_active order by symbol limit 2;
+insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_id)
+values (auth.uid(), (select id from challenge), 2, 'hold2');
+insert into checks select 'holding goal completes automatically with two companies', count(*) = 1
+from public.user_daily_goal_completions where session_id = (select id from challenge) and goal_id = 'hold2';
+reset role;
+-- A previous calendar day's completion must not block a new one on the same game day.
+insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_date, goal_id)
+select user_id, id, 2, (now() at time zone 'America/Toronto')::date - 1, 'cash20' from challenge;
+set role authenticated;
+insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_id)
+values (auth.uid(), (select id from challenge), 2, 'cash20');
+insert into checks select 'new calendar day can complete a goal without advancing game day', count(*) = 2
+from public.user_daily_goal_completions where session_id = (select id from challenge) and goal_id = 'cash20';
+reset role;
+update public.game_sessions g set current_day = 3 from challenge c where g.id = c.id;
+set role authenticated;
+insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_id)
+values (auth.uid(), (select id from challenge), 3, 'buy1')
+on conflict (user_id, session_id, goal_date, goal_id) do nothing;
+insert into checks select 'advancing game day cannot duplicate same calendar day completion', count(*) = 1
+from public.user_daily_goal_completions where session_id = (select id from challenge) and goal_id = 'buy1';
+reset role;
+update public.trades t set executed_at = now() - interval '2 days' from challenge c where t.session_id = c.id;
+set role authenticated;
+delete from public.user_daily_goal_completions where session_id = (select id from challenge) and goal_id = 'buy1';
+do $$ begin
+  insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_id)
+  values (auth.uid(), (select id from challenge), 3, 'buy1');
+  insert into checks values ('yesterday trades cannot complete today goals', false);
+exception when insufficient_privilege then insert into checks values ('yesterday trades cannot complete today goals', true); end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
+do $$ begin
+  insert into public.user_daily_goal_completions (user_id, session_id, game_day, goal_id)
+  values (auth.uid(), (select id from challenge), 3, 'cash20');
+  insert into checks values ('cannot complete goals in another player run', false);
+exception when insufficient_privilege then insert into checks values ('cannot complete goals in another player run', true); end $$;
 reset role;
 
 select name, ok from checks;
