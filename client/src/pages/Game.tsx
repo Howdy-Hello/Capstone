@@ -1,5 +1,4 @@
 import DecisionNote from "../components/learning/DecisionNote";
-import RunProgressBar from "../components/RunProgressBar";
 import MarketHistoryChart from "../components/MarketHistoryChart";
 import WatchlistWidget from "../components/WatchlistWidget";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -548,7 +547,7 @@ export default function Game() {
             </Box>
             <Box sx={{ pl: { md: 3 }, borderLeft: { md: `1px solid ${D.border}` } }}>
               <Box sx={{
-                display: "grid", alignItems: "center", gap: { xs: 1.5, sm: 2 }, mb: 1.5,
+                display: "grid", alignItems: "center", gap: { xs: 1.5, sm: 2 },
                 gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
               }}>
                 <Box>
@@ -561,7 +560,6 @@ export default function Game() {
                 </Box>
                 <MarketHistoryChart history={marketHistory} />
               </Box>
-              <RunProgressBar day={gameDay} maxDay={maxGameDay} height={5} color={isGameComplete ? D.green : D.brand} />
             </Box>
           </Box>
         </Container>
