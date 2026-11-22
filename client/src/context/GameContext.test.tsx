@@ -82,8 +82,7 @@ test.each(['limited_30', 'infinite'] as const)('%s starts on Day 1 with stable m
     expect(args.target_game_mode).toBe(mode);
     mockSession = { ...mockSession, id: `new-${mode}`, current_day: 1, game_mode: mode };
     const prelude = buildMarketPrelude([{ symbol: 'GVE', startingPrice: 100, volatility: 0.03, riskLevel: 'Medium' }], 'ABC123');
-    const close = prelude.prices.find((row) => row.game_day === 0)!.close_price;
-    mockPrices = [...prelude.prices, { ...mockPrices[0], open_price: close, close_price: close, high_price: close, low_price: close }];
+    mockPrices = [...prelude.prices, ...prelude.firstDayPrices];
     mockNews.push(...prelude.news.map((item) => ({ game_day: item.gameDay, items: [item] })));
     return { data: mockSession, error: null };
   });
@@ -101,6 +100,7 @@ test.each(['limited_30', 'infinite'] as const)('%s starts on Day 1 with stable m
   expect(history).toHaveLength(16);
   expect(history[0].gameDay).toBe(-14);
   expect(history[14].closePrice).toBe(history[15].openPrice);
+  expect(history[15].closePrice).not.toBe(history[15].openPrice);
   expect(game.news.map((story) => story.gameDay)).toEqual([1]);
   expect(game.newsHistory.filter((story) => story.gameDay < 1)).toHaveLength(3);
   expect(mockFrom.mock.calls.filter(([table]) => table === 'session_stock_prices')).toHaveLength(1);

@@ -15,9 +15,10 @@ export function formatMarketDay(day: number, startDate = DEFAULT_MARKET_START_DA
   return calendarDate.format(date);
 }
 
-/** Background history only; never runs the trading, billing or story engines. */
-export function buildMarketPrelude(stocks: readonly Pick<StockCompany, "symbol" | "startingPrice" | "volatility" | "riskLevel">[], seed: string) {
+/** Simulates market history and the opening session without player progression or story arcs. */
+export function buildMarketPrelude(stocks: readonly Pick<StockCompany, "symbol" | "startingPrice" | "volatility" | "riskLevel">[], seed: string, engine = 4) {
   const prices: SessionPriceRow[] = [];
+  const firstDayPrices: SessionPriceRow[] = [];
   const news: MarketNews[] = [];
   const cents = (value: number) => Math.max(0.01, Number(value.toFixed(2)));
 
@@ -27,20 +28,29 @@ export function buildMarketPrelude(stocks: readonly Pick<StockCompany, "symbol" 
     const baseVolume = stock.riskLevel === "High" ? 1_200_000 : stock.riskLevel === "Medium" ? 850_000 : 600_000;
     let open = stock.startingPrice;
 
-    for (let day = FIRST_MARKET_DAY; day <= 0; day += 1) {
+    for (let day = FIRST_MARKET_DAY; day <= (engine >= 4 ? 1 : 0); day += 1) {
       const key = `prelude-${symbol}-${day}`;
-      const move = seededRange(`prelude-market-${day}`, -0.006, 0.006, seed)
-        + seededRange(`${key}-move`, -volatility, volatility, seed);
+      const activity = engine >= 4 ? seededRange(`prelude-activity-${day}`, 0.3, 1.7, seed) : 1;
+      const marketRange = engine >= 4 ? 0.014 : 0.006;
+      const move = seededRange(`prelude-market-${day}`, -marketRange, marketRange, seed) * activity
+        + seededRange(`${key}-move`, -volatility, volatility, seed) * activity;
       const close = cents(open * (1 + move));
+      // Engine 3 keeps its original series so ongoing runs never change price levels.
       const wick = seededRange(`${key}-wick`, 0.002, volatility / 2, seed);
-      prices.push({
+      const upperWick = engine >= 4
+        ? seededRange(`${key}-upper`, 0, volatility / 2, seed) * activity * seededRange(`prelude-upper-${day}`, 0.1, 1.6, seed)
+        : wick;
+      const lowerWick = engine >= 4
+        ? seededRange(`${key}-lower`, 0, volatility / 2, seed) * activity * seededRange(`prelude-lower-${day}`, 0.1, 1.6, seed)
+        : wick;
+      (day === 1 ? firstDayPrices : prices).push({
         game_day: day,
         symbol,
         open_price: open,
-        high_price: cents(Math.max(open, close) * (1 + wick)),
-        low_price: cents(Math.min(open, close) * (1 - wick)),
+        high_price: cents(Math.max(open, close) * (1 + upperWick)),
+        low_price: cents(Math.min(open, close) * (1 - lowerWick)),
         close_price: close,
-        volume: Math.round(baseVolume * seededRange(`${key}-volume`, 0.6, 1.4, seed)),
+        volume: Math.round(baseVolume * seededRange(`${key}-volume`, 0.6, 1.4, seed) * activity),
         event_impact: 0,
       });
       open = close;
@@ -74,5 +84,5 @@ export function buildMarketPrelude(stocks: readonly Pick<StockCompany, "symbol" 
     });
   }
 
-  return { prices, news };
+  return { prices, news, firstDayPrices };
 }

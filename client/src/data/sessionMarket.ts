@@ -60,7 +60,7 @@ export function clampRunDay(day: number, mode: SessionGameMode) {
   return Math.max(1, Math.min(mode === "limited_30" ? LIMITED_RUN_DAYS : MAX_RUN_DAY, whole));
 }
 
-export function generateSessionPrelude({ mode, seed, script }: { mode: SessionGameMode; seed: string; script: MarketScript }) {
+export function generateSessionPrelude({ mode, seed, script, engine = 3 }: { mode: SessionGameMode; seed: string; script: MarketScript; engine?: number }) {
   const stocks = mode === "limited_30"
     ? mockStockCompanies.filter((stock) => stock.isActive)
     : script.stocks.filter((stock) => stock.is_active).map((stock) => ({
@@ -69,7 +69,7 @@ export function generateSessionPrelude({ mode, seed, script }: { mode: SessionGa
       volatility: asNumber(stock.volatility),
       riskLevel: stock.risk_level,
     }));
-  return buildMarketPrelude(stocks, seed);
+  return buildMarketPrelude(stocks, seed, engine);
 }
 
 function toRow(point: StockPriceHistory): SessionPriceRow {
@@ -104,8 +104,10 @@ export function generateSessionPrices(params: {
   const { mode, seed, fromDay, toDay, script, previousCloses = {}, engine = 2 } = params;
   if (toDay < fromDay) return [];
   const rows: SessionPriceRow[] = [];
-  const openingPrices = new Map(engine >= 3
-    ? generateSessionPrelude(params).prices.filter((row) => row.game_day === 0).map((row) => [row.symbol, row.close_price])
+  const prelude = engine >= 3 ? generateSessionPrelude(params) : null;
+  const firstDayPrices = new Map(prelude?.firstDayPrices.map((row) => [row.symbol, row]));
+  const openingPrices = new Map(prelude
+    ? (engine >= 4 ? prelude.firstDayPrices : prelude.prices.filter((row) => row.game_day === 0)).map((row) => [row.symbol, row.close_price])
     : []);
 
   if (mode === "limited_30") {
@@ -113,6 +115,11 @@ export function generateSessionPrices(params: {
       const scale = (openingPrices.get(company.symbol) ?? company.startingPrice) / company.startingPrice;
       for (const point of getStockHistoryBySymbol(company.symbol, toDay, seed)) {
         if (point.gameDay < fromDay) continue;
+        const opening = firstDayPrices.get(company.symbol);
+        if (point.gameDay === 1 && opening) {
+          rows.push(opening);
+          continue;
+        }
         const row = toRow(point);
         if (engine >= 3) {
           // Scale the whole run so tutorial prices cannot snap back to listing prices.
@@ -131,6 +138,8 @@ export function generateSessionPrices(params: {
     const stock = engine >= 3 ? { ...source, initial_price: openingPrices.get(source.symbol) ?? source.initial_price } : source;
     const scriptPrices = engine >= 3 ? [] : script.prices;
     const scripted = getScriptedHistory(stock, scriptPrices);
+    const opening = firstDayPrices.get(stock.symbol);
+    if (opening) scripted[0] = historyFromRows([opening])[0];
     const lastScriptedDay = scripted[scripted.length - 1]?.gameDay ?? 0;
     let previousClose: number | undefined = previousCloses[stock.symbol];
 
@@ -233,7 +242,7 @@ export function stockFromCompanyHistory(company: StockCompany, history: StockPri
 
   return {
     ...company,
-    startingPrice: history.find((point) => point.gameDay === 1)?.openPrice ?? company.startingPrice,
+    startingPrice: history.find((point) => point.gameDay === 1)?.closePrice ?? company.startingPrice,
     currentPrice: Number(currentPrice.toFixed(2)),
     previousPrice: Number(previousPrice.toFixed(2)),
     dayChange: Number(dayChange.toFixed(2)),

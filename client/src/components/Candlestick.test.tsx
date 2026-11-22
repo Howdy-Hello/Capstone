@@ -106,7 +106,7 @@ test('Day 1 renders all 15 background candles, including the all-time range', as
   const prelude = buildMarketPrelude([{
     symbol: 'TEST', startingPrice: 10, volatility: 0.03, riskLevel: 'Medium',
   }], 'ABC123');
-  const seededHistory = [...historyFromRows(prelude.prices), history[0]];
+  const seededHistory = historyFromRows([...prelude.prices, ...prelude.firstDayPrices]);
   await act(async () => root.render(<StockCandleChart history={seededHistory} gameDay={1} startDate={START_DATE} />));
   expect(candles()).toHaveLength(16);
   expect(container.textContent).toContain('Jan 1, 2026');

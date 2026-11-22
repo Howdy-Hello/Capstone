@@ -42,9 +42,10 @@ export const SESSION_COLUMNS = '*';
  * from migration 202610060002): only the listing prices come from the script;
  * every later day and all news are generated from the run's own seed.
  * Engine 3: a forward-only market prelude sets the opening price in both modes.
+ * Engine 4: variable daily volatility and a simulated, non-fixed Day 1 candle.
  */
 export function marketEngine(session: Pick<MarketSession, 'market_engine'>) {
-  return Math.max(1, Math.min(3, session.market_engine ?? 1));
+  return Math.max(1, Math.min(4, session.market_engine ?? 1));
 }
 
 /** Days generated per round trip; bounds memory and each upsert's size. */
@@ -242,7 +243,7 @@ export async function ensureMarketThrough(
       for (const row of data ?? []) previousCloses[row.symbol as string] = Number(row.close_price);
     }
 
-    const prelude = fromDay === 1 && engine >= 3 ? generateSessionPrelude({ mode, seed, script }) : { prices: [], news: [] };
+    const prelude = fromDay === 1 && engine >= 3 ? generateSessionPrelude({ mode, seed, script, engine }) : { prices: [], news: [] };
     const priceRows = [...prelude.prices, ...generateSessionPrices({ mode, seed, fromDay, toDay, script, previousCloses, engine })]
       .map((row) => ({ session_id: session.id, ...row }));
     const newsRows = prelude.news.map((item) => ({ session_id: session.id, game_day: item.gameDay, items: [sanitizeNews(item)] }));

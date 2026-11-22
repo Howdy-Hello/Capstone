@@ -27,7 +27,11 @@ await db.exec(`
 `);
 
 const migrations = path.resolve(here, '../../supabase/migrations');
-for (const name of (await fs.readdir(migrations)).filter((n) => n.endsWith('.sql')).sort()) {
+const migrationNames = (await fs.readdir(migrations)).filter((n) => n.endsWith('.sql')).sort();
+if (new Set(migrationNames.map((name) => name.split('_')[0])).size !== migrationNames.length) {
+  throw new Error('Duplicate migration versions: each SQL migration needs its own numeric prefix.');
+}
+for (const name of migrationNames) {
   try {
     await db.exec(await fs.readFile(path.join(migrations, name), 'utf8'));
   } catch (error) {

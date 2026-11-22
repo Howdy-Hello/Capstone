@@ -362,24 +362,41 @@ async function testLegacySeedUpgrade() {
 }
 
 async function testForwardMarketPrelude() {
+  const { createHash } = await import("node:crypto");
   const { generateSessionPrelude, generateSessionPrices, historyFromRows, stockFromCompanyHistory } = await import("../market/sessionMarket");
   const { mapStockFromHistory } = await import("../market/infiniteMarket");
   const { mockStockCompanies } = await import("../market/mockStocks");
   const { scriptlessRun, marketFingerprint } = await import("../lib/marketService");
   const script = scriptlessRun(fakeScript());
-  for (const mode of ["limited_30", "infinite"] as const) {
-    const params = { mode, seed: "ABC123", script, engine: 3 };
+  const legacyHashes = {
+    limited_30: "7789bc932e40554c093ca04168f9c6125080ebd082c5f3ec85f2264683dd0d70",
+    infinite: "7a6a8dfee2901a2eb6ec8334770f5af77de2bc3fb3bf700c16606f2dd13c17e5",
+  };
+  for (const engine of [3, 4]) for (const mode of ["limited_30", "infinite"] as const) {
+    const params = { mode, seed: "ABC123", script, engine };
     const prelude = generateSessionPrelude(params);
     const whole = generateSessionPrices({ ...params, fromDay: 1, toDay: 30 });
     const other = generateSessionPrices({ ...params, seed: "DEF456", fromDay: 1, toDay: 1 });
+    if (engine === 3) assert.equal(createHash("sha256").update(JSON.stringify(whole)).digest("hex"), legacyHashes[mode], "existing engine-3 price paths stay unchanged");
     assert.equal(prelude.news.length, 3);
     assert.ok(prelude.news.every((item) => !item.arcKey && !item.followUpTo));
     assert.notDeepEqual(whole.filter((row) => row.game_day === 1), other, `${mode}: opening depends on the simulation`);
+    if (engine >= 4) {
+      const openings = whole.filter((row) => row.game_day === 1);
+      const marketMove = openings.reduce((sum, row) => sum + row.close_price / row.open_price - 1, 0) / openings.length;
+      assert.ok(Math.abs(marketMove) > 0.0001, "Day 1's market move is simulated instead of fixed at zero");
+    }
     for (const opening of whole.filter((row) => row.game_day === 1)) {
       const prior = prelude.prices.filter((row) => row.symbol === opening.symbol);
       assert.equal(prior.length, 15);
       assert.equal(opening.open_price, prior[14].close_price);
-      assert.equal(opening.close_price, prior[14].close_price);
+      if (engine === 3) assert.equal(opening.close_price, prior[14].close_price);
+      else {
+        assert.deepEqual(opening, prelude.firstDayPrices.find((row) => row.symbol === opening.symbol));
+        assert.ok(opening.high_price >= Math.max(opening.open_price, opening.close_price));
+        assert.ok(opening.low_price <= Math.min(opening.open_price, opening.close_price));
+        assert.ok(opening.volume > 0);
+      }
       assert.notEqual(opening.open_price, prior[0].open_price, `${mode}: no forced return to listing price`);
       const rows = whole.filter((row) => row.symbol === opening.symbol);
       for (let i = 1; i < rows.length; i++) assert.equal(rows[i].open_price, rows[i - 1].close_price);
@@ -387,7 +404,7 @@ async function testForwardMarketPrelude() {
       const stock = mode === "limited_30"
         ? stockFromCompanyHistory(mockStockCompanies.find((item) => item.symbol === opening.symbol)!, history)
         : mapStockFromHistory(script.stocks.find((item) => item.symbol === opening.symbol)!, history);
-      assert.equal(stock.startingPrice, opening.open_price, "rival cost basis starts when the player joins");
+      assert.equal(stock.startingPrice, opening.close_price, "rival cost basis starts when the player joins");
     }
     const first = generateSessionPrices({ ...params, fromDay: 1, toDay: 12 });
     const previousCloses = Object.fromEntries(first.filter((row) => row.game_day === 12).map((row) => [row.symbol, row.close_price]));
@@ -397,21 +414,23 @@ async function testForwardMarketPrelude() {
     if (mode === "limited_30") {
       const legacy = generateSessionPrices({ ...params, engine: 2, fromDay: 1, toDay: 30 });
       for (const row of whole) {
+        if (engine >= 4 && row.game_day === 1) continue;
         const base = legacy.find((item) => item.symbol === row.symbol && item.game_day === row.game_day)!;
         const initial = whole.find((item) => item.symbol === row.symbol && item.game_day === 1)!;
         const company = mockStockCompanies.find((item) => item.symbol === row.symbol)!;
-        assert.ok(Math.abs(row.close_price - base.close_price * initial.open_price / company.startingPrice) < 0.006,
+        assert.ok(Math.abs(row.close_price - base.close_price * initial.close_price / company.startingPrice) < 0.006,
           "even the tutorial days keep the simulated price level");
       }
     }
   }
   assert.equal(marketFingerprint({ game_mode: "infinite", game_seed: "ABC123", market_engine: 3 }), "infinite:ABC123:v3");
+  assert.equal(marketFingerprint({ game_mode: "infinite", game_seed: "ABC123", market_engine: 4 }), "infinite:ABC123:v4");
 }
 
 async function testPreludeUsesExistingMarketBatches() {
   const { ensureMarketThrough } = await import("../lib/marketService");
   const session: any = { id: "new-run", user_id: "user-a", current_day: 1, game_mode: "limited_30", game_seed: "ABC123",
-    market_engine: 3, market_seed_secret: true, market_generated_through: 0, market_fingerprint: null, cash_balance: 2000, unpaid_bills: 0 };
+    market_engine: 4, market_seed_secret: true, market_generated_through: 0, market_fingerprint: null, cash_balance: 2000, unpaid_bills: 0 };
   const writes: { table: string; rows: any[] }[] = [];
   const admin: any = { from: (table: string) => {
     const query: any = {

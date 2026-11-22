@@ -5,6 +5,25 @@ Three pieces: **Supabase** (database/auth), the **client** (React), and the
 stores each run's market and is the only thing that can advance a run's day,
 so the game can't be played without it.
 
+### Forward-simulated market opening (2026-11-21)
+
+For the varied-candle update, deploy the API with engine 4 support before applying
+`supabase/migrations/202611210004_varied_market_opening.sql`, then deploy the
+client. Engine 4 also simulates Day 1's movement and uses variable daily activity
+and independent upper/lower wicks. New runs should use engine 4; saved and
+ongoing engine 3 runs retain their original prices.
+
+Deploy the updated API, apply
+`supabase/migrations/202611210003_forward_market_prelude.sql`, then deploy the
+client. The migration changes the default market engine for new runs to 3;
+deploying code alone leaves new runs on engine 2 with their old opening prices.
+The migration has a distinct version from `202611210002_action_daily_goals.sql`.
+
+Verify a newly started run has `market_engine = 3`, `current_day = 1`, and 15
+stored historical candles per stock in `session_stock_prices` (`game_day < 1`).
+Its Day 1 opening prices must equal the last simulated closes. Existing runs
+and restored saves keep their original engine and prices.
+
 For the existing live installation (checked 2026-10-14), SQL b
 (202610080002) is applied and SQL c is not. Herdy must:
 

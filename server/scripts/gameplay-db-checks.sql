@@ -327,11 +327,12 @@ exception when insufficient_privilege then insert into checks values ('cannot co
 reset role;
 
 -- The prelude belongs to the market, not the player's progression.
-insert into checks select 'new runs and saves use engine 3',
-  (select market_engine = 3 and current_day = 1 and cash_balance = 2000 from run)
-  and (select market_engine = 3 from slot);
+insert into checks select 'new runs and saves use engine 4',
+  (select market_engine = 4 and current_day = 1 and cash_balance = 2000 from run)
+  and (select market_engine = 4 from slot);
 insert into checks select 'fingerprints distinguish new markets and legacy saves',
-  public.market_fingerprint_for('infinite', 'TEST', 3::smallint) = 'infinite:TEST:v3'
+  public.market_fingerprint_for('infinite', 'TEST', 4::smallint) = 'infinite:TEST:v4'
+  and public.market_fingerprint_for('infinite', 'TEST', 3::smallint) = 'infinite:TEST:v3'
   and public.market_fingerprint_for('infinite', 'TEST', 2::smallint) = 'infinite:TEST:v2'
   and public.market_fingerprint_for('infinite', 'TEST', 1::smallint) = 'infinite:TEST';
 insert into public.session_stock_prices (session_id, game_day, symbol, open_price, high_price, low_price, close_price, volume)
