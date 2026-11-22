@@ -47,6 +47,7 @@ function buildReport(
   relatedNews: MarketNews[],
   gameDay: number,
   advisor: AdvisorDefinition,
+  startDate: string,
 ): AdvisorReport {
   const points: string[] = [];
   let score = 0;
@@ -94,7 +95,7 @@ function buildReport(
     .sort((a, b) => b.n.gameDay - a.n.gameDay)[0];
 
   if (recentCredible) {
-    points.push(`Recent ${recentCredible.credibility.label.toLowerCase()} report (${formatMarketDay(recentCredible.n.gameDay)}): "${recentCredible.n.headline}"`);
+    points.push(`Recent ${recentCredible.credibility.label.toLowerCase()} report (${formatMarketDay(recentCredible.n.gameDay, startDate)}): "${recentCredible.n.headline}"`);
     score += recentCredible.n.marketTone === "Bullish" ? 1 : recentCredible.n.marketTone === "Bearish" ? -1 : 0;
   }
 
@@ -140,7 +141,7 @@ export function readOwnedAdvisorIds(sessionId: string, gameDay: number): string[
 
 export function useAdvisor() {
   const { user } = useAuth();
-  const { account, gameDay, sessionId, advisorIds: ownedIds, hireAdvisor, getHistory, getRelatedNews } = useGame();
+  const { account, gameDay, sessionId, advisorIds: ownedIds, hireAdvisor, getHistory, getRelatedNews, marketStartDate } = useGame();
   const [report, setReport] = useState<AdvisorReport | null>(null);
   const [loading, setLoading] = useState(false);
   const ownedAdvisors = useMemo(() => ADVISORS.filter((advisor) => ownedIds.includes(advisor.id)), [ownedIds]);
@@ -171,7 +172,7 @@ export function useAdvisor() {
     setLoading(true);
     const history = getHistory(stock.symbol);
     const relatedNews = getRelatedNews(stock.symbol);
-    const built = buildReport(stock, history, relatedNews, gameDay, activeAdvisor);
+    const built = buildReport(stock, history, relatedNews, gameDay, activeAdvisor, marketStartDate);
     localStorage.setItem(cooldownKey(user.id, sessionId, stock.symbol), String(gameDay));
     setReport(built);
     setLoading(false);
@@ -188,7 +189,7 @@ export function useAdvisor() {
       category: "advisor",
     });
     return built;
-  }, [user, sessionId, activeAdvisor, isOnCooldown, getHistory, getRelatedNews, gameDay]);
+  }, [user, sessionId, activeAdvisor, isOnCooldown, getHistory, getRelatedNews, gameDay, marketStartDate]);
 
   return { report, loading, isOnCooldown, consult, hire, ownedIds, ownedAdvisors, activeAdvisor };
 }

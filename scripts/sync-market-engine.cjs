@@ -15,7 +15,7 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE_DIR = path.join(ROOT, "client", "src", "data");
 const TARGET_DIR = path.join(ROOT, "server", "src", "market");
-const FILES = ["mockStocks.ts", "infiniteMarket.ts", "sessionMarket.ts"];
+const FILES = ["mockStocks.ts", "infiniteMarket.ts", "sessionMarket.ts", "marketPrelude.ts"];
 
 function header(file) {
   return (

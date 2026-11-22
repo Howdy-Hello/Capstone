@@ -591,7 +591,7 @@ export default function Game() {
                       sx={{ bgcolor: marketFlat ? D.elevated : marketUp ? D.greenBg : D.redBg, color: marketColor, fontWeight: 800 }} />
                   </Stack>
                 </Box>
-                <MarketHistoryChart history={marketHistory} />
+                <MarketHistoryChart history={marketHistory} startDate={trading.marketStartDate} />
               </Box>
             </Box>
           </Box>

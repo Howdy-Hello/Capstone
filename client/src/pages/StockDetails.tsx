@@ -233,7 +233,7 @@ export default function StockDetails() {
               <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Box>
                   <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Price History</Typography>
-                  <Typography sx={{ fontSize: 14, color: D.t3 }}>Close prices up to Day {gameDay}.</Typography>
+                  <Typography sx={{ fontSize: 14, color: D.t3 }}>Close prices through {formatMarketDay(gameDay, trading.marketStartDate)}.</Typography>
                 </Box>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <ToggleButtonGroup data-tour="chart-toggle" exclusive size="small" value={chartType} onChange={(_, value) => value && setChartType(value)} aria-label="Price chart type"
@@ -249,15 +249,15 @@ export default function StockDetails() {
                     <AreaChart data={history}>
                       <defs><linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={D.brand} stopOpacity={0.35} /><stop offset="95%" stopColor={D.brand} stopOpacity={0.02} /></linearGradient></defs>
                       <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
-                      <XAxis dataKey="gameDay" tickFormatter={(v) => v < 1 ? formatMarketDay(v) : `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
+                      <XAxis dataKey="gameDay" tickFormatter={(v) => formatMarketDay(v, trading.marketStartDate)} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
                       <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 12 }} />
-                      <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "Close"]} labelFormatter={(l) => formatMarketDay(Number(l))} />
+                      <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "Close"]} labelFormatter={(l) => formatMarketDay(Number(l), trading.marketStartDate)} />
                       <Area isAnimationActive={false} type="monotone" dataKey="closePrice" stroke={D.brand} strokeWidth={2.5} fill="url(#priceFill)" dot={history.length <= 40} activeDot={{ r: 5, fill: D.brand }} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </Box>
               ) : (
-                <StockCandleChart history={history} gameDay={gameDay} />
+                <StockCandleChart history={history} gameDay={gameDay} startDate={trading.marketStartDate} />
               )}
             </Box>
 
@@ -311,7 +311,7 @@ export default function StockDetails() {
                           transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
                           sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                           <Chip size="small" label={n.importance} sx={{ bgcolor: D.amberBg, color: D.amber, fontWeight: 800, fontSize: 12, mb: 0.8 }} />
-                          <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.3 }}>{formatMarketDay(n.gameDay)}: {n.headline}</Typography>
+                          <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.3 }}>{formatMarketDay(n.gameDay, trading.marketStartDate)}: {n.headline}</Typography>
                           <Typography sx={{ fontSize: 14, color: D.t3, lineHeight: 1.6 }}>{n.body}</Typography>
                         </Box>
                     ))}

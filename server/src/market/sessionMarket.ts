@@ -26,6 +26,7 @@ import {
   StockCompany,
   StockPriceHistory,
 } from "./mockStocks";
+import { buildMarketPrelude } from "./marketPrelude";
 
 export type SessionGameMode = "infinite" | "limited_30";
 
@@ -61,6 +62,18 @@ export function clampRunDay(day: number, mode: SessionGameMode) {
   return Math.max(1, Math.min(mode === "limited_30" ? LIMITED_RUN_DAYS : MAX_RUN_DAY, whole));
 }
 
+export function generateSessionPrelude({ mode, seed, script }: { mode: SessionGameMode; seed: string; script: MarketScript }) {
+  const stocks = mode === "limited_30"
+    ? mockStockCompanies.filter((stock) => stock.isActive)
+    : script.stocks.filter((stock) => stock.is_active).map((stock) => ({
+      symbol: stock.symbol,
+      startingPrice: asNumber(stock.initial_price),
+      volatility: asNumber(stock.volatility),
+      riskLevel: stock.risk_level,
+    }));
+  return buildMarketPrelude(stocks, seed);
+}
+
 function toRow(point: StockPriceHistory): SessionPriceRow {
   return {
     game_day: point.gameDay,
@@ -88,23 +101,38 @@ export function generateSessionPrices(params: {
   toDay: number;
   script: MarketScript;
   previousCloses?: Record<string, number>;
+  engine?: number;
 }): SessionPriceRow[] {
-  const { mode, seed, fromDay, toDay, script, previousCloses = {} } = params;
+  const { mode, seed, fromDay, toDay, script, previousCloses = {}, engine = 2 } = params;
   if (toDay < fromDay) return [];
   const rows: SessionPriceRow[] = [];
+  const openingPrices = new Map(engine >= 3
+    ? generateSessionPrelude(params).prices.filter((row) => row.game_day === 0).map((row) => [row.symbol, row.close_price])
+    : []);
 
   if (mode === "limited_30") {
     for (const company of mockStockCompanies.filter((item) => item.isActive)) {
+      const scale = (openingPrices.get(company.symbol) ?? company.startingPrice) / company.startingPrice;
       for (const point of getStockHistoryBySymbol(company.symbol, toDay, seed)) {
-        if (point.gameDay >= fromDay) rows.push(toRow(point));
+        if (point.gameDay < fromDay) continue;
+        const row = toRow(point);
+        if (engine >= 3) {
+          // Scale the whole run so tutorial prices cannot snap back to listing prices.
+          for (const field of ["open_price", "high_price", "low_price", "close_price"] as const) {
+            row[field] = Math.max(0.01, Number((row[field] * scale).toFixed(2)));
+          }
+        }
+        rows.push(row);
       }
     }
     return rows;
   }
 
-  const seededNewsFrom = firstSeededNewsDay(script);
-  for (const stock of script.stocks.filter((item) => item.is_active)) {
-    const scripted = getScriptedHistory(stock, script.prices);
+  const seededNewsFrom = engine >= 3 ? 1 : firstSeededNewsDay(script);
+  for (const source of script.stocks.filter((item) => item.is_active)) {
+    const stock = engine >= 3 ? { ...source, initial_price: openingPrices.get(source.symbol) ?? source.initial_price } : source;
+    const scriptPrices = engine >= 3 ? [] : script.prices;
+    const scripted = getScriptedHistory(stock, scriptPrices);
     const lastScriptedDay = scripted[scripted.length - 1]?.gameDay ?? 0;
     let previousClose: number | undefined = previousCloses[stock.symbol];
 
@@ -116,7 +144,7 @@ export function generateSessionPrices(params: {
       if (!point) {
         if (previousClose === undefined) {
           // Nothing stored for the previous day: rebuild it from the script.
-          const rebuilt = getHistoryForDatabaseStock(stock, script.prices, day - 1, seed, seededNewsFrom);
+          const rebuilt = getHistoryForDatabaseStock(stock, scriptPrices, day - 1, seed, seededNewsFrom);
           previousClose = rebuilt[rebuilt.length - 1]?.closePrice ?? asNumber(stock.initial_price);
         }
         point = generateContinuationPricePoint(stock, previousClose, day, seed, seededNewsFrom);
@@ -207,6 +235,7 @@ export function stockFromCompanyHistory(company: StockCompany, history: StockPri
 
   return {
     ...company,
+    startingPrice: history.find((point) => point.gameDay === 1)?.openPrice ?? company.startingPrice,
     currentPrice: Number(currentPrice.toFixed(2)),
     previousPrice: Number(previousPrice.toFixed(2)),
     dayChange: Number(dayChange.toFixed(2)),

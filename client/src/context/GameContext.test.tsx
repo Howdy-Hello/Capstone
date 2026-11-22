@@ -5,6 +5,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { GameProvider, MARKET_CLOSED_MESSAGE, useGame } from './GameContext';
 import { advanceSessionDay, ApiError, closeSessionMarket, ensureSessionMarket } from '../lib/api';
 import { getCumulativeTradeTotal, getPortfolioValue } from '../data/tradingState';
+import { buildMarketPrelude } from '../data/marketPrelude';
 import { recordTradeJournalEntry } from '../lib/tradeJournal';
 
 const mockUser = { id: 'user-a' };
@@ -52,7 +53,7 @@ let container: HTMLDivElement;
 beforeEach(async () => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   Object.defineProperty(globalThis, 'crypto', { configurable: true, value: { randomUUID: () => 'aaaaaaaa-0000-0000-0000-000000000001' } });
-  mockSession = { id: 'run-a', current_day: 1, cash_balance: 2000, game_mode: 'limited_30', game_seed: 'STOCKPILOT', market_phase: 'market_open', advisor_ids: [], trusted_state: true };
+  mockSession = { id: 'run-a', started_at: '2026-01-16T12:00:00Z', current_day: 1, cash_balance: 2000, game_mode: 'limited_30', game_seed: 'STOCKPILOT', market_phase: 'market_open', advisor_ids: [], trusted_state: true };
   mockRpc = jest.fn().mockResolvedValue({ data: null, error: { message: 'Not enough cash' } });
   mockMarketError = null;
   mockHoldings = [];
@@ -80,6 +81,10 @@ test.each(['limited_30', 'infinite'] as const)('%s starts on Day 1 with stable m
     expect(name).toBe('start_new_game_with_mode');
     expect(args.target_game_mode).toBe(mode);
     mockSession = { ...mockSession, id: `new-${mode}`, current_day: 1, game_mode: mode };
+    const prelude = buildMarketPrelude([{ symbol: 'GVE', startingPrice: 100, volatility: 0.03, riskLevel: 'Medium' }], 'ABC123');
+    const close = prelude.prices.find((row) => row.game_day === 0)!.close_price;
+    mockPrices = [...prelude.prices, { ...mockPrices[0], open_price: close, close_price: close, high_price: close, low_price: close }];
+    mockNews.push(...prelude.news.map((item) => ({ game_day: item.gameDay, items: [item] })));
     return { data: mockSession, error: null };
   });
   (ensureSessionMarket as jest.Mock).mockClear();
@@ -87,6 +92,8 @@ test.each(['limited_30', 'infinite'] as const)('%s starts on Day 1 with stable m
   await act(async () => { await game.resetAccount(mode); });
   const history = game.getHistory('GVE');
   expect(game.gameDay).toBe(1);
+  expect(game.marketStartDate).toBe('2026-01-16T12:00:00Z');
+  expect(history[15].openPrice).not.toBe(100);
   expect(game.maxGameDay).toBe(mode === 'limited_30' ? 30 : null);
   expect(game.account).toEqual({ cash: 2000, holdings: [], unpaidBills: 0 });
   expect(game.marketPhase).toBe('market_open');
@@ -335,7 +342,7 @@ test('a committed day and bill survive a failed market read and reload recovers'
 test("today's articles are visible before any trade, with future articles hidden", () => {
   expect(game.marketPhase).toBe('market_open');
   expect(game.news.map((story) => story.gameDay)).toEqual([1]);
-  expect(game.newsHistory.map((story) => story.gameDay)).toEqual([1, 0, -5, -10]);
+  expect(game.newsHistory.map((story) => story.gameDay)).toEqual([1]);
   expect(mockRpc).not.toHaveBeenCalled();
 });
 
@@ -385,7 +392,7 @@ test('news -> trade -> close -> next-day prices, portfolio and new news -> trade
   expect(getPortfolioValue(game.account, game.stocks)).toBe(110);
   expect(game.account.cash).toBe(1900);
   expect(game.news.map((story) => story.gameDay)).toEqual([2]);
-  expect(game.newsHistory.map((story) => story.gameDay)).toEqual([2, 1, 0, -5, -10]);
+  expect(game.newsHistory.map((story) => story.gameDay)).toEqual([2, 1]);
   expect(game.tradedToday).toEqual({});
   await act(async () => { expect(await game.sellStock(stock)).toBe(true); });
   expect(mockRpc.mock.calls[0][1].target_game_day).toBe(2);

@@ -342,7 +342,7 @@ export function getHistoryForDatabaseStock(
 }
 
 export function mapStockFromHistory(row: DatabaseStock, history: StockPriceHistory[]): Stock {
-  const startingPrice = asNumber(row.initial_price);
+  const startingPrice = history.find((point) => point.gameDay === 1)?.openPrice ?? asNumber(row.initial_price);
   const today = history[history.length - 1];
   const yesterday = history[history.length - 2];
   const currentPrice = today?.closePrice ?? asNumber(row.current_price);

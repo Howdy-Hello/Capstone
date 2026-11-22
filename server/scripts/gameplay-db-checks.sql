@@ -326,5 +326,30 @@ do $$ begin
 exception when insufficient_privilege then insert into checks values ('cannot complete goals in another player run', true); end $$;
 reset role;
 
+-- The prelude belongs to the market, not the player's progression.
+insert into checks select 'new runs and saves use engine 3',
+  (select market_engine = 3 and current_day = 1 and cash_balance = 2000 from run)
+  and (select market_engine = 3 from slot);
+insert into checks select 'fingerprints distinguish new markets and legacy saves',
+  public.market_fingerprint_for('infinite', 'TEST', 3::smallint) = 'infinite:TEST:v3'
+  and public.market_fingerprint_for('infinite', 'TEST', 2::smallint) = 'infinite:TEST:v2'
+  and public.market_fingerprint_for('infinite', 'TEST', 1::smallint) = 'infinite:TEST';
+insert into public.session_stock_prices (session_id, game_day, symbol, open_price, high_price, low_price, close_price, volume)
+select c.id, d, s.symbol, 95, 100, 90, 98, 1000 from challenge c, sym s, (values (-14), (0)) days(d);
+insert into public.session_market_news (session_id, game_day, items)
+select id, 0, '[{"newsId":"prelude","gameDay":0}]'::jsonb from challenge;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+set role authenticated;
+create temp table prelude_save as select * from public.create_save_slot((select id from challenge), 'Prelude save');
+select public.restore_save_slot((select id from prelude_save));
+insert into checks select 'save and reload retain stored prelude prices', count(*) = 2 and min(game_day) = -14
+from public.session_stock_prices where session_id = (select id from challenge) and game_day < 1;
+insert into checks select 'owner can read historical context', count(*) = 1
+from public.session_market_news where session_id = (select id from challenge) and game_day < 1;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
+insert into checks select 'prelude remains private to its player', count(*) = 0
+from public.session_stock_prices where session_id = (select id from challenge) and game_day < 1;
+reset role;
+
 select name, ok from checks;
 select count(*) filter (where not ok) as failed, count(*) as total from checks;

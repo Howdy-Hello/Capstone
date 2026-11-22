@@ -92,13 +92,13 @@ function folderLabel(folder: MailFolder) {
   return FOLDERS.find((f) => f.id === folder)?.label ?? "System";
 }
 
-function timeLabel(item: MailItem) {
+function timeLabel(item: MailItem, startDate: string) {
   if (item.sentAt) {
     return new Date(item.sentAt).toLocaleString(undefined, {
       month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
     });
   }
-  return item.gameDay !== null ? formatMarketDay(item.gameDay) : "";
+  return item.gameDay !== null ? formatMarketDay(item.gameDay, startDate) : "";
 }
 
 function messageToMail(message: InboxMessage): MailItem {
@@ -136,7 +136,7 @@ export default function Inbox() {
   const reduceMotion = useReducedMotion();
   const messages = useInboxMessages();
   const readNewsIds = useReadNewsIds();
-  const { newsHistory, sessionId } = useGame();
+  const { newsHistory, sessionId, marketStartDate } = useGame();
   // News ids repeat across runs (news_CAI_5 exists in every run), so read
   // state is kept per run: otherwise "mark all read" in one run marked the
   // next run's different stories as read too.
@@ -337,7 +337,7 @@ export default function Inbox() {
                                 {item.from}
                               </Typography>
                               <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO, flexShrink: 0 }}>
-                                {timeLabel(item)}
+                                {timeLabel(item, marketStartDate)}
                               </Typography>
                             </Stack>
                             <Typography noWrap sx={{ fontSize: 14, fontWeight: item.read ? 600 : 900, color: item.read ? D.t2 : D.t1, mt: 0.15 }}>{item.subject}<Box component="span" sx={{ fontWeight: 500, color: D.t3 }}> — {item.preview}</Box></Typography>
@@ -377,14 +377,14 @@ export default function Inbox() {
                     sx={{ bgcolor: folderColors(selected.folder).bg, color: folderColors(selected.folder).color, fontWeight: 900, fontSize: 12, fontFamily: MONO, letterSpacing: 0.5 }}
                   />
                   <Box sx={{ flex: 1 }} />
-                  <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>{timeLabel(selected)}</Typography>
+                  <Typography sx={{ fontSize: 12, color: D.t3, fontFamily: MONO }}>{timeLabel(selected, marketStartDate)}</Typography>
                 </Stack>
 
                 <Box sx={{ p: { xs: 2.5, md: 3 } }}>
                   <Typography component="h2" sx={{ fontWeight: 900, fontSize: { xs: 20, md: 23 }, color: D.t1, lineHeight: 1.35, mb: 2 }}>
                     {selected.subject}
                   </Typography>
-                  <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 3 }}><Avatar sx={{ width: 38, height: 38, bgcolor: folderColors(selected.folder).bg, color: folderColors(selected.folder).color, fontSize: 14, fontWeight: 900 }}>{selected.from.slice(0, 1).toUpperCase()}</Avatar><Box><Typography sx={{ color: D.t1, fontWeight: 800, fontSize: 14 }}>{selected.from}</Typography><Typography sx={{ fontSize: 12, color: D.t3 }}>to me{selected.gameDay !== null && ` · ${formatMarketDay(selected.gameDay)}`}</Typography></Box></Stack>
+                  <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 3 }}><Avatar sx={{ width: 38, height: 38, bgcolor: folderColors(selected.folder).bg, color: folderColors(selected.folder).color, fontSize: 14, fontWeight: 900 }}>{selected.from.slice(0, 1).toUpperCase()}</Avatar><Box><Typography sx={{ color: D.t1, fontWeight: 800, fontSize: 14 }}>{selected.from}</Typography><Typography sx={{ fontSize: 12, color: D.t3 }}>to me{selected.gameDay !== null && ` · ${formatMarketDay(selected.gameDay, marketStartDate)}`}</Typography></Box></Stack>
 
                   {selected.news && (
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }}>

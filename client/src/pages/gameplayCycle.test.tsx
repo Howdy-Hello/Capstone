@@ -22,7 +22,7 @@ const mockClose = jest.fn().mockResolvedValue(undefined);
 const mockAdvance = jest.fn().mockResolvedValue(undefined);
 const mockSync = jest.fn().mockResolvedValue(undefined);
 const mockTrading = () => ({
-  sessionId: 'run', gameDay: 2, gameMode: 'limited_30', maxGameDay: 30,
+  sessionId: 'run', gameDay: 2, gameMode: 'limited_30', maxGameDay: 30, marketStartDate: '2026-01-16',
   marketPhase: mockPhase, isGameComplete: false, loading: false, verifiedRun: true,
   account: { cash: 1900, holdings: [{ symbol: mockStock.symbol, shares: 1, averageCost: 100 }] },
   stocks: mockMarketStocks, news: mockNews, newsHistory: [...mockNews, mockYesterday, ...mockBackgroundNews],
@@ -123,14 +123,14 @@ test('a quiet news day does not tell players to close the market to see articles
 
 test('the archive shows standalone historical recaps without upcoming-story labels', async () => {
   mockBackgroundNews = buildMarketPrelude([{
-    game_day: 1, symbol: mockStock.symbol, open_price: 100, high_price: 100, low_price: 100, close_price: 100, volume: 1000, event_impact: 0,
+    symbol: mockStock.symbol, startingPrice: 100, volatility: 0.03, riskLevel: "Medium",
   }], 'ABC123').news;
   mockSearchParams = new URLSearchParams({ view: 'all', q: 'closes' });
   await act(async () => root.render(<News />));
   for (const story of mockBackgroundNews) expect(container.textContent).toContain(story.headline);
-  expect(container.textContent).toContain('−1D');
-  expect(container.textContent).toContain('−6D');
-  expect(container.textContent).toContain('−11D');
+  expect(container.textContent).toContain('JAN 15, 2026');
+  expect(container.textContent).toContain('JAN 10, 2026');
+  expect(container.textContent).toContain('JAN 5, 2026');
   expect(container.textContent).not.toContain('Next session');
   expect(container.textContent).not.toContain('Follow-up');
   expect(container.textContent).not.toContain('previous 15 days');
@@ -141,7 +141,7 @@ test('stock details shows only the latest three related reports and removes the 
   expect(container.textContent).not.toContain('Related report 0');
   expect(container.textContent).not.toContain('Related report 1');
   const headlines = Array.from(container.querySelectorAll('p')).map((item) => item.textContent).filter((text) => text?.includes('Related report'));
-  expect(headlines).toEqual([4, 3, 2].map((index) => `Day 1: Related report ${index}`));
+  expect(headlines).toEqual([4, 3, 2].map((index) => `Jan 16, 2026: Related report ${index}`));
   expect(container.querySelector('a[href^="/news?"]')?.getAttribute('href')).toBe(`/news?view=all&q=${mockStock.symbol}`);
   for (const removed of ['Recent Prices', 'Starting Price', 'data points', 'Candles show open']) {
     expect(container.textContent).not.toContain(removed);

@@ -3,7 +3,7 @@ import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { StockCandleChart } from './Candlestick';
 import { StockPriceHistory } from '../data/mockStocks';
-import { buildMarketPrelude } from '../data/marketPrelude';
+import { buildMarketPrelude, formatMarketDay } from '../data/marketPrelude';
 import { historyFromRows } from '../data/sessionMarket';
 
 jest.mock('recharts', () => {
@@ -19,6 +19,7 @@ const history: StockPriceHistory[] = Array.from({ length: 90 }, (_, index) => ({
   openPrice: 10, highPrice: 12, lowPrice: 8, closePrice: index % 2 ? 9 : 11,
   volume: 100, change: 1, changePercent: 10, eventImpact: 0,
 }));
+const START_DATE = "2026-01-16";
 let root: Root;
 let container: HTMLDivElement;
 beforeEach(() => {
@@ -32,7 +33,7 @@ afterEach(async () => {
   container.remove();
 });
 async function show(day: number) {
-  await act(async () => root.render(<StockCandleChart history={history.slice(0, day)} gameDay={day} />));
+  await act(async () => root.render(<StockCandleChart history={history.slice(0, day)} gameDay={day} startDate={START_DATE} />));
 }
 async function choose(label: string) {
   const button = Array.from(container.querySelectorAll('button')).find((item) => item.textContent === label)!;
@@ -54,7 +55,7 @@ test('short histories stay at the left and fill rightward as days arrive', async
   expect(candles()).toHaveLength(3);
   expect(centers()[0]).toBeCloseTo(left);
   expect(centers()[2]).toBeLessThan(150);
-  expect(container.textContent).not.toContain('D4');
+  expect(container.textContent).not.toContain(formatMarketDay(4, START_DATE));
   const spacing = centers()[1] - centers()[0];
   await choose('7 days');
   expect(centers()[1] - centers()[0]).toBeGreaterThan(spacing * 3);
@@ -65,8 +66,8 @@ test.each([7, 15, 30, 60])('%s-day range shows only the latest days and their OH
   await show(90);
   await choose(`${days} days`);
   expect(candles()).toHaveLength(days);
-  expect(container.textContent).toContain('D90');
-  expect(container.textContent).not.toContain(`D${90 - days}`);
+  expect(container.textContent).toContain(formatMarketDay(90, START_DATE));
+  expect(container.textContent).not.toContain(formatMarketDay(90 - days, START_DATE));
   expect(container.querySelectorAll('.recharts-bar-rectangle line')).toHaveLength(days);
   expect(new Set(candles().map((rect) => rect.getAttribute('fill'))).size).toBe(2);
 });
@@ -94,7 +95,7 @@ test('all time keeps early histories left-aligned and includes history beyond 60
 });
 
 test('missing days reserve space without drawing a candle', async () => {
-  await act(async () => root.render(<StockCandleChart history={[history[0], history[2]]} gameDay={3} />));
+  await act(async () => root.render(<StockCandleChart history={[history[0], history[2]]} gameDay={3} startDate={START_DATE} />));
   const missingGap = centers()[1] - centers()[0];
   await show(3);
   expect(candles()).toHaveLength(3);
@@ -103,12 +104,12 @@ test('missing days reserve space without drawing a candle', async () => {
 
 test('Day 1 renders all 15 background candles, including the all-time range', async () => {
   const prelude = buildMarketPrelude([{
-    game_day: 1, symbol: 'TEST', open_price: 10, high_price: 12, low_price: 8, close_price: 11, volume: 100, event_impact: 0,
+    symbol: 'TEST', startingPrice: 10, volatility: 0.03, riskLevel: 'Medium',
   }], 'ABC123');
   const seededHistory = [...historyFromRows(prelude.prices), history[0]];
-  await act(async () => root.render(<StockCandleChart history={seededHistory} gameDay={1} />));
+  await act(async () => root.render(<StockCandleChart history={seededHistory} gameDay={1} startDate={START_DATE} />));
   expect(candles()).toHaveLength(16);
-  expect(container.textContent).toContain('−15d');
+  expect(container.textContent).toContain('Jan 1, 2026');
   expect(container.textContent).not.toContain('previous 15 days');
   await choose('7 days');
   expect(candles()).toHaveLength(7);

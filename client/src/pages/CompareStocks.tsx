@@ -214,15 +214,15 @@ export default function CompareStocks() {
             <Box sx={{ ...CARD, p: 0, overflow: "hidden", mb: 3 }}>
               <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
                 <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Price Comparison</Typography>
-                <Typography sx={{ fontSize: 14, color: D.t3 }}>Close price through Day {trading.gameDay}.</Typography>
+                <Typography sx={{ fontSize: 14, color: D.t3 }}>Close price through {formatMarketDay(trading.gameDay, trading.marketStartDate)}.</Typography>
               </Box>
               <Box sx={{ p: 2.5, height: 360 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
-                    <XAxis dataKey="gameDay" tickFormatter={(value) => value < 1 ? formatMarketDay(value) : `D${value}`} tick={{ fill: D.t3, fontSize: 12 }} />
+                    <XAxis dataKey="gameDay" tickFormatter={(value) => formatMarketDay(value, trading.marketStartDate)} tick={{ fill: D.t3, fontSize: 12 }} />
                     <YAxis tickFormatter={(value) => `$${Number(value).toFixed(0)}`} tick={{ fill: D.t3, fontSize: 12 }} />
-                    <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(value: any) => money(Number(value))} labelFormatter={(label) => formatMarketDay(Number(label))} />
+                    <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(value: any) => money(Number(value))} labelFormatter={(label) => formatMarketDay(Number(label), trading.marketStartDate)} />
                     <Legend wrapperStyle={{ color: D.t2, fontSize: 12 }} formatter={(value) => <span style={{ color: D.t2 }}>{value}</span>} />
                     <Line isAnimationActive={false} type="monotone" dataKey="left" name={left.symbol} stroke={D.brand} strokeWidth={2.5} dot={chartData.length <= 35} connectNulls />
                     <Line isAnimationActive={false} type="monotone" dataKey="right" name={right.symbol} stroke={D.green} strokeWidth={2.5} dot={chartData.length <= 35} connectNulls />

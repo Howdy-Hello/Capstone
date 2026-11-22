@@ -18,7 +18,7 @@ const all = "All";
 
 export default function News() {
   usePageTitle("News");
-  const { gameDay, newsHistory } = useGame();
+  const { gameDay, newsHistory, marketStartDate } = useGame();
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [publisher, setPublisher] = useState(all);
@@ -111,7 +111,7 @@ export default function News() {
           <Stack spacing={1.2}>
             <Typography sx={{ color: D.t3, fontSize: 12, fontFamily: MONO }}>{filtered.length} REVEALED ARTICLE{filtered.length === 1 ? "" : "S"}</Typography>
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>
-              {filtered.map((item) => <ArchiveCard key={item.newsId} item={item} />)}
+              {filtered.map((item) => <ArchiveCard key={item.newsId} item={item} startDate={marketStartDate} />)}
             </Box>
             {!filtered.length && <Box sx={{ ...CARD, p: 3 }}><Typography sx={{ color: D.t3 }}>No revealed articles match these filters.</Typography></Box>}
           </Stack>
@@ -122,15 +122,15 @@ export default function News() {
                 <Typography sx={{ color: D.t3, fontSize: 12, fontFamily: MONO }}>{filtered.length} DAY {Math.max(briefDay, 0)} ARTICLE{filtered.length === 1 ? "" : "S"}</Typography>
                 {filtered.map((item) => (
                   <React.Fragment key={item.newsId}>
-                    <ArticleRow item={item} selected={selected?.newsId === item.newsId} onClick={() => setSelectedId(item.newsId)} />
-                    {selected?.newsId === item.newsId && <Box sx={{ display: { xs: "block", md: "none" } }}><ArticleDetail item={item} /></Box>}
+                    <ArticleRow item={item} startDate={marketStartDate} selected={selected?.newsId === item.newsId} onClick={() => setSelectedId(item.newsId)} />
+                    {selected?.newsId === item.newsId && <Box sx={{ display: { xs: "block", md: "none" } }}><ArticleDetail item={item} startDate={marketStartDate} /></Box>}
                   </React.Fragment>
                 ))}
                 {!filtered.length && <Box sx={{ ...CARD, p: 3 }}><Typography sx={{ color: D.t3 }}>{availableNews.length === 0 ? "No major news today. Prices still move from drift and volatility." : "No revealed articles match these filters."}</Typography></Box>}
               </Stack>
             </Grid>
             <Grid item xs={12} md={7} sx={{ display: { xs: "none", md: "block" } }}>
-              {selected && <ArticleDetail item={selected} />}
+              {selected && <ArticleDetail item={selected} startDate={marketStartDate} />}
             </Grid>
           </Grid>
         )}
@@ -139,18 +139,18 @@ export default function News() {
   );
 }
 
-function ArticleRow({ item, selected, onClick }: { item: MarketNews; selected: boolean; onClick: () => void }) {
+function ArticleRow({ item, selected, onClick, startDate }: { item: MarketNews; selected: boolean; onClick: () => void; startDate: string }) {
   return <Box component="button" onClick={onClick} sx={{ ...CARD, width: "100%", p: 2, textAlign: "left", cursor: "pointer", bgcolor: selected ? D.brandBg : D.surface, borderColor: selected ? D.brandBd : D.border }}>
-    <Stack direction="row" justifyContent="space-between" spacing={1}><Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>{formatMarketDay(item.gameDay).toUpperCase()}</Typography><Typography sx={{ color: D.t3, fontSize: 12 }}>{item.source}</Typography></Stack>
+    <Stack direction="row" justifyContent="space-between" spacing={1}><Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>{formatMarketDay(item.gameDay, startDate).toUpperCase()}</Typography><Typography sx={{ color: D.t3, fontSize: 12 }}>{item.source}</Typography></Stack>
     <Typography sx={{ color: D.t1, fontSize: 14, fontWeight: 850, my: 0.7 }}>{item.headline}</Typography>
     <Typography noWrap sx={{ color: D.t3, fontSize: 12 }}>{item.relatedTickers.join(" · ")} · {item.category}</Typography>
   </Box>;
 }
 
-function ArchiveCard({ item }: { item: MarketNews }) {
+function ArchiveCard({ item, startDate }: { item: MarketNews; startDate: string }) {
   const credibility = getNewsCredibility(item);
   return <Box component="article" sx={{ ...CARD, p: 2.5, height: "100%" }}>
-    <Stack direction="row" justifyContent="space-between" spacing={1}><Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>{formatMarketDay(item.gameDay).toUpperCase()}</Typography><Typography sx={{ color: D.t3, fontSize: 12 }}>{item.source}</Typography></Stack>
+    <Stack direction="row" justifyContent="space-between" spacing={1}><Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>{formatMarketDay(item.gameDay, startDate).toUpperCase()}</Typography><Typography sx={{ color: D.t3, fontSize: 12 }}>{item.source}</Typography></Stack>
     <Typography sx={{ color: D.t1, fontSize: 18, lineHeight: 1.3, fontWeight: 900, my: 1 }}>{item.headline}</Typography>
     <Typography sx={{ color: D.t2, fontSize: 14, lineHeight: 1.7, mb: 2 }}>{item.body}</Typography>
     <Stack direction="row" gap={.75} flexWrap="wrap">
@@ -160,10 +160,10 @@ function ArchiveCard({ item }: { item: MarketNews }) {
   </Box>;
 }
 
-function ArticleDetail({ item }: { item: MarketNews }) {
+function ArticleDetail({ item, startDate }: { item: MarketNews; startDate: string }) {
   const credibility = getNewsCredibility(item);
   return <Box sx={{ ...CARD, p: { xs: 2.5, md: 4 }, position: { md: "sticky" }, top: { md: 82 } }}>
-    <Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>{formatMarketDay(item.gameDay).toUpperCase()} · {item.source.toUpperCase()}</Typography>
+    <Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>{formatMarketDay(item.gameDay, startDate).toUpperCase()} · {item.source.toUpperCase()}</Typography>
     <Typography sx={{ color: D.t1, fontSize: { xs: 22, md: 28 }, lineHeight: 1.2, fontWeight: 900, my: 1.5 }}>{item.headline}</Typography>
     <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mb: 2.5 }}>
       <Chip size="small" label={`${item.confidence ?? "Medium"} confidence`} />

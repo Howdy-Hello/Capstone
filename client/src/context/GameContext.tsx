@@ -29,7 +29,7 @@ import { advanceSessionDay, ApiError, closeSessionMarket, ensureSessionMarket, s
 import { recordTradeJournalEntry, TradeJournalInput } from "../lib/tradeJournal";
 import { useAuth } from "./AuthContext";
 import { ownershipKey, readOwnedAdvisorIds } from "../hooks/useAdvisor";
-import { buildMarketPrelude } from "../data/marketPrelude";
+import { DEFAULT_MARKET_START_DATE, FIRST_MARKET_DAY } from "../data/marketPrelude";
 
 // Riley's price; matches hire_advisor and ADVISORS in useAdvisor.
 const ADVISOR_COST = 100;
@@ -37,7 +37,7 @@ const ADVISOR_COST = 100;
 // The run's market lives in Supabase: the API server generates each day's
 // prices and news into session_stock_prices / session_market_news, and is the
 // only thing that moves a run's day forward. This context reads those rows and
-// calls the server. Only the background history before Day 1 is built locally.
+// calls the server, including for the market's history before Day 1.
 
 export const STARTING_CASH = 2_000;
 const GAME_PHASE_STORAGE_KEY = "stockpilot-market-phase";
@@ -73,6 +73,7 @@ function marketPhaseStorageKey(sessionId: string) {
 
 type GameSession = {
   id: string;
+  started_at?: string;
   current_day: number;
   cash_balance: number | string;
   game_mode?: GameMode | null;
@@ -137,6 +138,7 @@ type GameContextValue = {
   tradedToday: Record<string, number>;
   gameMode: GameMode;
   marketSeed: string;
+  marketStartDate: string;
   storyArcs: string[];
   maxGameDay: number | null;
   isGameComplete: boolean;
@@ -360,7 +362,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     await ensureSessionMarket(activeSession.id);
     const [holdings, market, todayTrades, refreshed] = await Promise.all([
       loadHoldings(activeSession.id),
-      fetchSessionMarket(activeSession.id, 1),
+      fetchSessionMarket(activeSession.id, FIRST_MARKET_DAY),
       supabase
         .from("trades")
         .select("trade_type, quantity, stocks (symbol)")
@@ -479,21 +481,19 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     };
   }, [loadStocks, loadOrCreateSession]);
 
-  const prelude = useMemo(() => buildMarketPrelude(priceRows, `${gameMode}:${marketSeed}`), [priceRows, gameMode, marketSeed]);
-
   // Stored rows up to the current day, per ticker. RLS already hides later
   // days; the filter keeps a just-advanced day from showing before gameDay
   // itself updates.
   const histories = useMemo(() => {
     const bySymbol = new Map<string, SessionPriceRow[]>();
-    for (const row of [...prelude.prices, ...priceRows]) {
+    for (const row of priceRows) {
       if (row.game_day > gameDay) continue;
       const list = bySymbol.get(row.symbol);
       if (list) list.push(row);
       else bySymbol.set(row.symbol, [row]);
     }
     return new Map(Array.from(bySymbol, ([symbol, rows]) => [symbol, historyFromRows(rows)]));
-  }, [gameDay, priceRows, prelude]);
+  }, [gameDay, priceRows]);
 
   const stocks = useMemo(() => {
     if (gameMode === "limited_30") {
@@ -517,10 +517,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // only today's headlines would read as broken.
   const newsHistory = useMemo(() => {
     const all: MarketNews[] = [];
-    for (let day = visibleNewsDay; day >= 1; day -= 1) all.push(...(newsByDay.get(day) ?? []));
-    all.push(...prelude.news);
+    for (let day = visibleNewsDay; day >= FIRST_MARKET_DAY; day -= 1) all.push(...(newsByDay.get(day) ?? []));
     return all;
-  }, [newsByDay, visibleNewsDay, prelude]);
+  }, [newsByDay, visibleNewsDay]);
 
   const getHistory = useCallback((symbol: string) => (
     histories.get(symbol.toUpperCase()) ?? []
@@ -1032,6 +1031,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     clearLatestBill: () => setLatestBill(null),
     gameMode,
     marketSeed,
+    marketStartDate: session?.started_at ?? DEFAULT_MARKET_START_DATE,
     storyArcs,
     maxGameDay,
     isGameComplete,

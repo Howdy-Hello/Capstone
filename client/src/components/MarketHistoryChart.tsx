@@ -5,7 +5,7 @@ import { formatMarketDay } from "../data/marketPrelude";
 import { D, MONO } from "../theme/design";
 import { Candlestick, CandleTooltip } from "./Candlestick";
 
-export default function MarketHistoryChart({ history }: { history: ReturnType<typeof buildMarketHistory> }) {
+export default function MarketHistoryChart({ history, startDate }: { history: ReturnType<typeof buildMarketHistory>; startDate?: string }) {
   const data = history.map((point) => ({ ...point, range: [point.lowPrice, point.highPrice] }));
   const firstDay = data[0]?.gameDay ?? 1;
   const lastDay = data[data.length - 1]?.gameDay ?? 1;
@@ -19,20 +19,20 @@ export default function MarketHistoryChart({ history }: { history: ReturnType<ty
       {data.length > 0 ? (
         <>
           <Box sx={{ height: 68, mt: 0.25 }} role="img"
-            aria-label={`Equal-weight market candlesticks, ${formatMarketDay(firstDay)} to ${formatMarketDay(lastDay)}. Index opened at 100 and last closed at ${data[data.length - 1].closePrice.toFixed(2)}. Wicks estimate the daily range.`}>
+            aria-label={`Equal-weight market candlesticks, ${formatMarketDay(firstDay, startDate)} to ${formatMarketDay(lastDay, startDate)}. Index opened at 100 and last closed at ${data[data.length - 1].closePrice.toFixed(2)}. Wicks estimate the daily range.`}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 4, right: 2, bottom: 4, left: 2 }}>
                 <CartesianGrid vertical={false} stroke={D.border} strokeDasharray="3 3" />
                 <XAxis dataKey="gameDay" hide />
                 <YAxis domain={["dataMin - 0.2", "dataMax + 0.2"]} hide />
-                <Tooltip cursor={{ fill: D.overlay }} content={<CandleTooltip format={(value) => value.toFixed(2)} />} />
+                <Tooltip cursor={{ fill: D.overlay }} content={<CandleTooltip startDate={startDate} format={(value) => value.toFixed(2)} />} />
                 <Bar dataKey="range" shape={<Candlestick />} isAnimationActive={false} maxBarSize={20} />
               </BarChart>
             </ResponsiveContainer>
           </Box>
           <Box sx={{ display: "flex", justifyContent: "space-between", color: D.t3, fontSize: 11, fontFamily: MONO }} aria-hidden="true">
-            <span>{formatMarketDay(firstDay)}</span>
-            {lastDay !== firstDay && <span>{formatMarketDay(lastDay)}</span>}
+            <span>{formatMarketDay(firstDay, startDate)}</span>
+            {lastDay !== firstDay && <span>{formatMarketDay(lastDay, startDate)}</span>}
           </Box>
         </>
       ) : (

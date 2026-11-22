@@ -9,6 +9,7 @@ import {
   clampRunDay,
   generateSessionNews,
   generateSessionPrices,
+  generateSessionPrelude,
   MarketScript,
   sanitizeNews,
   SessionGameMode,
@@ -40,9 +41,10 @@ export const SESSION_COLUMNS = '*';
  * prices and news in every run, readable in the repo). Engine 2 (runs started
  * from migration 202610060002): only the listing prices come from the script;
  * every later day and all news are generated from the run's own seed.
+ * Engine 3: a forward-only market prelude sets the opening price in both modes.
  */
 export function marketEngine(session: Pick<MarketSession, 'market_engine'>) {
-  return (session.market_engine ?? 1) >= 2 ? 2 : 1;
+  return Math.max(1, Math.min(3, session.market_engine ?? 1));
 }
 
 /** Days generated per round trip; bounds memory and each upsert's size. */
@@ -61,7 +63,8 @@ export function marketFingerprint(
   session: Pick<MarketSession, 'game_mode' | 'game_seed' | 'market_engine'>
 ) {
   const base = `${normalizeMode(session.game_mode)}:${session.game_seed ?? ''}`;
-  return marketEngine(session) >= 2 ? `${base}:v2` : base;
+  const engine = marketEngine(session);
+  return engine >= 2 ? `${base}:v${engine}` : base;
 }
 
 export function getMarketSecret(): string | null {
@@ -219,7 +222,8 @@ export async function ensureMarketThrough(
   const secretSeed = deriveGenerationSeed(secret, mode, plainSeed);
   const plainThrough = legacyPlainSeedThrough(session, mode);
   let upgradedToSecret = false;
-  const script = await scriptForRun(admin, mode, marketEngine(session));
+  const engine = marketEngine(session);
+  const script = await scriptForRun(admin, mode, engine);
 
   while (generated < target) {
     const fromDay = generated + 1;
@@ -238,9 +242,10 @@ export async function ensureMarketThrough(
       for (const row of data ?? []) previousCloses[row.symbol as string] = Number(row.close_price);
     }
 
-    const priceRows = generateSessionPrices({ mode, seed, fromDay, toDay, script, previousCloses })
+    const prelude = fromDay === 1 && engine >= 3 ? generateSessionPrelude({ mode, seed, script }) : { prices: [], news: [] };
+    const priceRows = [...prelude.prices, ...generateSessionPrices({ mode, seed, fromDay, toDay, script, previousCloses, engine })]
       .map((row) => ({ session_id: session.id, ...row }));
-    const newsRows = [];
+    const newsRows = prelude.news.map((item) => ({ session_id: session.id, game_day: item.gameDay, items: [sanitizeNews(item)] }));
     for (let day = fromDay; day <= toDay; day += 1) {
       newsRows.push({
         session_id: session.id,

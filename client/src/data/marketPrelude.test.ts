@@ -1,19 +1,19 @@
 import { buildMarketPrelude, FIRST_MARKET_DAY, formatMarketDay, MARKET_PRELUDE_DAYS } from "./marketPrelude";
-import { SessionPriceRow } from "./sessionMarket";
+import { StockCompany } from "./mockStocks";
 
-const openings: SessionPriceRow[] = ["AAA", "BBB", "CCC"].map((symbol, index) => ({
-  game_day: 1, symbol, open_price: 20 + index * 30, high_price: 100,
-  low_price: 10, close_price: 30 + index * 30, volume: 1000, event_impact: 0,
+const stocks: Pick<StockCompany, "symbol" | "startingPrice" | "volatility" | "riskLevel">[] = ["AAA", "BBB", "CCC"].map((symbol, index) => ({
+  symbol, startingPrice: 20 + index * 30, volatility: 0.03, riskLevel: "Medium",
 }));
 
-test("builds exactly 15 historical candles per stock, joined to the stored Day 1 open", () => {
-  const original = JSON.parse(JSON.stringify(openings));
-  const { prices } = buildMarketPrelude(openings, "infinite:ABC123");
-  expect(prices).toHaveLength(openings.length * MARKET_PRELUDE_DAYS);
-  for (const opening of openings) {
-    const history = prices.filter((row) => row.symbol === opening.symbol).sort((a, b) => a.game_day - b.game_day);
+test("simulates exactly 15 days forward without pulling prices back to their starting values", () => {
+  const original = JSON.parse(JSON.stringify(stocks));
+  const { prices } = buildMarketPrelude(stocks, "infinite:ABC123");
+  expect(prices).toHaveLength(stocks.length * MARKET_PRELUDE_DAYS);
+  for (const stock of stocks) {
+    const history = prices.filter((row) => row.symbol === stock.symbol).sort((a, b) => a.game_day - b.game_day);
     expect(history.map((row) => row.game_day)).toEqual(Array.from({ length: 15 }, (_, i) => FIRST_MARKET_DAY + i));
-    expect(history[14].close_price).toBe(opening.open_price);
+    expect(history[0].open_price).toBe(stock.startingPrice);
+    expect(history[14].close_price).not.toBe(stock.startingPrice);
     history.forEach((row, index) => {
       if (index > 0) expect(row.open_price).toBe(history[index - 1].close_price);
       expect(row.high_price).toBeGreaterThanOrEqual(Math.max(row.open_price, row.close_price));
@@ -23,18 +23,18 @@ test("builds exactly 15 historical candles per stock, joined to the stored Day 1
       expect(row.event_impact).toBe(0);
     });
   }
-  expect(openings).toEqual(original);
+  expect(stocks).toEqual(original);
 });
 
-test("is stable across reloads and later days, and varies by mode and seed", () => {
-  const first = buildMarketPrelude(openings, "limited_30:ABC123");
-  expect(buildMarketPrelude([...openings, { ...openings[0], game_day: 2 }], "limited_30:ABC123")).toEqual(first);
-  expect(buildMarketPrelude(openings, "limited_30:DEF456")).not.toEqual(first);
-  expect(buildMarketPrelude(openings, "infinite:ABC123")).not.toEqual(first);
+test("is stable across reloads and varies by seed", () => {
+  const first = buildMarketPrelude(stocks, "limited_30:ABC123");
+  expect(buildMarketPrelude(stocks, "limited_30:ABC123")).toEqual(first);
+  expect(buildMarketPrelude(stocks, "limited_30:DEF456")).not.toEqual(first);
+  expect(buildMarketPrelude(stocks, "infinite:ABC123")).not.toEqual(first);
 });
 
 test("includes only three standalone, completed-session recaps that match their candles", () => {
-  const { prices, news } = buildMarketPrelude(openings, "infinite:ABC123");
+  const { prices, news } = buildMarketPrelude(stocks, "infinite:ABC123");
   expect(news.map((item) => item.gameDay)).toEqual([0, -5, -10]);
   for (const item of news) {
     const candle = prices.find((row) => row.game_day === item.gameDay && row.symbol === item.relatedTickers[0])!;
@@ -51,16 +51,19 @@ test("includes only three standalone, completed-session recaps that match their 
 
 test("handles absent and invalid opening prices without inventing playable prices", () => {
   expect(buildMarketPrelude([], "ABC123")).toEqual({ prices: [], news: [] });
-  const invalid = [0, -1, NaN, Infinity].map((open_price) => ({ ...openings[0], open_price }));
+  const invalid = [0, -1, NaN, Infinity].map((startingPrice) => ({ ...stocks[0], startingPrice }));
   expect(buildMarketPrelude(invalid, "ABC123")).toEqual({ prices: [], news: [] });
-  const cheap = buildMarketPrelude([{ ...openings[0], open_price: 0.01 }], "ABC123");
+  const cheap = buildMarketPrelude([{ ...stocks[0], startingPrice: 0.01 }], "ABC123");
   expect(cheap.prices).toHaveLength(15);
   expect(cheap.prices.every((row) => row.low_price > 0)).toBe(true);
 });
 
-test("formats historical timeline ticks without changing the player's day or adding a history label", () => {
-  expect(formatMarketDay(FIRST_MARKET_DAY)).toBe("−15d");
-  expect(formatMarketDay(0)).toBe("−1d");
-  expect(formatMarketDay(1)).toBe("Day 1");
-  expect(formatMarketDay(30)).toBe("Day 30");
+test("uses calendar dates across the history, playable days and year boundaries", () => {
+  const start = "2026-01-16T23:30:00Z";
+  expect(formatMarketDay(FIRST_MARKET_DAY, start)).toBe("Jan 1, 2026");
+  expect(formatMarketDay(0, start)).toBe("Jan 15, 2026");
+  expect(formatMarketDay(1, start)).toBe("Jan 16, 2026");
+  expect(formatMarketDay(30, start)).toBe("Feb 14, 2026");
+  expect(formatMarketDay(0, "2026-01-01")).toBe("Dec 31, 2025");
+  expect(formatMarketDay(2, "2028-02-28")).toBe("Feb 29, 2028");
 });
