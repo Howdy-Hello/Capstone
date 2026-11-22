@@ -31,6 +31,7 @@ import {
 } from "../lib/inbox";
 import { useGame } from "../context/GameContext";
 import { MarketNews } from "../data/mockStocks";
+import { formatMarketDay } from "../data/marketPrelude";
 import { D, MONO } from "../theme/design";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -97,7 +98,7 @@ function timeLabel(item: MailItem) {
       month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
     });
   }
-  return item.gameDay !== null ? `Day ${item.gameDay}` : "";
+  return item.gameDay !== null ? formatMarketDay(item.gameDay) : "";
 }
 
 function messageToMail(message: InboxMessage): MailItem {
@@ -383,7 +384,7 @@ export default function Inbox() {
                   <Typography component="h2" sx={{ fontWeight: 900, fontSize: { xs: 20, md: 23 }, color: D.t1, lineHeight: 1.35, mb: 2 }}>
                     {selected.subject}
                   </Typography>
-                  <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 3 }}><Avatar sx={{ width: 38, height: 38, bgcolor: folderColors(selected.folder).bg, color: folderColors(selected.folder).color, fontSize: 14, fontWeight: 900 }}>{selected.from.slice(0, 1).toUpperCase()}</Avatar><Box><Typography sx={{ color: D.t1, fontWeight: 800, fontSize: 14 }}>{selected.from}</Typography><Typography sx={{ fontSize: 12, color: D.t3 }}>to me{selected.gameDay !== null && ` · Day ${selected.gameDay}`}</Typography></Box></Stack>
+                  <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 3 }}><Avatar sx={{ width: 38, height: 38, bgcolor: folderColors(selected.folder).bg, color: folderColors(selected.folder).color, fontSize: 14, fontWeight: 900 }}>{selected.from.slice(0, 1).toUpperCase()}</Avatar><Box><Typography sx={{ color: D.t1, fontWeight: 800, fontSize: 14 }}>{selected.from}</Typography><Typography sx={{ fontSize: 12, color: D.t3 }}>to me{selected.gameDay !== null && ` · ${formatMarketDay(selected.gameDay)}`}</Typography></Box></Stack>
 
                   {selected.news && (
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }}>

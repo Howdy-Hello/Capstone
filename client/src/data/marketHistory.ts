@@ -1,4 +1,5 @@
 import { Stock, StockPriceHistory } from "./mockStocks";
+import { FIRST_MARKET_DAY } from "./marketPrelude";
 
 export const MARKET_CHART_DAYS = 20;
 
@@ -10,7 +11,7 @@ export function buildMarketHistory(
   getHistory: GetHistory,
   gameDay: number,
 ) {
-  const firstDay = Math.max(1, gameDay - MARKET_CHART_DAYS + 1);
+  const firstDay = Math.max(FIRST_MARKET_DAY, gameDay - MARKET_CHART_DAYS + 1);
   const byDay = new Map<number, SessionCandle[]>();
 
   for (const { symbol } of stocks) {

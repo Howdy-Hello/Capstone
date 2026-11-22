@@ -30,3 +30,11 @@ test("the chart contains only recent days up to the displayed game day", () => {
   expect(market[market.length - 1]).toEqual(prices(gameDay, 100, 100, 100, 100));
   expect(buildMarketHistory([], () => history, gameDay)).toEqual([]);
 });
+
+test("Day 1 includes the market prelude and never includes tomorrow", () => {
+  const history = Array.from({ length: 17 }, (_, i) => prices(i - 14, 10, 11, 9, 10));
+  const market = buildMarketHistory([{ symbol: "LOW" }], () => history, 1);
+  expect(market).toHaveLength(16);
+  expect(market[0].gameDay).toBe(-14);
+  expect(market[15].gameDay).toBe(1);
+});

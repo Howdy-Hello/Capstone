@@ -14,6 +14,7 @@ import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { getSharesOwned } from "../data/tradingState";
+import { formatMarketDay } from "../data/marketPrelude";
 import { useGame } from "../context/GameContext";
 import { resolveComparisonSymbols } from "../lib/routing";
 import { CARD, D, MONO, money, pct } from "../theme/design";
@@ -219,9 +220,9 @@ export default function CompareStocks() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
-                    <XAxis dataKey="gameDay" tickFormatter={(value) => `D${value}`} tick={{ fill: D.t3, fontSize: 12 }} />
+                    <XAxis dataKey="gameDay" tickFormatter={(value) => value < 1 ? formatMarketDay(value) : `D${value}`} tick={{ fill: D.t3, fontSize: 12 }} />
                     <YAxis tickFormatter={(value) => `$${Number(value).toFixed(0)}`} tick={{ fill: D.t3, fontSize: 12 }} />
-                    <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(value: any) => money(Number(value))} labelFormatter={(label) => `Day ${label}`} />
+                    <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(value: any) => money(Number(value))} labelFormatter={(label) => formatMarketDay(Number(label))} />
                     <Legend wrapperStyle={{ color: D.t2, fontSize: 12 }} formatter={(value) => <span style={{ color: D.t2 }}>{value}</span>} />
                     <Line isAnimationActive={false} type="monotone" dataKey="left" name={left.symbol} stroke={D.brand} strokeWidth={2.5} dot={chartData.length <= 35} connectNulls />
                     <Line isAnimationActive={false} type="monotone" dataKey="right" name={right.symbol} stroke={D.green} strokeWidth={2.5} dot={chartData.length <= 35} connectNulls />

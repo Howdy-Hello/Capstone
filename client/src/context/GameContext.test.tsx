@@ -75,6 +75,36 @@ test('database Day 1 overrides the later cached day', () => {
   expect(mockRpc).not.toHaveBeenCalled();
 });
 
+test.each(['limited_30', 'infinite'] as const)('%s starts on Day 1 with stable market history and no player turns', async (mode) => {
+  mockRpc.mockImplementationOnce(async (name, args) => {
+    expect(name).toBe('start_new_game_with_mode');
+    expect(args.target_game_mode).toBe(mode);
+    mockSession = { ...mockSession, id: `new-${mode}`, current_day: 1, game_mode: mode };
+    return { data: mockSession, error: null };
+  });
+  (ensureSessionMarket as jest.Mock).mockClear();
+  mockFrom.mockClear();
+  await act(async () => { await game.resetAccount(mode); });
+  const history = game.getHistory('GVE');
+  expect(game.gameDay).toBe(1);
+  expect(game.maxGameDay).toBe(mode === 'limited_30' ? 30 : null);
+  expect(game.account).toEqual({ cash: 2000, holdings: [], unpaidBills: 0 });
+  expect(game.marketPhase).toBe('market_open');
+  expect(game.tradedToday).toEqual({});
+  expect(history).toHaveLength(16);
+  expect(history[0].gameDay).toBe(-14);
+  expect(history[14].closePrice).toBe(history[15].openPrice);
+  expect(game.news.map((story) => story.gameDay)).toEqual([1]);
+  expect(game.newsHistory.filter((story) => story.gameDay < 1)).toHaveLength(3);
+  expect(mockFrom.mock.calls.filter(([table]) => table === 'session_stock_prices')).toHaveLength(1);
+  expect(ensureSessionMarket).toHaveBeenCalledTimes(1);
+  expect(advanceSessionDay).not.toHaveBeenCalled();
+  expect(closeSessionMarket).not.toHaveBeenCalled();
+  expect(mockRpc).toHaveBeenCalledTimes(1);
+  await act(async () => { await game.reloadSession(); });
+  expect(game.getHistory('GVE')).toEqual(history);
+});
+
 test('a captured stock object cannot supply a stale quote', () => {
   const stock = game.stocks[0];
   expect(game.getTradeQuote({ ...stock, currentPrice: 0.01 }, 'buy').basePrice).toBe(stock.currentPrice);
@@ -305,7 +335,7 @@ test('a committed day and bill survive a failed market read and reload recovers'
 test("today's articles are visible before any trade, with future articles hidden", () => {
   expect(game.marketPhase).toBe('market_open');
   expect(game.news.map((story) => story.gameDay)).toEqual([1]);
-  expect(game.newsHistory.map((story) => story.gameDay)).toEqual([1]);
+  expect(game.newsHistory.map((story) => story.gameDay)).toEqual([1, 0, -5, -10]);
   expect(mockRpc).not.toHaveBeenCalled();
 });
 
@@ -355,7 +385,7 @@ test('news -> trade -> close -> next-day prices, portfolio and new news -> trade
   expect(getPortfolioValue(game.account, game.stocks)).toBe(110);
   expect(game.account.cash).toBe(1900);
   expect(game.news.map((story) => story.gameDay)).toEqual([2]);
-  expect(game.newsHistory.map((story) => story.gameDay)).toEqual([2, 1]);
+  expect(game.newsHistory.map((story) => story.gameDay)).toEqual([2, 1, 0, -5, -10]);
   expect(game.tradedToday).toEqual({});
   await act(async () => { expect(await game.sellStock(stock)).toBe(true); });
   expect(mockRpc.mock.calls[0][1].target_game_day).toBe(2);

@@ -29,6 +29,7 @@ import { advanceSessionDay, ApiError, closeSessionMarket, ensureSessionMarket, s
 import { recordTradeJournalEntry, TradeJournalInput } from "../lib/tradeJournal";
 import { useAuth } from "./AuthContext";
 import { ownershipKey, readOwnedAdvisorIds } from "../hooks/useAdvisor";
+import { buildMarketPrelude } from "../data/marketPrelude";
 
 // Riley's price; matches hire_advisor and ADVISORS in useAdvisor.
 const ADVISOR_COST = 100;
@@ -36,7 +37,7 @@ const ADVISOR_COST = 100;
 // The run's market lives in Supabase: the API server generates each day's
 // prices and news into session_stock_prices / session_market_news, and is the
 // only thing that moves a run's day forward. This context reads those rows and
-// calls the server; it no longer generates prices or writes cash itself.
+// calls the server. Only the background history before Day 1 is built locally.
 
 export const STARTING_CASH = 2_000;
 const GAME_PHASE_STORAGE_KEY = "stockpilot-market-phase";
@@ -478,19 +479,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     };
   }, [loadStocks, loadOrCreateSession]);
 
+  const prelude = useMemo(() => buildMarketPrelude(priceRows, `${gameMode}:${marketSeed}`), [priceRows, gameMode, marketSeed]);
+
   // Stored rows up to the current day, per ticker. RLS already hides later
   // days; the filter keeps a just-advanced day from showing before gameDay
   // itself updates.
   const histories = useMemo(() => {
     const bySymbol = new Map<string, SessionPriceRow[]>();
-    for (const row of priceRows) {
+    for (const row of [...prelude.prices, ...priceRows]) {
       if (row.game_day > gameDay) continue;
       const list = bySymbol.get(row.symbol);
       if (list) list.push(row);
       else bySymbol.set(row.symbol, [row]);
     }
     return new Map(Array.from(bySymbol, ([symbol, rows]) => [symbol, historyFromRows(rows)]));
-  }, [gameDay, priceRows]);
+  }, [gameDay, priceRows, prelude]);
 
   const stocks = useMemo(() => {
     if (gameMode === "limited_30") {
@@ -515,8 +518,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const newsHistory = useMemo(() => {
     const all: MarketNews[] = [];
     for (let day = visibleNewsDay; day >= 1; day -= 1) all.push(...(newsByDay.get(day) ?? []));
+    all.push(...prelude.news);
     return all;
-  }, [newsByDay, visibleNewsDay]);
+  }, [newsByDay, visibleNewsDay, prelude]);
 
   const getHistory = useCallback((symbol: string) => (
     histories.get(symbol.toUpperCase()) ?? []

@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useGame } from "../context/GameContext";
 import { getNewsCredibility, MarketNews, Stock, StockPriceHistory } from "../data/mockStocks";
+import { formatMarketDay } from "../data/marketPrelude";
 import { pushNotification } from "../lib/notifications";
 import { addInboxMessage } from "../lib/inbox";
 
@@ -93,7 +94,7 @@ function buildReport(
     .sort((a, b) => b.n.gameDay - a.n.gameDay)[0];
 
   if (recentCredible) {
-    points.push(`Recent ${recentCredible.credibility.label.toLowerCase()} report (Day ${recentCredible.n.gameDay}): "${recentCredible.n.headline}"`);
+    points.push(`Recent ${recentCredible.credibility.label.toLowerCase()} report (${formatMarketDay(recentCredible.n.gameDay)}): "${recentCredible.n.headline}"`);
     score += recentCredible.n.marketTone === "Bullish" ? 1 : recentCredible.n.marketTone === "Bearish" ? -1 : 0;
   }
 

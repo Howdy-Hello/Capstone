@@ -25,6 +25,7 @@ import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 
 import { Stock } from "../data/mockStocks";
+import { formatMarketDay } from "../data/marketPrelude";
 import { getMaxAffordableQuantity, getSharesOwned } from "../data/tradingState";
 import { MARKET_CLOSED_MESSAGE, useGame } from "../context/GameContext";
 import { AlertCondition, describeAlert, useStockAlerts } from "../hooks/useStockAlerts";
@@ -248,9 +249,9 @@ export default function StockDetails() {
                     <AreaChart data={history}>
                       <defs><linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={D.brand} stopOpacity={0.35} /><stop offset="95%" stopColor={D.brand} stopOpacity={0.02} /></linearGradient></defs>
                       <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
-                      <XAxis dataKey="gameDay" tickFormatter={(v) => `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
+                      <XAxis dataKey="gameDay" tickFormatter={(v) => v < 1 ? formatMarketDay(v) : `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
                       <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 12 }} />
-                      <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "Close"]} labelFormatter={(l) => `Day ${l}`} />
+                      <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "Close"]} labelFormatter={(l) => formatMarketDay(Number(l))} />
                       <Area isAnimationActive={false} type="monotone" dataKey="closePrice" stroke={D.brand} strokeWidth={2.5} fill="url(#priceFill)" dot={history.length <= 40} activeDot={{ r: 5, fill: D.brand }} />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -310,7 +311,7 @@ export default function StockDetails() {
                           transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
                           sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
                           <Chip size="small" label={n.importance} sx={{ bgcolor: D.amberBg, color: D.amber, fontWeight: 800, fontSize: 12, mb: 0.8 }} />
-                          <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.3 }}>Day {n.gameDay}: {n.headline}</Typography>
+                          <Typography sx={{ fontWeight: 800, fontSize: 14, color: D.t1, mb: 0.3 }}>{formatMarketDay(n.gameDay)}: {n.headline}</Typography>
                           <Typography sx={{ fontSize: 14, color: D.t3, lineHeight: 1.6 }}>{n.body}</Typography>
                         </Box>
                     ))}

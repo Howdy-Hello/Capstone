@@ -10,6 +10,7 @@ import NewspaperIcon from "@mui/icons-material/Newspaper";
 import SearchIcon from "@mui/icons-material/Search";
 import { useGame } from "../context/GameContext";
 import { getNewsCredibility, MarketNews } from "../data/mockStocks";
+import { formatMarketDay } from "../data/marketPrelude";
 import { CARD, D, MONO } from "../theme/design";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -140,7 +141,7 @@ export default function News() {
 
 function ArticleRow({ item, selected, onClick }: { item: MarketNews; selected: boolean; onClick: () => void }) {
   return <Box component="button" onClick={onClick} sx={{ ...CARD, width: "100%", p: 2, textAlign: "left", cursor: "pointer", bgcolor: selected ? D.brandBg : D.surface, borderColor: selected ? D.brandBd : D.border }}>
-    <Stack direction="row" justifyContent="space-between" spacing={1}><Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>DAY {item.gameDay}</Typography><Typography sx={{ color: D.t3, fontSize: 12 }}>{item.source}</Typography></Stack>
+    <Stack direction="row" justifyContent="space-between" spacing={1}><Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>{formatMarketDay(item.gameDay).toUpperCase()}</Typography><Typography sx={{ color: D.t3, fontSize: 12 }}>{item.source}</Typography></Stack>
     <Typography sx={{ color: D.t1, fontSize: 14, fontWeight: 850, my: 0.7 }}>{item.headline}</Typography>
     <Typography noWrap sx={{ color: D.t3, fontSize: 12 }}>{item.relatedTickers.join(" · ")} · {item.category}</Typography>
   </Box>;
@@ -149,7 +150,7 @@ function ArticleRow({ item, selected, onClick }: { item: MarketNews; selected: b
 function ArchiveCard({ item }: { item: MarketNews }) {
   const credibility = getNewsCredibility(item);
   return <Box component="article" sx={{ ...CARD, p: 2.5, height: "100%" }}>
-    <Stack direction="row" justifyContent="space-between" spacing={1}><Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>DAY {item.gameDay}</Typography><Typography sx={{ color: D.t3, fontSize: 12 }}>{item.source}</Typography></Stack>
+    <Stack direction="row" justifyContent="space-between" spacing={1}><Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>{formatMarketDay(item.gameDay).toUpperCase()}</Typography><Typography sx={{ color: D.t3, fontSize: 12 }}>{item.source}</Typography></Stack>
     <Typography sx={{ color: D.t1, fontSize: 18, lineHeight: 1.3, fontWeight: 900, my: 1 }}>{item.headline}</Typography>
     <Typography sx={{ color: D.t2, fontSize: 14, lineHeight: 1.7, mb: 2 }}>{item.body}</Typography>
     <Stack direction="row" gap={.75} flexWrap="wrap">
@@ -162,11 +163,11 @@ function ArchiveCard({ item }: { item: MarketNews }) {
 function ArticleDetail({ item }: { item: MarketNews }) {
   const credibility = getNewsCredibility(item);
   return <Box sx={{ ...CARD, p: { xs: 2.5, md: 4 }, position: { md: "sticky" }, top: { md: 82 } }}>
-    <Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>DAY {item.gameDay} · {item.source.toUpperCase()}</Typography>
+    <Typography sx={{ color: D.brandText, fontSize: 12, fontWeight: 900, fontFamily: MONO }}>{formatMarketDay(item.gameDay).toUpperCase()} · {item.source.toUpperCase()}</Typography>
     <Typography sx={{ color: D.t1, fontSize: { xs: 22, md: 28 }, lineHeight: 1.2, fontWeight: 900, my: 1.5 }}>{item.headline}</Typography>
     <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mb: 2.5 }}>
       <Chip size="small" label={`${item.confidence ?? "Medium"} confidence`} />
-      <Chip size="small" label={item.horizon ?? "Next session"} />
+      {item.gameDay >= 1 && <Chip size="small" label={item.horizon ?? "Next session"} />}
       <Chip size="small" label={`Credibility ${credibility.score}/100 · ${credibility.label}`} />
       {item.followUpTo && <Chip size="small" color="info" label="Follow-up" />}
       {item.arcKey && <Chip size="small" label={`Story: ${item.arcKey === "opening_tutorial" ? "opening days" : item.arcKey.replace(/_/g, " ")}`} />}

@@ -3,6 +3,8 @@ import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { StockCandleChart } from './Candlestick';
 import { StockPriceHistory } from '../data/mockStocks';
+import { buildMarketPrelude } from '../data/marketPrelude';
+import { historyFromRows } from '../data/sessionMarket';
 
 jest.mock('recharts', () => {
   const { cloneElement } = jest.requireActual<typeof import('react')>('react');
@@ -97,4 +99,19 @@ test('missing days reserve space without drawing a candle', async () => {
   await show(3);
   expect(candles()).toHaveLength(3);
   expect(missingGap).toBeCloseTo((centers()[1] - centers()[0]) * 2);
+});
+
+test('Day 1 renders all 15 background candles, including the all-time range', async () => {
+  const prelude = buildMarketPrelude([{
+    game_day: 1, symbol: 'TEST', open_price: 10, high_price: 12, low_price: 8, close_price: 11, volume: 100, event_impact: 0,
+  }], 'ABC123');
+  const seededHistory = [...historyFromRows(prelude.prices), history[0]];
+  await act(async () => root.render(<StockCandleChart history={seededHistory} gameDay={1} />));
+  expect(candles()).toHaveLength(16);
+  expect(container.textContent).toContain('−15d');
+  expect(container.textContent).not.toContain('previous 15 days');
+  await choose('7 days');
+  expect(candles()).toHaveLength(7);
+  await choose('All time');
+  expect(candles()).toHaveLength(16);
 });

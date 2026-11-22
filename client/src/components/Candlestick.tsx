@@ -2,17 +2,19 @@ import { useState } from "react";
 import { Box, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { StockPriceHistory } from "../data/mockStocks";
+import { formatMarketDay } from "../data/marketPrelude";
 import { D, MONO, money } from "../theme/design";
 
 type Candle = Pick<StockPriceHistory, "gameDay" | "openPrice" | "highPrice" | "lowPrice" | "closePrice">;
 
 export function StockCandleChart({ history, gameDay }: { history: StockPriceHistory[]; gameDay: number }) {
   const [days, setDays] = useState<number | "all">(30);
-  const span = days === "all" ? Math.max(60, gameDay) : days;
+  const firstDay = history[0]?.gameDay ?? 1;
+  const span = days === "all" ? Math.max(60, gameDay - firstDay + 1) : days;
   const historyByDay = new Map(history.map((point) => [point.gameDay, point]));
   // Empty day slots keep short histories anchored to the left at the chosen scale.
   const data = Array.from({ length: span }, (_, index) => {
-    const day = Math.max(1, gameDay - span + 1) + index;
+    const day = Math.max(firstDay, gameDay - span + 1) + index;
     const point = historyByDay.get(day);
     return point ? { ...point, range: [point.lowPrice, point.highPrice] } : { gameDay: day };
   });
@@ -27,7 +29,7 @@ export function StockCandleChart({ history, gameDay }: { history: StockPriceHist
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} barCategoryGap="10%">
             <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
-            <XAxis dataKey="gameDay" tickFormatter={(value) => value <= gameDay ? `D${value}` : ""} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
+            <XAxis dataKey="gameDay" tickFormatter={(value) => value > gameDay ? "" : value < 1 ? formatMarketDay(value) : `D${value}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
             <YAxis tickFormatter={(value) => `$${Number(value).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 12 }} />
             <Tooltip cursor={{ fill: D.overlay }} content={<CandleTooltip />} />
             <Bar dataKey="range" shape={<Candlestick />} isAnimationActive={false} />
@@ -86,7 +88,7 @@ export function CandleTooltip({ active, payload, format = money }: {
   const up = candle.closePrice >= candle.openPrice;
   return (
     <Box sx={{ bgcolor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 2, p: 1.5, boxShadow: "0 10px 28px rgba(0,0,0,.35)" }}>
-      <Typography sx={{ color: D.t1, fontWeight: 900, fontSize: 12, mb: 0.7 }}>Day {candle.gameDay}</Typography>
+      <Typography sx={{ color: D.t1, fontWeight: 900, fontSize: 12, mb: 0.7 }}>{formatMarketDay(candle.gameDay)}</Typography>
       {[['Open', candle.openPrice], ['High', candle.highPrice], ['Low', candle.lowPrice], ['Close', candle.closePrice]].map(([label, value]) => (
         <Stack key={label} direction="row" justifyContent="space-between" spacing={2.5}>
           <Typography sx={{ color: D.t3, fontSize: 12 }}>{label}</Typography>
