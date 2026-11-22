@@ -1,4 +1,5 @@
 import React from "react";
+import { useSearchParams } from "react-router-dom";
 import DayBar from "../components/DayBar";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -17,12 +18,13 @@ const all = "All";
 export default function News() {
   usePageTitle("News");
   const { gameDay, newsHistory } = useGame();
-  const [query, setQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [publisher, setPublisher] = useState(all);
   const [category, setCategory] = useState(all);
   const [sector, setSector] = useState(all);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showAllNews, setShowAllNews] = useState(false);
+  const [showAllNews, setShowAllNews] = useState(() => searchParams.get("view") === "all");
   const briefDay = gameDay;
 
   const availableNews = useMemo(

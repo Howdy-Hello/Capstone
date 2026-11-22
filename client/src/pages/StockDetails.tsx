@@ -1,6 +1,6 @@
 import DecisionNote from "../components/learning/DecisionNote";
 import DayBar from "../components/DayBar";
-import { Candlestick, CandleTooltip } from "../components/Candlestick";
+import { StockCandleChart } from "../components/Candlestick";
 import React, { useEffect, useState } from "react";
 import { GlobalStyles,
   Box, Button, Chip, CircularProgress, Container, Divider, Grid, IconButton,
@@ -14,7 +14,7 @@ import SmartToyIcon from "@mui/icons-material/SmartToy";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
+  Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
 } from "recharts";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TrendingFlatIcon from "@mui/icons-material/TrendingFlat";
@@ -24,7 +24,7 @@ import NewspaperIcon from "@mui/icons-material/Newspaper";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 
-import { Stock, StockPriceHistory } from "../data/mockStocks";
+import { Stock } from "../data/mockStocks";
 import { getMaxAffordableQuantity, getSharesOwned } from "../data/tradingState";
 import { MARKET_CLOSED_MESSAGE, useGame } from "../context/GameContext";
 import { AlertCondition, describeAlert, useStockAlerts } from "../hooks/useStockAlerts";
@@ -90,7 +90,6 @@ export default function StockDetails() {
 
   const stock = symbol ? trading.getStock(symbol) : undefined;
   const history = symbol ? trading.getHistory(symbol) : [];
-  const candleHistory = history.map((point) => ({ ...point, range: [point.lowPrice, point.highPrice] }));
   const relatedNews = symbol ? trading.getRelatedNews(symbol) : [];
 
   // Auto-dismiss trade message
@@ -241,13 +240,11 @@ export default function StockDetails() {
                     <ToggleButton value="area" aria-label="Area chart">Area</ToggleButton>
                     <ToggleButton value="bar" aria-label="Candlestick chart">Candles</ToggleButton>
                   </ToggleButtonGroup>
-                  <Chip label={`${history.length} data ${history.length === 1 ? "point" : "points"}`} size="small" sx={{ bgcolor: D.overlay, color: D.t3, fontSize: 12 }} />
                 </Stack>
               </Stack>
-              <Typography sx={{ px: 3, pt: 1.5, color: D.t2, fontSize: 14, maxWidth: "75ch" }}>Candles show open, high, low, and close. The body spans open to close; the wick spans the day’s range. Up/down colours describe movement, not a recommendation.</Typography>
-              <Box sx={{ p: 2.5, height: 360 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  {chartType === "area" ? (
+              {chartType === "area" ? (
+                <Box sx={{ p: 2.5, height: 360 }}>
+                  <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={history}>
                       <defs><linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={D.brand} stopOpacity={0.35} /><stop offset="95%" stopColor={D.brand} stopOpacity={0.02} /></linearGradient></defs>
                       <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
@@ -256,17 +253,11 @@ export default function StockDetails() {
                       <RTooltip contentStyle={{ backgroundColor: D.elevated, border: `1px solid ${D.border}`, borderRadius: 8, color: D.t1 }} formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "Close"]} labelFormatter={(l) => `Day ${l}`} />
                       <Area isAnimationActive={false} type="monotone" dataKey="closePrice" stroke={D.brand} strokeWidth={2.5} fill="url(#priceFill)" dot={history.length <= 40} activeDot={{ r: 5, fill: D.brand }} />
                     </AreaChart>
-                  ) : (
-                    <BarChart data={candleHistory} barCategoryGap="10%">
-                      <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
-                      <XAxis dataKey="gameDay" tickFormatter={(v) => `D${v}`} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
-                      <YAxis tickFormatter={(v) => `$${Number(v).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 12 }} />
-                      <RTooltip cursor={{ fill: D.overlay }} content={<CandleTooltip />} />
-                      <Bar dataKey="range" shape={<Candlestick />} isAnimationActive={false} />
-                    </BarChart>
-                  )}
-                </ResponsiveContainer>
-              </Box>
+                  </ResponsiveContainer>
+                </Box>
+              ) : (
+                <StockCandleChart history={history} gameDay={gameDay} />
+              )}
             </Box>
 
             {/* Fundamentals */}
@@ -297,43 +288,6 @@ export default function StockDetails() {
               </Box>
             </Box>
 
-            {/* Recent prices */}
-            <Box sx={{ ...CARD, p: 0, overflow: "hidden" }}>
-              <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${D.border}` }}>
-                <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Recent Prices</Typography>
-                <Typography sx={{ fontSize: 14, color: D.t3 }}>Latest 10 generated price points.</Typography>
-              </Box>
-              <Box sx={{ p: 2.5 }}>
-                <Stack spacing={1}>
-                  {history.slice(-10).map((item: StockPriceHistory) => {
-                    const up = item.changePercent >= 0;
-                    return (
-                      <Box key={item.priceId} sx={{ p: 1.8, borderRadius: 2, bgcolor: D.elevated, border: `1px solid ${D.border}` }}>
-                        <Grid container spacing={1} alignItems="center">
-                          <Grid item xs={6} sm={2}><Typography sx={{ fontSize: 14, fontWeight: 900, color: D.brandText, fontFamily: MONO }}>Day {item.gameDay}</Typography></Grid>
-                          {[
-                            { l: "Open",  v: money(item.openPrice) },
-                            { l: "High",  v: money(item.highPrice) },
-                            { l: "Low",   v: money(item.lowPrice) },
-                            { l: "Close", v: money(item.closePrice) },
-                          ].map((c) => (
-                            <Grid item xs={6} sm={2} key={c.l}>
-                              <Typography sx={{ fontSize: 12, color: D.t3 }}>{c.l}</Typography>
-                              <Typography sx={{ fontSize: 14, fontWeight: 800, color: D.t1, fontFamily: MONO }}>{c.v}</Typography>
-                            </Grid>
-                          ))}
-                          <Grid item xs={6} sm={2}>
-                            <Typography sx={{ fontSize: 14, fontWeight: 900, color: up ? D.greenText : D.redText, textAlign: { xs: "left", sm: "right" }, fontFamily: MONO }}>
-                              {pct(item.changePercent)}
-                            </Typography>
-                          </Grid>
-                        </Grid>
-                      </Box>
-                    );
-                  })}
-                </Stack>
-              </Box>
-            </Box>
             <Box sx={{ mt: 3 }}>
               {/* Related news */}
               <Box sx={{ ...CARD, p: 3 }}>
@@ -342,13 +296,15 @@ export default function StockDetails() {
                   <Typography component="h2" sx={{ fontWeight: 900, fontSize: 16, color: D.t1 }}>Related News</Typography>
                 </Stack>
                 <Typography sx={{ fontSize: 14, color: D.t3, mb: 2 }}>News connected to {stock.symbol} up to Day {gameDay}.</Typography>
+                <Button component={RouterLink} to={`/news?view=all&q=${encodeURIComponent(stock.symbol)}`} size="small"
+                  sx={{ mb: 2, color: D.brandText, textTransform: "none", fontWeight: 800 }}>See all news for {stock.symbol} →</Button>
                 <Divider sx={{ borderColor: D.border, mb: 2 }} />
                 {relatedNews.length === 0 ? (
                   <Typography sx={{ fontSize: 14, color: D.t3 }}>No related news yet.</Typography>
                 ) : (
                   <Stack spacing={1.2}>
                     <MotionPresence mode="popLayout" initial={false}>
-                    {relatedNews.slice(-8).map((n, index) => (
+                    {relatedNews.slice(-3).reverse().map((n, index) => (
                         <Box key={n.newsId} component={motion.div} layout={!reduceMotion}
                           initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -16 }}
                           transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.16), layout: { type: "spring", stiffness: 420, damping: 34 } }}
@@ -496,7 +452,6 @@ export default function StockDetails() {
                     { l: "Symbol",        v: stock.symbol },
                     { l: "Sector",        v: stock.sector },
                     { l: "Industry",      v: stock.industry },
-                    { l: "Starting Price", v: money(stock.startingPrice) },
                     { l: "Volatility",    v: `${(stock.volatility * 100).toFixed(1)}%` },
                     { l: "Risk Level",    v: stock.riskLevel },
                     { l: "Rating",        v: stock.fundamentals.analystRating },

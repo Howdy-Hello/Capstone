@@ -1,0 +1,87 @@
+/* eslint-disable testing-library/no-unnecessary-act */
+import React, { act } from 'react';
+import { createRoot, Root } from 'react-dom/client';
+import { StockCandleChart } from './Candlestick';
+import { StockPriceHistory } from '../data/mockStocks';
+
+jest.mock('recharts', () => {
+  const { cloneElement } = jest.requireActual<typeof import('react')>('react');
+  return {
+    ...jest.requireActual('recharts'),
+    ResponsiveContainer: ({ children }: { children: React.ReactElement<{ width: number; height: number }> }) => cloneElement(children, { width: 700, height: 320 }),
+  };
+});
+
+const history: StockPriceHistory[] = Array.from({ length: 90 }, (_, index) => ({
+  priceId: String(index), stockId: 'stock', symbol: 'TEST', gameDay: index + 1,
+  openPrice: 10, highPrice: 12, lowPrice: 8, closePrice: index % 2 ? 9 : 11,
+  volume: 100, change: 1, changePercent: 10, eventImpact: 0,
+}));
+let root: Root;
+let container: HTMLDivElement;
+beforeEach(() => {
+  (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+  container = document.createElement('div');
+  document.body.append(container);
+  root = createRoot(container);
+});
+afterEach(async () => {
+  await act(async () => root.unmount());
+  container.remove();
+});
+async function show(day: number) {
+  await act(async () => root.render(<StockCandleChart history={history.slice(0, day)} gameDay={day} />));
+}
+async function choose(label: string) {
+  const button = Array.from(container.querySelectorAll('button')).find((item) => item.textContent === label)!;
+  await act(async () => button.click());
+}
+function candles() {
+  return Array.from(container.querySelectorAll<SVGRectElement>('.recharts-bar-rectangle rect'));
+}
+function centers() {
+  return candles().map((rect) => Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')) / 2);
+}
+
+test('short histories stay at the right and fill leftward as days arrive', async () => {
+  await show(1);
+  expect(candles()).toHaveLength(1);
+  const right = centers()[0];
+  expect(right).toBeGreaterThan(650);
+  await show(3);
+  expect(candles()).toHaveLength(3);
+  expect(centers()[2]).toBeCloseTo(right);
+  expect(centers()[0]).toBeGreaterThan(600);
+  const spacing = centers()[1] - centers()[0];
+  await choose('7 days');
+  expect(centers()[1] - centers()[0]).toBeGreaterThan(spacing * 3);
+  expect(centers()[0]).toBeGreaterThan(400);
+});
+
+test.each([7, 15, 30, 60])('%s-day range shows only the latest days and their OHLC candles', async (days) => {
+  await show(90);
+  await choose(`${days} days`);
+  expect(candles()).toHaveLength(days);
+  expect(container.textContent).toContain('D90');
+  expect(container.textContent).not.toContain(`D${90 - days}`);
+  expect(container.querySelectorAll('.recharts-bar-rectangle line')).toHaveLength(days);
+  expect(new Set(candles().map((rect) => rect.getAttribute('fill'))).size).toBe(2);
+});
+
+test('all time keeps early histories right-aligned and includes history beyond 60 days', async () => {
+  await show(3);
+  await choose('All time');
+  expect(candles()).toHaveLength(3);
+  expect(centers()[0]).toBeGreaterThan(650);
+  await show(90);
+  expect(candles()).toHaveLength(90);
+  expect(centers()[0]).toBeLessThan(100);
+});
+
+test('missing days reserve space without drawing a candle', async () => {
+  await act(async () => root.render(<StockCandleChart history={[history[0], history[2]]} gameDay={3} />));
+  const missingGap = centers()[1] - centers()[0];
+  await show(3);
+  expect(candles()).toHaveLength(3);
+  expect(missingGap).toBeCloseTo((centers()[1] - centers()[0]) * 2);
+});

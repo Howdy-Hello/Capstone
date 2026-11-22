@@ -529,7 +529,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     [stocks]
   );
 
-  // Ascending: StockDetails renders relatedNews.slice(-8), the newest eight.
+  // Ascending: stock details takes the latest related stories from the end.
   const getRelatedNews = useCallback((symbol: string) => (
     newsHistory.filter((event) => event.relatedTickers.includes(symbol)).reverse()
   ), [newsHistory]);

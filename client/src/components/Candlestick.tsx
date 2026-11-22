@@ -1,8 +1,42 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { useState } from "react";
+import { Box, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { StockPriceHistory } from "../data/mockStocks";
 import { D, MONO, money } from "../theme/design";
 
 type Candle = Pick<StockPriceHistory, "gameDay" | "openPrice" | "highPrice" | "lowPrice" | "closePrice">;
+
+export function StockCandleChart({ history, gameDay }: { history: StockPriceHistory[]; gameDay: number }) {
+  const [days, setDays] = useState<number | "all">(30);
+  const span = days === "all" ? Math.max(60, gameDay) : days;
+  const historyByDay = new Map(history.map((point) => [point.gameDay, point]));
+  // Empty day slots keep short histories anchored to the right at the chosen scale.
+  const data = Array.from({ length: span }, (_, index) => {
+    const day = gameDay - span + index + 1;
+    const point = historyByDay.get(day);
+    return point ? { ...point, range: [point.lowPrice, point.highPrice] } : { gameDay: day };
+  });
+
+  return (
+    <>
+      <ToggleButtonGroup exclusive size="small" value={days} onChange={(_, value) => value !== null && setDays(value)} aria-label="Candlestick time range"
+        sx={{ mx: 3, mt: 2, display: "flex", flexWrap: "wrap", "& .MuiToggleButton-root": { color: D.t3, borderColor: D.border, px: 1.25, fontSize: 12, fontWeight: 800, textTransform: "none", "&.Mui-selected": { color: D.brandText, bgcolor: D.brandBg }, "&.Mui-selected:hover": { bgcolor: D.brandBg } } }}>
+        {[7, 15, 30, 60, "all"].map((value) => <ToggleButton key={value} value={value}>{value === "all" ? "All time" : `${value} days`}</ToggleButton>)}
+      </ToggleButtonGroup>
+      <Box sx={{ p: 2.5, height: 360 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} barCategoryGap="10%">
+            <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
+            <XAxis dataKey="gameDay" tickFormatter={(value) => value > 0 ? `D${value}` : ""} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
+            <YAxis tickFormatter={(value) => `$${Number(value).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 12 }} />
+            <Tooltip cursor={{ fill: D.overlay }} content={<CandleTooltip />} />
+            <Bar dataKey="range" shape={<Candlestick />} isAnimationActive={false} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Box>
+    </>
+  );
+}
 
 export function Candlestick({ x, y, width, height, payload }: {
   x?: number;

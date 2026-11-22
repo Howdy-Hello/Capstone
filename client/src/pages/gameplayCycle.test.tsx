@@ -3,6 +3,7 @@ import React, { act } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import Game from './Game';
 import News from './News';
+import StockDetails from './StockDetails';
 import { getNewsForGameDay, getStockHistoryBySymbol, getStocksForGameDay } from '../data/mockStocks';
 
 let mockPhase = 'market_open';
@@ -14,6 +15,7 @@ let mockSearchParams = new URLSearchParams();
 let mockWatchlist: typeof mockStocks = [];
 const mockGetHistory = (symbol: string) => getStockHistoryBySymbol(symbol, 2, 'STOCKPILOT');
 const mockYesterday = { ...getNewsForGameDay(1, 'STOCKPILOT')[0], relatedTickers: [mockStock.symbol] };
+const mockRelatedNews = Array.from({ length: 5 }, (_, index) => ({ ...mockYesterday, newsId: `related-${index}`, headline: `Related report ${index}` }));
 const mockClose = jest.fn().mockResolvedValue(undefined);
 const mockAdvance = jest.fn().mockResolvedValue(undefined);
 const mockSync = jest.fn().mockResolvedValue(undefined);
@@ -24,6 +26,8 @@ const mockTrading = () => ({
   stocks: mockMarketStocks, news: mockNews, newsHistory: [...mockNews, mockYesterday],
   tradedToday: {}, watchlistStocks: mockWatchlist, isWatchlisted: () => false,
   getHistory: mockGetHistory,
+  getStock: () => mockStock, getRelatedNews: () => mockRelatedNews,
+  getTradeQuote: () => ({ total: 100, fee: 0, subtotal: 100 }),
   closeMarket: mockClose, setGameDay: mockAdvance, syncSessionValue: mockSync,
 });
 
@@ -40,7 +44,7 @@ jest.mock('react-router-dom', () => {
   const React = require('react');
   return {
     Link: React.forwardRef(({ to, ...props }: any, ref: any) => <a href={to} ref={ref} {...props} />),
-    useNavigate: () => jest.fn(), useSearchParams: () => [mockSearchParams, jest.fn()],
+    useNavigate: () => jest.fn(), useSearchParams: () => [mockSearchParams, jest.fn()], useParams: () => ({ symbol: mockStock.symbol }),
   };
 }, { virtual: true });
 jest.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: null }) }));
@@ -51,7 +55,8 @@ jest.mock('../context/GameContext', () => ({
 jest.mock('../hooks/useAchievements', () => ({ useAchievements: () => ({ achievementIds: [] }) }));
 jest.mock('../hooks/useDailyGoals', () => ({ useDailyGoals: () => ({ goals: [] }) }));
 jest.mock('../hooks/useMissions', () => ({ useMissions: jest.fn() }));
-jest.mock('../hooks/useStockAlerts', () => ({ useStockAlerts: jest.fn() }));
+jest.mock('../hooks/useStockAlerts', () => ({ useStockAlerts: () => ({ alertsForSymbol: new Map() }) }));
+jest.mock('../hooks/useAdvisor', () => ({ useAdvisor: () => ({ activeAdvisor: null, isOnCooldown: () => false }) }));
 jest.mock('../hooks/useLevel', () => ({ useLevel: jest.fn() }));
 jest.mock('../hooks/useRivalTrader', () => ({ useRivalTrader: () => ({ equityCurve: [] }) }));
 
@@ -111,6 +116,36 @@ test('a quiet news day does not tell players to close the market to see articles
   await act(async () => { root.render(<News />); });
   expect(container.textContent).toContain('No major news today.');
   expect(container.textContent).not.toContain('Close the market to receive');
+});
+
+test('stock details shows only the latest three related reports and removes the extra price copy', async () => {
+  await act(async () => root.render(<StockDetails />));
+  expect(container.textContent).not.toContain('Related report 0');
+  expect(container.textContent).not.toContain('Related report 1');
+  const headlines = Array.from(container.querySelectorAll('p')).map((item) => item.textContent).filter((text) => text?.includes('Related report'));
+  expect(headlines).toEqual([4, 3, 2].map((index) => `Day 1: Related report ${index}`));
+  expect(container.querySelector('a[href^="/news?"]')?.getAttribute('href')).toBe(`/news?view=all&q=${mockStock.symbol}`);
+  for (const removed of ['Recent Prices', 'Starting Price', 'data points', 'Candles show open']) {
+    expect(container.textContent).not.toContain(removed);
+  }
+  expect(container.querySelector('.recharts-area')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Candlestick time range"]')).toBeNull();
+  await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Candlestick chart"]')!.click());
+  expect(container.querySelector('[aria-label="Candlestick time range"]')).not.toBeNull();
+  expect(container.querySelectorAll('.recharts-bar-rectangle rect')).toHaveLength(2);
+  await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Area chart"]')!.click());
+  expect(container.querySelector('.recharts-area')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Candlestick time range"]')).toBeNull();
+});
+
+test('the stock news link opens the archive with the ticker search applied', async () => {
+  mockSearchParams = new URLSearchParams({ view: 'all', q: mockStock.symbol });
+  mockNews = [{ ...mockNews[0], headline: 'Unrelated report', body: 'Other company news.', relatedTickers: ['OTHER'] }];
+  await act(async () => root.render(<News />));
+  expect(container.textContent).toContain('All revealed news');
+  expect(container.textContent).toContain(mockYesterday.headline);
+  expect(container.textContent).not.toContain('Unrelated report');
+  expect(container.querySelector<HTMLInputElement>('[aria-label="Search news"]')?.value).toBe(mockStock.symbol);
 });
 
 test('Game shows the market candles and the first three saved stocks with closing-price charts', async () => {
