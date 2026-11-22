@@ -7,11 +7,12 @@ import TodayGoalCard from "../components/TodayGoalCard";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ButtonBase,
   Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle,
-  CircularProgress, Divider, IconButton, Stack, TextField, Typography,
+  CircularProgress, Divider, IconButton, Menu, MenuItem, Stack, TextField, Typography,
 } from "@mui/material";
 import NewspaperIcon from "@mui/icons-material/Newspaper";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
+import SortIcon from "@mui/icons-material/Sort";
 import CloseIcon from "@mui/icons-material/Close";
 import CodeIcon from "@mui/icons-material/Code";
 import AddIcon from "@mui/icons-material/Add";
@@ -55,6 +56,19 @@ const MotionPresence = AnimatePresence as React.FC<React.PropsWithChildren<{
 
 const NEWS_COLLAPSED_KEY = "stockpilot:news-collapsed";
 const RECAP_DISMISSED_KEY = "stockpilot:recap-dismissed";
+const STOCK_SORT_OPTIONS = [
+  { value: "default", label: "Default order" },
+  { value: "price-high", label: "Price: high to low" },
+  { value: "price-low", label: "Price: low to high" },
+  { value: "increase-high", label: "Daily increase %: high to low" },
+  { value: "increase-low", label: "Daily increase %: low to high" },
+  { value: "decrease-high", label: "Daily decrease %: high to low" },
+  { value: "decrease-low", label: "Daily decrease %: low to high" },
+  { value: "risk-high", label: "Risk: high to low" },
+  { value: "risk-low", label: "Risk: low to high" },
+  { value: "owned", label: "Owned first" },
+] as const;
+type StockSort = typeof STOCK_SORT_OPTIONS[number]["value"];
 
 export default function Game() {
   usePageTitle("Market");
@@ -67,6 +81,8 @@ export default function Game() {
   const [tradeDialog, setTradeDialog] = useState<{ stock: Stock; mode: "buy" | "sell" } | null>(null);
   // BUG-054: starting a run pauses the current one for good, so it is confirmed.
   const [newRunConfirm, setNewRunConfirm] = useState<GameMode | null>(null);
+  const [stockSort, setStockSort] = useState<StockSort>("default");
+  const [sortAnchor, setSortAnchor] = useState<HTMLElement | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedSector = searchParams.get("sector") ?? "All";
   const setSelectedSector = useCallback((sector: string) => {
@@ -101,10 +117,27 @@ export default function Game() {
     stocks.forEach((stock) => counts.set(stock.sector, (counts.get(stock.sector) ?? 0) + 1));
     return counts;
   }, [stocks]);
-  const filteredStocks = useMemo(
-    () => selectedSector === "All" ? stocks : stocks.filter((stock) => stock.sector === selectedSector),
-    [selectedSector, stocks],
-  );
+  const filteredStocks = useMemo(() => {
+    const filtered = stocks.filter((stock) => selectedSector === "All" || stock.sector === selectedSector);
+    if (stockSort === "default") return filtered;
+    return filtered.sort((a, b) => {
+      if (stockSort === "price-high") return b.currentPrice - a.currentPrice;
+      if (stockSort === "price-low") return a.currentPrice - b.currentPrice;
+      if (stockSort === "risk-high" || stockSort === "risk-low") {
+        const rank = { Low: 0, Medium: 1, High: 2 };
+        const difference = rank[a.riskLevel] - rank[b.riskLevel];
+        return stockSort === "risk-high" ? -difference : difference;
+      }
+      if (stockSort === "owned") {
+        return Number(getSharesOwned(trading.account, b.symbol) > 0) - Number(getSharesOwned(trading.account, a.symbol) > 0);
+      }
+      const decreasing = stockSort === "decrease-high" || stockSort === "decrease-low";
+      const aChange = Math.max(0, decreasing ? -a.dayChangePercent : a.dayChangePercent);
+      const bChange = Math.max(0, decreasing ? -b.dayChangePercent : b.dayChangePercent);
+      const highFirst = stockSort === "increase-high" || stockSort === "decrease-high";
+      return Number(bChange > 0) - Number(aChange > 0) || (highFirst ? bChange - aChange : aChange - bChange);
+    });
+  }, [selectedSector, stocks, stockSort, trading.account]);
   const portfolioValue = useMemo(() => getPortfolioValue(trading.account, stocks), [trading.account, stocks]);
   const netWorth = useMemo(() => getNetWorth(trading.account, stocks), [trading.account, stocks]);
   const portfolioPnL = useMemo(() =>
@@ -593,13 +626,9 @@ export default function Game() {
           ))}
         </Box>
 
-        <Stack component="nav" aria-label="Market shortcuts" direction="row" gap={1} flexWrap="wrap" sx={{ mb: 2 }}>
+        <Stack component="nav" aria-label="Market shortcuts" direction="row" gap={1} flexWrap="wrap" sx={{ display: { xs: "flex", md: "none" }, mb: 2 }}>
           <Button href="#game-portfolio" size="small" sx={{ display: { md: "none" }, minHeight: 40, color: D.brandText, textTransform: "none" }}>Portfolio</Button>
           {showGoals && <Button href="#today-goal" size="small" sx={{ display: { md: "none" }, minHeight: 40, color: D.brandText, textTransform: "none" }}>Goal</Button>}
-          <Button component={RouterLink} to="/game/watchlist" startIcon={<StarBorderIcon />} size="small" sx={{ minHeight: 40, color: D.brandText, textTransform: "none" }}>
-            Watchlist{trading.watchlistStocks.length > 0 && ` (${trading.watchlistStocks.length})`}
-          </Button>
-          <Button href="#game-tools" size="small" sx={{ minHeight: 40, color: D.brandText, textTransform: "none" }}>Game tools</Button>
         </Stack>
 
         <MotionPresence initial={false}>
@@ -738,7 +767,23 @@ export default function Game() {
           {/* Stock market table */}
           <Box component="section" aria-labelledby="market-stocks" data-tour="market-list" sx={{ ...CARD, gridArea: "stocks" }}>
             <Box sx={{ px: { xs: 2, sm: 3 }, py: 2, borderBottom: `1px solid ${D.border}` }}>
-              <Typography id="market-stocks" component="h2" sx={{ fontWeight: 900, fontSize: 20, color: D.t1 }}>Stocks</Typography>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
+                <Typography id="market-stocks" component="h2" sx={{ fontWeight: 900, fontSize: 20, color: D.t1 }}>Stocks</Typography>
+                <Button id="stock-sort-button" size="small" startIcon={<SortIcon />} variant="outlined"
+                  aria-haspopup="menu" aria-controls={sortAnchor ? "stock-sort-menu" : undefined} aria-expanded={Boolean(sortAnchor)}
+                  onClick={(event) => setSortAnchor(event.currentTarget)}
+                  sx={{ minHeight: 40, color: D.brandText, borderColor: D.borderHi, textTransform: "none", maxWidth: "75%" }}>
+                  {stockSort === "default" ? "Sort" : STOCK_SORT_OPTIONS.find((option) => option.value === stockSort)?.label}
+                </Button>
+                <Menu id="stock-sort-menu" anchorEl={sortAnchor} open={Boolean(sortAnchor)} onClose={() => setSortAnchor(null)}
+                  MenuListProps={{ "aria-labelledby": "stock-sort-button" }}>
+                  {STOCK_SORT_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} selected={stockSort === option.value} onClick={() => { setStockSort(option.value); setSortAnchor(null); }}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Menu>
+              </Stack>
               {marketClosed ? (
                 <Typography role="status" sx={{ fontSize: 14, color: D.amber, fontWeight: 700, mt: 0.5 }}>{MARKET_CLOSED_MESSAGE}</Typography>
               ) : !isGameComplete && gameDay <= STORY_DAYS && (

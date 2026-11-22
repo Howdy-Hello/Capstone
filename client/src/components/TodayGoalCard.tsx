@@ -44,7 +44,7 @@ export default function TodayGoalCard({ goals, completedCount, error, onRetry, r
         ) : (
           <Stack direction="row" spacing={1} alignItems="center">
             <CheckCircleIcon sx={{ fontSize: 18, color: D.greenText }} />
-            <Typography sx={{ fontSize: 14, color: D.t2 }}>Today's goals are done. New goals arrive at midnight Toronto time.</Typography>
+            <Typography sx={{ fontSize: 14, color: D.t2 }}>Today's goals are done.</Typography>
           </Stack>
         )}
 

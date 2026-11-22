@@ -9,6 +9,8 @@ let mockPhase = 'market_open';
 let mockNews = getNewsForGameDay(2, 'STOCKPILOT').slice(0, 1);
 const mockStocks = getStocksForGameDay(2, 'STOCKPILOT');
 const mockStock = mockStocks[0];
+let mockMarketStocks = [mockStock];
+let mockSearchParams = new URLSearchParams();
 let mockWatchlist: typeof mockStocks = [];
 const mockGetHistory = (symbol: string) => getStockHistoryBySymbol(symbol, 2, 'STOCKPILOT');
 const mockYesterday = { ...getNewsForGameDay(1, 'STOCKPILOT')[0], relatedTickers: [mockStock.symbol] };
@@ -19,7 +21,7 @@ const mockTrading = () => ({
   sessionId: 'run', gameDay: 2, gameMode: 'limited_30', maxGameDay: 30,
   marketPhase: mockPhase, isGameComplete: false, loading: false, verifiedRun: true,
   account: { cash: 1900, holdings: [{ symbol: mockStock.symbol, shares: 1, averageCost: 100 }] },
-  stocks: [mockStock], news: mockNews, newsHistory: [...mockNews, mockYesterday],
+  stocks: mockMarketStocks, news: mockNews, newsHistory: [...mockNews, mockYesterday],
   tradedToday: {}, watchlistStocks: mockWatchlist, isWatchlisted: () => false,
   getHistory: mockGetHistory,
   closeMarket: mockClose, setGameDay: mockAdvance, syncSessionValue: mockSync,
@@ -38,7 +40,7 @@ jest.mock('react-router-dom', () => {
   const React = require('react');
   return {
     Link: React.forwardRef(({ to, ...props }: any, ref: any) => <a href={to} ref={ref} {...props} />),
-    useNavigate: () => jest.fn(), useSearchParams: () => [new URLSearchParams(), jest.fn()],
+    useNavigate: () => jest.fn(), useSearchParams: () => [mockSearchParams, jest.fn()],
   };
 }, { virtual: true });
 jest.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: null }) }));
@@ -59,6 +61,8 @@ beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   mockPhase = 'market_open';
   mockWatchlist = [];
+  mockMarketStocks = [mockStock];
+  mockSearchParams = new URLSearchParams();
   mockNews = getNewsForGameDay(2, 'STOCKPILOT').slice(0, 1);
   mockClose.mockReset().mockResolvedValue(undefined);
   mockAdvance.mockReset().mockResolvedValue(undefined);
@@ -121,4 +125,55 @@ test('Game shows the market candles and the first three saved stocks with closin
   expect(Array.from(watchlist?.querySelectorAll('a[href^="/stocks/"]') ?? [], (row) => row.getAttribute('href')))
     .toEqual(mockWatchlist.slice(0, 3).map((stock) => `/stocks/${stock.symbol}`));
   expect(watchlist?.querySelectorAll('.recharts-line-curve')).toHaveLength(3);
+});
+
+const sortableStocks: typeof mockStocks = [
+  { ...mockStocks[1], currentPrice: 10, dayChangePercent: 4, sector: 'Finance', riskLevel: 'Medium' },
+  { ...mockStocks[2], currentPrice: 50, dayChangePercent: -5, sector: 'Technology', riskLevel: 'Low' },
+  { ...mockStock, currentPrice: 30, dayChangePercent: -1, sector: 'Finance', riskLevel: 'High' },
+  { ...mockStocks[3], currentPrice: 20, dayChangePercent: 1, sector: 'Technology', riskLevel: 'Low' },
+  { ...mockStocks[4], currentPrice: 40, dayChangePercent: 0, sector: 'Finance', riskLevel: 'Medium' },
+];
+
+async function chooseStockSort(label: string) {
+  const button = container.querySelector<HTMLButtonElement>('#stock-sort-button')!;
+  jest.spyOn(button, 'getBoundingClientRect').mockReturnValue({
+    x: 0, y: 0, top: 0, left: 0, right: 120, bottom: 40, width: 120, height: 40, toJSON: () => ({}),
+  });
+  await act(async () => { button.click(); });
+  const option = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find((item) => item.textContent === label)!;
+  expect(option).toBeDefined();
+  await act(async () => { option.click(); });
+}
+
+function marketStockOrder() {
+  return Array.from(container.querySelectorAll('[data-tour="market-list"] button[aria-label^="Open "]'), (button) => button.getAttribute('aria-label'));
+}
+
+test.each([
+  ['Price: high to low', [1, 4, 2, 3, 0]],
+  ['Price: low to high', [0, 3, 2, 4, 1]],
+  ['Daily increase %: high to low', [0, 3, 1, 2, 4]],
+  ['Daily increase %: low to high', [3, 0, 1, 2, 4]],
+  ['Daily decrease %: high to low', [1, 2, 0, 3, 4]],
+  ['Daily decrease %: low to high', [2, 1, 0, 3, 4]],
+  ['Risk: high to low', [2, 0, 4, 1, 3]],
+  ['Risk: low to high', [1, 3, 0, 4, 2]],
+  ['Owned first', [2, 0, 1, 3, 4]],
+] as const)('%s sorts stocks without changing the shared market order', async (label, order) => {
+  mockMarketStocks = [...sortableStocks];
+  await act(async () => { root.render(<Game />); });
+  await chooseStockSort(label);
+  expect(marketStockOrder()).toEqual(order.map((index) => `Open ${sortableStocks[index].name}`));
+  expect(mockMarketStocks).toEqual(sortableStocks);
+});
+
+test('sorting respects the sector filter and can return to the default order', async () => {
+  mockMarketStocks = [...sortableStocks];
+  mockSearchParams = new URLSearchParams({ sector: 'Finance' });
+  await act(async () => { root.render(<Game />); });
+  await chooseStockSort('Price: high to low');
+  expect(marketStockOrder()).toEqual([4, 2, 0].map((index) => `Open ${sortableStocks[index].name}`));
+  await chooseStockSort('Default order');
+  expect(marketStockOrder()).toEqual([0, 2, 4].map((index) => `Open ${sortableStocks[index].name}`));
 });

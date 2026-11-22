@@ -77,7 +77,7 @@ test("today's goal card shows the next unfinished goal and how to do it", () => 
   expect(page.querySelector("details")?.open).toBe(false);
   expect(page.textContent).toContain("Tracked automatically");
   expect(page.textContent).toContain("Refreshes in");
-  expect(page.textContent).toContain("Midnight Toronto time");
+  expect(page.textContent).not.toContain("Toronto time");
   expect(page.querySelector("textarea")).toBeNull();
   expect(page.querySelector('[data-testid="decision-note"]')).toBeNull();
   expect(page.querySelector('a[href="/game/goals"]')).not.toBeNull();
@@ -89,5 +89,6 @@ test("the watchlist goal says where to act, and a finished day says so", () => {
   const done = goalCard([goal("cash20", true), goal("watch2", true)]).textContent;
   expect(done).toContain("2/2 done");
   expect(done).toContain("Today's goals are done.");
+  expect(done).not.toContain("Toronto time");
   expect(goalCard([]).textContent).toBe("");
 });

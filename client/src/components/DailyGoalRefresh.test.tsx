@@ -15,8 +15,7 @@ afterEach(async () => { await act(async () => root.unmount()); jest.useRealTimer
 
 test('the visible countdown ticks each second and resets for the next refresh', async () => {
   await act(async () => { root.render(<DailyGoalRefresh refreshAt="2026-11-22T05:00:00.000Z" />); });
-  expect(container.textContent).toContain('Refreshes in 0h 0m 2s');
-  expect(container.textContent).toContain('Midnight Toronto time');
+  expect(container.textContent).toBe('Refreshes in 0h 0m 2s');
   await act(async () => { jest.advanceTimersByTime(1000); });
   expect(container.textContent).toContain('Refreshes in 0h 0m 1s');
   await act(async () => { jest.advanceTimersByTime(1000); });

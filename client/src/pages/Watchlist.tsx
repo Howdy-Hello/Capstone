@@ -53,7 +53,7 @@ export default function Watchlist() {
               const canCompare = trading.stocks.some((item) => item.symbol !== stock.symbol);
               return (
                 <Grid item xs={12} sm={6} md={4} key={stock.symbol}>
-                  <Box sx={{ ...CARD, bgcolor: flat ? D.surface : up ? D.greenBg : D.redBg, borderColor: flat ? D.border : up ? D.greenBd : D.redBd, p: 2.5, height: "100%" }}>
+                  <Box sx={{ ...CARD, p: 2.5, height: "100%" }}>
                     <Stack direction="row" justifyContent="space-between" sx={{ mb: 1.5 }}>
                       <Box>
                         <Typography sx={{ color: D.t1, fontFamily: MONO, fontWeight: 900, fontSize: 18 }}>{stock.symbol}</Typography>

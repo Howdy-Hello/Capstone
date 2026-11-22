@@ -13,6 +13,6 @@ export default function DailyGoalRefresh({ refreshAt }: { refreshAt: string }) {
     return () => { window.clearInterval(timer); window.removeEventListener('focus', update); };
   }, [refreshAt]);
   return <Typography component="span" sx={{ display: 'block', color: D.t3, fontSize: 12, mt: 0.5, mb: 1 }}>
-    Refreshes in {formatGoalCountdown(refreshAt, now)} · Midnight Toronto time
+    Refreshes in {formatGoalCountdown(refreshAt, now)}
   </Typography>;
 }

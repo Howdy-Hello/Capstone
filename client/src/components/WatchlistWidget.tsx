@@ -12,8 +12,7 @@ function StockSparkline({ stock, history }: { stock: Stock; history: readonly St
 
   const first = data[0];
   const last = data[data.length - 1];
-  const change = last.closePrice - first.closePrice;
-  const color = change === 0 ? D.t3 : change > 0 ? D.green : D.red;
+  const color = isFlat(stock.dayChangePercent) ? D.t3 : stock.dayChangePercent > 0 ? D.green : D.red;
   const label = first === last
     ? `${stock.symbol} closed at ${money(last.closePrice)} on Day ${last.gameDay}.`
     : `${stock.symbol} closing prices from Day ${first.gameDay} to Day ${last.gameDay}, from ${money(first.closePrice)} to ${money(last.closePrice)}.`;
@@ -55,8 +54,7 @@ export default function WatchlistWidget({ stocks, getHistory }: {
             sx={{
               display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(44px, 0.8fr) auto",
               gap: 1.5, width: "100%", px: 2, py: 1, textAlign: "left", borderTop: `1px solid ${D.border}`,
-              bgcolor: isFlat(stock.dayChangePercent) ? D.surface : stock.dayChangePercent > 0 ? D.greenBg : D.redBg,
-              "&:hover": { boxShadow: `inset 0 0 0 1px ${D.borderHi}` },
+              "&:hover": { bgcolor: D.elevated },
               "&:focus-visible": { outline: `2px solid ${D.brand}`, outlineOffset: -2 },
             }}>
             <Box component="span" sx={{ minWidth: 0 }}>
