@@ -10,9 +10,9 @@ export function StockCandleChart({ history, gameDay }: { history: StockPriceHist
   const [days, setDays] = useState<number | "all">(30);
   const span = days === "all" ? Math.max(60, gameDay) : days;
   const historyByDay = new Map(history.map((point) => [point.gameDay, point]));
-  // Empty day slots keep short histories anchored to the right at the chosen scale.
+  // Empty day slots keep short histories anchored to the left at the chosen scale.
   const data = Array.from({ length: span }, (_, index) => {
-    const day = gameDay - span + index + 1;
+    const day = Math.max(1, gameDay - span + 1) + index;
     const point = historyByDay.get(day);
     return point ? { ...point, range: [point.lowPrice, point.highPrice] } : { gameDay: day };
   });
@@ -27,7 +27,7 @@ export function StockCandleChart({ history, gameDay }: { history: StockPriceHist
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} barCategoryGap="10%">
             <CartesianGrid strokeDasharray="3 3" stroke={D.border} />
-            <XAxis dataKey="gameDay" tickFormatter={(value) => value > 0 ? `D${value}` : ""} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
+            <XAxis dataKey="gameDay" tickFormatter={(value) => value <= gameDay ? `D${value}` : ""} minTickGap={18} tick={{ fill: D.t3, fontSize: 12 }} />
             <YAxis tickFormatter={(value) => `$${Number(value).toFixed(0)}`} domain={["dataMin - 5", "dataMax + 5"]} tick={{ fill: D.t3, fontSize: 12 }} />
             <Tooltip cursor={{ fill: D.overlay }} content={<CandleTooltip />} />
             <Bar dataKey="range" shape={<Candlestick />} isAnimationActive={false} />

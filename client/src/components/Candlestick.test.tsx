@@ -43,19 +43,20 @@ function centers() {
   return candles().map((rect) => Number(rect.getAttribute('x')) + Number(rect.getAttribute('width')) / 2);
 }
 
-test('short histories stay at the right and fill leftward as days arrive', async () => {
+test('short histories stay at the left and fill rightward as days arrive', async () => {
   await show(1);
   expect(candles()).toHaveLength(1);
-  const right = centers()[0];
-  expect(right).toBeGreaterThan(650);
+  const left = centers()[0];
+  expect(left).toBeLessThan(100);
   await show(3);
   expect(candles()).toHaveLength(3);
-  expect(centers()[2]).toBeCloseTo(right);
-  expect(centers()[0]).toBeGreaterThan(600);
+  expect(centers()[0]).toBeCloseTo(left);
+  expect(centers()[2]).toBeLessThan(150);
+  expect(container.textContent).not.toContain('D4');
   const spacing = centers()[1] - centers()[0];
   await choose('7 days');
   expect(centers()[1] - centers()[0]).toBeGreaterThan(spacing * 3);
-  expect(centers()[0]).toBeGreaterThan(400);
+  expect(centers()[0]).toBeLessThan(150);
 });
 
 test.each([7, 15, 30, 60])('%s-day range shows only the latest days and their OHLC candles', async (days) => {
@@ -68,11 +69,11 @@ test.each([7, 15, 30, 60])('%s-day range shows only the latest days and their OH
   expect(new Set(candles().map((rect) => rect.getAttribute('fill'))).size).toBe(2);
 });
 
-test('all time keeps early histories right-aligned and includes history beyond 60 days', async () => {
+test('all time keeps early histories left-aligned and includes history beyond 60 days', async () => {
   await show(3);
   await choose('All time');
   expect(candles()).toHaveLength(3);
-  expect(centers()[0]).toBeGreaterThan(650);
+  expect(centers()[2]).toBeLessThan(100);
   await show(90);
   expect(candles()).toHaveLength(90);
   expect(centers()[0]).toBeLessThan(100);
