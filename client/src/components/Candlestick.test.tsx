@@ -69,6 +69,18 @@ test.each([7, 15, 30, 60])('%s-day range shows only the latest days and their OH
   expect(new Set(candles().map((rect) => rect.getAttribute('fill'))).size).toBe(2);
 });
 
+test('shorter ranges draw thicker candles while leaving gaps between days', async () => {
+  await show(90);
+  let previousWidth = 0;
+  for (const days of [60, 30, 15, 7]) {
+    await choose(`${days} days`);
+    const width = Number(candles()[0].getAttribute('width'));
+    expect(width).toBeGreaterThan(previousWidth);
+    expect(width).toBeLessThan(centers()[1] - centers()[0]);
+    previousWidth = width;
+  }
+});
+
 test('all time keeps early histories left-aligned and includes history beyond 60 days', async () => {
   await show(3);
   await choose('All time');

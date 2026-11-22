@@ -53,7 +53,7 @@ export function Candlestick({ x, y, width, height, payload }: {
   const color = up ? D.green : D.red;
   const span = Math.max(0, height);
   const range = highPrice - lowPrice;
-  const candleWidth = Math.max(3, Math.min(width * 0.65, 18));
+  const candleWidth = Math.max(3, width * 0.65);
   const centerX = x + width / 2;
 
   // A flat day has no high-low range to scale against, so the band collapses to
