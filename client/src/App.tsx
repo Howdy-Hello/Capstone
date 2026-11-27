@@ -23,6 +23,7 @@ import Home from "./pages/Home";
 import { trackEvent } from "./lib/analytics";
 import { useTradeDebriefs } from "./hooks/useTradeDebriefs";
 import { useNoIndex, usePageTitle } from "./lib/usePageTitle";
+import { loginPathFor } from "./lib/routing";
 
 // Every other page loads on first visit. One bundle held every page, including
 // recharts, which only five of them use, and the browser parsed all of it before
@@ -81,8 +82,10 @@ const NotFound: React.FC = () => {
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <PageFallback />;
-  if (!user) return <><PageFallback /><Navigate to="/auth?mode=login" replace /></>;
+  // V4-06: remember the requested page so login returns there.
+  if (!user) return <><PageFallback /><Navigate to={loginPathFor(location.pathname, location.search)} replace /></>;
   return <>{children}</>;
 };
 

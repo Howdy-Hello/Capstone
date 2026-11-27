@@ -3,6 +3,7 @@ import { Box, Button, CircularProgress, Container, Typography } from "@mui/mater
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 
 import { supabase } from "../lib/supabase";
+import { takePostLoginPath } from "../lib/routing";
 import { CARD, D } from "../theme/design";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -27,7 +28,11 @@ export default function AuthCallback() {
     const finishSignIn = async () => {
       const oauthError = readOAuthError(location.search, location.hash);
       if (oauthError) {
-        navigate(`/auth?mode=login&oauth_error=${encodeURIComponent(oauthError)}`, { replace: true });
+        // V4-06: keep the page the player asked for, so a retry still lands there.
+        const params = new URLSearchParams({ mode: "login", oauth_error: oauthError });
+        const next = takePostLoginPath();
+        if (next !== "/dashboard") params.set("next", next);
+        navigate(`/auth?${params.toString()}`, { replace: true });
         return;
       }
 
@@ -51,7 +56,7 @@ export default function AuthCallback() {
         return;
       }
 
-      navigate("/dashboard", { replace: true });
+      navigate(takePostLoginPath(), { replace: true });
     };
 
     void finishSignIn();

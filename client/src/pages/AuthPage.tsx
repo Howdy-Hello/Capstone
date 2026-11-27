@@ -13,7 +13,7 @@ import GoogleIcon from "@mui/icons-material/Google";
 import { supabase, isRememberMeEnabled, setRememberMe } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { useAuthThrottle } from "../lib/authThrottle";
-import { AuthMode, resolveAuthMode } from "../lib/routing";
+import { AuthMode, rememberPostLoginPath, resolveAuthMode, safeNextPath } from "../lib/routing";
 import { D, MONO } from "../theme/design";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -43,6 +43,8 @@ const AuthPage: React.FC = () => {
   const requestedMode = qs.get("mode");
   const oauthError = qs.get("oauth_error");
   const mode = resolveAuthMode(requestedMode);
+  // V4-06: the protected page the player asked for (only paths on this site).
+  const destination = useMemo(() => safeNextPath(qs.get("next")), [qs]);
   usePageTitle(mode === "signup" ? "Sign up" : mode === "reset" ? "Reset password" : "Log in");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -70,8 +72,8 @@ const AuthPage: React.FC = () => {
   const throttle = useAuthThrottle(throttleKey);
 
   useEffect(() => {
-    if (user) navigate("/dashboard", { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(destination, { replace: true });
+  }, [user, navigate, destination]);
 
   const setMode = (nextMode: AuthMode) => {
     const params = new URLSearchParams(location.search);
@@ -130,7 +132,7 @@ const AuthPage: React.FC = () => {
           throw error;
         }
         throttle.recordSuccess();
-        navigate("/dashboard", { replace: true });
+        navigate(destination, { replace: true });
       } else if (mode === "signup") {
         const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } });
         if (error) {
@@ -139,7 +141,7 @@ const AuthPage: React.FC = () => {
         }
         throttle.recordSuccess();
         if (data.session) {
-          navigate("/dashboard", { replace: true });
+          navigate(destination, { replace: true });
         } else {
           setSuccessMsg("Account created! Check your email to confirm your address, then log in.");
           setPendingEmail(email);
@@ -172,6 +174,7 @@ const AuthPage: React.FC = () => {
     setError(null);
     setSuccessMsg(null);
     setSubmitting(true);
+    rememberPostLoginPath(destination);
 
     try {
       const { error } = await supabase.auth.signInWithOAuth({

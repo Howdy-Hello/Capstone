@@ -24,19 +24,26 @@ stored historical candles per stock in `session_stock_prices` (`game_day < 1`).
 Its Day 1 opening prices must equal the last simulated closes. Existing runs
 and restored saves keep their original engine and prices.
 
-For the existing live installation (checked 2026-10-14), SQL b
-(202610080002) is applied and SQL c is not. Herdy must:
+For the existing live installation (checked read-only 2026-11-27), SQL b
+(202610080002) and the 2026-11-21 migrations are applied and SQL c is not.
+Herdy must:
 
-1. Run `supabase/run_all_2026-10-08c.sql` (202610080005) in the SQL editor.
-2. Deploy the API server from the same commit, with the required environment
+1. Run `supabase/run_all_2026-11-27.sql` in the SQL editor. It applies SQL c
+   (202610080005), re-applies the 21 Nov news and daily-goal policies that SQL c
+   would otherwise replace, and adds the avatars fix (202611270001), in one
+   transaction. Do not run `run_all_2026-10-08c.sql` on its own any more: it
+   would hide today's news until the close and refuse the new daily goals.
+2. Run `supabase/tests/V4-01-avatars-rls.sql` and
+   `supabase/tests/V4-03-live-upgrade-rls.sql` (both end in ROLLBACK); every
+   line must say PASS.
+3. Deploy the API server from the same commit, with the required environment
    variables below, then redeploy the client from that commit.
 
 The live client already expects SQL c. Its fallbacks keep the game playable
-without it, but the Dashboard's account breakdown stays unavailable, the
+without it, but the Dashboard's account breakdown stays unavailable and the
 closed market is remembered only in that browser (another browser shows it
-open again and allows trading after the news), and today's news can be read
-before the close. The market close, checked trade retries and reward rules
-require SQL c.
+open again and allows trading after the news). The market close, checked
+trade retries and reward rules require SQL c.
 
 The 2026-10-28 round (news while trading, day recap, faster day advance) adds
 `POST /api/game/close` to the API server and no SQL. Redeploy the server to

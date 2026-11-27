@@ -33,7 +33,7 @@ export default function InvestingPath() {
   const completed = checkpoints.filter((c, i) => answers[i] === c.correct).length;
   return <Stack className="learning" spacing={3}>
     <Box sx={{ ...CARD, p: { xs: 2, sm: 3 } }}>
-      <Typography variant="h5" sx={{ color: D.t1, fontWeight: 900, mb: 1 }}>Start with the goal, then choose the risk</Typography>
+      <Typography variant="h5" component="h2" sx={{ color: D.t1, fontWeight: 900, mb: 1 }}>Start with the goal, then choose the risk</Typography>
       <Typography sx={{ color: D.t2, mb: 2 }}>An ETF holds a basket of investments and trades on an exchange. An index fund follows an index; it can be an ETF or a mutual fund. Check the actual holdings: a narrow fund can still be concentrated. Diversification spreads company risk, but market-wide losses remain possible.</Typography>
       <TextField select label="When will I need this money?" value={goal} onChange={e => setGoal(e.target.value)} fullWidth>
         <MenuItem value="soon">In the next few months</MenuItem><MenuItem value="long">Many years from now</MenuItem>
@@ -41,7 +41,7 @@ export default function InvestingPath() {
       <Alert severity="info" sx={{ mt: 2 }}>{goal === "soon" ? "For upcoming bills or emergencies, prioritize access and stability. A stock or stock fund can fall before you need to withdraw." : "A longer horizon allows more time to recover, but does not guarantee recovery. Consider your ability to absorb losses, diversified exposure, fees, and regular contributions."}</Alert>
     </Box>
     <Box sx={{ ...CARD, p: { xs: 2, sm: 3 } }}>
-      <Typography variant="h5" sx={{ color: D.t1, fontWeight: 900, mb: 1 }}>Explore contributions, compounding, and fees</Typography>
+      <Typography variant="h5" component="h2" sx={{ color: D.t1, fontWeight: 900, mb: 1 }}>Explore contributions, compounding, and fees</Typography>
       <Typography sx={{ color: D.t2, mb: 2 }}>This illustration starts with $2,000 and assumes 5% annual growth before fees for both strategies. Contributions are added at each month-end. The basket costs 0.2% yearly; change the stock-picking strategy's assumed annual costs below. These are invented examples, with no taxes, inflation, or dividends modeled separately.</Typography>
       <Grid container spacing={2}>
         <Grid item xs={12} sm={4}><TextField select fullWidth label="Time horizon" value={years} onChange={e => setYears(Number(e.target.value))}>{[1, 5, 10, 20, 30].map(n => <MenuItem key={n} value={n}>{n} years</MenuItem>)}</TextField></Grid>
@@ -54,7 +54,7 @@ export default function InvestingPath() {
       <Alert severity="info" sx={{ mt: 2 }}>The shock is a scenario, not a forecast or a typical loss. Real returns fluctuate and either strategy can outperform. Compounding magnifies losses and costs as well as gains.</Alert>
     </Box>
     <Box sx={{ ...CARD, p: { xs: 2, sm: 3 } }}>
-      <Typography variant="h5" sx={{ color: D.t1, fontWeight: 900, mb: 1 }}>Try an order before using one</Typography>
+      <Typography variant="h5" component="h2" sx={{ color: D.t1, fontWeight: 900, mb: 1 }}>Try an order before using one</Typography>
       <Typography sx={{ color: D.t2, mb: 2 }}>The simulator's trade buttons execute immediately. This separate exercise shows other order types. Start with a displayed quote of $100, then choose the next available price.</Typography>
       <Grid container spacing={2}>
         <Grid item xs={12} sm={4}><TextField select fullWidth label="Order" value={type} onChange={e => { setType(e.target.value as typeof type); setSubmittedOrder(null); }}><MenuItem value="market">Market buy</MenuItem><MenuItem value="limit">Limit buy</MenuItem><MenuItem value="stop">Stop sell</MenuItem></TextField></Grid>
@@ -66,7 +66,7 @@ export default function InvestingPath() {
       <Typography sx={{ color: D.t2, fontSize: 14, mt: 2 }}>A limit controls the price but may never fill. A stop becomes a market order when triggered and does not guarantee the stop price. This exercise assumes one available price and sufficient liquidity. <a href="https://www.investor.gov/introduction-investing/investing-basics/how-stock-markets-work/types-orders" target="_blank" rel="noreferrer">Read Investor.gov's order guide</a>.</Typography>
     </Box>
     <Box sx={{ ...CARD, p: { xs: 2, sm: 3 } }}>
-      <Typography variant="h5" sx={{ color: D.t1, fontWeight: 900, mb: 1 }}>Check your understanding · {completed}/4</Typography>
+      <Typography variant="h5" component="h2" sx={{ color: D.t1, fontWeight: 900, mb: 1 }}>Check your understanding · {completed}/4</Typography>
       <Stack spacing={3}>{checkpoints.map((c, i) => <Box key={c.question}>
         <Typography sx={{ color: D.t1, fontWeight: 800, mb: 1 }}>{c.question}</Typography>
         <Stack spacing={1}>{c.options.map((option, j) => <Button key={option} aria-pressed={answers[i] === j} variant={answers[i] === j ? "contained" : "outlined"} onClick={() => setAnswers(a => ({ ...a, [i]: j }))} sx={{ textTransform: "none", justifyContent: "flex-start", textAlign: "left" }}>{option}</Button>)}</Stack>
